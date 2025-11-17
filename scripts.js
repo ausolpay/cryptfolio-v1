@@ -4327,14 +4327,23 @@ async function fetchOrderRewards(orderId) {
 async function fetchNiceHashOrders() {
     try {
         // NiceHash solo order endpoint includes soloReward data
-        // Try endpoint without parameters first (might return all orders)
+        // This endpoint requires POST with parameters in body
         const timestamp = Date.now() + nicehashTimeOffset;
         const endpoint = `/main/api/v2/hashpower/solo/order`;
-        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        // Request body with required parameters
+        const requestBody = {
+            ts: timestamp,
+            op: 'LE',
+            limit: 100
+        };
+
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, JSON.stringify(requestBody));
 
         console.log('📡 Fetching solo orders from NiceHash...');
         console.log('📋 Endpoint:', endpoint);
-        console.log('📋 Full URL:', `https://api2.nicehash.com${endpoint}`);
+        console.log('📋 Method: POST');
+        console.log('📋 Body:', requestBody);
 
         let response;
 
@@ -4348,16 +4357,21 @@ async function fetchNiceHashOrders() {
                 },
                 body: JSON.stringify({
                     endpoint: endpoint,
-                    method: 'GET',
-                    headers: headers
+                    method: 'POST',
+                    headers: headers,
+                    body: requestBody
                 })
             });
         } else {
-            // Direct call to NiceHash (will fallback to mock data if CORS fails)
-            console.log('Endpoint:', `https://api2.nicehash.com${endpoint}`);
+            // Direct call to NiceHash
+            console.log('Direct call to:', `https://api2.nicehash.com${endpoint}`);
             response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                method: 'GET',
-                headers: headers
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
             });
         }
 
