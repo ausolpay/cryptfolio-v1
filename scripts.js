@@ -3,6 +3,23 @@ const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 const apiKeys = ['CG-gjMFaaWvegooR4G5JtgXm6tt', 'CG-acHzUtSKiG7z37pdrTadUxJc', 'CG-5LeQPVdQKzrN7LPxGMB5fKbn'];
 let currentApiKeyIndex = 0;
 
+// =============================================================================
+// VERCEL PROXY CONFIGURATION
+// =============================================================================
+
+// Detect if we're running on Vercel or localhost
+const IS_PRODUCTION = window.location.hostname !== 'localhost' &&
+                      window.location.hostname !== '127.0.0.1' &&
+                      !window.location.hostname.includes('github.io');
+
+const USE_VERCEL_PROXY = IS_PRODUCTION; // Use proxy in production, direct calls locally (with mock fallback)
+const VERCEL_PROXY_ENDPOINT = '/api/nicehash';
+
+console.log(`🌐 Environment: ${IS_PRODUCTION ? 'Production (Vercel)' : 'Local Development'}`);
+console.log(`🔧 Using Vercel Proxy: ${USE_VERCEL_PROXY ? 'Yes' : 'No (mock data fallback)'}`);
+
+// =============================================================================
+
 let users = JSON.parse(getStorageItem('users')) || {};
 let loggedInUser = getStorageItem('loggedInUser') || null;
 
@@ -3756,12 +3773,31 @@ async function fetchNiceHashBalances() {
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
         console.log('📡 Fetching balances from NiceHash...');
-        console.log('Endpoint:', `https://api2.nicehash.com${endpoint}`);
 
-        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-            method: 'GET',
-            headers: headers
-        });
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel serverless function as proxy
+            console.log('✅ Using Vercel proxy:', VERCEL_PROXY_ENDPOINT);
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: headers
+                })
+            });
+        } else {
+            // Direct call to NiceHash (will fallback to mock data if CORS fails)
+            console.log('Endpoint:', `https://api2.nicehash.com${endpoint}`);
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: headers
+            });
+        }
 
         console.log('Response status:', response.status);
 
@@ -3798,7 +3834,8 @@ async function fetchNiceHashBalances() {
         return { available, pending };
     } catch (error) {
         console.error('❌ Error fetching NiceHash balances:', error);
-        return { available: 0, pending: 0 };
+        // Re-throw the error so the parent function can handle CORS fallback
+        throw error;
     }
 }
 
@@ -3809,12 +3846,31 @@ async function fetchNiceHashOrders() {
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
         console.log('📡 Fetching orders from NiceHash...');
-        console.log('Endpoint:', `https://api2.nicehash.com${endpoint}`);
 
-        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-            method: 'GET',
-            headers: headers
-        });
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel serverless function as proxy
+            console.log('✅ Using Vercel proxy:', VERCEL_PROXY_ENDPOINT);
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: headers
+                })
+            });
+        } else {
+            // Direct call to NiceHash (will fallback to mock data if CORS fails)
+            console.log('Endpoint:', `https://api2.nicehash.com${endpoint}`);
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: headers
+            });
+        }
 
         console.log('Response status:', response.status);
 
@@ -3874,7 +3930,8 @@ async function fetchNiceHashOrders() {
         return packages;
     } catch (error) {
         console.error('❌ Error fetching NiceHash orders:', error);
-        return [];
+        // Re-throw the error so the parent function can handle CORS fallback
+        throw error;
     }
 }
 
@@ -4632,11 +4689,31 @@ async function buyPackage(pkg) {
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-            method: 'POST',
-            headers: headers,
-            body: body
-        });
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel serverless function as proxy
+            console.log('✅ Using Vercel proxy to create order');
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'POST',
+                    headers: headers,
+                    body: orderData
+                })
+            });
+        } else {
+            // Direct call to NiceHash
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -4841,11 +4918,31 @@ async function buyPackageFromPage(pkg) {
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-            method: 'POST',
-            headers: headers,
-            body: body
-        });
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel serverless function as proxy
+            console.log('✅ Using Vercel proxy to create order');
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'POST',
+                    headers: headers,
+                    body: orderData
+                })
+            });
+        } else {
+            // Direct call to NiceHash
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
 
         if (!response.ok) {
             const errorData = await response.json();
