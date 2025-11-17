@@ -4136,7 +4136,7 @@ function getAlgorithmInfo(algorithmId, pool) {
         'LYRA2Z': { name: 'Lyra2z', crypto: 'XZC', cryptoSecondary: null },
         'X16R': { name: 'X16R', crypto: 'RVN', cryptoSecondary: null },
         'CRYPTONIGHTV8': { name: 'CryptoNightV8', crypto: 'XMR', cryptoSecondary: null },
-        'SHA256ASICBOOST': { name: 'SHA256AsicBoost', crypto: 'BTC', cryptoSecondary: null },
+        // SHA256ASICBOOST moved to top (line 4099) with correct BCH mapping - duplicate removed
         'ZHASH': { name: 'Zhash', crypto: 'BTG', cryptoSecondary: null },
         'BEAM': { name: 'Beam', crypto: 'BEAM', cryptoSecondary: null },
         'GRINCUCKAROO29': { name: 'GrinCuckaroo29', crypto: 'GRIN', cryptoSecondary: null },
@@ -4572,7 +4572,16 @@ function displayActivePackages() {
     } else if (currentPackageTab === 'completed') {
         filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.active === false);
     } else if (currentPackageTab === 'rewards') {
-        filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true);
+        // Log detailed info about Rewards tab filtering
+        console.log('🎁 REWARDS TAB - Filtering packages with blockFound === true');
+        const packagesWithBlocks = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true);
+
+        console.log(`📦 Found ${packagesWithBlocks.length} packages with confirmed rewards:`);
+        packagesWithBlocks.forEach(pkg => {
+            console.log(`  ✓ ${pkg.name} (${pkg.id}): paidBTC=${pkg.paidBTC}, availableBTC=${pkg.availableBTC}, blockFound=${pkg.blockFound}`);
+        });
+
+        filteredPackages = packagesWithBlocks;
     }
 
     // Update tab counts
