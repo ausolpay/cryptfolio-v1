@@ -4845,12 +4845,16 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             try {
                 await addCryptoById(cryptoId);
                 console.log(`Auto-added ${cryptoId} to portfolio`);
+
+                // Immediately fetch prices for the new crypto to ensure we have a real price
+                await fetchPrices();
+                console.log(`Fetched price for newly added ${cryptoId}`);
             } catch (error) {
                 console.error(`Failed to auto-add ${cryptoId}:`, error);
                 continue;
             }
         }
-        
+
         // Update holdings for this crypto
         const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
         const newHoldings = currentHoldings + rewardAmount;
@@ -4870,15 +4874,26 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             console.log(`📊 Updated holdings display for ${cryptoId}: ${newHoldings}`);
         }
 
-        // Update the AUD value (same logic as fetchPrices uses)
+        // Update the AUD value (same logic as manual updateHoldings uses)
         const priceElement = document.getElementById(`${cryptoId}-price-aud`);
         const valueElement = document.getElementById(`${cryptoId}-value-aud`);
         if (priceElement && valueElement) {
             const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
             const valueInAud = newHoldings * priceInAud;
+
+            // Log detailed debug info
+            console.log(`🔍 Price element text: "${priceElement.textContent}"`);
+            console.log(`🔍 Parsed price: ${priceInAud}`);
+            console.log(`🔍 Calculated AUD value: ${valueInAud.toFixed(2)}`);
+
             // Set value without adding extra "$" - formatNumber doesn't add currency symbols
             valueElement.textContent = formatNumber(valueInAud.toFixed(2));
             console.log(`💰 Updated AUD value for ${cryptoId}: ${valueInAud.toFixed(2)} AUD (price: ${priceInAud}, holdings: ${newHoldings})`);
+
+            // Also call sortContainersByValue like manual update does
+            sortContainersByValue();
+        } else {
+            console.error(`❌ Could not find price or value element for ${cryptoId}`);
         }
 
         console.log(`✅ Added ${rewardAmount} ${cryptoSymbol} from block reward. New balance: ${newHoldings}`);
