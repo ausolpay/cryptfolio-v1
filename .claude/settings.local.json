@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix NiceHash order mapping and UI improvements\n\nCritical fixes for reward/price fields and display improvements:\n\n1. Fixed reward field mapping\n   - Use order.amount for total BTC spent on package (was incorrectly using payedAmount)\n   - Use order.availableAmount + order.payedAmount for total rewards\n   - availableReward: funds available to withdraw\n   - paidReward: already distributed earnings\n   - Fixes issue where package cost was showing as reward\n\n2. Enhanced order data logging\n   - Added detailed console logging for all financial fields\n   - Log availableAmount, payedAmount, price, amount, requestedAmount\n   - Log timestamps (startTs, endTs) for debugging\n   - Log algorithm and pool info for package name detection\n\n3. Fixed package detail page stats\n   - Show \"Price Spent\" in BTC (not AUD)\n   - Show \"Total Reward\" with correct calculations\n   - Added \"Available\" field (green) for withdrawable amount\n   - Added \"Already Paid\" field for distributed rewards\n   - All amounts shown with 8 decimal precision\n\n4. Responsive CSS improvements\n   - Added min-width: 300px to .easymining-section\n   - Matches crypto box min-width for consistent behavior\n   - Prevents layout breaking on small screens\n\nTechnical changes:\n- scripts.js:4258-4273: Enhanced order logging\n- scripts.js:4281-4288: Fix reward/price calculations\n- scripts.js:4895-4914: Update detail page display\n- styles.css:1051: Add min-width to easymining section\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

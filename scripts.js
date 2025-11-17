@@ -3651,16 +3651,28 @@ function toggleShowMorePackages() {
     document.getElementById('show-more-packages').textContent = showAllPackages ? 'Show Less' : 'Show More';
 }
 
-function refreshBlocksFound() {
+function clearRockets() {
     easyMiningData.blocksFoundSession = 0;
     document.getElementById('blocks-found-rockets').textContent = '';
     localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 }
 
+function restoreRockets() {
+    // Restore rocket display from localStorage
+    if (easyMiningData.blocksFoundSession > 0) {
+        const rocketsHtml = '🚀'.repeat(Math.min(10, easyMiningData.blocksFoundSession)) +
+                           (easyMiningData.blocksFoundSession > 10 ? '<br>' + '🚀'.repeat(easyMiningData.blocksFoundSession - 10) : '');
+        const rocketsElement = document.getElementById('blocks-found-rockets');
+        if (rocketsElement) {
+            rocketsElement.innerHTML = rocketsHtml;
+        }
+    }
+}
+
 // Make UI functions globally accessible
 window.toggleEasyMining = toggleEasyMining;
 window.toggleShowMorePackages = toggleShowMorePackages;
-window.refreshBlocksFound = refreshBlocksFound;
+window.clearRockets = clearRockets;
 
 // =============================================================================
 // EASYMINING DATA FETCHING
@@ -4377,14 +4389,19 @@ function calculateTimeRemaining(endTimestamp) {
     if (!endTimestamp) return 'Unknown';
 
     const now = Date.now();
-    const end = parseInt(endTimestamp);
+    // NiceHash timestamps are in seconds, convert to milliseconds
+    const end = parseInt(endTimestamp) * 1000;
     const remaining = end - now;
 
     if (remaining <= 0) return 'Expired';
 
-    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
 
+    if (days > 0) {
+        return `${days}d ${hours}h`;
+    }
     return `${hours}h ${minutes}m`;
 }
 
@@ -4393,8 +4410,9 @@ function calculateProgress(startTimestamp, endTimestamp) {
     if (!startTimestamp || !endTimestamp) return 0;
 
     const now = Date.now();
-    const start = parseInt(startTimestamp);
-    const end = parseInt(endTimestamp);
+    // NiceHash timestamps are in seconds, convert to milliseconds
+    const start = parseInt(startTimestamp) * 1000;
+    const end = parseInt(endTimestamp) * 1000;
     const total = end - start;
     const elapsed = now - start;
 
@@ -4477,15 +4495,18 @@ function updateEasyMiningUI() {
     // Update balances
     document.getElementById('easymining-available-btc').textContent = easyMiningData.availableBTC;
     document.getElementById('easymining-pending-btc').textContent = easyMiningData.pendingBTC;
-    
+
     // Display active packages
     displayActivePackages();
-    
+
     // Update stats
     updateStats();
-    
+
     // Update recommendations
     updateRecommendations();
+
+    // Restore rockets after UI update (maintains persistence)
+    restoreRockets();
 }
 
 // Current package filter tab
@@ -5539,13 +5560,16 @@ function initializeEasyMining() {
     if (savedSettings) {
         easyMiningSettings = savedSettings;
     }
-    
+
     // Load saved data
     const savedData = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningData`));
     if (savedData) {
         easyMiningData = { ...easyMiningData, ...savedData };
     }
-    
+
+    // Restore rocket display from saved data
+    restoreRockets();
+
     // Always show the section, but control content visibility based on enabled status
     const section = document.getElementById('easymining-section');
     if (section) {
