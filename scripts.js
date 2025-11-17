@@ -4042,6 +4042,32 @@ async function fetchNiceHashBalances() {
     }
 }
 
+// Convert BTC to AUD
+function convertBTCtoAUD(btcAmount) {
+    // Get current BTC price in AUD from the page
+    const btcPriceElement = document.getElementById('bitcoin-price-aud');
+    if (!btcPriceElement) return btcAmount * 100000; // Fallback estimate
+
+    const btcPriceAUD = parseFloat(btcPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 100000;
+    return btcAmount * btcPriceAUD;
+}
+
+// Get block reward for a cryptocurrency
+function getBlockReward(crypto) {
+    const blockRewards = {
+        'BTC': 3.125,      // Bitcoin (after April 2024 halving)
+        'BCH': 3.125,      // Bitcoin Cash (same halving schedule as BTC)
+        'RVN': 2500,       // Ravencoin (after 2022 halving)
+        'DOGE': 10000,     // Dogecoin (fixed)
+        'LTC': 6.25,       // Litecoin (after August 2023 halving)
+        'KAS': 150,        // Kaspa (approximate, varies monthly)
+        'ETH': 2,          // Ethereum (after merge, for reference)
+        'ETC': 2.56        // Ethereum Classic
+    };
+
+    return blockRewards[crypto] || 0;
+}
+
 // Get algorithm information including crypto and name
 function getAlgorithmInfo(algorithmId, pool) {
     // NiceHash uses string identifiers for algorithms
@@ -4280,11 +4306,25 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Calculate rewards (availableAmount is what's available to withdraw, payedAmount is already paid out)
-                const availableReward = parseFloat(order.availableAmount || 0);
-                const paidReward = parseFloat(order.payedAmount || 0);
-                const totalReward = availableReward + paidReward;
-                const hasRewards = totalReward > 0;
+                // Calculate BTC earnings (availableAmount is what's available to withdraw, payedAmount is already paid out)
+                const availableBTC = parseFloat(order.availableAmount || 0);
+                const paidBTC = parseFloat(order.payedAmount || 0);
+                const totalBTC = availableBTC + paidBTC;
+
+                // Determine if block was found (if package has any earnings, consider it a block found)
+                // In reality, this should check if earnings exceed a threshold
+                const blockFound = totalBTC > 0.00000001; // Minimum threshold for block found
+
+                // Get standard block reward for this crypto
+                const blockReward = getBlockReward(algoInfo.crypto);
+
+                // Calculate actual crypto reward (use block reward if block found, otherwise show BTC earnings converted)
+                let cryptoReward = 0;
+                if (blockFound) {
+                    cryptoReward = blockReward; // Show full block reward
+                } else {
+                    cryptoReward = 0; // No block found yet
+                }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
                 const priceSpent = parseFloat(order.amount || 0);
@@ -4294,17 +4334,18 @@ async function fetchNiceHashOrders() {
                     name: packageName,
                     crypto: algoInfo.crypto,
                     cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
-                    reward: totalReward, // Total reward (available + already paid)
-                    availableReward: availableReward, // Available to withdraw
-                    paidReward: paidReward, // Already paid out
+                    reward: cryptoReward, // Crypto reward (2500 RVN, 3.125 BTC, etc.)
+                    btcEarnings: totalBTC, // Total BTC earnings
+                    availableBTC: availableBTC, // Available BTC to withdraw
+                    paidBTC: paidBTC, // Already paid out BTC
                     algorithm: order.algorithm.toString(),
                     algorithmName: algoInfo.name,
                     hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
                     timeRemaining: calculateTimeRemaining(order.endTs),
                     progress: calculateProgress(order.startTs, order.endTs),
-                    blockFound: hasRewards, // True if package has earned rewards
+                    blockFound: blockFound, // True if block was found
                     isTeam: order.type === 'TEAM',
-                    price: priceSpent, // Amount spent on this package
+                    price: priceSpent, // BTC amount spent on this package
                     active: order.alive,
                     status: order.alive ? 'active' : 'completed',
                     startTime: order.startTs,
@@ -4497,12 +4538,15 @@ function displayActivePackages() {
         card.className = 'package-card';
         card.onclick = () => showPackageDetailModal(pkg);
         
+        const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : 8;
+        const priceAUD = convertBTCtoAUD(pkg.price || 0);
+
         card.innerHTML = `
             ${pkg.blockFound ? '<div class="block-found-indicator">🚀</div>' : ''}
             <div class="package-card-name">${pkg.name}${pkg.blockFound ? ' 🚀' : ''}</div>
             <div class="package-card-stat">
                 <span>Reward:</span>
-                <span>${(pkg.reward || 0).toFixed(8)} ${pkg.crypto}</span>
+                <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${(pkg.reward || 0).toFixed(rewardDecimals)} ${pkg.crypto}</span>
             </div>
             <div class="package-card-stat">
                 <span>Time:</span>
@@ -4510,7 +4554,7 @@ function displayActivePackages() {
             </div>
             <div class="package-card-stat">
                 <span>Price:</span>
-                <span>$${(pkg.price || 0).toFixed(4)}</span>
+                <span>$${priceAUD.toFixed(2)} AUD</span>
             </div>
             <div class="package-progress-bar">
                 <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
@@ -4894,22 +4938,20 @@ function showPackageDetailPage(pkg) {
         ` : ''}
         <div class="stat-item">
             <span class="stat-label">Price Spent:</span>
+            <span class="stat-value">$${convertBTCtoAUD(pkg.price).toFixed(2)} AUD</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">BTC Cost:</span>
             <span class="stat-value">${pkg.price.toFixed(8)} BTC</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Total Reward:</span>
-            <span class="stat-value">${pkg.reward.toFixed(8)} ${pkg.crypto}</span>
+            <span class="stat-label">Reward:</span>
+            <span class="stat-value" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${pkg.reward > 0 ? pkg.reward.toFixed(pkg.crypto === 'RVN' || pkg.crypto === 'DOGE' ? 0 : 8) : '0'} ${pkg.crypto}</span>
         </div>
-        ${pkg.availableReward > 0 ? `
+        ${pkg.btcEarnings > 0 ? `
         <div class="stat-item">
-            <span class="stat-label">Available:</span>
-            <span class="stat-value" style="color: #00ff00;">${pkg.availableReward.toFixed(8)} ${pkg.crypto}</span>
-        </div>
-        ` : ''}
-        ${pkg.paidReward > 0 ? `
-        <div class="stat-item">
-            <span class="stat-label">Already Paid:</span>
-            <span class="stat-value">${pkg.paidReward.toFixed(8)} ${pkg.crypto}</span>
+            <span class="stat-label">BTC Earnings:</span>
+            <span class="stat-value">${pkg.btcEarnings.toFixed(8)} BTC</span>
         </div>
         ` : ''}
         <div class="stat-item">
