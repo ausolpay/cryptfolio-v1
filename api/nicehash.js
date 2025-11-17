@@ -23,14 +23,19 @@ export default async function handler(req, res) {
         const nicehashUrl = `https://api2.nicehash.com${endpoint}`;
 
         // Forward the request to NiceHash
-        const response = await fetch(nicehashUrl, {
+        // Don't add extra headers - use only what was passed from frontend
+        const fetchOptions = {
             method: method,
-            headers: {
-                ...headers,
-                'Content-Type': 'application/json'
-            },
-            body: body ? JSON.stringify(body) : undefined
-        });
+            headers: headers
+        };
+
+        // Only include body for POST/PUT/PATCH requests
+        if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+            fetchOptions.body = JSON.stringify(body);
+            fetchOptions.headers['Content-Type'] = 'application/json';
+        }
+
+        const response = await fetch(nicehashUrl, fetchOptions);
 
         // Get the response data
         const data = await response.json();
