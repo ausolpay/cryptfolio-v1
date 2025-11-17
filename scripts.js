@@ -111,6 +111,9 @@ function initializeApp() {
         setWebSocketCycle();
         fetchPrices();
 
+        // Initialize autocomplete for crypto search
+        initializeAutocomplete();
+
 
         // Initialize the audio toggle
         const audioToggle = document.getElementById('audio-toggle');
@@ -313,18 +316,71 @@ function showLoginPage() {
     document.getElementById('login-page').style.display = 'block';
     document.getElementById('register-page').style.display = 'none';
     document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
 }
 
 function showRegisterPage() {
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'block';
     document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
 }
 
 function showAppPage() {
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
     document.getElementById('app-page').style.display = 'block';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+}
+
+function showEasyMiningSettingsPage() {
+    console.log('Showing EasyMining Settings Page');
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+
+    // Show EasyMining settings page
+    document.getElementById('easymining-settings-page').style.display = 'block';
+
+    // Load saved settings
+    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || easyMiningSettings;
+
+    // Load API credentials
+    document.getElementById('nicehash-api-key-page').value = savedSettings.apiKey || '';
+    document.getElementById('nicehash-api-secret-page').value = savedSettings.apiSecret || '';
+    document.getElementById('nicehash-org-id-page').value = savedSettings.orgId || '';
+
+    // Load toggle settings
+    document.getElementById('auto-update-holdings-toggle-page').checked = savedSettings.autoUpdateHoldings || false;
+    document.getElementById('include-available-btc-toggle-page').checked = savedSettings.includeAvailableBTC || false;
+    document.getElementById('include-pending-btc-toggle-page').checked = savedSettings.includePendingBTC || false;
+}
+
+function showBuyPackagesPage() {
+    console.log('Showing Buy Packages Page');
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+
+    // Show Buy Packages page
+    document.getElementById('buy-packages-page').style.display = 'block';
+
+    // Load packages data
+    loadBuyPackagesDataOnPage();
 }
 
 function login() {
@@ -1238,6 +1294,8 @@ async function updateAppContent() {
     clearCryptoContainers();
     loadUserData();
 
+    // Initialize autocomplete for crypto search
+    initializeAutocomplete();
 
     updateApiUrl();
 
@@ -1726,8 +1784,15 @@ window.onclick = function(event) {
     const totalHoldingsModal = document.getElementById('total-holdings-modal');
     const settingsModal = document.getElementById('settings-modal');
     const candlestickModal = document.getElementById('candlestick-modal');
+    const easyMiningSettingsModal = document.getElementById('easymining-settings-modal');
+    
     if (event.target === popupModal || event.target === totalHoldingsModal || event.target === settingsModal || event.target === candlestickModal) {
         closeModal();
+    }
+    
+    // Close EasyMining settings modal when clicking outside
+    if (event.target === easyMiningSettingsModal) {
+        closeEasyMiningSettingsModal();
     }
 };
 
@@ -2944,6 +3009,17 @@ async function openCandlestickModal(cryptoId) {
             <p><strong>${holdings.toFixed(3)}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${holdingsValueAud.toFixed(2)}</strong> AUD</p>
         `;
 
+        // Initialize conversion calculator with current price
+        if (priceInAud > 0) {
+            updateConversionCalculator(priceInAud);
+        } else {
+            // Fallback to CoinGecko API price if element price not available
+            const currentPrice = coinData.market_data?.current_price?.aud || 0;
+            if (currentPrice > 0) {
+                updateConversionCalculator(currentPrice);
+            }
+        }
+
         // Fetch historical data and render the chart
         const historicalData = await fetchHistoricalData(cryptoId);
         const savedData = JSON.parse(localStorage.getItem(`${cryptoId}_candlestickData`)) || [];
@@ -3176,6 +3252,1675 @@ function closeCandlestickModal() {
     initializeWebSocket(); // Reinitialize WebSocket for all cryptos
 }
 
+// =============================================================================
+// CRYPTO AUTOCOMPLETE FUNCTIONALITY
+// =============================================================================
+
+let cryptoList = [];
+let autocompleteInitialized = false;
+
+// Fetch crypto list from CoinGecko (same source as the Google Sheets)
+async function fetchCryptoList() {
+    if (cryptoList.length > 0) {
+        console.log('Crypto list already loaded');
+        return;
+    }
+    
+    try {
+        console.log('Fetching crypto list from CoinGecko...');
+        const response = await fetch('https://api.coingecko.com/api/v3/coins/list');
+        if (!response.ok) {
+            throw new Error('Failed to fetch crypto list');
+        }
+        cryptoList = await response.json();
+        console.log(`✅ Loaded ${cryptoList.length} cryptocurrencies`);
+    } catch (error) {
+        console.error('❌ Error fetching crypto list:', error);
+    }
+}
+
+// Initialize autocomplete
+function initializeAutocomplete() {
+    if (autocompleteInitialized) {
+        console.log('Autocomplete already initialized');
+        return;
+    }
+    
+    console.log('Initializing autocomplete...');
+    
+    const input = document.getElementById('crypto-id-input');
+    const autocompleteList = document.getElementById('autocomplete-list');
+    
+    if (!input || !autocompleteList) {
+        console.error('❌ Autocomplete elements not found');
+        return;
+    }
+    
+    console.log('✅ Autocomplete elements found');
+    autocompleteInitialized = true;
+    
+    // Fetch crypto list immediately
+    fetchCryptoList();
+    
+    input.addEventListener('input', function() {
+        const value = this.value.toLowerCase().trim();
+        autocompleteList.innerHTML = '';
+        
+        console.log('Input value:', value);
+        
+        if (!value) {
+            return;
+        }
+        
+        if (cryptoList.length === 0) {
+            autocompleteList.innerHTML = '<div style="padding: 10px; color: #888;">Loading cryptocurrencies...</div>';
+            fetchCryptoList();
+            return;
+        }
+        
+        // Search for matches
+        const matches = cryptoList.filter(crypto => {
+            const id = crypto.id.toLowerCase();
+            const name = crypto.name.toLowerCase();
+            const symbol = crypto.symbol.toLowerCase();
+            return id.includes(value) || name.includes(value) || symbol.includes(value);
+        }).slice(0, 10);
+        
+        console.log(`Found ${matches.length} matches for "${value}"`);
+        
+        if (matches.length === 0) {
+            autocompleteList.innerHTML = '<div style="padding: 10px; color: #888;">No matches found</div>';
+            return;
+        }
+        
+        // Display matches
+        matches.forEach(crypto => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            
+            // Create a clean letter circle icon (real icon loads when crypto is added)
+            const firstLetter = crypto.symbol[0].toUpperCase();
+            
+            item.innerHTML = `
+                <div class="autocomplete-icon">
+                    ${firstLetter}
+                </div>
+                <div class="autocomplete-text">
+                    ${crypto.name} (${crypto.symbol.toUpperCase()})
+                </div>
+            `;
+            
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Selected crypto:', crypto.id);
+                input.value = crypto.id;
+                autocompleteList.innerHTML = '';
+                addCrypto();
+            });
+            
+            autocompleteList.appendChild(item);
+        });
+    });
+    
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !autocompleteList.contains(e.target)) {
+            autocompleteList.innerHTML = '';
+        }
+    });
+    
+    console.log('✅ Autocomplete initialized successfully');
+}
+
+// =============================================================================
+// CONVERSION CALCULATOR FUNCTIONALITY
+// =============================================================================
+
+let currentModalPrice = 0;
+
+function calculateFromCrypto() {
+    const cryptoAmount = parseFloat(document.getElementById('crypto-amount-input').value) || 0;
+    const audAmount = cryptoAmount * currentModalPrice;
+    document.getElementById('aud-amount-input').value = audAmount.toFixed(8);
+}
+
+function calculateFromAUD() {
+    const audAmount = parseFloat(document.getElementById('aud-amount-input').value) || 0;
+    const cryptoAmount = currentModalPrice > 0 ? audAmount / currentModalPrice : 0;
+    document.getElementById('crypto-amount-input').value = cryptoAmount.toFixed(8);
+}
+
+// Update this function when opening the modal to set the current price
+function updateConversionCalculator(priceInAud) {
+    currentModalPrice = priceInAud;
+    document.getElementById('crypto-amount-input').value = 1;
+    document.getElementById('aud-amount-input').value = priceInAud.toFixed(8);
+}
+
+// =============================================================================
+// EASYMINING DATA STRUCTURES & CONFIGURATION
+// =============================================================================
+
+let easyMiningSettings = {
+    apiKey: '',
+    apiSecret: '',
+    orgId: '',
+    enabled: false,
+    autoUpdateHoldings: false,
+    includeAvailableBTC: false,
+    includePendingBTC: false
+};
+
+let easyMiningData = {
+    availableBTC: 0,
+    pendingBTC: 0,
+    activePackages: [],
+    allTimeStats: {
+        totalBlocks: 0,
+        totalReward: 0,
+        totalSpent: 0,
+        pnl: 0
+    },
+    todayStats: {
+        totalBlocks: 0,
+        totalSpent: 0,
+        pnl: 0
+    },
+    blocksFoundSession: 0,
+    lastBlockCount: 0
+};
+
+let easyMiningPollingInterval = null;
+let showAllPackages = false;
+
+// =============================================================================
+// EASYMINING SETTINGS MODAL FUNCTIONS
+// =============================================================================
+
+function showEasyMiningSettingsModal() {
+    console.log('🔵 showEasyMiningSettingsModal called');
+
+    // Close settings modal first
+    const settingsModal = document.getElementById('settings-modal');
+    if (settingsModal) {
+        settingsModal.style.display = 'none';
+    }
+
+    // Check if modal exists
+    const modal = document.getElementById('easymining-settings-modal');
+    console.log('Modal element:', modal);
+
+    if (!modal) {
+        console.error('❌ Modal not found!');
+        alert('ERROR: EasyMining modal not found in DOM!');
+        return;
+    }
+
+    // Load saved settings
+    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || easyMiningSettings;
+
+    // Load API credentials
+    document.getElementById('nicehash-api-key').value = savedSettings.apiKey || '';
+    document.getElementById('nicehash-api-secret').value = savedSettings.apiSecret || '';
+    document.getElementById('nicehash-org-id').value = savedSettings.orgId || '';
+
+    // Load toggle settings
+    document.getElementById('auto-update-holdings-toggle').checked = savedSettings.autoUpdateHoldings || false;
+    document.getElementById('include-available-btc-toggle').checked = savedSettings.includeAvailableBTC || false;
+    document.getElementById('include-pending-btc-toggle').checked = savedSettings.includePendingBTC || false;
+
+    // Show modal
+    console.log('Setting modal display to block...');
+    modal.style.display = 'block';
+    console.log('✅ Modal display set to:', modal.style.display);
+}
+
+function closeEasyMiningSettingsModal() {
+    const modal = document.getElementById('easymining-settings-modal');
+    modal.style.display = 'none';
+}
+
+// Make functions globally accessible
+window.showEasyMiningSettingsModal = showEasyMiningSettingsModal;
+window.closeEasyMiningSettingsModal = closeEasyMiningSettingsModal;
+
+function activateEasyMining() {
+    // Get API credentials
+    const apiKey = document.getElementById('nicehash-api-key').value.trim();
+    const apiSecret = document.getElementById('nicehash-api-secret').value.trim();
+    const orgId = document.getElementById('nicehash-org-id').value.trim();
+    
+    // Validate credentials
+    if (!apiKey || !apiSecret || !orgId) {
+        showModal('Please enter all API credentials to activate EasyMining.');
+        return;
+    }
+    
+    // Save API credentials
+    easyMiningSettings.apiKey = apiKey;
+    easyMiningSettings.apiSecret = apiSecret;
+    easyMiningSettings.orgId = orgId;
+    easyMiningSettings.enabled = true;
+    
+    // Save toggle settings
+    easyMiningSettings.autoUpdateHoldings = document.getElementById('auto-update-holdings-toggle').checked;
+    easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle').checked;
+    easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle').checked;
+    
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
+    
+    console.log('EasyMining activated with credentials');
+    
+    // Start polling and show section
+    startEasyMiningPolling();
+    document.getElementById('easymining-section').style.display = 'block';
+    
+    closeEasyMiningSettingsModal();
+    showModal('✅ EasyMining activated successfully!\n\nThe EasyMining section is now visible above your crypto boxes.');
+}
+
+// Page-based version of activateEasyMining
+function activateEasyMiningFromPage() {
+    // Get API credentials from page inputs
+    const apiKey = document.getElementById('nicehash-api-key-page').value.trim();
+    const apiSecret = document.getElementById('nicehash-api-secret-page').value.trim();
+    const orgId = document.getElementById('nicehash-org-id-page').value.trim();
+
+    // Validate credentials
+    if (!apiKey || !apiSecret || !orgId) {
+        alert('Please enter all API credentials to activate EasyMining.');
+        return;
+    }
+
+    // Save API credentials
+    easyMiningSettings.apiKey = apiKey;
+    easyMiningSettings.apiSecret = apiSecret;
+    easyMiningSettings.orgId = orgId;
+    easyMiningSettings.enabled = true;
+
+    // Save toggle settings
+    easyMiningSettings.autoUpdateHoldings = document.getElementById('auto-update-holdings-toggle-page').checked;
+    easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle-page').checked;
+    easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle-page').checked;
+
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
+
+    console.log('EasyMining activated with credentials (from page)');
+
+    // Start polling and show section
+    startEasyMiningPolling();
+    document.getElementById('easymining-section').style.display = 'block';
+
+    // Go back to app page
+    showAppPage();
+    alert('✅ EasyMining activated successfully!\n\nThe EasyMining section is now visible above your crypto boxes.');
+}
+
+function clearAPICredentials() {
+    if (!confirm('Are you sure you want to clear all API credentials?\n\nThis will disable EasyMining and remove your API keys.')) {
+        return;
+    }
+    
+    // Clear input fields
+    document.getElementById('nicehash-api-key').value = '';
+    document.getElementById('nicehash-api-secret').value = '';
+    document.getElementById('nicehash-org-id').value = '';
+    
+    // Reset settings
+    easyMiningSettings.apiKey = '';
+    easyMiningSettings.apiSecret = '';
+    easyMiningSettings.orgId = '';
+    easyMiningSettings.enabled = false;
+    
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
+    
+    // Stop polling and hide section
+    stopEasyMiningPolling();
+    document.getElementById('easymining-section').style.display = 'none';
+    
+    console.log('API credentials cleared');
+    showModal('API credentials cleared successfully.\n\nEasyMining has been disabled.');
+}
+
+// Make functions globally accessible
+window.activateEasyMining = activateEasyMining;
+window.clearAPICredentials = clearAPICredentials;
+
+// =============================================================================
+// EASYMINING UI TOGGLE FUNCTIONS
+// =============================================================================
+
+function toggleEasyMining() {
+    const content = document.getElementById('easymining-content');
+    const arrow = document.getElementById('easymining-arrow');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.classList.add('rotated');
+    } else {
+        content.style.display = 'none';
+        arrow.classList.remove('rotated');
+    }
+}
+
+function toggleShowMorePackages() {
+    showAllPackages = !showAllPackages;
+    displayActivePackages();
+    document.getElementById('show-more-packages').textContent = showAllPackages ? 'Show Less' : 'Show More';
+}
+
+function refreshBlocksFound() {
+    easyMiningData.blocksFoundSession = 0;
+    document.getElementById('blocks-found-rockets').textContent = '';
+    localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+}
+
+// Make UI functions globally accessible
+window.toggleEasyMining = toggleEasyMining;
+window.toggleShowMorePackages = toggleShowMorePackages;
+window.refreshBlocksFound = refreshBlocksFound;
+
+// =============================================================================
+// EASYMINING DATA FETCHING
+// =============================================================================
+
+async function fetchEasyMiningData() {
+    if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+        console.log('EasyMining not enabled or API key not set');
+        return;
+    }
+
+    try {
+        // Check if we have API credentials
+        const hasCredentials = easyMiningSettings.apiKey &&
+                              easyMiningSettings.apiSecret &&
+                              easyMiningSettings.orgId;
+
+        if (hasCredentials) {
+            console.log('Fetching live data from NiceHash API...');
+
+            // Fetch real balances from NiceHash
+            const balances = await fetchNiceHashBalances();
+            easyMiningData.availableBTC = balances.available.toFixed(8);
+            easyMiningData.pendingBTC = balances.pending.toFixed(8);
+
+            // Fetch real orders/packages from NiceHash
+            const orders = await fetchNiceHashOrders();
+            easyMiningData.activePackages = orders;
+
+            console.log('✅ Live data fetched successfully');
+            console.log(`Available BTC: ${easyMiningData.availableBTC}`);
+            console.log(`Pending BTC: ${easyMiningData.pendingBTC}`);
+            console.log(`Active Packages: ${easyMiningData.activePackages.length}`);
+        } else {
+            console.warn('API credentials incomplete, using fallback data');
+            easyMiningData.availableBTC = '0.00000000';
+            easyMiningData.pendingBTC = '0.00000000';
+            easyMiningData.activePackages = [];
+        }
+
+        // Fetch public package data from NiceHash
+        await fetchPublicPackageData();
+
+        // Update UI
+        updateEasyMiningUI();
+
+        // Check for new blocks found
+        checkForNewBlocks();
+
+        // Update BTC holdings if toggles are enabled
+        updateBTCHoldings();
+
+    } catch (error) {
+        console.error('Error fetching EasyMining data:', error);
+        alert(`Error fetching EasyMining data: ${error.message}\n\nPlease check your API credentials.`);
+    }
+}
+
+// Fetch public package information from NiceHash
+async function fetchPublicPackageData() {
+    try {
+        // NiceHash public API endpoint for available packages
+        // This data is publicly available and doesn't require authentication
+        
+        // TODO: Implement actual public API call
+        // const response = await fetch('https://api2.nicehash.com/main/api/v2/public/simplemultialgo/info');
+        // const data = await response.json();
+        // Process and merge with user's active packages
+        
+        console.log('Public package data would be fetched here');
+    } catch (error) {
+        console.error('Error fetching public package data:', error);
+    }
+}
+
+// Generate authentication headers for NiceHash API
+function generateNiceHashAuthHeaders(method, endpoint, body = null) {
+    // NiceHash requires specific authentication headers:
+    // X-API-KEY, X-ORGANIZATION-ID, X-SIGNATURE, X-TIME, X-NONCE
+
+    const timestamp = Date.now().toString();
+    const nonce = crypto.randomUUID();
+
+    // Create signature using HMAC-SHA256
+    // Message format: apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0body
+    const message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}\x00${body || ''}`;
+    const signature = CryptoJS.HmacSHA256(message, easyMiningSettings.apiSecret).toString();
+
+    return {
+        'X-API-KEY': easyMiningSettings.apiKey,
+        'X-ORGANIZATION-ID': easyMiningSettings.orgId,
+        'X-TIME': timestamp,
+        'X-NONCE': nonce,
+        'X-SIGNATURE': signature,
+        'Content-Type': 'application/json'
+    };
+}
+
+// Fetch balances from NiceHash API
+async function fetchNiceHashBalances() {
+    try {
+        const endpoint = '/main/api/v2/accounting/accounts2';
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        console.log('📡 Fetching balances from NiceHash...');
+        console.log('Endpoint:', `https://api2.nicehash.com${endpoint}`);
+
+        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Balance API Response:', data);
+
+        // Parse BTC balances from response
+        // NiceHash API structure: { total: {...}, currencies: [{currency, available, pending, ...}] }
+        let available = 0;
+        let pending = 0;
+
+        // Try to get from total first
+        if (data && data.total && data.total.currency === 'BTC') {
+            available = parseFloat(data.total.available || 0);
+            pending = parseFloat(data.total.pending || 0);
+            console.log('✅ Got balances from total:', { available, pending });
+        }
+        // Fallback to currencies array
+        else if (data && data.currencies) {
+            const btcAccount = data.currencies.find(c => c.currency === 'BTC');
+            if (btcAccount) {
+                available = parseFloat(btcAccount.available || 0);
+                pending = parseFloat(btcAccount.pending || 0);
+                console.log('✅ Got balances from currencies:', { available, pending });
+            }
+        }
+
+        return { available, pending };
+    } catch (error) {
+        console.error('❌ Error fetching NiceHash balances:', error);
+        return { available: 0, pending: 0 };
+    }
+}
+
+// Fetch active orders from NiceHash API
+async function fetchNiceHashOrders() {
+    try {
+        const endpoint = '/main/api/v2/hashpower/myOrders';
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        console.log('📡 Fetching orders from NiceHash...');
+        console.log('Endpoint:', `https://api2.nicehash.com${endpoint}`);
+
+        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Orders API Response:', data);
+
+        // Map NiceHash orders to our package format
+        const packages = [];
+
+        if (data && data.list && Array.isArray(data.list)) {
+            console.log(`Found ${data.list.length} orders`);
+
+            for (const order of data.list) {
+                // Map algorithm number to crypto type
+                const algoToCrypto = {
+                    '20': 'BTC',  // SHA256
+                    '27': 'BCH',  // SHA256 (Bitcoin Cash)
+                    '23': 'RVN',  // KawPow
+                    '7': 'DOGE',  // Scrypt
+                    '14': 'LTC',  // Scrypt
+                    '25': 'KAS'   // kHeavyHash
+                };
+
+                const crypto = algoToCrypto[order.algorithm.toString()] || 'BTC';
+
+                const pkg = {
+                    id: order.id,
+                    name: order.displayMarketFactor || `${crypto} Mining`,
+                    crypto: crypto,
+                    reward: parseFloat(order.availableAmount || 0),
+                    algorithm: order.algorithm.toString(),
+                    hashrate: order.requestedAmount || '0',
+                    timeRemaining: calculateTimeRemaining(order.endTs),
+                    progress: calculateProgress(order.startTs, order.endTs),
+                    blockFound: false, // This would need to be tracked separately
+                    isTeam: order.type === 'TEAM',
+                    price: parseFloat(order.price || 0),
+                    active: order.alive,
+                    // Store full order data for detail view
+                    fullOrderData: order
+                };
+
+                packages.push(pkg);
+                console.log(`Added package: ${pkg.name} (${pkg.crypto})`);
+            }
+        } else {
+            console.log('No orders found in response');
+        }
+
+        console.log(`✅ Returning ${packages.length} packages`);
+        return packages;
+    } catch (error) {
+        console.error('❌ Error fetching NiceHash orders:', error);
+        return [];
+    }
+}
+
+// Helper function to calculate time remaining
+function calculateTimeRemaining(endTimestamp) {
+    if (!endTimestamp) return 'Unknown';
+
+    const now = Date.now();
+    const end = parseInt(endTimestamp);
+    const remaining = end - now;
+
+    if (remaining <= 0) return 'Expired';
+
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours}h ${minutes}m`;
+}
+
+// Helper function to calculate progress percentage
+function calculateProgress(startTimestamp, endTimestamp) {
+    if (!startTimestamp || !endTimestamp) return 0;
+
+    const now = Date.now();
+    const start = parseInt(startTimestamp);
+    const end = parseInt(endTimestamp);
+    const total = end - start;
+    const elapsed = now - start;
+
+    if (total <= 0) return 0;
+
+    const progress = (elapsed / total) * 100;
+    return Math.min(Math.max(progress, 0), 100);
+}
+
+function generateMockPackages() {
+    // Mock packages with realistic NiceHash EasyMining data structure
+    const packageTypes = [
+        { name: 'Gold S', crypto: 'BTC', reward: 0.00001 },
+        { name: 'Gold M', crypto: 'BTC', reward: 0.00002 },
+        { name: 'Gold L', crypto: 'BTC', reward: 0.00005 },
+        { name: 'Silver S', crypto: 'BCH', reward: 0.01 },
+        { name: 'Silver M', crypto: 'BCH', reward: 0.02 },
+        { name: 'Chromium S', crypto: 'RVN', reward: 100 },
+        { name: 'Chromium M', crypto: 'RVN', reward: 200 },
+        { name: 'Pal DOGE S', crypto: 'DOGE', reward: 10 },
+        { name: 'Pal LTC S', crypto: 'LTC', reward: 0.01 },
+        { name: 'Titanium KAS S', crypto: 'KAS', reward: 10 }
+    ];
+    
+    const teamTypes = [
+        { name: 'Silver Team', crypto: 'BCH', reward: 0.05 },
+        { name: 'Pal Team', crypto: 'DOGE', reward: 50 },
+        { name: 'Gold Team', crypto: 'BTC', reward: 0.0001 }
+    ];
+    
+    const packages = [];
+    const numPackages = Math.floor(Math.random() * 10) + 5;
+    
+    for (let i = 0; i < numPackages; i++) {
+        const isTeam = Math.random() > 0.7;
+        const typeData = isTeam 
+            ? teamTypes[Math.floor(Math.random() * teamTypes.length)]
+            : packageTypes[Math.floor(Math.random() * packageTypes.length)];
+        
+        packages.push({
+            id: `pkg_${i}`,
+            name: typeData.name,
+            crypto: typeData.crypto,
+            reward: typeData.reward,
+            probability: `1:${Math.floor(Math.random() * 500) + 50}`,
+            timeRemaining: Math.floor(Math.random() * 24) + 'h',
+            progress: Math.floor(Math.random() * 100),
+            blockFound: Math.random() > 0.95,
+            isTeam: isTeam,
+            shares: isTeam ? Math.floor(Math.random() * 200) + 10 : 1,
+            price: (Math.random() * 50 + 10).toFixed(2),
+            blocks: generateMockBlocks(),
+            algorithm: 'SHA256', // Example algorithm
+            hashrate: `${(Math.random() * 100).toFixed(2)} TH/s`
+        });
+    }
+    
+    return packages;
+}
+
+function generateMockBlocks() {
+    const numBlocks = Math.floor(Math.random() * 20) + 5;
+    const blocks = [];
+    
+    for (let i = 0; i < numBlocks; i++) {
+        blocks.push({
+            attempt: i + 1,
+            percentage: Math.floor(Math.random() * 120)
+        });
+    }
+    
+    return blocks;
+}
+
+// =============================================================================
+// EASYMINING UI UPDATE FUNCTIONS
+// =============================================================================
+
+function updateEasyMiningUI() {
+    // Update balances
+    document.getElementById('easymining-available-btc').textContent = easyMiningData.availableBTC;
+    document.getElementById('easymining-pending-btc').textContent = easyMiningData.pendingBTC;
+    
+    // Display active packages
+    displayActivePackages();
+    
+    // Update stats
+    updateStats();
+    
+    // Update recommendations
+    updateRecommendations();
+}
+
+function displayActivePackages() {
+    const container = document.getElementById('active-packages-container');
+    container.innerHTML = '';
+    
+    const packagesToShow = showAllPackages ? easyMiningData.activePackages : easyMiningData.activePackages.slice(0, 6);
+    
+    packagesToShow.forEach(pkg => {
+        const card = document.createElement('div');
+        card.className = 'package-card';
+        card.onclick = () => showPackageDetailModal(pkg);
+        
+        card.innerHTML = `
+            ${pkg.blockFound ? '<div class="block-found-indicator">🎉</div>' : ''}
+            <div class="package-card-name">${pkg.name}</div>
+            <div class="package-card-stat">
+                <span>Prob:</span>
+                <span>${pkg.probability}</span>
+            </div>
+            <div class="package-card-stat">
+                <span>Time:</span>
+                <span>${pkg.timeRemaining}</span>
+            </div>
+            ${pkg.isTeam ? `
+            <div class="package-card-stat">
+                <span>Shares:</span>
+                <span>${pkg.shares}</span>
+            </div>
+            ` : ''}
+            <div class="package-progress-bar">
+                <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+    
+    // Show/hide "Show More" button
+    const showMoreBtn = document.getElementById('show-more-packages');
+    if (easyMiningData.activePackages.length > 6) {
+        showMoreBtn.style.display = 'block';
+    } else {
+        showMoreBtn.style.display = 'none';
+    }
+}
+
+function updateStats() {
+    // All time stats
+    document.getElementById('total-blocks-all').textContent = easyMiningData.allTimeStats.totalBlocks;
+    document.getElementById('total-reward-all').textContent = `$${easyMiningData.allTimeStats.totalReward.toFixed(2)}`;
+    document.getElementById('total-spent-all').textContent = `$${easyMiningData.allTimeStats.totalSpent.toFixed(2)}`;
+    document.getElementById('pnl-all').textContent = `$${easyMiningData.allTimeStats.pnl.toFixed(2)}`;
+    document.getElementById('pnl-all').className = easyMiningData.allTimeStats.pnl >= 0 ? 'stat-value positive' : 'stat-value negative';
+    
+    // Today stats
+    document.getElementById('total-blocks-today').textContent = easyMiningData.todayStats.totalBlocks;
+    document.getElementById('total-spent-today').textContent = `$${easyMiningData.todayStats.totalSpent.toFixed(2)}`;
+    document.getElementById('pnl-today').textContent = `$${easyMiningData.todayStats.pnl.toFixed(2)}`;
+    document.getElementById('pnl-today').className = easyMiningData.todayStats.pnl >= 0 ? 'stat-value positive' : 'stat-value negative';
+}
+
+function updateRecommendations() {
+    const bestPackagesContainer = document.getElementById('best-packages-container');
+    const teamAlertsContainer = document.getElementById('team-alerts-container');
+    
+    bestPackagesContainer.innerHTML = '';
+    teamAlertsContainer.innerHTML = '';
+    
+    // Find best single packages (lowest probability, good price ratio)
+    const singlePackages = easyMiningData.activePackages.filter(pkg => !pkg.isTeam);
+    const bestSingle = singlePackages.sort((a, b) => {
+        const probA = parseInt(a.probability.split(':')[1]);
+        const probB = parseInt(b.probability.split(':')[1]);
+        return probA - probB;
+    }).slice(0, 2);
+    
+    bestSingle.forEach(pkg => {
+        const card = document.createElement('div');
+        card.className = 'recommendation-card';
+        card.innerHTML = `
+            <h4>🌟 ${pkg.name}</h4>
+            <p><strong>Probability:</strong> ${pkg.probability}</p>
+            <p><strong>Price:</strong> $${pkg.price}</p>
+            <p><strong>Time Remaining:</strong> ${pkg.timeRemaining}</p>
+        `;
+        bestPackagesContainer.appendChild(card);
+    });
+    
+    if (bestSingle.length === 0) {
+        bestPackagesContainer.innerHTML = '<p>No recommendations at this time.</p>';
+    }
+    
+    // Check team package criteria
+    const teamPackages = easyMiningData.activePackages.filter(pkg => pkg.isTeam);
+    
+    teamPackages.forEach(pkg => {
+        const probability = parseInt(pkg.probability.split(':')[1]);
+        let shouldAlert = false;
+        
+        // Silver team criteria: probability under 1:160 and more than 20 shares
+        if (pkg.name.includes('Silver') && probability < 160 && pkg.shares > 20) {
+            shouldAlert = true;
+        }
+        
+        // Pal team criteria: probability under 1:220 and 20 or more shares (DOGE)
+        if (pkg.name.includes('Pal') && probability < 220 && pkg.shares >= 20) {
+            shouldAlert = true;
+        }
+        
+        // Gold team criteria: more than 100 shares
+        if (pkg.name.includes('Gold') && pkg.shares > 100) {
+            shouldAlert = true;
+        }
+        
+        if (shouldAlert) {
+            const card = document.createElement('div');
+            card.className = 'recommendation-card';
+            card.innerHTML = `
+                <h4>🚀 ${pkg.name}</h4>
+                <p><strong>Probability:</strong> ${pkg.probability}</p>
+                <p><strong>Shares:</strong> ${pkg.shares}</p>
+                <p><strong>Time Remaining:</strong> ${pkg.timeRemaining}</p>
+            `;
+            teamAlertsContainer.appendChild(card);
+            
+            // Play alert sound
+            playSound('package-alert-sound');
+        }
+    });
+    
+    if (teamAlertsContainer.innerHTML === '') {
+        teamAlertsContainer.innerHTML = '<p>No team package alerts at this time.</p>';
+    }
+}
+
+function checkForNewBlocks() {
+    const currentBlockCount = easyMiningData.activePackages.filter(pkg => pkg.blockFound).length;
+    
+    if (currentBlockCount > easyMiningData.lastBlockCount) {
+        // New block found!
+        const newBlocks = currentBlockCount - easyMiningData.lastBlockCount;
+        easyMiningData.blocksFoundSession = Math.min(20, easyMiningData.blocksFoundSession + newBlocks);
+        
+        // Update display
+        const rocketsHtml = '🚀'.repeat(Math.min(10, easyMiningData.blocksFoundSession)) + 
+                           (easyMiningData.blocksFoundSession > 10 ? '<br>' + '🚀'.repeat(easyMiningData.blocksFoundSession - 10) : '');
+        document.getElementById('blocks-found-rockets').innerHTML = rocketsHtml;
+        
+        // Play sound
+        playSound('block-found-sound');
+        
+        // Auto-update crypto holdings if enabled
+        if (easyMiningSettings.autoUpdateHoldings) {
+            autoUpdateCryptoHoldings(newBlocks);
+        }
+        
+        easyMiningData.lastBlockCount = currentBlockCount;
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+    }
+}
+
+function updateBTCHoldings() {
+    // Only update if user has BTC and toggles are enabled
+    if (!easyMiningSettings.includeAvailableBTC && !easyMiningSettings.includePendingBTC) {
+        return;
+    }
+    
+    // Find BTC in user's cryptos
+    const btcCrypto = users[loggedInUser].cryptos.find(c => c.id === 'bitcoin');
+    if (!btcCrypto) {
+        return;
+    }
+    
+    // Get current BTC holdings from the input/display (user's actual holdings)
+    const btcHoldingsElement = document.getElementById('bitcoin-holdings');
+    if (!btcHoldingsElement) return;
+    
+    let baseHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
+    
+    // Calculate additional balance from EasyMining
+    let additionalBalance = 0;
+    
+    if (easyMiningSettings.includeAvailableBTC) {
+        additionalBalance += parseFloat(easyMiningData.availableBTC) || 0;
+    }
+    
+    if (easyMiningSettings.includePendingBTC) {
+        additionalBalance += parseFloat(easyMiningData.pendingBTC) || 0;
+    }
+    
+    // Display total (base + additional)
+    const totalToDisplay = baseHoldings + additionalBalance;
+    btcHoldingsElement.textContent = formatNumber(totalToDisplay.toFixed(8));
+    
+    // Update total portfolio value
+    updateTotalHoldings();
+}
+
+async function autoUpdateCryptoHoldings(newBlocks) {
+    if (!easyMiningSettings.autoUpdateHoldings) {
+        return;
+    }
+    
+    // Get packages that found blocks
+    const blocksFoundPackages = easyMiningData.activePackages.filter(pkg => pkg.blockFound);
+    
+    for (const pkg of blocksFoundPackages) {
+        // Determine which crypto based on package type
+        let cryptoId = null;
+        let cryptoSymbol = null;
+        let rewardAmount = 0;
+        
+        // Map package types to cryptocurrencies
+        // Silver = BCH, Chromium = RVN, Gold = BTC, Palladium = DOGE/LTC, Titanium = KAS
+        if (pkg.name.toLowerCase().includes('silver') || pkg.name.toLowerCase().includes('bch')) {
+            cryptoId = 'bitcoin-cash';
+            cryptoSymbol = 'BCH';
+            rewardAmount = pkg.reward || 0.01; // Default BCH reward
+        } else if (pkg.name.toLowerCase().includes('chromium') || pkg.name.toLowerCase().includes('rvn')) {
+            cryptoId = 'ravencoin';
+            cryptoSymbol = 'RVN';
+            rewardAmount = pkg.reward || 100; // Default RVN reward
+        } else if (pkg.name.toLowerCase().includes('gold') || pkg.name.toLowerCase().includes('btc')) {
+            cryptoId = 'bitcoin';
+            cryptoSymbol = 'BTC';
+            rewardAmount = pkg.reward || 0.00001; // Default BTC reward
+        } else if (pkg.name.toLowerCase().includes('palladium') || pkg.name.toLowerCase().includes('pal')) {
+            // Palladium can be DOGE or LTC, check package details
+            if (pkg.name.toLowerCase().includes('doge')) {
+                cryptoId = 'dogecoin';
+                cryptoSymbol = 'DOGE';
+                rewardAmount = pkg.reward || 10; // Default DOGE reward
+            } else {
+                cryptoId = 'litecoin';
+                cryptoSymbol = 'LTC';
+                rewardAmount = pkg.reward || 0.01; // Default LTC reward
+            }
+        } else if (pkg.name.toLowerCase().includes('titanium') || pkg.name.toLowerCase().includes('kas')) {
+            cryptoId = 'kaspa';
+            cryptoSymbol = 'KAS';
+            rewardAmount = pkg.reward || 10; // Default KAS reward
+        }
+        
+        if (!cryptoId) continue;
+        
+        // Check if crypto already exists in portfolio
+        let crypto = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
+        
+        if (!crypto) {
+            // Auto-add crypto to portfolio
+            try {
+                await addCryptoById(cryptoId);
+                console.log(`Auto-added ${cryptoId} to portfolio`);
+            } catch (error) {
+                console.error(`Failed to auto-add ${cryptoId}:`, error);
+                continue;
+            }
+        }
+        
+        // Update holdings for this crypto
+        const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+        const newHoldings = currentHoldings + rewardAmount;
+        setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
+        
+        // Update UI if element exists
+        const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
+        if (holdingsElement) {
+            holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
+        }
+        
+        console.log(`Added ${rewardAmount} ${cryptoSymbol} from block reward. New balance: ${newHoldings}`);
+    }
+    
+    // Update total portfolio value
+    updateTotalHoldings();
+}
+
+// Helper function to add crypto by ID programmatically
+async function addCryptoById(cryptoId) {
+    try {
+        // Fetch crypto details from CoinGecko
+        const apiKey = getApiKey();
+        const response = await fetch(`https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch crypto data');
+        }
+        
+        const data = await response.json();
+        
+        const crypto = {
+            id: data.id,
+            symbol: data.symbol,
+            name: data.name,
+            thumb: data.image.thumb
+        };
+        
+        // Add to user's cryptos if not already there
+        if (!users[loggedInUser].cryptos.find(c => c.id === crypto.id)) {
+            users[loggedInUser].cryptos.push(crypto);
+            setStorageItem('users', JSON.stringify(users));
+            
+            // Add crypto container to UI
+            addCryptoContainer(crypto.id, crypto.symbol, crypto.name, crypto.thumb);
+            
+            // Initialize holdings
+            setStorageItem(`${loggedInUser}_${crypto.id}Holdings`, 0);
+            
+            // Update API URL
+            updateApiUrl();
+        }
+        
+        return crypto;
+    } catch (error) {
+        console.error('Error adding crypto:', error);
+        throw error;
+    }
+}
+
+// =============================================================================
+// PACKAGE DETAIL MODAL
+// =============================================================================
+
+// Show package detail page (replaces modal)
+function showPackageDetailPage(pkg) {
+    console.log('Showing Package Detail Page for:', pkg.name);
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+
+    // Show package detail page
+    document.getElementById('package-detail-page').style.display = 'block';
+
+    // Set package name and subtitle
+    document.getElementById('package-detail-page-name').textContent = pkg.name;
+    document.getElementById('package-detail-page-subtitle').textContent = `${pkg.crypto} Mining Package`;
+
+    // Populate package info
+    const infoGrid = document.getElementById('package-detail-page-info');
+    infoGrid.innerHTML = `
+        <div class="stat-item">
+            <span class="stat-label">Cryptocurrency:</span>
+            <span class="stat-value" style="color: #ffa500;">${pkg.crypto}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Algorithm:</span>
+            <span class="stat-value">${pkg.algorithm}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Hashrate:</span>
+            <span class="stat-value">${pkg.hashrate}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Time Remaining:</span>
+            <span class="stat-value">${pkg.timeRemaining}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Progress:</span>
+            <span class="stat-value">${pkg.progress.toFixed(2)}%</span>
+        </div>
+        ${pkg.isTeam ? `
+        <div class="stat-item">
+            <span class="stat-label">Package Type:</span>
+            <span class="stat-value">Team Package</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Shares:</span>
+            <span class="stat-value">${pkg.shares || 'N/A'}</span>
+        </div>
+        ` : ''}
+        <div class="stat-item">
+            <span class="stat-label">Price:</span>
+            <span class="stat-value">$${pkg.price} AUD</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Reward:</span>
+            <span class="stat-value">${pkg.reward} ${pkg.crypto}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Status:</span>
+            <span class="stat-value" style="color: ${pkg.active ? '#00ff00' : '#ff0000'};">${pkg.active ? 'Active' : 'Inactive'}</span>
+        </div>
+    `;
+
+    // Animate block bars
+    const barsContainer = document.getElementById('package-detail-page-blocks');
+    barsContainer.innerHTML = '';
+
+    // Generate mock blocks if not present (for testing)
+    if (!pkg.blocks || pkg.blocks.length === 0) {
+        pkg.blocks = [];
+        for (let i = 0; i < 10; i++) {
+            pkg.blocks.push({
+                percentage: Math.floor(Math.random() * 100),
+                timestamp: Date.now() - (i * 60000)
+            });
+        }
+    }
+
+    pkg.blocks.forEach((block, index) => {
+        setTimeout(() => {
+            const bar = document.createElement('div');
+            bar.className = 'block-bar';
+            bar.style.height = `${Math.min(block.percentage, 100) * 1.5}px`;
+
+            if (block.percentage >= 100) {
+                bar.innerHTML = `<div class="block-bar-rocket">🚀</div>`;
+            }
+
+            bar.innerHTML += `<div class="block-bar-percentage">${block.percentage}%</div>`;
+            barsContainer.appendChild(bar);
+        }, index * 100);
+    });
+}
+
+// Legacy modal functions (kept for compatibility)
+function showPackageDetailModal(pkg) {
+    // Redirect to page instead
+    showPackageDetailPage(pkg);
+}
+
+function closePackageDetailModal() {
+    // Redirect to app page
+    showAppPage();
+}
+
+// =============================================================================
+// BUY PACKAGES MODAL
+// =============================================================================
+
+function showBuyPackagesModal() {
+    loadBuyPackagesData();
+    document.getElementById('buy-packages-modal').style.display = 'block';
+}
+
+function closeBuyPackagesModal() {
+    document.getElementById('buy-packages-modal').style.display = 'none';
+}
+
+function showBuyTab(tab) {
+    const buttons = document.querySelectorAll('.tab-button');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if (tab === 'single') {
+        document.getElementById('buy-single-packages').style.display = 'grid';
+        document.getElementById('buy-team-packages').style.display = 'none';
+    } else {
+        document.getElementById('buy-single-packages').style.display = 'none';
+        document.getElementById('buy-team-packages').style.display = 'grid';
+    }
+}
+
+// Make modal functions globally accessible
+window.showPackageDetailModal = showPackageDetailModal;
+window.closePackageDetailModal = closePackageDetailModal;
+window.showBuyPackagesModal = showBuyPackagesModal;
+window.closeBuyPackagesModal = closeBuyPackagesModal;
+window.showBuyTab = showBuyTab;
+window.buyPackage = buyPackage;
+
+function loadBuyPackagesData() {
+    // Package data matching NiceHash EasyMining structure
+    // Prices are in AUD and approximate based on typical hashrate costs
+    const singlePackages = [
+        { name: 'Gold S', crypto: 'BTC', probability: '1:150', price: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
+        { name: 'Gold M', crypto: 'BTC', probability: '1:75', price: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
+        { name: 'Gold L', crypto: 'BTC', probability: '1:35', price: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s' },
+        { name: 'Silver S', crypto: 'BCH', probability: '1:180', price: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
+        { name: 'Silver M', crypto: 'BCH', probability: '1:90', price: '25.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
+        { name: 'Chromium S', crypto: 'RVN', probability: '1:200', price: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '50 MH/s' },
+        { name: 'Chromium M', crypto: 'RVN', probability: '1:100', price: '20.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s' },
+        { name: 'Pal DOGE S', crypto: 'DOGE', probability: '1:220', price: '8.00', duration: '24h', algorithm: 'Scrypt', hashrate: '100 MH/s' },
+        { name: 'Pal LTC S', crypto: 'LTC', probability: '1:200', price: '10.00', duration: '24h', algorithm: 'Scrypt', hashrate: '100 MH/s' },
+        { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:170', price: '12.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '500 GH/s' }
+    ];
+    
+    const teamPackages = [
+        { name: 'Silver Team', crypto: 'BCH', probability: '1:160', price: '25.00', duration: '24h', algorithm: 'SHA256', minShares: 20 },
+        { name: 'Pal Team', crypto: 'DOGE', probability: '1:220', price: '20.00', duration: '24h', algorithm: 'Scrypt', minShares: 20 },
+        { name: 'Gold Team', crypto: 'BTC', probability: '1:100', price: '50.00', duration: '24h', algorithm: 'SHA256', minShares: 100 }
+    ];
+    
+    const singleContainer = document.getElementById('buy-single-packages');
+    const teamContainer = document.getElementById('buy-team-packages');
+    
+    singleContainer.innerHTML = '';
+    teamContainer.innerHTML = '';
+    
+    // Check which packages should be recommended
+    const recommendedPackages = getRecommendedPackageNames();
+    
+    singlePackages.forEach(pkg => {
+        const card = createBuyPackageCard(pkg, recommendedPackages.includes(pkg.name));
+        singleContainer.appendChild(card);
+    });
+    
+    teamPackages.forEach(pkg => {
+        const card = createBuyPackageCard(pkg, recommendedPackages.includes(pkg.name));
+        teamContainer.appendChild(card);
+    });
+}
+
+function getRecommendedPackageNames() {
+    const recommended = [];
+    
+    easyMiningData.activePackages.forEach(pkg => {
+        if (pkg.isTeam) {
+            const probability = parseInt(pkg.probability.split(':')[1]);
+            
+            if (pkg.name.includes('Silver') && probability < 160 && pkg.shares > 20) {
+                recommended.push('Silver Team');
+            }
+            if (pkg.name.includes('Pal') && probability < 220 && pkg.shares >= 20) {
+                recommended.push('Pal Team');
+            }
+            if (pkg.name.includes('Gold') && pkg.shares > 100) {
+                recommended.push('Gold Team');
+            }
+        }
+    });
+    
+    return recommended;
+}
+
+function createBuyPackageCard(pkg, isRecommended) {
+    const card = document.createElement('div');
+    card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '');
+    
+    const hashrateInfo = pkg.hashrate ? `
+        <div class="buy-package-stat">
+            <span>Hashrate:</span>
+            <span>${pkg.hashrate}</span>
+        </div>
+    ` : '';
+    
+    const minSharesInfo = pkg.minShares ? `
+        <div class="buy-package-stat">
+            <span>Min Shares:</span>
+            <span>${pkg.minShares}</span>
+        </div>
+    ` : '';
+    
+    card.innerHTML = `
+        <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
+        ${pkg.crypto ? `<p style="color: #ffa500; font-weight: bold;">${pkg.crypto}</p>` : ''}
+        <div class="buy-package-stats">
+            <div class="buy-package-stat">
+                <span>Probability:</span>
+                <span>${pkg.probability}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Algorithm:</span>
+                <span>${pkg.algorithm || 'SHA256'}</span>
+            </div>
+            ${hashrateInfo}
+            ${minSharesInfo}
+            <div class="buy-package-stat">
+                <span>Price:</span>
+                <span>$${pkg.price} AUD</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Duration:</span>
+                <span>${pkg.duration}</span>
+            </div>
+        </div>
+        <button class="buy-package-button" onclick='buyPackage(${JSON.stringify(pkg)})'>
+            Buy Now
+        </button>
+    `;
+    
+    return card;
+}
+
+async function buyPackage(pkg) {
+    if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+        showModal('Please configure EasyMining API settings first!');
+        closeBuyPackagesModal();
+        showEasyMiningSettingsModal();
+        return;
+    }
+
+    if (!confirm(`Purchase ${pkg.name} for $${pkg.price} AUD?\n\nThis will create an order on NiceHash.`)) {
+        return;
+    }
+
+    try {
+        console.log('Creating NiceHash order for:', pkg.name);
+
+        // Map algorithm name to NiceHash algorithm ID
+        const algorithmMap = {
+            'SHA256': '20',
+            'KawPow': '23',
+            'Scrypt': '7',
+            'kHeavyHash': '25'
+        };
+
+        const algorithmId = algorithmMap[pkg.algorithm] || '20';
+
+        // Parse hashrate to amount (convert to basic units)
+        let hashrateAmount = 0;
+        if (pkg.hashrate) {
+            const hashrateMatch = pkg.hashrate.match(/([\d.]+)\s*([A-Za-z]+)/);
+            if (hashrateMatch) {
+                const value = parseFloat(hashrateMatch[1]);
+                const unit = hashrateMatch[2].toUpperCase();
+
+                // Convert to H/s (base unit)
+                const multipliers = {
+                    'H/S': 1,
+                    'KH/S': 1000,
+                    'MH/S': 1000000,
+                    'GH/S': 1000000000,
+                    'TH/S': 1000000000000
+                };
+
+                hashrateAmount = value * (multipliers[unit] || 1);
+            }
+        }
+
+        // Create order payload
+        const orderData = {
+            algorithm: algorithmId,
+            amount: hashrateAmount.toString(),
+            price: (parseFloat(pkg.price) * 0.01).toFixed(8), // Convert AUD to BTC price (estimate)
+            limit: '0', // Standard order
+            poolId: '', // User's pool
+            market: 'USA' // Default market
+        };
+
+        // Call NiceHash API to create order
+        const endpoint = '/main/api/v2/hashpower/order';
+        const body = JSON.stringify(orderData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+            method: 'POST',
+            headers: headers,
+            body: body
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Order created successfully:', result);
+
+        showModal(`✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\n\nOrder is now active and mining.`);
+
+        // Update stats
+        easyMiningData.allTimeStats.totalSpent += parseFloat(pkg.price);
+        easyMiningData.todayStats.totalSpent += parseFloat(pkg.price);
+
+        // Calculate P&L
+        easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
+        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - parseFloat(pkg.price);
+
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+        // Refresh package data immediately to show the new order
+        await fetchEasyMiningData();
+
+        closeBuyPackagesModal();
+
+    } catch (error) {
+        console.error('Error purchasing package:', error);
+        showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance. You may need to configure your mining pool in NiceHash first.`);
+    }
+}
+
+// Helper function to convert AUD to BTC (simplified)
+function convertAUDtoBTC(audAmount) {
+    // TODO: Fetch actual BTC/AUD rate
+    // For now, use approximate rate
+    const btcAudRate = 100000; // Example: 1 BTC = $100,000 AUD
+    return (audAmount / btcAudRate).toFixed(8);
+}
+
+// =============================================================================
+// PAGE-BASED BUY PACKAGES FUNCTIONS
+// =============================================================================
+
+function showBuyTabOnPage(tab) {
+    const buttons = document.querySelectorAll('#buy-packages-page .tab-button');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    if (tab === 'single') {
+        document.getElementById('buy-single-packages-page').style.display = 'grid';
+        document.getElementById('buy-team-packages-page').style.display = 'none';
+    } else {
+        document.getElementById('buy-single-packages-page').style.display = 'none';
+        document.getElementById('buy-team-packages-page').style.display = 'grid';
+    }
+}
+
+function loadBuyPackagesDataOnPage() {
+    // Package data matching NiceHash EasyMining structure
+    const singlePackages = [
+        { name: 'Gold S', crypto: 'BTC', probability: '1:150', price: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
+        { name: 'Gold M', crypto: 'BTC', probability: '1:75', price: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
+        { name: 'Gold L', crypto: 'BTC', probability: '1:35', price: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s' },
+        { name: 'Silver S', crypto: 'BCH', probability: '1:180', price: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
+        { name: 'Silver M', crypto: 'BCH', probability: '1:90', price: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
+        { name: 'Chromium S', crypto: 'RVN', probability: '1:200', price: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s' },
+        { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', price: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s' },
+        { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', price: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s' },
+        { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', price: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s' }
+    ];
+
+    const teamPackages = [
+        { name: 'Silver Team', crypto: 'BCH', probability: '1:160', price: '20.00', duration: '24h', algorithm: 'SHA256', minShares: 10 },
+        { name: 'Pal Team', crypto: 'DOGE/LTC', probability: '1:220', price: '18.00', duration: '24h', algorithm: 'Scrypt', minShares: 10 },
+        { name: 'Gold Team', crypto: 'BTC', probability: '1:80', price: '50.00', duration: '24h', algorithm: 'SHA256', minShares: 5 }
+    ];
+
+    const recommended = getRecommendedPackages();
+
+    // Populate single packages
+    const singleContainer = document.getElementById('buy-single-packages-page');
+    singleContainer.innerHTML = '';
+    singlePackages.forEach(pkg => {
+        const isRecommended = recommended.includes(pkg.name);
+        const card = createBuyPackageCardForPage(pkg, isRecommended);
+        singleContainer.appendChild(card);
+    });
+
+    // Populate team packages
+    const teamContainer = document.getElementById('buy-team-packages-page');
+    teamContainer.innerHTML = '';
+    teamPackages.forEach(pkg => {
+        const isRecommended = recommended.includes(pkg.name);
+        const card = createBuyPackageCardForPage(pkg, isRecommended);
+        teamContainer.appendChild(card);
+    });
+}
+
+function createBuyPackageCardForPage(pkg, isRecommended) {
+    const card = document.createElement('div');
+    card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '');
+
+    const hashrateInfo = pkg.hashrate ? `
+        <div class="buy-package-stat">
+            <span>Hashrate:</span>
+            <span>${pkg.hashrate}</span>
+        </div>
+    ` : '';
+
+    const minSharesInfo = pkg.minShares ? `
+        <div class="buy-package-stat">
+            <span>Min Shares:</span>
+            <span>${pkg.minShares}</span>
+        </div>
+    ` : '';
+
+    card.innerHTML = `
+        <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
+        ${pkg.crypto ? `<p style="color: #ffa500; font-weight: bold;">${pkg.crypto}</p>` : ''}
+        <div class="buy-package-stats">
+            <div class="buy-package-stat">
+                <span>Probability:</span>
+                <span>${pkg.probability}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Algorithm:</span>
+                <span>${pkg.algorithm || 'SHA256'}</span>
+            </div>
+            ${hashrateInfo}
+            ${minSharesInfo}
+            <div class="buy-package-stat">
+                <span>Price:</span>
+                <span>$${pkg.price} AUD</span>
+            </div>
+        </div>
+        <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
+            Buy Now
+        </button>
+    `;
+
+    return card;
+}
+
+async function buyPackageFromPage(pkg) {
+    if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+        alert('Please configure EasyMining API settings first!');
+        showEasyMiningSettingsPage();
+        return;
+    }
+
+    if (!confirm(`Purchase ${pkg.name} for $${pkg.price} AUD?\n\nThis will create an order on NiceHash.`)) {
+        return;
+    }
+
+    try {
+        console.log('Creating NiceHash order for:', pkg.name);
+
+        // Map algorithm name to NiceHash algorithm ID
+        const algorithmMap = {
+            'SHA256': '20',
+            'KawPow': '23',
+            'Scrypt': '7',
+            'kHeavyHash': '25'
+        };
+
+        const algorithmId = algorithmMap[pkg.algorithm] || '20';
+
+        // Parse hashrate to amount (convert to basic units)
+        let hashrateAmount = 0;
+        if (pkg.hashrate) {
+            const hashrateMatch = pkg.hashrate.match(/([\d.]+)\s*([A-Za-z]+)/);
+            if (hashrateMatch) {
+                const value = parseFloat(hashrateMatch[1]);
+                const unit = hashrateMatch[2].toUpperCase();
+
+                // Convert to H/s (base unit)
+                const multipliers = {
+                    'H/S': 1,
+                    'KH/S': 1000,
+                    'MH/S': 1000000,
+                    'GH/S': 1000000000,
+                    'TH/S': 1000000000000
+                };
+
+                hashrateAmount = value * (multipliers[unit] || 1);
+            }
+        }
+
+        // Create order payload
+        const orderData = {
+            algorithm: algorithmId,
+            amount: hashrateAmount.toString(),
+            price: (parseFloat(pkg.price) * 0.01).toFixed(8), // Convert AUD to BTC price (estimate)
+            limit: '0', // Standard order
+            poolId: '', // User's pool
+            market: 'USA' // Default market
+        };
+
+        // Call NiceHash API to create order
+        const endpoint = '/main/api/v2/hashpower/order';
+        const body = JSON.stringify(orderData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        const response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+            method: 'POST',
+            headers: headers,
+            body: body
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Order created successfully:', result);
+
+        alert(`✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}`);
+
+        // Update stats
+        easyMiningData.allTimeStats.totalSpent += parseFloat(pkg.price);
+        easyMiningData.todayStats.totalSpent += parseFloat(pkg.price);
+
+        // Calculate P&L
+        easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
+        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - parseFloat(pkg.price);
+
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+        // Refresh package data immediately to show the new order
+        await fetchEasyMiningData();
+
+        // Go back to app page
+        showAppPage();
+
+    } catch (error) {
+        console.error('Error purchasing package:', error);
+        alert(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance. You may need to configure your mining pool in NiceHash first.`);
+    }
+}
+
+// =============================================================================
+// EASYMINING POLLING
+// =============================================================================
+
+function startEasyMiningPolling() {
+    // Stop any existing polling
+    stopEasyMiningPolling();
+    
+    // Initial fetch
+    fetchEasyMiningData();
+    
+    // Poll every 30 seconds
+    easyMiningPollingInterval = setInterval(() => {
+        fetchEasyMiningData();
+    }, 30000);
+    
+    console.log('EasyMining polling started');
+}
+
+function stopEasyMiningPolling() {
+    if (easyMiningPollingInterval) {
+        clearInterval(easyMiningPollingInterval);
+        easyMiningPollingInterval = null;
+        console.log('EasyMining polling stopped');
+    }
+}
+
+// =============================================================================
+// INITIALIZE EASYMINING ON APP LOAD
+// =============================================================================
+
+function initializeEasyMining() {
+    // Load saved settings
+    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`));
+    if (savedSettings) {
+        easyMiningSettings = savedSettings;
+    }
+    
+    // Load saved data
+    const savedData = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningData`));
+    if (savedData) {
+        easyMiningData = { ...easyMiningData, ...savedData };
+    }
+    
+    // Always show the section, but control content visibility based on enabled status
+    const section = document.getElementById('easymining-section');
+    if (section) {
+        section.style.display = 'block';
+
+        if (easyMiningSettings.enabled) {
+            startEasyMiningPolling();
+        }
+    }
+}
+
+// =============================================================================
+// UPDATE EXISTING FUNCTIONS
+// =============================================================================
+
+// Modify initializeApp to include EasyMining initialization
+const originalInitializeApp = initializeApp;
+if (typeof originalInitializeApp === 'function') {
+    initializeApp = function() {
+        originalInitializeApp();
+        
+        if (loggedInUser) {
+            initializeEasyMining();
+        }
+    };
+}
  
 
 // Initialize the app

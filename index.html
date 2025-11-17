@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptFolio v1.5 | Real-time Holdings Tracker</title>
+    <title>CryptFolio v1.6 | Real-time Holdings Tracker</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
    <!-- Include Odometer stylesheet -->
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-default.min.css">
@@ -26,7 +26,7 @@
         <div class="header">
             <div>
                 <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v1.5</h1>
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
                 <p>Track your investments in real-time!</p>
 
             </div>
@@ -38,7 +38,7 @@
                     <button onclick="login()">Login</button>
                 </div>
                 <div>
-                    <p>CryptFolio v1.5 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
+                    <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
                     <p>Data by CoinGecko / MEXC / LBank</p>
                 </div>
             </div>
@@ -50,7 +50,7 @@
         <div class="header">
             <div>
                 <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v1.5</h1>
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
                 <p>Create your account</p>
             </div>
             <div class="register-form">
@@ -79,12 +79,15 @@
         <div class="header">
             <div>
                 <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v1.5</h1>
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
                 <p>Track your investments in real-time!<br>Add <a href="https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?usp=sharing" target="_blank">Crypto ID's</a> to get started.</p>
             </div>
             
             <div class="add-crypto">
-                <input type="text" id="crypto-id-input" placeholder="Enter Crypto ID">
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="crypto-id-input" placeholder="Enter Crypto ID" autocomplete="off">
+                    <div id="autocomplete-list" class="autocomplete-items"></div>
+                </div>
                 <button onclick="addCrypto()">Add</button>
             </div>
         </div>
@@ -107,6 +110,89 @@
             <h3 id="daily-milestone">$0,000.00</h3>
         </div>
 
+        <!-- EasyMining Section -->
+        <div id="easymining-section" class="easymining-section collapsed">
+            <div class="easymining-header" onclick="toggleEasyMining()">
+                <h2>
+                    <span id="easymining-arrow" class="arrow">▶</span>
+                    EasyMining
+                </h2>
+            </div>
+            <div id="easymining-content" class="easymining-content" style="display: none;">
+                <div class="easymining-balances">
+                    <div class="balance-item">
+                        <span class="balance-label">Available BTC:</span>
+                        <span id="easymining-available-btc" class="balance-value">0.00000000</span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="balance-label">Pending BTC:</span>
+                        <span id="easymining-pending-btc" class="balance-value">0.00000000</span>
+                    </div>
+                    <button onclick="showBuyPackagesPage()" class="buy-packages-btn">Buy Packages</button>
+                    <button onclick="refreshBlocksFound()" class="refresh-blocks-btn">🔄 Refresh</button>
+                </div>
+                
+                <div class="blocks-found-display">
+                    <span class="blocks-found-label">Blocks Found: </span>
+                    <span id="blocks-found-rockets" class="blocks-found-rockets"></span>
+                </div>
+
+                <div class="easymining-main-content">
+                    <div class="active-packages-section">
+                        <h3>Active Packages</h3>
+                        <div id="active-packages-container" class="active-packages-container"></div>
+                        <button id="show-more-packages" onclick="toggleShowMorePackages()" style="display: none;">Show More</button>
+                    </div>
+
+                    <div class="stats-section">
+                        <div class="stats-group">
+                            <h3>All Time Stats</h3>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Blocks Found:</span>
+                                <span id="total-blocks-all" class="stat-value">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Reward:</span>
+                                <span id="total-reward-all" class="stat-value">$0.00</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Spent:</span>
+                                <span id="total-spent-all" class="stat-value">$0.00</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">P&L:</span>
+                                <span id="pnl-all" class="stat-value">$0.00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-group">
+                            <h3>Today's Stats</h3>
+                            <div class="stat-item">
+                                <span class="stat-label">Blocks Found:</span>
+                                <span id="total-blocks-today" class="stat-value">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Spent Today:</span>
+                                <span id="total-spent-today" class="stat-value">$0.00</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">P&L Today:</span>
+                                <span id="pnl-today" class="stat-value">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recommendations-section">
+                    <h3>Best Package Recommendations</h3>
+                    <div id="best-packages-container" class="recommendations-container"></div>
+                    
+                    <h3>Team Package Alerts</h3>
+                    <div id="team-alerts-container" class="recommendations-container"></div>
+                </div>
+            </div>
+        </div>
+
         <div id="crypto-containers">
             <!-- Dynamic crypto containers will be added here -->
         </div>
@@ -117,7 +203,149 @@
         </div>
 
         <div>
-            <p>CryptFolio v1.5 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
+            <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
+            <p>Data by CoinGecko / MEXC / LBank</p>
+        </div>
+    </div>
+
+    <!-- EasyMining Settings Page -->
+    <div id="easymining-settings-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
+                <p>EasyMining Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">NiceHash API Credentials</h3>
+
+                <div class="input-group">
+                    <label for="nicehash-api-key-page">API Key:</label>
+                    <input type="text" id="nicehash-api-key-page" placeholder="Enter your NiceHash API Key">
+                </div>
+
+                <div class="input-group">
+                    <label for="nicehash-api-secret-page">API Secret:</label>
+                    <input type="password" id="nicehash-api-secret-page" placeholder="Enter your NiceHash API Secret">
+                </div>
+
+                <div class="input-group">
+                    <label for="nicehash-org-id-page">Organization ID:</label>
+                    <input type="text" id="nicehash-org-id-page" placeholder="Enter your Organization ID">
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateEasyMiningFromPage()" class="activate-button">Activate EasyMining</button>
+                </div>
+
+                <hr style="border: 1px solid #333; margin: 30px 0;">
+
+                <h3 style="color: #ffa500;">Additional Settings</h3>
+
+                <div class="easymining-toggles">
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="auto-update-holdings-toggle-page">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="auto-update-holdings-toggle-page">Auto-update Holdings (Block Rewards)</label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="include-available-btc-toggle-page">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="include-available-btc-toggle-page">Auto-update BTC from Available Balance</label>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="include-pending-btc-toggle-page">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="include-pending-btc-toggle-page">Auto-update BTC from Pending Balance</label>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearAPICredentials()" class="delete-button">Clear API Credentials</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showAppPage()">← Back</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
+            <p>Data by CoinGecko / MEXC / LBank</p>
+        </div>
+    </div>
+
+    <!-- Buy Packages Page -->
+    <div id="buy-packages-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
+                <p>Buy EasyMining Packages</p>
+            </div>
+
+            <div class="buy-packages-form">
+                <div class="buy-packages-tabs">
+                    <button class="tab-button active" onclick="showBuyTabOnPage('single')">Single Packages</button>
+                    <button class="tab-button" onclick="showBuyTabOnPage('team')">Team Packages</button>
+                </div>
+                <div id="buy-single-packages-page" class="buy-packages-container-page"></div>
+                <div id="buy-team-packages-page" class="buy-packages-container-page" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showAppPage()">← Back</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
+            <p>Data by CoinGecko / MEXC / LBank</p>
+        </div>
+    </div>
+
+    <!-- Package Detail Page -->
+    <div id="package-detail-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
+                <p id="package-detail-page-subtitle">Package Details</p>
+            </div>
+
+            <div class="package-detail-page-content">
+                <h2 id="package-detail-page-name" style="color: #ffa500;">Package Name</h2>
+                <div id="package-detail-page-info" class="package-info-grid"></div>
+
+                <div class="block-animation-section">
+                    <h3 style="color: #ffa500;">Block Mining Progress</h3>
+                    <div id="package-detail-page-blocks" class="block-bars-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showAppPage()">← Back</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
             <p>Data by CoinGecko / MEXC / LBank</p>
         </div>
     </div>
@@ -158,6 +386,7 @@
                 </div>
             </div>
             <div style="margin-top: 20px;">
+                <button id="easymining-settings-btn" onclick="closeSettingsModal(); showEasyMiningSettingsPage();">EasyMining</button>
                 <button class="delete-button" onclick="closeSettingsModal()">Close</button>
             </div>
         </div>
@@ -267,6 +496,21 @@
                 </div>
               </div>
 
+              <!-- Conversion Calculator -->
+              <div class="conversion-calculator">
+                <h3 class="bar-head">Conversion Calculator</h3>
+                <div class="conversion-inputs">
+                    <div class="conversion-input-group">
+                        <label for="crypto-amount-input">Crypto Amount:</label>
+                        <input type="number" id="crypto-amount-input" placeholder="1" value="1" step="any" oninput="calculateFromCrypto()">
+                    </div>
+                    <div class="conversion-input-group">
+                        <label for="aud-amount-input">AUD Amount:</label>
+                        <input type="number" id="aud-amount-input" placeholder="0.00" step="any" oninput="calculateFromAUD()">
+                    </div>
+                </div>
+              </div>
+
        </div>
     </div>
 
@@ -288,6 +532,105 @@
         <!-- Dynamic content will be loaded here -->
     </div>
 
+    <!-- EasyMining Settings Modal -->
+    <div id="easymining-settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEasyMiningSettingsModal()">&times;</span>
+            <h2 class="settings-title">EASYMINING SETTINGS</h2>
+            
+            <div class="easymining-settings-content">
+                <h3 style="margin-top: 0; color: #ffa500;">NiceHash API Credentials</h3>
+                
+                <div class="input-group">
+                    <label for="nicehash-api-key">API Key:</label>
+                    <input type="text" id="nicehash-api-key" placeholder="Enter your NiceHash API Key">
+                </div>
+                
+                <div class="input-group">
+                    <label for="nicehash-api-secret">API Secret:</label>
+                    <input type="password" id="nicehash-api-secret" placeholder="Enter your NiceHash API Secret">
+                </div>
+                
+                <div class="input-group">
+                    <label for="nicehash-org-id">Organization ID:</label>
+                    <input type="text" id="nicehash-org-id" placeholder="Enter your Organization ID">
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateEasyMining()" class="activate-button">Activate EasyMining</button>
+                </div>
+
+                <hr style="border: 1px solid #333; margin: 30px 0;">
+
+                <h3 style="color: #ffa500;">Additional Settings</h3>
+                
+                <div class="easymining-toggles">
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="auto-update-holdings-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="auto-update-holdings-toggle">Auto-update Holdings (Block Rewards)</label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="include-available-btc-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="include-available-btc-toggle">Auto-update BTC from Available Balance</label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="include-pending-btc-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="include-pending-btc-toggle">Auto-update BTC from Pending Balance</label>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearAPICredentials()" class="delete-button">Clear API Credentials</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="cancel-button" onclick="closeEasyMiningSettingsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Package Detail Modal -->
+    <div id="package-detail-modal" class="modal">
+        <div class="modal-content package-detail-content">
+            <span class="close" onclick="closePackageDetailModal()">&times;</span>
+            <h2 id="package-detail-name">Package Name</h2>
+            <div id="package-detail-info" class="package-info-grid"></div>
+            <div class="block-animation-section">
+                <h3>Block Mining Progress</h3>
+                <div id="block-bars-container" class="block-bars-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Buy Packages Modal -->
+    <div id="buy-packages-modal" class="modal">
+        <div class="modal-content buy-packages-content">
+            <span class="close" onclick="closeBuyPackagesModal()">&times;</span>
+            <h2 class="settings-title">BUY PACKAGES</h2>
+            <div class="buy-packages-tabs">
+                <button class="tab-button active" onclick="showBuyTab('single')">Single Packages</button>
+                <button class="tab-button" onclick="showBuyTab('team')">Team Packages</button>
+            </div>
+            <div id="buy-single-packages" class="buy-packages-container"></div>
+            <div id="buy-team-packages" class="buy-packages-container" style="display: none;"></div>
+            <div style="margin-top: 20px;">
+                <button class="delete-button" onclick="closeBuyPackagesModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Audio elements for notifications -->
     <audio id="good-sound" src="sounds/good-sound.mp3" preload="auto" muted></audio>
     <audio id="bad-sound" src="sounds/bad-sound.mp3" preload="auto" muted></audio>
@@ -295,6 +638,8 @@
     <audio id="warning-sound" src="sounds/warning-sound.mp3" preload="auto" muted></audio>
     <audio id="milestone-sound" src="sounds/milestone-sound.mp3" preload="auto" muted></audio>
     <audio id="record-high-sound" src="sounds/record-high-sound.mp3" preload="auto" muted></audio>
+    <audio id="block-found-sound" src="sounds/level-up-sound.mp3" preload="auto" muted></audio>
+    <audio id="package-alert-sound" src="sounds/warning-sound.mp3" preload="auto" muted></audio>
 
 
 
@@ -310,6 +655,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-crosshair"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <script src="scripts.js"></script>
 
