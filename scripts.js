@@ -4327,23 +4327,15 @@ async function fetchOrderRewards(orderId) {
 async function fetchNiceHashOrders() {
     try {
         // NiceHash solo order endpoint includes soloReward data
-        // This endpoint requires POST with parameters in body
+        // GET request without parameters - returns all orders
         const timestamp = Date.now() + nicehashTimeOffset;
         const endpoint = `/main/api/v2/hashpower/solo/order`;
-
-        // Request body with required parameters
-        const requestBody = {
-            ts: timestamp,
-            op: 'LE',
-            limit: 100
-        };
-
-        const headers = generateNiceHashAuthHeaders('POST', endpoint, JSON.stringify(requestBody));
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
         console.log('📡 Fetching solo orders from NiceHash...');
         console.log('📋 Endpoint:', endpoint);
-        console.log('📋 Method: POST');
-        console.log('📋 Body:', requestBody);
+        console.log('📋 Method: GET');
+        console.log('📋 Full URL:', `https://api2.nicehash.com${endpoint}`);
 
         let response;
 
@@ -4357,21 +4349,16 @@ async function fetchNiceHashOrders() {
                 },
                 body: JSON.stringify({
                     endpoint: endpoint,
-                    method: 'POST',
-                    headers: headers,
-                    body: requestBody
+                    method: 'GET',
+                    headers: headers
                 })
             });
         } else {
             // Direct call to NiceHash
             console.log('Direct call to:', `https://api2.nicehash.com${endpoint}`);
             response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                method: 'POST',
-                headers: {
-                    ...headers,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
+                method: 'GET',
+                headers: headers
             });
         }
 
