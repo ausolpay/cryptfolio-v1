@@ -746,24 +746,10 @@ async function fetchPrices() {
 
             // Always recalculate AUD value, even if price hasn't changed
             // This ensures holdings updates are reflected immediately
-            let holdings;
-            if (crypto.id === 'bitcoin') {
-                // For Bitcoin, ALWAYS read from display element (includes NiceHash balance + user holdings)
-                // This ensures the AUD value persists correctly regardless of toggle state
-                const btcHoldingsElement = document.getElementById('bitcoin-holdings');
-                if (btcHoldingsElement && btcHoldingsElement.textContent) {
-                    holdings = parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) || 0;
-                    console.log(`🔍 fetchPrices BTC - Reading from display: ${holdings}`);
-                } else {
-                    // Fallback to localStorage if display element not found
-                    holdings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
-                    console.log(`⚠️ fetchPrices BTC - Display not found, using localStorage: ${holdings}`);
-                }
-            } else {
-                // For other cryptos, get from localStorage
-                holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
-                console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
-            }
+            // Read from localStorage for ALL cryptos (including Bitcoin)
+            // Bitcoin's localStorage now includes NiceHash balance (updated by updateBTCHoldings)
+            let holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+            console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
 
             const audValue = holdings * priceAud;
             const valueElement = document.getElementById(`${crypto.id}-value-aud`);
@@ -4776,22 +4762,30 @@ function updateBTCHoldings() {
     const btcHoldingsElement = document.getElementById('bitcoin-holdings');
     if (!btcHoldingsElement) return;
     
-    let baseHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
-    
-    // Calculate additional balance from EasyMining
-    let additionalBalance = 0;
-    
+    // Get user's actual holdings (manual entries + block rewards)
+    let userHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
+
+    // Get previously saved NiceHash balance to avoid double-counting
+    let previousNiceHashBalance = parseFloat(getStorageItem(`${loggedInUser}_bitcoinNiceHashBalance`)) || 0;
+
+    // Calculate current NiceHash balance
+    let currentNiceHashBalance = 0;
     if (easyMiningSettings.includeAvailableBTC) {
-        additionalBalance += parseFloat(easyMiningData.availableBTC) || 0;
+        currentNiceHashBalance += parseFloat(easyMiningData.availableBTC) || 0;
     }
-    
     if (easyMiningSettings.includePendingBTC) {
-        additionalBalance += parseFloat(easyMiningData.pendingBTC) || 0;
+        currentNiceHashBalance += parseFloat(easyMiningData.pendingBTC) || 0;
     }
-    
-    // Display total (base + additional)
-    const totalToDisplay = baseHoldings + additionalBalance;
-    // Don't use formatNumber for BTC amounts - it adds commas in wrong places for small decimals
+
+    // Remove previous NiceHash balance, add current NiceHash balance
+    const totalToDisplay = userHoldings - previousNiceHashBalance + currentNiceHashBalance;
+
+    // SAVE TO LOCALSTORAGE - This makes it persist!
+    setStorageItem(`${loggedInUser}_bitcoinHoldings`, totalToDisplay);
+    setStorageItem(`${loggedInUser}_bitcoinNiceHashBalance`, currentNiceHashBalance);
+    console.log(`💾 Saved BTC: ${totalToDisplay} (user: ${userHoldings}, prev NiceHash: ${previousNiceHashBalance}, current NiceHash: ${currentNiceHashBalance})`);
+
+    // Update display
     btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
 
     // Update the AUD value for Bitcoin (same as manual update does)
