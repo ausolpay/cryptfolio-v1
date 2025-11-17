@@ -4411,27 +4411,50 @@ async function fetchNiceHashOrders() {
                 console.log(`📦 Package name determined: "${packageName}"`);
 
                 // Determine if block was found based on soloReward array
-                // If soloReward has entries with payoutReward > 0, blocks were found
+                // A block is only "found" when:
+                // 1. soloReward array exists and has entries
+                // 2. payoutRewardBtc > 0 (there's an actual reward)
+                // 3. depositComplete === true OR confirmations >= minConfirmations
                 let blockFound = false;
                 let totalRewardBTC = 0;
+                let confirmedBlockCount = 0;
 
                 if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
                     console.log(`🎁 Order ${order.id} has ${order.soloReward.length} soloReward entries`);
 
-                    // Sum up all payoutRewardBtc values
-                    totalRewardBTC = order.soloReward.reduce((sum, reward) => {
+                    // Check each reward entry for confirmed blocks
+                    order.soloReward.forEach((reward, index) => {
                         const rewardBtc = parseFloat(reward.payoutRewardBtc || 0);
-                        if (rewardBtc > 0) {
-                            console.log(`  💰 Reward: ${rewardBtc} BTC (blockHeight: ${reward.blockHeight}, coin: ${reward.coin})`);
-                        }
-                        return sum + rewardBtc;
-                    }, 0);
+                        const isDeposited = reward.depositComplete === true;
+                        const confirmations = parseInt(reward.confirmations || 0);
+                        const minConfirmations = parseInt(reward.minConfirmations || 0);
+                        const isConfirmed = confirmations >= minConfirmations;
 
-                    if (totalRewardBTC > 0) {
+                        console.log(`  📦 Reward #${index + 1}:`, {
+                            blockHeight: reward.blockHeight,
+                            coin: reward.coin,
+                            payoutRewardBtc: rewardBtc,
+                            depositComplete: isDeposited,
+                            confirmations: confirmations,
+                            minConfirmations: minConfirmations,
+                            isConfirmed: isConfirmed
+                        });
+
+                        // Only count rewards that are confirmed or deposited
+                        if (rewardBtc > 0 && (isDeposited || isConfirmed)) {
+                            totalRewardBTC += rewardBtc;
+                            confirmedBlockCount++;
+                            console.log(`  ✅ Confirmed reward: ${rewardBtc} BTC (deposited: ${isDeposited}, confirmed: ${isConfirmed})`);
+                        } else if (rewardBtc > 0) {
+                            console.log(`  ⏳ Pending reward: ${rewardBtc} BTC (waiting for ${minConfirmations - confirmations} more confirmations)`);
+                        }
+                    });
+
+                    if (confirmedBlockCount > 0 && totalRewardBTC > 0) {
                         blockFound = true;
-                        console.log(`✅ Order ${order.id} BLOCK FOUND! Total rewards: ${totalRewardBTC} BTC from ${order.soloReward.length} block(s)`);
-                    } else {
-                        console.log(`❌ Order ${order.id} has soloReward entries but all payoutRewardBtc are 0`);
+                        console.log(`✅ Order ${order.id} BLOCK FOUND! Total confirmed rewards: ${totalRewardBTC} BTC from ${confirmedBlockCount} confirmed block(s)`);
+                    } else if (totalRewardBTC === 0) {
+                        console.log(`❌ Order ${order.id} has ${order.soloReward.length} soloReward entries but none are confirmed yet`);
                     }
                 } else {
                     console.log(`❌ Order ${order.id} has no soloReward entries - no blocks found`);
@@ -4457,13 +4480,14 @@ async function fetchNiceHashOrders() {
                     crypto: algoInfo.crypto,
                     cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
                     reward: cryptoReward, // Crypto reward (2500 RVN, 3.125 BTC, etc.)
-                    btcEarnings: totalRewardBTC, // Total BTC earnings from rewards endpoint
+                    btcEarnings: totalRewardBTC, // Total BTC earnings from confirmed rewards
+                    confirmedBlocks: confirmedBlockCount, // Number of confirmed blocks found
                     algorithm: order.algorithm.toString(),
                     algorithmName: algoInfo.name,
                     hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
                     timeRemaining: calculateTimeRemaining(order.endTs),
                     progress: calculateProgress(order.startTs, order.endTs),
-                    blockFound: blockFound, // True if block was found (from rewards endpoint)
+                    blockFound: blockFound, // True if confirmed block was found
                     isTeam: order.type === 'TEAM',
                     price: priceSpent, // BTC amount spent on this package
                     active: order.alive,
@@ -4729,10 +4753,10 @@ function displayActivePackages() {
 
         card.innerHTML = `
             ${pkg.blockFound ? '<div class="block-found-indicator">🚀</div>' : ''}
-            <div class="package-card-name">${pkg.name}${pkg.blockFound ? ' 🚀' : ''}</div>
+            <div class="package-card-name">${pkg.name}${pkg.blockFound && pkg.confirmedBlocks > 0 ? ` 🚀 x${pkg.confirmedBlocks}` : ''}</div>
             <div class="package-card-stat">
                 <span>Reward:</span>
-                <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${(pkg.reward || 0).toFixed(rewardDecimals)} ${pkg.crypto}</span>
+                <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${(pkg.btcEarnings || 0).toFixed(8)} BTC</span>
             </div>
             <div class="package-card-stat">
                 <span>Time:</span>
