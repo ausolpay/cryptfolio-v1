@@ -3660,10 +3660,10 @@ async function fetchEasyMiningData() {
         if (hasCredentials) {
             console.log('Attempting to fetch live data from NiceHash API...');
 
-            // Validate credentials format first
+            // Validate credentials are present
             if (!validateNiceHashCredentials()) {
-                alert('❌ Invalid NiceHash API credentials format!\n\nPlease check the console for details and re-enter your credentials with dashes included.');
-                throw new Error('Invalid credentials format');
+                alert('❌ Please enter all NiceHash API credentials!\n\nMake sure you have filled in:\n- API Key\n- API Secret\n- Organization ID');
+                throw new Error('Missing credentials');
             }
 
             // Try to fetch real data, but use mock data as fallback if CORS fails
@@ -3755,7 +3755,7 @@ async function fetchEasyMiningData() {
                       '4. Create fresh API key if expired\n\n' +
                       '📝 Check browser console (F12) for detailed troubleshooting info.\n' +
                       '📖 See NICEHASH_401_FIX.md for full guide.');
-            } else if (error.message.includes('Invalid credentials format')) {
+            } else if (error.message.includes('Missing credentials')) {
                 // This is already handled by the validation function alert
                 // Don't show duplicate alert
             } else {
@@ -3785,73 +3785,26 @@ async function fetchPublicPackageData() {
 
 // Validate NiceHash API credentials format
 function validateNiceHashCredentials() {
-    const errors = [];
-    const warnings = [];
+    console.log('🔍 Checking NiceHash Credentials...');
+    console.log('API Key:', easyMiningSettings.apiKey ? `✓ Present (${easyMiningSettings.apiKey.length} chars)` : '✗ Missing');
+    console.log('API Secret:', easyMiningSettings.apiSecret ? `✓ Present (${easyMiningSettings.apiSecret.length} chars)` : '✗ Missing');
+    console.log('Org ID:', easyMiningSettings.orgId ? `✓ Present (${easyMiningSettings.orgId.length} chars)` : '✗ Missing');
 
-    // UUID format for API Key and Org ID (36 characters)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    // Flexible format for API Secret (64-72 characters, hexadecimal)
-    const secretRegex = /^[0-9a-fA-F-]{64,72}$/;
-
-    console.log('🔍 Validating NiceHash Credentials...');
-    console.log('API Key received:', `"${easyMiningSettings.apiKey}"`, `(length: ${easyMiningSettings.apiKey ? easyMiningSettings.apiKey.length : 0})`);
-    console.log('API Secret received:', `"${easyMiningSettings.apiSecret}"`, `(length: ${easyMiningSettings.apiSecret ? easyMiningSettings.apiSecret.length : 0})`);
-    console.log('Org ID received:', `"${easyMiningSettings.orgId}"`, `(length: ${easyMiningSettings.orgId ? easyMiningSettings.orgId.length : 0})`);
-
-    // Check API Key (UUID format, 36 characters)
-    if (!easyMiningSettings.apiKey) {
-        errors.push('API Key is missing');
-    } else if (easyMiningSettings.apiKey.length !== 36) {
-        errors.push(`API Key wrong length (got ${easyMiningSettings.apiKey.length}, expected 36)`);
-        errors.push(`  → You entered: "${easyMiningSettings.apiKey}"`);
-    } else if (!uuidRegex.test(easyMiningSettings.apiKey)) {
-        warnings.push('API Key format is non-standard but may work (expected UUID format like: 12345678-1234-1234-1234-123456789abc)');
-    }
-
-    // Check API Secret (hex string, 64-72 characters)
-    if (!easyMiningSettings.apiSecret) {
-        errors.push('API Secret is missing');
-    } else if (easyMiningSettings.apiSecret.length < 64 || easyMiningSettings.apiSecret.length > 72) {
-        errors.push(`API Secret wrong length (got ${easyMiningSettings.apiSecret.length}, expected 64-72 characters)`);
-        errors.push(`  → You entered: "${easyMiningSettings.apiSecret}"`);
-    } else if (!secretRegex.test(easyMiningSettings.apiSecret)) {
-        warnings.push('API Secret format is non-standard but may work (expected hexadecimal string)');
-    }
-
-    // Check Org ID (UUID format, 36 characters)
-    if (!easyMiningSettings.orgId) {
-        errors.push('Organization ID is missing');
-    } else if (easyMiningSettings.orgId.length !== 36) {
-        errors.push(`Organization ID wrong length (got ${easyMiningSettings.orgId.length}, expected 36)`);
-        errors.push(`  → You entered: "${easyMiningSettings.orgId}"`);
-    } else if (!uuidRegex.test(easyMiningSettings.orgId)) {
-        warnings.push('Organization ID format is non-standard but may work (expected UUID format)');
-    }
-
-    // Show warnings if any
-    if (warnings.length > 0) {
-        console.warn('⚠️  NiceHash Credential Validation Warnings:');
-        warnings.forEach(warn => console.warn('  - ' + warn));
-        console.log('Proceeding anyway - will test with NiceHash API...');
-    }
-
-    if (errors.length > 0) {
-        console.error('❌ NiceHash Credential Validation Failed:');
-        errors.forEach(err => console.error('  - ' + err));
-        console.log('');
-        console.log('📝 NiceHash credentials format:');
-        console.log('  API Key:    12345678-1234-1234-1234-123456789abc (36 characters, UUID format)');
-        console.log('  API Secret: 64-72 character hexadecimal string');
-        console.log('  Org ID:     87654321-4321-4321-4321-987654321fed (36 characters, UUID format)');
-        console.log('');
-        console.log('⚠️  Make sure you copied them correctly from NiceHash!');
-        console.log('💡 Check the "length" values above to see what you entered');
-        console.log('💡 Check for hidden spaces or special characters');
+    // Simple validation - just check that all fields are filled
+    if (!easyMiningSettings.apiKey || !easyMiningSettings.apiSecret || !easyMiningSettings.orgId) {
+        console.error('❌ One or more credentials are missing');
+        console.error('Please enter all three credentials: API Key, API Secret, and Organization ID');
         return false;
     }
 
-    console.log('✅ NiceHash credentials format validated');
+    // Check for common issues like extra whitespace (should be trimmed already, but double-check)
+    if (easyMiningSettings.apiKey.trim() !== easyMiningSettings.apiKey ||
+        easyMiningSettings.apiSecret.trim() !== easyMiningSettings.apiSecret ||
+        easyMiningSettings.orgId.trim() !== easyMiningSettings.orgId) {
+        console.warn('⚠️  Credentials contain extra whitespace - this should have been trimmed');
+    }
+
+    console.log('✅ All credentials present - will test with NiceHash API');
     return true;
 }
 
