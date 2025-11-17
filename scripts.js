@@ -4492,16 +4492,52 @@ async function fetchNiceHashOrders() {
     }
 }
 
+// Helper function to format timestamp to readable date and time
+function formatDateTime(timestamp) {
+    if (!timestamp) return 'Unknown';
+
+    let date;
+    if (typeof timestamp === 'string') {
+        // ISO format
+        date = new Date(timestamp);
+    } else {
+        // Milliseconds
+        date = new Date(parseInt(timestamp));
+    }
+
+    // Format: "Jan 15, 2025 at 3:45 PM"
+    const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    };
+
+    return date.toLocaleString('en-US', options);
+}
+
 // Helper function to calculate time remaining
 function calculateTimeRemaining(endTimestamp) {
     if (!endTimestamp) return 'Unknown';
 
     const now = Date.now();
-    // NiceHash timestamps are in seconds, convert to milliseconds
-    const end = parseInt(endTimestamp) * 1000;
+
+    // NiceHash timestamps can be in ISO format (string) or milliseconds (number)
+    let end;
+    if (typeof endTimestamp === 'string') {
+        // ISO format - parse as date
+        end = new Date(endTimestamp).getTime();
+    } else {
+        // Assume it's in milliseconds already
+        end = parseInt(endTimestamp);
+    }
+
     const remaining = end - now;
 
-    if (remaining <= 0) return 'Expired';
+    // If expired, show "Completed" instead of "Expired"
+    if (remaining <= 0) return 'Completed';
 
     const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
     const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -4518,9 +4554,21 @@ function calculateProgress(startTimestamp, endTimestamp) {
     if (!startTimestamp || !endTimestamp) return 0;
 
     const now = Date.now();
-    // NiceHash timestamps are in seconds, convert to milliseconds
-    const start = parseInt(startTimestamp) * 1000;
-    const end = parseInt(endTimestamp) * 1000;
+
+    // NiceHash timestamps can be in ISO format (string) or milliseconds (number)
+    let start, end;
+    if (typeof startTimestamp === 'string') {
+        start = new Date(startTimestamp).getTime();
+    } else {
+        start = parseInt(startTimestamp);
+    }
+
+    if (typeof endTimestamp === 'string') {
+        end = new Date(endTimestamp).getTime();
+    } else {
+        end = parseInt(endTimestamp);
+    }
+
     const total = end - start;
     const elapsed = now - start;
 
@@ -5164,6 +5212,10 @@ function showPackageDetailPage(pkg) {
         <div class="stat-item">
             <span class="stat-label">Hashrate:</span>
             <span class="stat-value">${pkg.hashrate}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Purchased On:</span>
+            <span class="stat-value">${formatDateTime(pkg.startTime)}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Time Remaining:</span>
