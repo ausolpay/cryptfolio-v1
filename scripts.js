@@ -4326,16 +4326,14 @@ async function fetchOrderRewards(orderId) {
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
     try {
-        // NiceHash solo order endpoint includes soloReward data
-        // GET request without parameters - returns all orders
+        // Try myOrders endpoint to check if it includes soloReward data
         const timestamp = Date.now() + nicehashTimeOffset;
-        const endpoint = `/main/api/v2/hashpower/solo/order`;
+        const endpoint = `/main/api/v2/hashpower/myOrders?ts=${timestamp}&op=LE&limit=100`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
-        console.log('📡 Fetching solo orders from NiceHash...');
+        console.log('📡 Fetching orders from NiceHash myOrders endpoint...');
         console.log('📋 Endpoint:', endpoint);
-        console.log('📋 Method: GET');
-        console.log('📋 Full URL:', `https://api2.nicehash.com${endpoint}`);
+        console.log('📋 Checking if soloReward data is included...');
 
         let response;
 
