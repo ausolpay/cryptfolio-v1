@@ -752,9 +752,12 @@ async function fetchPrices() {
                 } else {
                     // For other cryptos, get from localStorage
                     holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                    console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
                 }
 
-                document.getElementById(`${crypto.id}-value-aud`).textContent = formatNumber((holdings * priceAud).toFixed(2));
+                const audValue = holdings * priceAud;
+                document.getElementById(`${crypto.id}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
+                console.log(`🔄 fetchPrices updated ${crypto.id} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
             }
         }
 
@@ -2691,9 +2694,12 @@ function debounceUpdateUI(cryptoId, priceInAud) {
             } else {
                 // For other cryptos, get from localStorage
                 holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+                console.log(`📖 debounceUpdateUI reading ${cryptoId} from localStorage: ${holdings}`);
             }
 
-            document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber((holdings * priceInAud).toFixed(2));
+            const audValue = holdings * priceInAud;
+            document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
+            console.log(`🔄 debounceUpdateUI updated ${cryptoId} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceInAud})`);
         }
 
         updateTotalHoldings();
@@ -4845,24 +4851,34 @@ async function autoUpdateCryptoHoldings(newBlocks) {
         // Update holdings for this crypto
         const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
         const newHoldings = currentHoldings + rewardAmount;
-        setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
 
-        // Update UI if element exists
+        // Save to localStorage first
+        setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
+        console.log(`💾 Saved to localStorage: ${loggedInUser}_${cryptoId}Holdings = ${newHoldings}`);
+
+        // Verify it was saved
+        const verified = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`));
+        console.log(`✓ Verified localStorage read back: ${verified}`);
+
+        // Update holdings display
         const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
         if (holdingsElement) {
             holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
+            console.log(`📊 Updated holdings display for ${cryptoId}: ${newHoldings}`);
         }
 
-        // Update the AUD value (same as manual update does)
+        // Update the AUD value (same logic as fetchPrices uses)
         const priceElement = document.getElementById(`${cryptoId}-price-aud`);
         const valueElement = document.getElementById(`${cryptoId}-value-aud`);
         if (priceElement && valueElement) {
             const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
             const valueInAud = newHoldings * priceInAud;
+            // Set value without adding extra "$" - formatNumber doesn't add currency symbols
             valueElement.textContent = formatNumber(valueInAud.toFixed(2));
+            console.log(`💰 Updated AUD value for ${cryptoId}: ${valueInAud.toFixed(2)} AUD (price: ${priceInAud}, holdings: ${newHoldings})`);
         }
 
-        console.log(`Added ${rewardAmount} ${cryptoSymbol} from block reward. New balance: ${newHoldings}`);
+        console.log(`✅ Added ${rewardAmount} ${cryptoSymbol} from block reward. New balance: ${newHoldings}`);
     }
     
     // Update total portfolio value
