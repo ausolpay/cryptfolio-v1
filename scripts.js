@@ -4024,10 +4024,13 @@ async function fetchNiceHashBalances() {
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
     try {
-        const endpoint = '/main/api/v2/hashpower/myOrders';
+        // NiceHash myOrders endpoint requires 'ts' timestamp parameter
+        const timestamp = Date.now() + nicehashTimeOffset;
+        const endpoint = `/main/api/v2/hashpower/myOrders?ts=${timestamp}`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
         console.log('📡 Fetching orders from NiceHash...');
+        console.log('📋 Endpoint with timestamp:', endpoint);
 
         let response;
 
