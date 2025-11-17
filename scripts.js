@@ -4023,23 +4023,87 @@ async function fetchNiceHashBalances() {
 
 // Get algorithm information including crypto and name
 function getAlgorithmInfo(algorithmId, pool) {
+    // NiceHash uses string identifiers for algorithms
     const algoMap = {
-        '20': { name: 'SHA256', crypto: 'BTC', cryptoSecondary: null },
-        '27': { name: 'SHA256 (BCH)', crypto: 'BCH', cryptoSecondary: null },
-        '23': { name: 'KawPow', crypto: 'RVN', cryptoSecondary: null },
-        '7': { name: 'Scrypt (DOGE)', crypto: 'DOGE', cryptoSecondary: 'LTC' }, // Palladium dual mine
-        '14': { name: 'Scrypt (LTC)', crypto: 'LTC', cryptoSecondary: null },
-        '25': { name: 'kHeavyHash', crypto: 'KAS', cryptoSecondary: null },
-        '33': { name: 'Octopus', crypto: 'CFX', cryptoSecondary: null },
-        '37': { name: 'Autolykos', crypto: 'ERG', cryptoSecondary: null },
-        '40': { name: 'BeamV3', crypto: 'BEAM', cryptoSecondary: null }
+        // SHA256 variants (Bitcoin)
+        'SHA256ASICBOOST': { name: 'SHA256 AsicBoost', crypto: 'BTC', cryptoSecondary: null },
+        'SHA256': { name: 'SHA256', crypto: 'BTC', cryptoSecondary: null },
+
+        // Scrypt variants (Litecoin, Dogecoin)
+        'SCRYPT': { name: 'Scrypt', crypto: 'LTC', cryptoSecondary: null },
+        'SCRYPTNF': { name: 'Scrypt-N', crypto: 'LTC', cryptoSecondary: null },
+
+        // Other algorithms
+        'X11': { name: 'X11', crypto: 'DASH', cryptoSecondary: null },
+        'X13': { name: 'X13', crypto: 'XVG', cryptoSecondary: null },
+        'KECCAK': { name: 'Keccak', crypto: 'MONA', cryptoSecondary: null },
+        'X15': { name: 'X15', crypto: 'HTML', cryptoSecondary: null },
+        'NIST5': { name: 'Nist5', crypto: 'XMY', cryptoSecondary: null },
+        'NEOSCRYPT': { name: 'NeoScrypt', crypto: 'FTC', cryptoSecondary: null },
+        'LYRA2RE': { name: 'Lyra2RE', crypto: 'VTC', cryptoSecondary: null },
+        'WHIRLPOOLX': { name: 'WhirlpoolX', crypto: 'VNL', cryptoSecondary: null },
+        'QUBIT': { name: 'Qubit', crypto: 'DGB', cryptoSecondary: null },
+        'QUARK': { name: 'Quark', crypto: 'QRK', cryptoSecondary: null },
+        'AXIOM': { name: 'Axiom', crypto: 'AXIOM', cryptoSecondary: null },
+        'LYRA2REV2': { name: 'Lyra2REv2', crypto: 'MONA', cryptoSecondary: null },
+        'SCRYPTJANENF16': { name: 'ScryptJaneNF16', crypto: 'DIA', cryptoSecondary: null },
+        'BLAKE256R8': { name: 'Blake256r8', crypto: 'BLC', cryptoSecondary: null },
+        'BLAKE256R14': { name: 'Blake256r14', crypto: 'DCR', cryptoSecondary: null },
+        'BLAKE256R8VNL': { name: 'Blake256r8vnl', crypto: 'VNL', cryptoSecondary: null },
+        'HODL': { name: 'Hodl', crypto: 'HODL', cryptoSecondary: null },
+        'DAGGERHASHIMOTO': { name: 'DaggerHashimoto', crypto: 'ETH', cryptoSecondary: null },
+        'DECRED': { name: 'Decred', crypto: 'DCR', cryptoSecondary: null },
+        'CRYPTONIGHT': { name: 'CryptoNight', crypto: 'XMR', cryptoSecondary: null },
+        'LBRY': { name: 'Lbry', crypto: 'LBC', cryptoSecondary: null },
+        'EQUIHASH': { name: 'Equihash', crypto: 'ZEC', cryptoSecondary: null },
+        'PASCAL': { name: 'Pascal', crypto: 'PASC', cryptoSecondary: null },
+        'X11GOST': { name: 'X11Gost', crypto: 'SIB', cryptoSecondary: null },
+        'SIA': { name: 'Sia', crypto: 'SC', cryptoSecondary: null },
+        'BLAKE2S': { name: 'Blake2s', crypto: 'NEVA', cryptoSecondary: null },
+        'SKUNK': { name: 'Skunk', crypto: 'SIGT', cryptoSecondary: null },
+        'CRYPTONIGHTV7': { name: 'CryptoNightV7', crypto: 'XMR', cryptoSecondary: null },
+        'CRYPTONIGHTHEAVY': { name: 'CryptoNightHeavy', crypto: 'XHV', cryptoSecondary: null },
+        'LYRA2Z': { name: 'Lyra2z', crypto: 'XZC', cryptoSecondary: null },
+        'X16R': { name: 'X16R', crypto: 'RVN', cryptoSecondary: null },
+        'CRYPTONIGHTV8': { name: 'CryptoNightV8', crypto: 'XMR', cryptoSecondary: null },
+        'SHA256ASICBOOST': { name: 'SHA256AsicBoost', crypto: 'BTC', cryptoSecondary: null },
+        'ZHASH': { name: 'Zhash', crypto: 'BTG', cryptoSecondary: null },
+        'BEAM': { name: 'Beam', crypto: 'BEAM', cryptoSecondary: null },
+        'GRINCUCKAROO29': { name: 'GrinCuckaroo29', crypto: 'GRIN', cryptoSecondary: null },
+        'GRINCUCKATOO31': { name: 'GrinCuckatoo31', crypto: 'GRIN', cryptoSecondary: null },
+        'LYRA2REV3': { name: 'Lyra2REv3', crypto: 'VTC', cryptoSecondary: null },
+        'CRYPTONIGHTR': { name: 'CryptoNightR', crypto: 'XMR', cryptoSecondary: null },
+        'CUCKOOCYCLE': { name: 'CuckooCycle', crypto: 'AE', cryptoSecondary: null },
+        'GRINCUCKAROOD29': { name: 'GrinCuckarood29', crypto: 'GRIN', cryptoSecondary: null },
+        'BEAMV2': { name: 'BeamV2', crypto: 'BEAM', cryptoSecondary: null },
+        'X16RV2': { name: 'X16Rv2', crypto: 'RVN', cryptoSecondary: null },
+        'RANDOMXMONERO': { name: 'RandomXmonero', crypto: 'XMR', cryptoSecondary: null },
+        'EAGLESONG': { name: 'Eaglesong', crypto: 'CKB', cryptoSecondary: null },
+        'CUCKATOO32': { name: 'Cuckatoo32', crypto: 'GRIN', cryptoSecondary: null },
+        'HANDSHAKE': { name: 'Handshake', crypto: 'HNS', cryptoSecondary: null },
+        'KAWPOW': { name: 'KawPow', crypto: 'RVN', cryptoSecondary: null },
+        'CUCKAROO29BFC': { name: 'Cuckaroo29BFC', crypto: 'BFC', cryptoSecondary: null },
+        'BEAMV3': { name: 'BeamV3', crypto: 'BEAM', cryptoSecondary: null },
+        'CUCKAROOZ29': { name: 'Cuckarooz29', crypto: 'GRIN', cryptoSecondary: null },
+        'OCTOPUS': { name: 'Octopus', crypto: 'CFX', cryptoSecondary: null },
+        'AUTOLYKOS': { name: 'Autolykos', crypto: 'ERG', cryptoSecondary: null },
+        'KHEAVYHASH': { name: 'kHeavyHash', crypto: 'KAS', cryptoSecondary: null }
     };
 
-    const info = algoMap[algorithmId.toString()] || { name: 'Unknown', crypto: 'BTC', cryptoSecondary: null };
+    // Convert to uppercase for matching
+    const algoKey = algorithmId.toString().toUpperCase();
+    const info = algoMap[algoKey] || { name: algorithmId, crypto: 'BTC', cryptoSecondary: null };
 
-    // Check pool info for dual mining (Palladium packages)
-    if (pool && pool.name && pool.name.toLowerCase().includes('palladium')) {
-        info.cryptoSecondary = info.cryptoSecondary || 'LTC';
+    // Check pool info for dual mining (Palladium packages mine DOGE+LTC)
+    if (pool && pool.name) {
+        const poolName = pool.name.toLowerCase();
+        if (poolName.includes('palladium') && poolName.includes('doge')) {
+            info.crypto = 'DOGE';
+            info.cryptoSecondary = 'LTC';
+        } else if (poolName.includes('palladium') && poolName.includes('ltc')) {
+            info.crypto = 'LTC';
+            info.cryptoSecondary = 'DOGE';
+        }
     }
 
     return info;
@@ -4478,8 +4542,9 @@ function updateBTCHoldings() {
     
     // Display total (base + additional)
     const totalToDisplay = baseHoldings + additionalBalance;
-    btcHoldingsElement.textContent = formatNumber(totalToDisplay.toFixed(8));
-    
+    // Don't use formatNumber for BTC amounts - it adds commas in wrong places for small decimals
+    btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
+
     // Update total portfolio value
     updateTotalHoldings();
 }
