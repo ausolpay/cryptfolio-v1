@@ -3817,6 +3817,7 @@ let nicehashTimeOffset = 0;
 // Sync time with NiceHash server
 async function syncNiceHashTime() {
     try {
+        // NiceHash public time endpoint (no authentication required)
         const endpoint = '/api/v2/time';
         const url = USE_VERCEL_PROXY
             ? VERCEL_PROXY_ENDPOINT
@@ -3830,9 +3831,14 @@ async function syncNiceHashTime() {
               })
             : await fetch(url);
 
+        if (!response.ok) {
+            throw new Error(`Time sync failed: ${response.status}`);
+        }
+
         const data = await response.json();
         console.log('⏰ Time sync response:', data);
 
+        // Get server time from response (in milliseconds)
         const serverTime = data.serverTime || data.time || Date.now();
         const localTime = Date.now();
         nicehashTimeOffset = serverTime - localTime;
@@ -3843,8 +3849,16 @@ async function syncNiceHashTime() {
             offset: nicehashTimeOffset + 'ms',
             syncedTime: serverTime
         });
+
+        // Warn if offset is too large (>5 seconds)
+        if (Math.abs(nicehashTimeOffset) > 5000) {
+            console.warn(`⚠️ Large time offset detected: ${nicehashTimeOffset}ms`);
+            console.warn('⚠️ Your system clock may be incorrect. This could cause authentication failures.');
+        }
     } catch (error) {
         console.warn('⚠️ Time sync failed, using local time:', error.message);
+        console.warn('⚠️ Authentication may fail if your system clock is not accurate');
+        nicehashTimeOffset = 0; // Use local time
     }
 }
 
@@ -3891,18 +3905,13 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     }
 
     // Generate HMAC-SHA256 signature
-    // CRITICAL FIX: API Secret must be parsed as hex string (remove dashes first)
-    const secretKeyHex = easyMiningSettings.apiSecret.replace(/-/g, '');
-
-    // Parse the hex string properly for HMAC
-    const secretKeyParsed = CryptoJS.enc.Hex.parse(secretKeyHex);
-
-    // Generate signature with properly parsed hex key
-    const signature = CryptoJS.HmacSHA256(message, secretKeyParsed).toString(CryptoJS.enc.Hex);
+    // CRITICAL: API Secret must be used as UTF-8 string (as-is, with dashes)
+    // Based on official NiceHash Python client: hmac.new(bytearray(self.secret, 'utf-8'), message, sha256)
+    const signature = CryptoJS.HmacSHA256(message, easyMiningSettings.apiSecret).toString(CryptoJS.enc.Hex);
 
     console.log('🔐 Auth Debug:');
     console.log('API Key:', easyMiningSettings.apiKey.substring(0, 8) + '...');
-    console.log('API Secret (hex, first 8 chars):', secretKeyHex.substring(0, 8) + '...');
+    console.log('API Secret (first 8 chars):', easyMiningSettings.apiSecret.substring(0, 8) + '...');
     console.log('Org ID:', easyMiningSettings.orgId);
     console.log('Timestamp:', timestamp);
     console.log('Nonce:', nonce);
