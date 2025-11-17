@@ -3831,17 +3831,28 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     const message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}\x00${query}\x00${bodyString}`;
 
     // Generate HMAC-SHA256 signature
-    const signature = CryptoJS.HmacSHA256(message, easyMiningSettings.apiSecret).toString(CryptoJS.enc.Hex);
+    // Remove dashes from API Secret before using as HMAC key (NiceHash may expect this)
+    const secretKey = easyMiningSettings.apiSecret.replace(/-/g, '');
+    console.log('🔑 Using API Secret for signing:', secretKey.length, 'chars (dashes removed)');
+
+    const signature = CryptoJS.HmacSHA256(message, secretKey).toString(CryptoJS.enc.Hex);
 
     console.log('🔐 Auth Debug:');
     console.log('API Key:', easyMiningSettings.apiKey.substring(0, 8) + '...');
+    console.log('API Secret (first 8 chars):', easyMiningSettings.apiSecret.substring(0, 8) + '...');
     console.log('Org ID:', easyMiningSettings.orgId);
     console.log('Timestamp:', timestamp);
     console.log('Nonce:', nonce);
     console.log('Method:', method);
     console.log('Endpoint:', endpoint);
+    console.log('Query:', query || '(empty)');
     console.log('Body:', bodyString || '(empty)');
+    console.log('');
+    console.log('📝 Message to sign (with \\0 shown as |):');
+    console.log(message.replace(/\x00/g, '|'));
+    console.log('');
     console.log('Signature:', signature.substring(0, 16) + '...');
+    console.log('Signature (full):', signature);
 
     return {
         'X-API-KEY': easyMiningSettings.apiKey,
