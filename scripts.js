@@ -4387,6 +4387,17 @@ async function fetchNiceHashOrders() {
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
                 console.log('🔍 COMPLETE first order object with ALL fields:',JSON.stringify(data.list[0], null, 2));
+
+                // Log specific solo mining fields from first order
+                const firstOrder = data.list[0];
+                console.log('📋 Solo mining fields in first order:', {
+                    soloMiningCoin: firstOrder.soloMiningCoin,
+                    soloMiningMergeCoin: firstOrder.soloMiningMergeCoin,
+                    soloMiningRewardAddr: firstOrder.soloMiningRewardAddr,
+                    hasSoloRewardArray: firstOrder.soloReward !== undefined,
+                    soloRewardLength: firstOrder.soloReward?.length || 0,
+                    soloRewardData: firstOrder.soloReward
+                });
             }
 
             for (const order of data.list) {
