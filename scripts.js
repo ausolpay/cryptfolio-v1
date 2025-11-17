@@ -4021,6 +4021,54 @@ async function fetchNiceHashBalances() {
     }
 }
 
+// Get algorithm information including crypto and name
+function getAlgorithmInfo(algorithmId, pool) {
+    const algoMap = {
+        '20': { name: 'SHA256', crypto: 'BTC', cryptoSecondary: null },
+        '27': { name: 'SHA256 (BCH)', crypto: 'BCH', cryptoSecondary: null },
+        '23': { name: 'KawPow', crypto: 'RVN', cryptoSecondary: null },
+        '7': { name: 'Scrypt (DOGE)', crypto: 'DOGE', cryptoSecondary: 'LTC' }, // Palladium dual mine
+        '14': { name: 'Scrypt (LTC)', crypto: 'LTC', cryptoSecondary: null },
+        '25': { name: 'kHeavyHash', crypto: 'KAS', cryptoSecondary: null },
+        '33': { name: 'Octopus', crypto: 'CFX', cryptoSecondary: null },
+        '37': { name: 'Autolykos', crypto: 'ERG', cryptoSecondary: null },
+        '40': { name: 'BeamV3', crypto: 'BEAM', cryptoSecondary: null }
+    };
+
+    const info = algoMap[algorithmId.toString()] || { name: 'Unknown', crypto: 'BTC', cryptoSecondary: null };
+
+    // Check pool info for dual mining (Palladium packages)
+    if (pool && pool.name && pool.name.toLowerCase().includes('palladium')) {
+        info.cryptoSecondary = info.cryptoSecondary || 'LTC';
+    }
+
+    return info;
+}
+
+// Determine package name from order data
+function determinePackageName(order, algoInfo) {
+    // Check if it's from a specific pool (package type)
+    if (order.pool && order.pool.name) {
+        const poolName = order.pool.name.toLowerCase();
+
+        // Package type detection
+        if (poolName.includes('gold')) return 'Gold Package';
+        if (poolName.includes('silver')) return 'Silver Package';
+        if (poolName.includes('palladium') && poolName.includes('doge')) return 'Palladium DOGE Package';
+        if (poolName.includes('palladium') && poolName.includes('ltc')) return 'Palladium LTC Package';
+        if (poolName.includes('palladium')) return 'Palladium Package';
+        if (poolName.includes('chromium')) return 'Chromium Package';
+        if (poolName.includes('titanium')) return 'Titanium Package';
+
+        // If pool name is descriptive, use it
+        return order.pool.name;
+    }
+
+    // Fallback: Use algorithm name + type
+    const typeStr = order.type === 'TEAM' ? ' Team' : '';
+    return `${algoInfo.name}${typeStr}`;
+}
+
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
     try {
@@ -4067,52 +4115,63 @@ async function fetchNiceHashOrders() {
         }
 
         const data = await response.json();
-        console.log('Orders API Response:', data);
+        console.log('📦 Orders API Response:', data);
 
         // Map NiceHash orders to our package format
         const packages = [];
 
         if (data && data.list && Array.isArray(data.list)) {
-            console.log(`Found ${data.list.length} orders`);
+            console.log(`📋 Found ${data.list.length} total orders`);
 
             for (const order of data.list) {
-                // Map algorithm number to crypto type
-                const algoToCrypto = {
-                    '20': 'BTC',  // SHA256
-                    '27': 'BCH',  // SHA256 (Bitcoin Cash)
-                    '23': 'RVN',  // KawPow
-                    '7': 'DOGE',  // Scrypt
-                    '14': 'LTC',  // Scrypt
-                    '25': 'KAS'   // kHeavyHash
-                };
+                console.log('🔍 Order details:', {
+                    id: order.id,
+                    algorithm: order.algorithm,
+                    type: order.type,
+                    market: order.market,
+                    alive: order.alive,
+                    displayMarketFactor: order.displayMarketFactor,
+                    pool: order.pool
+                });
 
-                const crypto = algoToCrypto[order.algorithm.toString()] || 'BTC';
+                // Map algorithm to crypto and package type
+                const algoInfo = getAlgorithmInfo(order.algorithm, order.pool);
+
+                // Determine package name from market/pool/type
+                const packageName = determinePackageName(order, algoInfo);
 
                 const pkg = {
                     id: order.id,
-                    name: order.displayMarketFactor || `${crypto} Mining`,
-                    crypto: crypto,
+                    name: packageName,
+                    crypto: algoInfo.crypto,
+                    cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
                     reward: parseFloat(order.availableAmount || 0),
                     algorithm: order.algorithm.toString(),
-                    hashrate: order.requestedAmount || '0',
+                    algorithmName: algoInfo.name,
+                    hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
                     timeRemaining: calculateTimeRemaining(order.endTs),
                     progress: calculateProgress(order.startTs, order.endTs),
-                    blockFound: false, // This would need to be tracked separately
+                    blockFound: false, // Would need separate tracking
                     isTeam: order.type === 'TEAM',
                     price: parseFloat(order.price || 0),
                     active: order.alive,
-                    // Store full order data for detail view
+                    status: order.alive ? 'active' : 'completed',
+                    startTime: order.startTs,
+                    endTime: order.endTs,
+                    marketFactor: order.displayMarketFactor,
+                    poolName: order.pool?.name || 'Unknown',
+                    // Store full order data
                     fullOrderData: order
                 };
 
                 packages.push(pkg);
-                console.log(`Added package: ${pkg.name} (${pkg.crypto})`);
+                console.log(`✅ Mapped: ${pkg.name} (${pkg.crypto}${pkg.cryptoSecondary ? '+' + pkg.cryptoSecondary : ''}) - Status: ${pkg.status}`);
             }
         } else {
-            console.log('No orders found in response');
+            console.log('⚠️ No orders found in response');
         }
 
-        console.log(`✅ Returning ${packages.length} packages`);
+        console.log(`✅ Returning ${packages.length} packages (${packages.filter(p => p.active).length} active, ${packages.filter(p => !p.active).length} completed)`);
         return packages;
     } catch (error) {
         console.error('❌ Error fetching NiceHash orders:', error);
