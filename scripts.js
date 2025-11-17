@@ -3660,6 +3660,12 @@ async function fetchEasyMiningData() {
         if (hasCredentials) {
             console.log('Attempting to fetch live data from NiceHash API...');
 
+            // Validate credentials format first
+            if (!validateNiceHashCredentials()) {
+                alert('❌ Invalid NiceHash API credentials format!\n\nPlease check the console for details and re-enter your credentials with dashes included.');
+                throw new Error('Invalid credentials format');
+            }
+
             // Try to fetch real data, but use mock data as fallback if CORS fails
             let balances = { available: 0, pending: 0 };
             let orders = [];
@@ -3743,6 +3749,50 @@ async function fetchPublicPackageData() {
     }
 }
 
+// Validate NiceHash API credentials format
+function validateNiceHashCredentials() {
+    const errors = [];
+
+    // Check API Key format (UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!easyMiningSettings.apiKey) {
+        errors.push('API Key is missing');
+    } else if (!uuidRegex.test(easyMiningSettings.apiKey)) {
+        errors.push('API Key format invalid (should be UUID with dashes, e.g., 12345678-1234-1234-1234-123456789abc)');
+    }
+
+    // Check API Secret format (UUID)
+    if (!easyMiningSettings.apiSecret) {
+        errors.push('API Secret is missing');
+    } else if (!uuidRegex.test(easyMiningSettings.apiSecret)) {
+        errors.push('API Secret format invalid (should be UUID with dashes)');
+    }
+
+    // Check Org ID format (UUID)
+    if (!easyMiningSettings.orgId) {
+        errors.push('Organization ID is missing');
+    } else if (!uuidRegex.test(easyMiningSettings.orgId)) {
+        errors.push('Organization ID format invalid (should be UUID with dashes)');
+    }
+
+    if (errors.length > 0) {
+        console.error('❌ NiceHash Credential Validation Failed:');
+        errors.forEach(err => console.error('  - ' + err));
+        console.log('');
+        console.log('📝 NiceHash credentials should look like:');
+        console.log('  API Key:    12345678-1234-1234-1234-123456789abc');
+        console.log('  API Secret: abcdefab-abcd-abcd-abcd-abcdefabcdef');
+        console.log('  Org ID:     87654321-4321-4321-4321-987654321fed');
+        console.log('');
+        console.log('⚠️  Make sure you copied them correctly from NiceHash with dashes included!');
+        return false;
+    }
+
+    console.log('✅ NiceHash credentials format validated');
+    return true;
+}
+
 // Generate authentication headers for NiceHash API
 function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     // NiceHash requires specific authentication headers:
@@ -3751,10 +3801,32 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     const timestamp = Date.now().toString();
     const nonce = crypto.randomUUID();
 
+    // Prepare body string for signature
+    // For GET requests: empty string
+    // For POST requests: stringified JSON (if body is object) or the body as-is
+    let bodyString = '';
+    if (body) {
+        bodyString = typeof body === 'string' ? body : JSON.stringify(body);
+    }
+
     // Create signature using HMAC-SHA256
-    // Message format: apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0body
-    const message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}\x00${body || ''}`;
-    const signature = CryptoJS.HmacSHA256(message, easyMiningSettings.apiSecret).toString();
+    // NiceHash message format (exact): apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0query\0body
+    // For most calls, query is empty, so: apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0\0body
+    const query = ''; // Empty for most endpoints
+    const message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}\x00${query}\x00${bodyString}`;
+
+    // Generate HMAC-SHA256 signature
+    const signature = CryptoJS.HmacSHA256(message, easyMiningSettings.apiSecret).toString(CryptoJS.enc.Hex);
+
+    console.log('🔐 Auth Debug:');
+    console.log('API Key:', easyMiningSettings.apiKey.substring(0, 8) + '...');
+    console.log('Org ID:', easyMiningSettings.orgId);
+    console.log('Timestamp:', timestamp);
+    console.log('Nonce:', nonce);
+    console.log('Method:', method);
+    console.log('Endpoint:', endpoint);
+    console.log('Body:', bodyString || '(empty)');
+    console.log('Signature:', signature.substring(0, 16) + '...');
 
     return {
         'X-API-KEY': easyMiningSettings.apiKey,
