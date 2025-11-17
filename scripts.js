@@ -4024,13 +4024,14 @@ async function fetchNiceHashBalances() {
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
     try {
-        // NiceHash myOrders endpoint requires 'ts' timestamp parameter
+        // NiceHash myOrders endpoint requires 'ts' (timestamp), 'op' (operation), and 'limit' parameters
+        // op=LE means "Less than or Equal" - gets orders created before or at the timestamp
         const timestamp = Date.now() + nicehashTimeOffset;
-        const endpoint = `/main/api/v2/hashpower/myOrders?ts=${timestamp}`;
+        const endpoint = `/main/api/v2/hashpower/myOrders?ts=${timestamp}&op=LE&limit=100`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
         console.log('📡 Fetching orders from NiceHash...');
-        console.log('📋 Endpoint with timestamp:', endpoint);
+        console.log('📋 Endpoint:', endpoint);
 
         let response;
 
