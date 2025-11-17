@@ -747,13 +747,18 @@ async function fetchPrices() {
             // Always recalculate AUD value, even if price hasn't changed
             // This ensures holdings updates are reflected immediately
             let holdings;
-            if (crypto.id === 'bitcoin' && easyMiningSettings && (easyMiningSettings.includeAvailableBTC || easyMiningSettings.includePendingBTC)) {
-                // For Bitcoin with EasyMining, get the total from the display (which includes NiceHash balance)
+            if (crypto.id === 'bitcoin') {
+                // For Bitcoin, ALWAYS read from display element (includes NiceHash balance + user holdings)
+                // This ensures the AUD value persists correctly regardless of toggle state
                 const btcHoldingsElement = document.getElementById('bitcoin-holdings');
-                const holdingsText = btcHoldingsElement ? btcHoldingsElement.textContent : 'ELEMENT NOT FOUND';
-                holdings = btcHoldingsElement ? parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) : 0;
-                console.log(`🔍 fetchPrices BTC - Holdings element text: "${holdingsText}"`);
-                console.log(`🔍 fetchPrices BTC - Parsed holdings: ${holdings}`);
+                if (btcHoldingsElement && btcHoldingsElement.textContent) {
+                    holdings = parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) || 0;
+                    console.log(`🔍 fetchPrices BTC - Reading from display: ${holdings}`);
+                } else {
+                    // Fallback to localStorage if display element not found
+                    holdings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
+                    console.log(`⚠️ fetchPrices BTC - Display not found, using localStorage: ${holdings}`);
+                }
             } else {
                 // For other cryptos, get from localStorage
                 holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
