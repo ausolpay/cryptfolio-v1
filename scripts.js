@@ -4377,12 +4377,29 @@ async function fetchNiceHashOrders() {
         if (data && data.list && Array.isArray(data.list)) {
             console.log(`📋 Found ${data.list.length} total orders`);
 
+            // Quick scan: How many orders have soloReward arrays?
+            const ordersWithSoloReward = data.list.filter(o => o.soloReward && Array.isArray(o.soloReward) && o.soloReward.length > 0);
+            console.log(`🎁 Orders with soloReward arrays: ${ordersWithSoloReward.length} out of ${data.list.length}`);
+            if (ordersWithSoloReward.length > 0) {
+                console.log('🎁 Order IDs with soloReward:', ordersWithSoloReward.map(o => o.id));
+            }
+
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
                 console.log('🔍 COMPLETE first order object with ALL fields:',JSON.stringify(data.list[0], null, 2));
             }
 
             for (const order of data.list) {
+                // Log if this order has soloReward array (BEFORE any processing)
+                if (order.soloReward && Array.isArray(order.soloReward)) {
+                    console.log('🚨🚨🚨 ORDER WITH SOLOREWARD ARRAY DETECTED! 🚨🚨🚨');
+                    console.log('Order ID:', order.id);
+                    console.log('Is Alive (active):', order.alive);
+                    console.log('Algorithm:', order.algorithm?.algorithm || order.algorithm);
+                    console.log('soloReward array length:', order.soloReward.length);
+                    console.log('COMPLETE soloReward array:', JSON.stringify(order.soloReward, null, 2));
+                }
+
                 console.log('🔍 Order summary:', {
                     id: order.id,
                     algorithm: order.algorithm?.algorithm || order.algorithm,
