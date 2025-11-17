@@ -4303,7 +4303,19 @@ async function fetchOrderRewards(orderId) {
         }
 
         const data = await response.json();
-        console.log(`✅ Rewards for order ${orderId}:`, data);
+        console.log(`✅ Rewards response for order ${orderId}:`, JSON.stringify(data, null, 2));
+
+        // Log specific fields to understand structure
+        if (data) {
+            console.log(`  - Has 'list' property: ${data.list !== undefined}`);
+            console.log(`  - Has 'rewards' property: ${data.rewards !== undefined}`);
+            console.log(`  - Has 'items' property: ${data.items !== undefined}`);
+            console.log(`  - Data keys:`, Object.keys(data));
+            if (data.list) console.log(`  - list length: ${data.list?.length}`);
+            if (data.rewards) console.log(`  - rewards length: ${data.rewards?.length}`);
+            if (data.items) console.log(`  - items length: ${data.items?.length}`);
+        }
+
         return data;
     } catch (error) {
         console.error(`❌ Error fetching rewards for order ${orderId}:`, error);
@@ -4406,19 +4418,37 @@ async function fetchNiceHashOrders() {
                     try {
                         const rewardsData = await fetchOrderRewards(order.id);
 
-                        if (rewardsData && rewardsData.list && Array.isArray(rewardsData.list) && rewardsData.list.length > 0) {
-                            // Has rewards!
-                            blockFound = true;
-                            // Sum up all rewards
-                            totalRewardBTC = rewardsData.list.reduce((sum, reward) => {
-                                return sum + (parseFloat(reward.amount || 0));
-                            }, 0);
-                            console.log(`✅ Order ${order.id} found ${rewardsData.list.length} reward(s)! Total: ${totalRewardBTC} BTC`);
+                        if (rewardsData) {
+                            // Check multiple possible response formats
+                            let rewardsList = null;
+
+                            if (rewardsData.list && Array.isArray(rewardsData.list)) {
+                                rewardsList = rewardsData.list;
+                            } else if (rewardsData.rewards && Array.isArray(rewardsData.rewards)) {
+                                rewardsList = rewardsData.rewards;
+                            } else if (rewardsData.items && Array.isArray(rewardsData.items)) {
+                                rewardsList = rewardsData.items;
+                            } else if (Array.isArray(rewardsData)) {
+                                rewardsList = rewardsData;
+                            }
+
+                            if (rewardsList && rewardsList.length > 0) {
+                                // Has rewards!
+                                blockFound = true;
+                                // Sum up all rewards
+                                totalRewardBTC = rewardsList.reduce((sum, reward) => {
+                                    return sum + (parseFloat(reward.amount || reward.value || reward.reward || 0));
+                                }, 0);
+                                console.log(`✅ Order ${order.id} found ${rewardsList.length} reward(s)! Total: ${totalRewardBTC} BTC`);
+                                console.log(`   Rewards structure:`, rewardsList[0]);
+                            } else {
+                                console.log(`❌ Order ${order.id} (completed) has no rewards - Response:`, rewardsData);
+                            }
                         } else {
-                            console.log(`❌ Order ${order.id} (completed) has no rewards`);
+                            console.log(`❌ Order ${order.id} (completed) - null response from rewards endpoint`);
                         }
                     } catch (error) {
-                        console.warn(`⚠️ Could not fetch rewards for order ${order.id}, continuing...`);
+                        console.warn(`⚠️ Could not fetch rewards for order ${order.id}, continuing...`, error);
                         // Continue with blockFound = false, totalRewardBTC = 0
                     }
                 } else {
