@@ -4261,29 +4261,42 @@ async function fetchNiceHashOrders() {
                     type: order.type,
                     market: order.market,
                     alive: order.alive,
+                    availableAmount: order.availableAmount,
+                    payedAmount: order.payedAmount,
+                    price: order.price,
+                    amount: order.amount,
+                    requestedAmount: order.requestedAmount,
+                    startTs: order.startTs,
+                    endTs: order.endTs,
                     displayMarketFactor: order.displayMarketFactor,
                     pool: order.pool
                 });
 
                 // Map algorithm to crypto and package type
                 const algoInfo = getAlgorithmInfo(order.algorithm, order.pool);
+                console.log(`📌 Algorithm Info for order ${order.id}:`, algoInfo);
 
                 // Determine package name from market/pool/type
                 const packageName = determinePackageName(order, algoInfo);
+                console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Calculate if package found a block (has rewards)
-                const rewardAmount = parseFloat(order.availableAmount || 0);
-                const hasRewards = rewardAmount > 0;
+                // Calculate rewards (availableAmount is what's available to withdraw, payedAmount is already paid out)
+                const availableReward = parseFloat(order.availableAmount || 0);
+                const paidReward = parseFloat(order.payedAmount || 0);
+                const totalReward = availableReward + paidReward;
+                const hasRewards = totalReward > 0;
 
-                // Calculate total price spent on package (payedAmount is total paid)
-                const priceSpent = parseFloat(order.payedAmount || order.price || 0);
+                // Calculate total price spent on package (amount is total BTC spent on order)
+                const priceSpent = parseFloat(order.amount || 0);
 
                 const pkg = {
                     id: order.id,
                     name: packageName,
                     crypto: algoInfo.crypto,
                     cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
-                    reward: rewardAmount,
+                    reward: totalReward, // Total reward (available + already paid)
+                    availableReward: availableReward, // Available to withdraw
+                    paidReward: paidReward, // Already paid out
                     algorithm: order.algorithm.toString(),
                     algorithmName: algoInfo.name,
                     hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
@@ -4880,13 +4893,25 @@ function showPackageDetailPage(pkg) {
         </div>
         ` : ''}
         <div class="stat-item">
-            <span class="stat-label">Price:</span>
-            <span class="stat-value">$${pkg.price} AUD</span>
+            <span class="stat-label">Price Spent:</span>
+            <span class="stat-value">${pkg.price.toFixed(8)} BTC</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Reward:</span>
-            <span class="stat-value">${pkg.reward} ${pkg.crypto}</span>
+            <span class="stat-label">Total Reward:</span>
+            <span class="stat-value">${pkg.reward.toFixed(8)} ${pkg.crypto}</span>
         </div>
+        ${pkg.availableReward > 0 ? `
+        <div class="stat-item">
+            <span class="stat-label">Available:</span>
+            <span class="stat-value" style="color: #00ff00;">${pkg.availableReward.toFixed(8)} ${pkg.crypto}</span>
+        </div>
+        ` : ''}
+        ${pkg.paidReward > 0 ? `
+        <div class="stat-item">
+            <span class="stat-label">Already Paid:</span>
+            <span class="stat-value">${pkg.paidReward.toFixed(8)} ${pkg.crypto}</span>
+        </div>
+        ` : ''}
         <div class="stat-item">
             <span class="stat-label">Status:</span>
             <span class="stat-value" style="color: ${pkg.active ? '#00ff00' : '#ff0000'};">${pkg.active ? 'Active' : 'Inactive'}</span>

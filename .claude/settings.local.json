@@ -1,11 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:www.nicehash.com)",
-      "WebSearch",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(git add:*)"
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

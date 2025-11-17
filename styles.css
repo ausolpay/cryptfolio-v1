@@ -1048,6 +1048,7 @@ body.light-mode .conversion-input-group input {
 .easymining-section {
     margin: 20px auto;
     max-width: 1400px;
+    min-width: 300px; /* Match crypto box min-width for consistent responsive behavior */
     background-color: #1e1e1e;
     border: 1px solid #333;
     border-radius: 8px;
