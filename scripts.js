@@ -3857,6 +3857,9 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     const timestamp = (Date.now() + nicehashTimeOffset).toString();
     const nonce = crypto.randomUUID();
 
+    // Parse endpoint to separate path and query string
+    const [path, queryString] = endpoint.includes('?') ? endpoint.split('?') : [endpoint, ''];
+
     // Prepare body string for signature
     // For GET requests: empty string
     // For POST requests: stringified JSON (if body is object) or the body as-is
@@ -3867,40 +3870,45 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
 
     // Create signature using HMAC-SHA256
     // NiceHash CORRECT format (from official docs):
-    // APIKey\0XTime\0XNonce\0\0OrganizationID\0\0HTTPMethod\0Path\0QueryString
+    // APIKey\0XTime\0XNonce\0\0OrganizationID\0\0HTTPMethod\0Path\0QueryString\0Body
     // NOTE: API Key comes FIRST, then timestamp!
-    const query = ''; // Empty for most endpoints
 
-    // Build message in CORRECT order: APIKey, Time, Nonce, empty, OrgID, empty, Method, Path, Query
-    // For GET requests with no query: don't include trailing null byte
-    let message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}`;
+    // Build message in CORRECT order with proper null byte separators
+    // Format: apiKey + \0 + time + \0 + nonce + \0 + \0 + orgId + \0 + \0 + method + \0 + path + \0 + query
+    let message = easyMiningSettings.apiKey + '\x00' +
+                  timestamp + '\x00' +
+                  nonce + '\x00' +
+                  '\x00' +
+                  easyMiningSettings.orgId + '\x00' +
+                  '\x00' +
+                  method + '\x00' +
+                  path + '\x00' +
+                  queryString;
 
-    // Add query string if present
-    if (query) {
-        message += `\x00${query}`;
-    }
-
-    // For POST requests, add body
+    // For POST/PUT requests with body, add body after another null separator
     if (bodyString) {
-        message += `\x00${bodyString}`;
+        message += '\x00' + bodyString;
     }
 
     // Generate HMAC-SHA256 signature
-    // API Secret should be used WITHOUT dashes (hex string only)
-    const secretKey = easyMiningSettings.apiSecret.replace(/-/g, '');
-    console.log('🔑 Using API Secret for signing:', secretKey.length, 'chars (dashes removed)');
+    // CRITICAL FIX: API Secret must be parsed as hex string (remove dashes first)
+    const secretKeyHex = easyMiningSettings.apiSecret.replace(/-/g, '');
 
-    const signature = CryptoJS.HmacSHA256(message, secretKey).toString(CryptoJS.enc.Hex);
+    // Parse the hex string properly for HMAC
+    const secretKeyParsed = CryptoJS.enc.Hex.parse(secretKeyHex);
+
+    // Generate signature with properly parsed hex key
+    const signature = CryptoJS.HmacSHA256(message, secretKeyParsed).toString(CryptoJS.enc.Hex);
 
     console.log('🔐 Auth Debug:');
     console.log('API Key:', easyMiningSettings.apiKey.substring(0, 8) + '...');
-    console.log('API Secret (first 8 chars):', easyMiningSettings.apiSecret.substring(0, 8) + '...');
+    console.log('API Secret (hex, first 8 chars):', secretKeyHex.substring(0, 8) + '...');
     console.log('Org ID:', easyMiningSettings.orgId);
     console.log('Timestamp:', timestamp);
     console.log('Nonce:', nonce);
     console.log('Method:', method);
-    console.log('Endpoint:', endpoint);
-    console.log('Query:', query || '(empty)');
+    console.log('Path:', path);
+    console.log('Query:', queryString || '(empty)');
     console.log('Body:', bodyString || '(empty)');
     console.log('');
     console.log('📝 Message to sign (with \\0 shown as |):');
