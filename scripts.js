@@ -4267,6 +4267,50 @@ function determinePackageName(order, algoInfo) {
     return `${algoInfo.name}${typeStr}`;
 }
 
+// Fetch rewards for a specific order
+async function fetchOrderRewards(orderId) {
+    try {
+        const timestamp = Date.now() + nicehashTimeOffset;
+        const endpoint = `/main/api/v2/hashpower/order/${orderId}/rewards`;
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        console.log(`💰 Fetching rewards for order ${orderId}...`);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: headers
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: headers
+            });
+        }
+
+        if (!response.ok) {
+            console.warn(`⚠️ Failed to fetch rewards for order ${orderId}: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        console.log(`✅ Rewards for order ${orderId}:`, data);
+        return data;
+    } catch (error) {
+        console.error(`❌ Error fetching rewards for order ${orderId}:`, error);
+        return null;
+    }
+}
+
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
     try {
@@ -4352,18 +4396,27 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Calculate BTC earnings
-                // availableAmount = pending/unconfirmed rewards (not yet paid)
-                // payedAmount = CONFIRMED rewards already paid out
-                const availableBTC = parseFloat(order.availableAmount || 0);
-                const paidBTC = parseFloat(order.payedAmount || 0);
-                const totalBTC = availableBTC + paidBTC;
+                // Fetch rewards for this order from the rewards endpoint
+                const rewardsData = await fetchOrderRewards(order.id);
 
-                // blockFound should be TRUE only for orders with CONFIRMED (paid) rewards
-                // Only count payedAmount because availableAmount could be pending/unconfirmed
-                const blockFound = paidBTC > 0.00000001; // Minimum threshold: 1 satoshi of confirmed rewards
+                // Determine if block was found based on rewards endpoint
+                let blockFound = false;
+                let totalRewardBTC = 0;
 
-                console.log(`🔍 Order ${order.id}: availableBTC=${availableBTC}, paidBTC=${paidBTC}, totalBTC=${totalBTC}, blockFound=${blockFound} (using paidBTC only)`);
+                if (rewardsData && rewardsData.list && Array.isArray(rewardsData.list) && rewardsData.list.length > 0) {
+                    // Has rewards!
+                    blockFound = true;
+                    // Sum up all rewards
+                    totalRewardBTC = rewardsData.list.reduce((sum, reward) => {
+                        return sum + (parseFloat(reward.amount || 0));
+                    }, 0);
+                    console.log(`✅ Order ${order.id} found ${rewardsData.list.length} reward(s)! Total: ${totalRewardBTC} BTC`);
+                } else {
+                    console.log(`❌ Order ${order.id} has no rewards`);
+                }
+
+                // Calculate total price spent on package (amount is total BTC spent on order)
+                const priceSpent = parseFloat(order.amount || 0);
 
                 // Get standard block reward for this crypto
                 const blockReward = getBlockReward(algoInfo.crypto);
@@ -4376,24 +4429,19 @@ async function fetchNiceHashOrders() {
                     cryptoReward = 0; // No block found yet
                 }
 
-                // Calculate total price spent on package (amount is total BTC spent on order)
-                const priceSpent = parseFloat(order.amount || 0);
-
                 const pkg = {
                     id: order.id,
                     name: packageName,
                     crypto: algoInfo.crypto,
                     cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
                     reward: cryptoReward, // Crypto reward (2500 RVN, 3.125 BTC, etc.)
-                    btcEarnings: totalBTC, // Total BTC earnings
-                    availableBTC: availableBTC, // Available BTC to withdraw
-                    paidBTC: paidBTC, // Already paid out BTC
+                    btcEarnings: totalRewardBTC, // Total BTC earnings from rewards endpoint
                     algorithm: order.algorithm.toString(),
                     algorithmName: algoInfo.name,
                     hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
                     timeRemaining: calculateTimeRemaining(order.endTs),
                     progress: calculateProgress(order.startTs, order.endTs),
-                    blockFound: blockFound, // True if block was found
+                    blockFound: blockFound, // True if block was found (from rewards endpoint)
                     isTeam: order.type === 'TEAM',
                     price: priceSpent, // BTC amount spent on this package
                     active: order.alive,
@@ -4583,7 +4631,7 @@ function displayActivePackages() {
 
         console.log(`📦 Found ${packagesWithBlocks.length} packages with confirmed rewards:`);
         packagesWithBlocks.forEach(pkg => {
-            console.log(`  ✓ ${pkg.name} (${pkg.id}): paidBTC=${pkg.paidBTC}, availableBTC=${pkg.availableBTC}, blockFound=${pkg.blockFound}`);
+            console.log(`  ✓ ${pkg.name} (${pkg.id}): btcEarnings=${pkg.btcEarnings}, blockFound=${pkg.blockFound}`);
         });
 
         filteredPackages = packagesWithBlocks;
@@ -4659,8 +4707,7 @@ function updateStats() {
             name: pkg.name,
             btcEarnings: pkg.btcEarnings,
             blockFound: pkg.blockFound,
-            availableBTC: pkg.availableBTC,
-            paidBTC: pkg.paidBTC
+            price: pkg.price
         })));
     }
 
@@ -4901,7 +4948,7 @@ async function autoUpdateCryptoHoldings(newBlocks) {
         const cryptoSymbol = 'BTC';
         const rewardAmount = pkg.btcEarnings || 0;
 
-        console.log(`💰 Package ${pkg.name} (${pkg.id}): Earned ${rewardAmount} BTC (Available: ${pkg.availableBTC}, Paid: ${pkg.paidBTC})`);
+        console.log(`💰 Package ${pkg.name} (${pkg.id}): Earned ${rewardAmount} BTC from rewards endpoint`);
 
         if (rewardAmount === 0) {
             console.log(`⚠️ Skipping ${pkg.name} - no BTC earnings`);
