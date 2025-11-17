@@ -3831,14 +3831,17 @@ async function syncNiceHashTime() {
             : await fetch(url);
 
         const data = await response.json();
-        const serverTime = data.serverTime;
+        console.log('⏰ Time sync response:', data);
+
+        const serverTime = data.serverTime || data.time || Date.now();
         const localTime = Date.now();
         nicehashTimeOffset = serverTime - localTime;
 
         console.log('⏰ Time sync complete:', {
             serverTime,
             localTime,
-            offset: nicehashTimeOffset + 'ms'
+            offset: nicehashTimeOffset + 'ms',
+            syncedTime: serverTime
         });
     } catch (error) {
         console.warn('⚠️ Time sync failed, using local time:', error.message);
@@ -3869,9 +3872,15 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     const query = ''; // Empty for most endpoints
 
     // Build message in CORRECT order: APIKey, Time, Nonce, empty, OrgID, empty, Method, Path, Query
-    let message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}\x00${query}`;
+    // For GET requests with no query: don't include trailing null byte
+    let message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}`;
 
-    // For POST requests, add body after query
+    // Add query string if present
+    if (query) {
+        message += `\x00${query}`;
+    }
+
+    // For POST requests, add body
     if (bodyString) {
         message += `\x00${bodyString}`;
     }
