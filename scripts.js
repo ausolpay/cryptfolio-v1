@@ -4474,11 +4474,18 @@ async function fetchNiceHashOrders() {
                     cryptoReward = 0; // No block found yet
                 }
 
+                // Determine mining type display (e.g., "BTC Mining", "BCH Mining")
+                let miningType = `${algoInfo.crypto} Mining`;
+                if (algoInfo.cryptoSecondary) {
+                    miningType = `${algoInfo.crypto}+${algoInfo.cryptoSecondary} Dual Mining`;
+                }
+
                 const pkg = {
                     id: order.id,
                     name: packageName,
                     crypto: algoInfo.crypto,
                     cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
+                    miningType: miningType, // "BTC Mining", "BCH Mining", etc.
                     reward: cryptoReward, // Crypto reward (2500 RVN, 3.125 BTC, etc.)
                     btcEarnings: totalRewardBTC, // Total BTC earnings from confirmed rewards
                     confirmedBlocks: confirmedBlockCount, // Number of confirmed blocks found
@@ -4501,13 +4508,32 @@ async function fetchNiceHashOrders() {
                 };
 
                 packages.push(pkg);
-                console.log(`✅ Mapped: ${pkg.name} (${pkg.crypto}${pkg.cryptoSecondary ? '+' + pkg.cryptoSecondary : ''}) - Status: ${pkg.status}`);
+                console.log(`✅ Mapped: ${pkg.name} (${pkg.miningType}) - Status: ${pkg.status} - Blocks: ${pkg.confirmedBlocks} - BTC: ${pkg.btcEarnings}`);
             }
         } else {
             console.log('⚠️ No orders found in response');
         }
 
-        console.log(`✅ Returning ${packages.length} packages (${packages.filter(p => p.active).length} active, ${packages.filter(p => !p.active).length} completed)`);
+        // Detailed breakdown for debugging
+        const activePackages = packages.filter(p => p.active);
+        const completedPackages = packages.filter(p => !p.active);
+        const packagesWithBlocks = packages.filter(p => p.blockFound);
+        const activeWithBlocks = activePackages.filter(p => p.blockFound);
+        const completedWithBlocks = completedPackages.filter(p => p.blockFound);
+
+        console.log(`\n📊 PACKAGE SUMMARY:`);
+        console.log(`  Total: ${packages.length}`);
+        console.log(`  Active: ${activePackages.length} (${activeWithBlocks.length} with blocks)`);
+        console.log(`  Completed: ${completedPackages.length} (${completedWithBlocks.length} with blocks)`);
+        console.log(`  Total with confirmed blocks: ${packagesWithBlocks.length}`);
+
+        if (completedWithBlocks.length > 0) {
+            console.log(`\n🎉 Completed packages with confirmed blocks:`);
+            completedWithBlocks.forEach(pkg => {
+                console.log(`  ✓ ${pkg.name} - ${pkg.miningType} - ${pkg.confirmedBlocks} blocks - ${pkg.btcEarnings} BTC`);
+            });
+        }
+
         return packages;
     } catch (error) {
         console.error('❌ Error fetching NiceHash orders:', error);
@@ -5220,18 +5246,18 @@ function showPackageDetailPage(pkg) {
 
     // Set package name and subtitle
     document.getElementById('package-detail-page-name').textContent = pkg.name;
-    document.getElementById('package-detail-page-subtitle').textContent = `${pkg.crypto} Mining Package`;
+    document.getElementById('package-detail-page-subtitle').textContent = pkg.miningType || `${pkg.crypto} Mining`;
 
     // Populate package info
     const infoGrid = document.getElementById('package-detail-page-info');
     infoGrid.innerHTML = `
         <div class="stat-item">
-            <span class="stat-label">Cryptocurrency:</span>
-            <span class="stat-value" style="color: #ffa500;">${pkg.crypto}</span>
+            <span class="stat-label">Mining Type:</span>
+            <span class="stat-value" style="color: #ffa500;">${pkg.miningType || `${pkg.crypto} Mining`}</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Algorithm:</span>
-            <span class="stat-value">${pkg.algorithmName || pkg.algorithm}</span>
+            <span class="stat-label">Cryptocurrency:</span>
+            <span class="stat-value" style="color: #00ff00;">${pkg.crypto}${pkg.cryptoSecondary ? '+' + pkg.cryptoSecondary : ''}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Hashrate:</span>
@@ -5267,19 +5293,30 @@ function showPackageDetailPage(pkg) {
             <span class="stat-label">BTC Cost:</span>
             <span class="stat-value">${pkg.price.toFixed(8)} BTC</span>
         </div>
+        ${pkg.blockFound && pkg.confirmedBlocks > 0 ? `
         <div class="stat-item">
-            <span class="stat-label">Reward:</span>
-            <span class="stat-value" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${pkg.reward > 0 ? pkg.reward.toFixed(pkg.crypto === 'RVN' || pkg.crypto === 'DOGE' ? 0 : 8) : '0'} ${pkg.crypto}</span>
+            <span class="stat-label">Blocks Found:</span>
+            <span class="stat-value" style="color: #00ff00;">🚀 ${pkg.confirmedBlocks} Block${pkg.confirmedBlocks > 1 ? 's' : ''}</span>
         </div>
+        ` : ''}
         ${pkg.btcEarnings > 0 ? `
         <div class="stat-item">
             <span class="stat-label">BTC Earnings:</span>
-            <span class="stat-value">${pkg.btcEarnings.toFixed(8)} BTC</span>
+            <span class="stat-value" style="color: #00ff00;">${pkg.btcEarnings.toFixed(8)} BTC</span>
         </div>
-        ` : ''}
+        <div class="stat-item">
+            <span class="stat-label">BTC in AUD:</span>
+            <span class="stat-value" style="color: #00ff00;">$${convertBTCtoAUD(pkg.btcEarnings).toFixed(2)} AUD</span>
+        </div>
+        ` : `
+        <div class="stat-item">
+            <span class="stat-label">BTC Earnings:</span>
+            <span class="stat-value" style="color: #888;">No blocks found yet</span>
+        </div>
+        `}
         <div class="stat-item">
             <span class="stat-label">Status:</span>
-            <span class="stat-value" style="color: ${pkg.active ? '#00ff00' : '#ff0000'};">${pkg.active ? 'Active' : 'Inactive'}</span>
+            <span class="stat-value" style="color: ${pkg.active ? '#00ff00' : '#888'};">${pkg.active ? 'Active' : 'Completed'}</span>
         </div>
     `;
 
