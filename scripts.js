@@ -4846,13 +4846,22 @@ async function autoUpdateCryptoHoldings(newBlocks) {
         const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
         const newHoldings = currentHoldings + rewardAmount;
         setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
-        
+
         // Update UI if element exists
         const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
         if (holdingsElement) {
             holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
         }
-        
+
+        // Update the AUD value (same as manual update does)
+        const priceElement = document.getElementById(`${cryptoId}-price-aud`);
+        const valueElement = document.getElementById(`${cryptoId}-value-aud`);
+        if (priceElement && valueElement) {
+            const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+            const valueInAud = newHoldings * priceInAud;
+            valueElement.textContent = formatNumber(valueInAud.toFixed(2));
+        }
+
         console.log(`Added ${rewardAmount} ${cryptoSymbol} from block reward. New balance: ${newHoldings}`);
     }
     
