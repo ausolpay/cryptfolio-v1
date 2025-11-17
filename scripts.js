@@ -3666,6 +3666,9 @@ async function fetchEasyMiningData() {
                 throw new Error('Missing credentials');
             }
 
+            // Sync time with NiceHash server first
+            await syncNiceHashTime();
+
             // Try to fetch real data, but use mock data as fallback if CORS fails
             let balances = { available: 0, pending: 0 };
             let orders = [];
@@ -3808,12 +3811,47 @@ function validateNiceHashCredentials() {
     return true;
 }
 
+// Cached server time offset
+let nicehashTimeOffset = 0;
+
+// Sync time with NiceHash server
+async function syncNiceHashTime() {
+    try {
+        const endpoint = '/api/v2/time';
+        const url = USE_VERCEL_PROXY
+            ? VERCEL_PROXY_ENDPOINT
+            : `https://api2.nicehash.com${endpoint}`;
+
+        const response = USE_VERCEL_PROXY
+            ? await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint, method: 'GET', headers: {} })
+              })
+            : await fetch(url);
+
+        const data = await response.json();
+        const serverTime = data.serverTime;
+        const localTime = Date.now();
+        nicehashTimeOffset = serverTime - localTime;
+
+        console.log('⏰ Time sync complete:', {
+            serverTime,
+            localTime,
+            offset: nicehashTimeOffset + 'ms'
+        });
+    } catch (error) {
+        console.warn('⚠️ Time sync failed, using local time:', error.message);
+    }
+}
+
 // Generate authentication headers for NiceHash API
 function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     // NiceHash requires specific authentication headers:
-    // X-API-KEY, X-ORGANIZATION-ID, X-SIGNATURE, X-TIME, X-NONCE
+    // X-Auth, X-Time, X-Nonce, X-Request-Id, X-Organization-Id
 
-    const timestamp = Date.now().toString();
+    // Use server-synchronized time
+    const timestamp = (Date.now() + nicehashTimeOffset).toString();
     const nonce = crypto.randomUUID();
 
     // Prepare body string for signature
