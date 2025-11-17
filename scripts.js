@@ -4411,18 +4411,23 @@ async function fetchNiceHashOrders() {
                 console.log(`📦 Package name determined: "${packageName}"`);
 
                 // Determine if block was found based on soloReward array
-                // A block is only "found" when:
-                // 1. soloReward array exists and has entries
-                // 2. payoutRewardBtc > 0 (there's an actual reward)
-                // 3. depositComplete === true OR confirmations >= minConfirmations
+                // According to NiceHash API docs, soloReward array contains:
+                // - payoutRewardBtc: actual reward amount in BTC
+                // - depositComplete: true when reward is deposited to wallet
+                // - confirmations: current confirmation count
+                // - minConfirmations: required confirmations
+                // - blockHeight, blockHash, coin, etc.
+
                 let blockFound = false;
                 let totalRewardBTC = 0;
                 let confirmedBlockCount = 0;
+                let pendingBlockCount = 0;
+                let totalPendingRewardBTC = 0;
 
                 if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
-                    console.log(`🎁 Order ${order.id} has ${order.soloReward.length} soloReward entries`);
+                    console.log(`🎁 Order ${order.id} has ${order.soloReward.length} soloReward entries - FULL DATA:`, order.soloReward);
 
-                    // Check each reward entry for confirmed blocks
+                    // Check each reward entry
                     order.soloReward.forEach((reward, index) => {
                         const rewardBtc = parseFloat(reward.payoutRewardBtc || 0);
                         const isDeposited = reward.depositComplete === true;
@@ -4430,34 +4435,56 @@ async function fetchNiceHashOrders() {
                         const minConfirmations = parseInt(reward.minConfirmations || 0);
                         const isConfirmed = confirmations >= minConfirmations;
 
-                        console.log(`  📦 Reward #${index + 1}:`, {
+                        console.log(`  📦 Reward #${index + 1} DETAILS:`, {
+                            id: reward.id,
+                            orderId: reward.orderId,
                             blockHeight: reward.blockHeight,
+                            blockHash: reward.blockHash,
                             coin: reward.coin,
                             payoutRewardBtc: rewardBtc,
+                            payoutReward: reward.payoutReward,
+                            payoutAddress: reward.payoutAddress,
                             depositComplete: isDeposited,
                             confirmations: confirmations,
                             minConfirmations: minConfirmations,
-                            isConfirmed: isConfirmed
+                            isConfirmed: isConfirmed,
+                            shared: reward.shared,
+                            createdTs: reward.createdTs,
+                            time: reward.time
                         });
 
-                        // Only count rewards that are confirmed or deposited
-                        if (rewardBtc > 0 && (isDeposited || isConfirmed)) {
-                            totalRewardBTC += rewardBtc;
-                            confirmedBlockCount++;
-                            console.log(`  ✅ Confirmed reward: ${rewardBtc} BTC (deposited: ${isDeposited}, confirmed: ${isConfirmed})`);
-                        } else if (rewardBtc > 0) {
-                            console.log(`  ⏳ Pending reward: ${rewardBtc} BTC (waiting for ${minConfirmations - confirmations} more confirmations)`);
+                        // Track blocks by confirmation state
+                        if (rewardBtc > 0) {
+                            if (isDeposited || isConfirmed) {
+                                // Confirmed block
+                                totalRewardBTC += rewardBtc;
+                                confirmedBlockCount++;
+                                console.log(`  ✅ CONFIRMED BLOCK: ${rewardBtc} BTC at block #${reward.blockHeight} (deposited: ${isDeposited}, confirmed: ${confirmations}/${minConfirmations})`);
+                            } else {
+                                // Pending block (found but waiting for confirmations)
+                                totalPendingRewardBTC += rewardBtc;
+                                pendingBlockCount++;
+                                const remaining = minConfirmations - confirmations;
+                                console.log(`  ⏳ PENDING BLOCK: ${rewardBtc} BTC at block #${reward.blockHeight} (${confirmations}/${minConfirmations} confirmations, ${remaining} remaining)`);
+                            }
+                        } else {
+                            console.log(`  ⚠️ Zero reward entry (possibly orphaned or error)`);
                         }
                     });
 
-                    if (confirmedBlockCount > 0 && totalRewardBTC > 0) {
+                    // Block is "found" if there are ANY rewards > 0 (confirmed OR pending)
+                    const totalBlocks = confirmedBlockCount + pendingBlockCount;
+                    if (totalBlocks > 0) {
                         blockFound = true;
-                        console.log(`✅ Order ${order.id} BLOCK FOUND! Total confirmed rewards: ${totalRewardBTC} BTC from ${confirmedBlockCount} confirmed block(s)`);
-                    } else if (totalRewardBTC === 0) {
-                        console.log(`❌ Order ${order.id} has ${order.soloReward.length} soloReward entries but none are confirmed yet`);
+                        console.log(`✅ Order ${order.id} FOUND ${totalBlocks} BLOCK(S)!`);
+                        console.log(`   - Confirmed: ${confirmedBlockCount} block(s), ${totalRewardBTC.toFixed(8)} BTC`);
+                        console.log(`   - Pending: ${pendingBlockCount} block(s), ${totalPendingRewardBTC.toFixed(8)} BTC`);
+                        console.log(`   - Total: ${(totalRewardBTC + totalPendingRewardBTC).toFixed(8)} BTC`);
+                    } else {
+                        console.log(`❌ Order ${order.id} has ${order.soloReward.length} soloReward entries but all have zero rewards`);
                     }
                 } else {
-                    console.log(`❌ Order ${order.id} has no soloReward entries - no blocks found`);
+                    console.log(`❌ Order ${order.id} has no soloReward array - no blocks found`);
                 }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
@@ -4466,12 +4493,15 @@ async function fetchNiceHashOrders() {
                 // Get standard block reward for this crypto
                 const blockReward = getBlockReward(algoInfo.crypto);
 
-                // Calculate actual crypto reward (use block reward if block found, otherwise show BTC earnings converted)
+                // Calculate actual crypto reward based on total blocks (confirmed + pending)
+                // We show the expected reward if any block was found, regardless of confirmation status
+                const totalBlocks = confirmedBlockCount + pendingBlockCount;
                 let cryptoReward = 0;
-                if (blockFound) {
-                    cryptoReward = blockReward; // Show full block reward
+                if (totalBlocks > 0) {
+                    // Show expected reward (block reward × number of blocks found)
+                    cryptoReward = blockReward * totalBlocks;
                 } else {
-                    cryptoReward = 0; // No block found yet
+                    cryptoReward = 0; // No blocks found yet
                 }
 
                 // Determine mining type display (e.g., "BTC Mining", "BCH Mining")
@@ -4486,15 +4516,18 @@ async function fetchNiceHashOrders() {
                     crypto: algoInfo.crypto,
                     cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
                     miningType: miningType, // "BTC Mining", "BCH Mining", etc.
-                    reward: cryptoReward, // Crypto reward (2500 RVN, 3.125 BTC, etc.)
-                    btcEarnings: totalRewardBTC, // Total BTC earnings from confirmed rewards
-                    confirmedBlocks: confirmedBlockCount, // Number of confirmed blocks found
+                    reward: cryptoReward, // Crypto reward (2500 RVN, 3.125 BTC, etc.) - total from all blocks
+                    btcEarnings: totalRewardBTC, // Total BTC earnings from confirmed rewards only
+                    btcPending: totalPendingRewardBTC, // Total BTC earnings from pending rewards
+                    confirmedBlocks: confirmedBlockCount, // Number of confirmed blocks
+                    pendingBlocks: pendingBlockCount, // Number of pending blocks (waiting confirmations)
+                    totalBlocks: totalBlocks, // Total blocks found (confirmed + pending)
                     algorithm: order.algorithm.toString(),
                     algorithmName: algoInfo.name,
                     hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
                     timeRemaining: calculateTimeRemaining(order.endTs),
                     progress: calculateProgress(order.startTs, order.endTs),
-                    blockFound: blockFound, // True if confirmed block was found
+                    blockFound: blockFound, // True if ANY block was found (confirmed or pending)
                     isTeam: order.type === 'TEAM',
                     price: priceSpent, // BTC amount spent on this package
                     active: order.alive,
@@ -4508,7 +4541,7 @@ async function fetchNiceHashOrders() {
                 };
 
                 packages.push(pkg);
-                console.log(`✅ Mapped: ${pkg.name} (${pkg.miningType}) - Status: ${pkg.status} - Blocks: ${pkg.confirmedBlocks} - BTC: ${pkg.btcEarnings}`);
+                console.log(`✅ Mapped: ${pkg.name} (${pkg.miningType}) - Status: ${pkg.status} - Total Blocks: ${pkg.totalBlocks} (${pkg.confirmedBlocks} confirmed, ${pkg.pendingBlocks} pending) - BTC: ${pkg.btcEarnings.toFixed(8)} confirmed + ${pkg.btcPending.toFixed(8)} pending`);
             }
         } else {
             console.log('⚠️ No orders found in response');
@@ -4801,9 +4834,21 @@ function displayActivePackages() {
             rocketHtml = '<div class="block-found-indicator">🚀</div>';
         }
 
+        // Block count badge - show total blocks with pending count if applicable
+        let blockBadge = '';
+        if (pkg.blockFound && pkg.totalBlocks > 0) {
+            if (pkg.pendingBlocks > 0) {
+                // Show total blocks with pending count
+                blockBadge = ` 🚀 x${pkg.totalBlocks} (${pkg.pendingBlocks} pending)`;
+            } else {
+                // All blocks confirmed
+                blockBadge = ` 🚀 x${pkg.totalBlocks}`;
+            }
+        }
+
         card.innerHTML = `
             ${rocketHtml}
-            <div class="package-card-name">${pkg.name}${pkg.blockFound && pkg.confirmedBlocks > 0 ? ` 🚀 x${pkg.confirmedBlocks}` : ''}</div>
+            <div class="package-card-name">${pkg.name}${blockBadge}</div>
             <div class="package-card-stat">
                 <span>Reward:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
