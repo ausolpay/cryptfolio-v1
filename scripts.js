@@ -3920,21 +3920,15 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     console.log('  X-Organization-Id:', easyMiningSettings.orgId);
     console.log('  X-Auth:', authHeader.substring(0, 50) + '...');
 
-    const headers = {
+    // According to official Python client: Content-Type is ALWAYS application/json
+    return {
         'X-Time': timestamp,
         'X-Nonce': nonce,
-        'X-Request-Id': nonce,
-        'X-Organization-Id': easyMiningSettings.orgId,
         'X-Auth': authHeader,
-        'X-User-Agent': 'CryptFolio'
+        'X-Organization-Id': easyMiningSettings.orgId,
+        'X-Request-Id': nonce,
+        'Content-Type': 'application/json'
     };
-
-    // Only add Content-Type for POST requests
-    if (method === 'POST' && body) {
-        headers['Content-Type'] = 'application/json';
-    }
-
-    return headers;
 }
 
 // Fetch balances from NiceHash API
