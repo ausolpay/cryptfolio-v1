@@ -4326,10 +4326,9 @@ async function fetchOrderRewards(orderId) {
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
     try {
-        // NiceHash myOrders endpoint requires 'ts' (timestamp), 'op' (operation), and 'limit' parameters
-        // op=LE means "Less than or Equal" - gets orders created before or at the timestamp
+        // NiceHash solo order endpoint includes soloReward data
         const timestamp = Date.now() + nicehashTimeOffset;
-        const endpoint = `/main/api/v2/hashpower/myOrders?ts=${timestamp}&op=LE&limit=100`;
+        const endpoint = `/main/api/v2/hashpower/solo/order`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
         console.log('📡 Fetching orders from NiceHash...');
@@ -4383,16 +4382,13 @@ async function fetchNiceHashOrders() {
             }
 
             for (const order of data.list) {
-                // Get blockheight (check both possible field names)
-                const blockheight = order.blockheight || order.blockHeight || 0;
-
                 console.log('🔍 Order summary:', {
                     id: order.id,
-                    algorithm: order.algorithm,
+                    algorithm: order.algorithm?.algorithm || order.algorithm,
                     type: order.type,
                     market: order.market,
                     alive: order.alive,
-                    blockheight: blockheight,
+                    soloRewardCount: order.soloReward?.length || 0,
                     availableAmount: order.availableAmount,
                     payedAmount: order.payedAmount,
                     price: order.price,
@@ -4405,63 +4401,39 @@ async function fetchNiceHashOrders() {
                 });
 
                 // Map algorithm to crypto and package type
-                const algoInfo = getAlgorithmInfo(order.algorithm, order.pool);
+                const algorithmCode = order.algorithm?.algorithm || order.algorithm;
+                const algoInfo = getAlgorithmInfo(algorithmCode, order.pool);
                 console.log(`📌 Algorithm Info for order ${order.id}:`, algoInfo);
 
                 // Determine package name from market/pool/type
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Determine if block was found based on blockheight
-                // blockheight >= 100 means a block was found
+                // Determine if block was found based on soloReward array
+                // If soloReward has entries with payoutReward > 0, blocks were found
                 let blockFound = false;
                 let totalRewardBTC = 0;
 
-                if (blockheight >= 100) {
-                    console.log(`🎯 Order ${order.id} has blockheight ${blockheight} (>= 100) - BLOCK FOUND!`);
-                    blockFound = true;
+                if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
+                    console.log(`🎁 Order ${order.id} has ${order.soloReward.length} soloReward entries`);
 
-                    // Fetch rewards to get the actual reward amount
-                    if (!order.alive) {
-                        try {
-                            const rewardsData = await fetchOrderRewards(order.id);
-
-                            if (rewardsData) {
-                                // Check multiple possible response formats
-                                let rewardsList = null;
-
-                                if (rewardsData.list && Array.isArray(rewardsData.list)) {
-                                    rewardsList = rewardsData.list;
-                                } else if (rewardsData.rewards && Array.isArray(rewardsData.rewards)) {
-                                    rewardsList = rewardsData.rewards;
-                                } else if (rewardsData.items && Array.isArray(rewardsData.items)) {
-                                    rewardsList = rewardsData.items;
-                                } else if (Array.isArray(rewardsData)) {
-                                    rewardsList = rewardsData;
-                                }
-
-                                if (rewardsList && rewardsList.length > 0) {
-                                    // Sum up all rewards
-                                    totalRewardBTC = rewardsList.reduce((sum, reward) => {
-                                        return sum + (parseFloat(reward.amount || reward.value || reward.reward || 0));
-                                    }, 0);
-                                    console.log(`✅ Order ${order.id} found ${rewardsList.length} reward(s)! Total: ${totalRewardBTC} BTC`);
-                                    console.log(`   Rewards structure:`, rewardsList[0]);
-                                } else {
-                                    console.log(`⚠️ Order ${order.id} has blockheight >= 100 but no rewards in endpoint - Response:`, rewardsData);
-                                }
-                            } else {
-                                console.log(`⚠️ Order ${order.id} has blockheight >= 100 but null response from rewards endpoint`);
-                            }
-                        } catch (error) {
-                            console.warn(`⚠️ Could not fetch rewards for order ${order.id}, continuing...`, error);
-                            // Continue with blockFound = true, totalRewardBTC = 0
+                    // Sum up all payoutRewardBtc values
+                    totalRewardBTC = order.soloReward.reduce((sum, reward) => {
+                        const rewardBtc = parseFloat(reward.payoutRewardBtc || 0);
+                        if (rewardBtc > 0) {
+                            console.log(`  💰 Reward: ${rewardBtc} BTC (blockHeight: ${reward.blockHeight}, coin: ${reward.coin})`);
                         }
+                        return sum + rewardBtc;
+                    }, 0);
+
+                    if (totalRewardBTC > 0) {
+                        blockFound = true;
+                        console.log(`✅ Order ${order.id} BLOCK FOUND! Total rewards: ${totalRewardBTC} BTC from ${order.soloReward.length} block(s)`);
                     } else {
-                        console.log(`⏳ Order ${order.id} is active with blockheight ${blockheight} - will fetch rewards when completed`);
+                        console.log(`❌ Order ${order.id} has soloReward entries but all payoutRewardBtc are 0`);
                     }
                 } else {
-                    console.log(`❌ Order ${order.id} has blockheight ${blockheight} (< 100) - no block found yet`);
+                    console.log(`❌ Order ${order.id} has no soloReward entries - no blocks found`);
                 }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
