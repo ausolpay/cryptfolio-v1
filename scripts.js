@@ -4335,8 +4335,10 @@ async function fetchNiceHashOrders() {
                 const totalBTC = availableBTC + paidBTC;
 
                 // Determine if block was found (if package has any earnings, consider it a block found)
-                // In reality, this should check if earnings exceed a threshold
-                const blockFound = totalBTC > 0.00000001; // Minimum threshold for block found
+                // blockFound should be true ONLY if the order has actually earned BTC (meaning pool found blocks)
+                const blockFound = totalBTC > 0.00000001; // Minimum threshold: 0.00000001 BTC = 1 satoshi
+
+                console.log(`🔍 Order ${order.id}: availableBTC=${availableBTC}, paidBTC=${paidBTC}, totalBTC=${totalBTC}, blockFound=${blockFound}`);
 
                 // Get standard block reward for this crypto
                 const blockReward = getBlockReward(algoInfo.crypto);
@@ -4609,48 +4611,79 @@ function updateStats() {
     // Calculate stats from actual package data
     const packages = easyMiningData.activePackages || [];
 
+    // Log detailed package breakdown for debugging
+    console.log(`📊 Total packages: ${packages.length}`);
+    const packagesWithEarnings = packages.filter(pkg => (pkg.btcEarnings || 0) > 0);
+    const packagesWithBlockFound = packages.filter(pkg => pkg.blockFound === true);
+    console.log(`💰 Packages with btcEarnings > 0: ${packagesWithEarnings.length}`);
+    console.log(`🎯 Packages with blockFound=true: ${packagesWithBlockFound.length}`);
+
+    // Sample a few packages to see their blockFound status
+    if (packages.length > 0) {
+        console.log('📦 Sample packages:', packages.slice(0, 3).map(pkg => ({
+            id: pkg.id,
+            name: pkg.name,
+            btcEarnings: pkg.btcEarnings,
+            blockFound: pkg.blockFound,
+            availableBTC: pkg.availableBTC,
+            paidBTC: pkg.paidBTC
+        })));
+    }
+
     // All time stats - calculate ONLY from packages with blocks found
-    const packagesWithBlocks = packages.filter(pkg => pkg.blockFound);
+    const packagesWithBlocks = packages.filter(pkg => pkg.blockFound === true);
     const totalBlocksAll = packagesWithBlocks.length;
-    const totalSpentAll = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
-    const totalRewardAll = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0); // Use actual BTC earnings
-    const pnlAll = totalRewardAll - totalSpentAll;
+    const totalSpentBTC = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
+    const totalRewardBTC = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0);
+    const pnlBTC = totalRewardBTC - totalSpentBTC;
+
+    // Convert BTC to AUD for display
+    const totalSpentAUD = convertBTCtoAUD(totalSpentBTC);
+    const totalRewardAUD = convertBTCtoAUD(totalRewardBTC);
+    const pnlAUD = convertBTCtoAUD(pnlBTC);
 
     // Today stats - packages with blocks found started today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTimestamp = today.getTime();
 
-    const todayPackages = packages.filter(pkg => pkg.startTime >= todayTimestamp && pkg.blockFound);
+    const todayPackages = packages.filter(pkg => pkg.startTime >= todayTimestamp && pkg.blockFound === true);
     const totalBlocksToday = todayPackages.length;
-    const totalSpentToday = todayPackages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
-    const pnlToday = todayPackages.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0) - totalSpentToday;
+    const totalSpentTodayBTC = todayPackages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
+    const totalRewardTodayBTC = todayPackages.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0);
+    const pnlTodayBTC = totalRewardTodayBTC - totalSpentTodayBTC;
 
-    // Update UI - All time stats
+    // Convert today's BTC to AUD
+    const totalSpentTodayAUD = convertBTCtoAUD(totalSpentTodayBTC);
+    const pnlTodayAUD = convertBTCtoAUD(pnlTodayBTC);
+
+    console.log(`📈 Stats - Blocks: ${totalBlocksAll}, Spent: $${totalSpentAUD.toFixed(2)}, Reward: $${totalRewardAUD.toFixed(2)}, PNL: $${pnlAUD.toFixed(2)}`);
+
+    // Update UI - All time stats (in AUD)
     document.getElementById('total-blocks-all').textContent = totalBlocksAll;
-    document.getElementById('total-reward-all').textContent = `${totalRewardAll.toFixed(8)} BTC`; // Show BTC with 8 decimals
-    document.getElementById('total-spent-all').textContent = `${totalSpentAll.toFixed(8)} BTC`; // Price spent is also in BTC
-    document.getElementById('pnl-all').textContent = `${pnlAll.toFixed(8)} BTC`;
-    document.getElementById('pnl-all').className = pnlAll >= 0 ? 'stat-value positive' : 'stat-value negative';
+    document.getElementById('total-reward-all').textContent = `$${formatNumber(totalRewardAUD.toFixed(2))}`;
+    document.getElementById('total-spent-all').textContent = `$${formatNumber(totalSpentAUD.toFixed(2))}`;
+    document.getElementById('pnl-all').textContent = `$${formatNumber(pnlAUD.toFixed(2))}`;
+    document.getElementById('pnl-all').className = pnlAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
 
-    // Update UI - Today stats
+    // Update UI - Today stats (in AUD)
     document.getElementById('total-blocks-today').textContent = totalBlocksToday;
-    document.getElementById('total-spent-today').textContent = `${totalSpentToday.toFixed(8)} BTC`;
-    document.getElementById('pnl-today').textContent = `${pnlToday.toFixed(8)} BTC`;
-    document.getElementById('pnl-today').className = pnlToday >= 0 ? 'stat-value positive' : 'stat-value negative';
+    document.getElementById('total-spent-today').textContent = `$${formatNumber(totalSpentTodayAUD.toFixed(2))}`;
+    document.getElementById('pnl-today').textContent = `$${formatNumber(pnlTodayAUD.toFixed(2))}`;
+    document.getElementById('pnl-today').className = pnlTodayAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
 
-    // Update the easyMiningData stats for persistence
+    // Update the easyMiningData stats for persistence (store in BTC)
     easyMiningData.allTimeStats = {
         totalBlocks: totalBlocksAll,
-        totalReward: totalRewardAll,
-        totalSpent: totalSpentAll,
-        pnl: pnlAll
+        totalReward: totalRewardBTC,
+        totalSpent: totalSpentBTC,
+        pnl: pnlBTC
     };
 
     easyMiningData.todayStats = {
         totalBlocks: totalBlocksToday,
-        totalSpent: totalSpentToday,
-        pnl: pnlToday
+        totalSpent: totalSpentTodayBTC,
+        pnl: pnlTodayBTC
     };
 }
 
