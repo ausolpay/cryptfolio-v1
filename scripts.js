@@ -4321,8 +4321,13 @@ async function fetchNiceHashOrders() {
         if (data && data.list && Array.isArray(data.list)) {
             console.log(`📋 Found ${data.list.length} total orders`);
 
+            // Log the FIRST order with ALL fields to see what's available
+            if (data.list.length > 0) {
+                console.log('🔍 COMPLETE first order object with ALL fields:',JSON.stringify(data.list[0], null, 2));
+            }
+
             for (const order of data.list) {
-                console.log('🔍 Order details:', {
+                console.log('🔍 Order summary:', {
                     id: order.id,
                     algorithm: order.algorithm,
                     type: order.type,
