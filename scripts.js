@@ -3825,15 +3825,25 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     }
 
     // Create signature using HMAC-SHA256
-    // NiceHash message format (exact): apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0query\0body
-    // For most calls, query is empty, so: apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0\0body
+    // NiceHash message format: apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0query
+    // For GET requests with no query or body, end after endpoint path
     const query = ''; // Empty for most endpoints
-    const message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}\x00${query}\x00${bodyString}`;
+
+    // Build message - only include query and body parts if they exist
+    let message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}`;
+
+    // Add query string (empty for GET requests)
+    message += `\x00${query}`;
+
+    // Only add body if present (for POST requests)
+    if (bodyString) {
+        message += `\x00${bodyString}`;
+    }
 
     // Generate HMAC-SHA256 signature
-    // Remove dashes from API Secret before using as HMAC key (NiceHash may expect this)
-    const secretKey = easyMiningSettings.apiSecret.replace(/-/g, '');
-    console.log('🔑 Using API Secret for signing:', secretKey.length, 'chars (dashes removed)');
+    // Try using API Secret WITH dashes (as provided by NiceHash)
+    const secretKey = easyMiningSettings.apiSecret; // Keep dashes
+    console.log('🔑 Using API Secret for signing:', secretKey.length, 'chars (with dashes)');
 
     const signature = CryptoJS.HmacSHA256(message, secretKey).toString(CryptoJS.enc.Hex);
 
@@ -3854,12 +3864,13 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     console.log('Signature:', signature.substring(0, 16) + '...');
     console.log('Signature (full):', signature);
 
+    // NiceHash API v2 requires specific header names (case-sensitive)
     return {
-        'X-API-KEY': easyMiningSettings.apiKey,
-        'X-ORGANIZATION-ID': easyMiningSettings.orgId,
-        'X-TIME': timestamp,
-        'X-NONCE': nonce,
-        'X-SIGNATURE': signature,
+        'X-Time': timestamp,
+        'X-Nonce': nonce,
+        'X-Auth-Signature': signature,
+        'X-Auth-Key': easyMiningSettings.apiKey,
+        'X-Organization-Id': easyMiningSettings.orgId,
         'Content-Type': 'application/json'
     };
 }
