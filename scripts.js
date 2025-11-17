@@ -750,7 +750,10 @@ async function fetchPrices() {
             if (crypto.id === 'bitcoin' && easyMiningSettings && (easyMiningSettings.includeAvailableBTC || easyMiningSettings.includePendingBTC)) {
                 // For Bitcoin with EasyMining, get the total from the display (which includes NiceHash balance)
                 const btcHoldingsElement = document.getElementById('bitcoin-holdings');
+                const holdingsText = btcHoldingsElement ? btcHoldingsElement.textContent : 'ELEMENT NOT FOUND';
                 holdings = btcHoldingsElement ? parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) : 0;
+                console.log(`🔍 fetchPrices BTC - Holdings element text: "${holdingsText}"`);
+                console.log(`🔍 fetchPrices BTC - Parsed holdings: ${holdings}`);
             } else {
                 // For other cryptos, get from localStorage
                 holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
@@ -758,7 +761,17 @@ async function fetchPrices() {
             }
 
             const audValue = holdings * priceAud;
-            document.getElementById(`${crypto.id}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
+            const valueElement = document.getElementById(`${crypto.id}-value-aud`);
+            if (valueElement) {
+                const previousValue = valueElement.textContent;
+                valueElement.textContent = formatNumber(audValue.toFixed(2));
+                if (crypto.id === 'bitcoin') {
+                    console.log(`🔄 fetchPrices BTC - Previous AUD: ${previousValue}, New AUD: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
+                    if (audValue === 0 && holdings > 0) {
+                        console.error(`❌ fetchPrices set BTC AUD to 0 even though holdings is ${holdings}! Price must be 0!`);
+                    }
+                }
+            }
             console.log(`🔄 fetchPrices updated ${crypto.id} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
         }
 
