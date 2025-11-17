@@ -4252,19 +4252,17 @@ function displayActivePackages() {
             ${pkg.blockFound ? '<div class="block-found-indicator">🎉</div>' : ''}
             <div class="package-card-name">${pkg.name}</div>
             <div class="package-card-stat">
-                <span>Prob:</span>
-                <span>${pkg.probability}</span>
+                <span>Reward:</span>
+                <span>${(pkg.reward || 0).toFixed(8)} ${pkg.crypto}</span>
             </div>
             <div class="package-card-stat">
                 <span>Time:</span>
                 <span>${pkg.timeRemaining}</span>
             </div>
-            ${pkg.isTeam ? `
             <div class="package-card-stat">
-                <span>Shares:</span>
-                <span>${pkg.shares}</span>
+                <span>Price:</span>
+                <span>$${(pkg.price || 0).toFixed(4)}</span>
             </div>
-            ` : ''}
             <div class="package-progress-bar">
                 <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
             </div>
@@ -4304,63 +4302,56 @@ function updateRecommendations() {
     bestPackagesContainer.innerHTML = '';
     teamAlertsContainer.innerHTML = '';
     
-    // Find best single packages (lowest probability, good price ratio)
-    const singlePackages = easyMiningData.activePackages.filter(pkg => !pkg.isTeam);
+    // Find best single packages (sort by price/reward ratio)
+    const singlePackages = easyMiningData.activePackages.filter(pkg => !pkg.isTeam && pkg.active);
     const bestSingle = singlePackages.sort((a, b) => {
-        const probA = parseInt(a.probability.split(':')[1]);
-        const probB = parseInt(b.probability.split(':')[1]);
-        return probA - probB;
+        // Sort by best reward/price ratio (higher is better)
+        const ratioA = (a.reward || 0) / (a.price || 1);
+        const ratioB = (b.reward || 0) / (b.price || 1);
+        return ratioB - ratioA;
     }).slice(0, 2);
-    
+
     bestSingle.forEach(pkg => {
         const card = document.createElement('div');
         card.className = 'recommendation-card';
         card.innerHTML = `
             <h4>🌟 ${pkg.name}</h4>
-            <p><strong>Probability:</strong> ${pkg.probability}</p>
-            <p><strong>Price:</strong> $${pkg.price}</p>
+            <p><strong>Reward:</strong> ${pkg.reward} ${pkg.crypto}</p>
+            <p><strong>Price:</strong> $${(pkg.price || 0).toFixed(4)}</p>
             <p><strong>Time Remaining:</strong> ${pkg.timeRemaining}</p>
         `;
         bestPackagesContainer.appendChild(card);
     });
-    
+
     if (bestSingle.length === 0) {
-        bestPackagesContainer.innerHTML = '<p>No recommendations at this time.</p>';
+        bestPackagesContainer.innerHTML = '<p>No active packages at this time.</p>';
     }
     
     // Check team package criteria
-    const teamPackages = easyMiningData.activePackages.filter(pkg => pkg.isTeam);
-    
+    const teamPackages = easyMiningData.activePackages.filter(pkg => pkg.isTeam && pkg.active);
+
     teamPackages.forEach(pkg => {
-        const probability = parseInt(pkg.probability.split(':')[1]);
+        // Team packages recommendations (simplified for live API)
+        // Real API doesn't provide probability/shares data in the same format
         let shouldAlert = false;
-        
-        // Silver team criteria: probability under 1:160 and more than 20 shares
-        if (pkg.name.includes('Silver') && probability < 160 && pkg.shares > 20) {
+
+        // Alert for any active team packages with good reward/price ratio
+        const ratio = (pkg.reward || 0) / (pkg.price || 1);
+        if (ratio > 0.01) { // Decent reward ratio
             shouldAlert = true;
         }
-        
-        // Pal team criteria: probability under 1:220 and 20 or more shares (DOGE)
-        if (pkg.name.includes('Pal') && probability < 220 && pkg.shares >= 20) {
-            shouldAlert = true;
-        }
-        
-        // Gold team criteria: more than 100 shares
-        if (pkg.name.includes('Gold') && pkg.shares > 100) {
-            shouldAlert = true;
-        }
-        
+
         if (shouldAlert) {
             const card = document.createElement('div');
             card.className = 'recommendation-card';
             card.innerHTML = `
                 <h4>🚀 ${pkg.name}</h4>
-                <p><strong>Probability:</strong> ${pkg.probability}</p>
-                <p><strong>Shares:</strong> ${pkg.shares}</p>
+                <p><strong>Reward:</strong> ${pkg.reward} ${pkg.crypto}</p>
+                <p><strong>Price:</strong> $${(pkg.price || 0).toFixed(4)}</p>
                 <p><strong>Time Remaining:</strong> ${pkg.timeRemaining}</p>
             `;
             teamAlertsContainer.appendChild(card);
-            
+
             // Play alert sound
             playSound('package-alert-sound');
         }
@@ -4745,23 +4736,19 @@ function loadBuyPackagesData() {
 
 function getRecommendedPackageNames() {
     const recommended = [];
-    
+
+    // Simplified recommendations for live API
+    // Real API doesn't provide probability/shares in the same format
     easyMiningData.activePackages.forEach(pkg => {
-        if (pkg.isTeam) {
-            const probability = parseInt(pkg.probability.split(':')[1]);
-            
-            if (pkg.name.includes('Silver') && probability < 160 && pkg.shares > 20) {
-                recommended.push('Silver Team');
-            }
-            if (pkg.name.includes('Pal') && probability < 220 && pkg.shares >= 20) {
-                recommended.push('Pal Team');
-            }
-            if (pkg.name.includes('Gold') && pkg.shares > 100) {
-                recommended.push('Gold Team');
+        if (pkg.active && pkg.isTeam) {
+            // Recommend team packages with good reward/price ratio
+            const ratio = (pkg.reward || 0) / (pkg.price || 1);
+            if (ratio > 0.01) {
+                recommended.push(pkg.name);
             }
         }
     });
-    
+
     return recommended;
 }
 
@@ -4783,14 +4770,18 @@ function createBuyPackageCard(pkg, isRecommended) {
         </div>
     ` : '';
     
+    const probabilityInfo = pkg.probability ? `
+        <div class="buy-package-stat">
+            <span>Probability:</span>
+            <span>${pkg.probability}</span>
+        </div>
+    ` : '';
+
     card.innerHTML = `
         <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
         ${pkg.crypto ? `<p style="color: #ffa500; font-weight: bold;">${pkg.crypto}</p>` : ''}
         <div class="buy-package-stats">
-            <div class="buy-package-stat">
-                <span>Probability:</span>
-                <span>${pkg.probability}</span>
-            </div>
+            ${probabilityInfo}
             <div class="buy-package-stat">
                 <span>Algorithm:</span>
                 <span>${pkg.algorithm || 'SHA256'}</span>
@@ -4803,7 +4794,7 @@ function createBuyPackageCard(pkg, isRecommended) {
             </div>
             <div class="buy-package-stat">
                 <span>Duration:</span>
-                <span>${pkg.duration}</span>
+                <span>${pkg.duration || 'Varies'}</span>
             </div>
         </div>
         <button class="buy-package-button" onclick='buyPackage(${JSON.stringify(pkg)})'>
@@ -5017,14 +5008,18 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
     ` : '';
 
+    const probabilityInfo = pkg.probability ? `
+        <div class="buy-package-stat">
+            <span>Probability:</span>
+            <span>${pkg.probability}</span>
+        </div>
+    ` : '';
+
     card.innerHTML = `
         <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
         ${pkg.crypto ? `<p style="color: #ffa500; font-weight: bold;">${pkg.crypto}</p>` : ''}
         <div class="buy-package-stats">
-            <div class="buy-package-stat">
-                <span>Probability:</span>
-                <span>${pkg.probability}</span>
-            </div>
+            ${probabilityInfo}
             <div class="buy-package-stat">
                 <span>Algorithm:</span>
                 <span>${pkg.algorithm || 'SHA256'}</span>
