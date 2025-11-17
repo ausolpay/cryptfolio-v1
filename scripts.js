@@ -4095,9 +4095,9 @@ function getBlockReward(crypto) {
 function getAlgorithmInfo(algorithmId, pool) {
     // NiceHash uses string identifiers for algorithms
     const algoMap = {
-        // SHA256 variants (Bitcoin)
-        'SHA256ASICBOOST': { name: 'SHA256 AsicBoost', crypto: 'BTC', cryptoSecondary: null },
-        'SHA256': { name: 'SHA256', crypto: 'BTC', cryptoSecondary: null },
+        // SHA256 variants
+        'SHA256ASICBOOST': { name: 'SHA256AsicBoost', crypto: 'BCH', cryptoSecondary: null }, // Bitcoin Cash (Silver packages)
+        'SHA256': { name: 'SHA256', crypto: 'BTC', cryptoSecondary: null }, // Bitcoin (Gold packages)
 
         // Scrypt variants (Litecoin, Dogecoin)
         'SCRYPT': { name: 'Scrypt', crypto: 'LTC', cryptoSecondary: null },
@@ -4191,27 +4191,45 @@ function getAlgorithmInfo(algorithmId, pool) {
 // Determine package name from order data
 function determinePackageName(order, algoInfo) {
     // NiceHash EasyMining Package Names:
-    // Gold = SHA256 BTC mining
-    // Silver = SHA256 BCH mining
-    // Chromium = KawPow RVN mining
+    // Gold S/M/L = SHA256 BTC mining
+    // Silver S/M/L = SHA256AsicBoost BCH mining
+    // Chromium S/M/L = KawPow RVN mining
     // Palladium DOGE = Scrypt DOGE+LTC dual mining
     // Palladium LTC = Scrypt LTC mining
-    // Titanium = kHeavyHash KAS mining
+    // Titanium S/M/L = kHeavyHash KAS mining
+    // Team packages = Team Gold, Team Silver, etc.
 
-    // Try pool name first (active packages)
+    // Try pool name first (active packages) - this often contains the full name
     if (order.pool && order.pool.name) {
-        const poolName = order.pool.name.toLowerCase();
+        const poolName = order.pool.name;
+        const poolLower = poolName.toLowerCase();
 
-        if (poolName.includes('gold')) return 'Gold Package';
-        if (poolName.includes('silver')) return 'Silver Package';
-        if (poolName.includes('palladium') && poolName.includes('doge')) return 'Palladium DOGE';
-        if (poolName.includes('palladium') && poolName.includes('ltc')) return 'Palladium LTC';
-        if (poolName.includes('palladium')) return 'Palladium Package';
-        if (poolName.includes('chromium')) return 'Chromium Package';
-        if (poolName.includes('titanium')) return 'Titanium Package';
+        // Check for Team packages first
+        if (poolLower.includes('team')) {
+            if (poolLower.includes('gold')) return 'Team Gold';
+            if (poolLower.includes('silver')) return 'Team Silver';
+            if (poolLower.includes('chromium')) return 'Team Chromium';
+            if (poolLower.includes('titanium')) return 'Team Titanium';
+            return poolName; // Return as-is if it's a team package
+        }
 
-        // Return descriptive pool name
-        return order.pool.name;
+        // Check for size variants (S, M, L)
+        let size = '';
+        if (poolLower.includes(' s ') || poolLower.endsWith(' s')) size = ' S';
+        else if (poolLower.includes(' m ') || poolLower.endsWith(' m')) size = ' M';
+        else if (poolLower.includes(' l ') || poolLower.endsWith(' l')) size = ' L';
+
+        // Match package types with sizes
+        if (poolLower.includes('gold')) return 'Gold' + size;
+        if (poolLower.includes('silver')) return 'Silver' + size;
+        if (poolLower.includes('chromium')) return 'Chromium' + size;
+        if (poolLower.includes('titanium')) return 'Titanium' + size;
+        if (poolLower.includes('palladium') && poolLower.includes('doge')) return 'Palladium DOGE' + size;
+        if (poolLower.includes('palladium') && poolLower.includes('ltc')) return 'Palladium LTC' + size;
+        if (poolLower.includes('palladium')) return 'Palladium' + size;
+
+        // Return the actual pool name if it doesn't match patterns above
+        return poolName;
     }
 
     // Fallback for completed packages (no pool info)
@@ -4329,16 +4347,18 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Calculate BTC earnings (availableAmount is what's available to withdraw, payedAmount is already paid out)
+                // Calculate BTC earnings
+                // availableAmount = pending/unconfirmed rewards (not yet paid)
+                // payedAmount = CONFIRMED rewards already paid out
                 const availableBTC = parseFloat(order.availableAmount || 0);
                 const paidBTC = parseFloat(order.payedAmount || 0);
                 const totalBTC = availableBTC + paidBTC;
 
-                // Determine if block was found (if package has any earnings, consider it a block found)
-                // blockFound should be true ONLY if the order has actually earned BTC (meaning pool found blocks)
-                const blockFound = totalBTC > 0.00000001; // Minimum threshold: 0.00000001 BTC = 1 satoshi
+                // blockFound should be TRUE only for orders with CONFIRMED (paid) rewards
+                // Only count payedAmount because availableAmount could be pending/unconfirmed
+                const blockFound = paidBTC > 0.00000001; // Minimum threshold: 1 satoshi of confirmed rewards
 
-                console.log(`🔍 Order ${order.id}: availableBTC=${availableBTC}, paidBTC=${paidBTC}, totalBTC=${totalBTC}, blockFound=${blockFound}`);
+                console.log(`🔍 Order ${order.id}: availableBTC=${availableBTC}, paidBTC=${paidBTC}, totalBTC=${totalBTC}, blockFound=${blockFound} (using paidBTC only)`);
 
                 // Get standard block reward for this crypto
                 const blockReward = getBlockReward(algoInfo.crypto);
@@ -5056,7 +5076,7 @@ function showPackageDetailPage(pkg) {
         </div>
         <div class="stat-item">
             <span class="stat-label">Algorithm:</span>
-            <span class="stat-value">${pkg.algorithm}</span>
+            <span class="stat-value">${pkg.algorithmName || pkg.algorithm}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Hashrate:</span>
