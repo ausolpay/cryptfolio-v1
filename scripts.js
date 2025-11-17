@@ -4383,12 +4383,16 @@ async function fetchNiceHashOrders() {
             }
 
             for (const order of data.list) {
+                // Get blockheight (check both possible field names)
+                const blockheight = order.blockheight || order.blockHeight || 0;
+
                 console.log('🔍 Order summary:', {
                     id: order.id,
                     algorithm: order.algorithm,
                     type: order.type,
                     market: order.market,
                     alive: order.alive,
+                    blockheight: blockheight,
                     availableAmount: order.availableAmount,
                     payedAmount: order.payedAmount,
                     price: order.price,
@@ -4408,51 +4412,56 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Determine if block was found based on rewards endpoint
-                // Only fetch rewards for completed orders to avoid rate limiting
+                // Determine if block was found based on blockheight
+                // blockheight >= 100 means a block was found
                 let blockFound = false;
                 let totalRewardBTC = 0;
 
-                if (!order.alive) {
-                    // Order is completed, fetch rewards
-                    try {
-                        const rewardsData = await fetchOrderRewards(order.id);
+                if (blockheight >= 100) {
+                    console.log(`🎯 Order ${order.id} has blockheight ${blockheight} (>= 100) - BLOCK FOUND!`);
+                    blockFound = true;
 
-                        if (rewardsData) {
-                            // Check multiple possible response formats
-                            let rewardsList = null;
+                    // Fetch rewards to get the actual reward amount
+                    if (!order.alive) {
+                        try {
+                            const rewardsData = await fetchOrderRewards(order.id);
 
-                            if (rewardsData.list && Array.isArray(rewardsData.list)) {
-                                rewardsList = rewardsData.list;
-                            } else if (rewardsData.rewards && Array.isArray(rewardsData.rewards)) {
-                                rewardsList = rewardsData.rewards;
-                            } else if (rewardsData.items && Array.isArray(rewardsData.items)) {
-                                rewardsList = rewardsData.items;
-                            } else if (Array.isArray(rewardsData)) {
-                                rewardsList = rewardsData;
-                            }
+                            if (rewardsData) {
+                                // Check multiple possible response formats
+                                let rewardsList = null;
 
-                            if (rewardsList && rewardsList.length > 0) {
-                                // Has rewards!
-                                blockFound = true;
-                                // Sum up all rewards
-                                totalRewardBTC = rewardsList.reduce((sum, reward) => {
-                                    return sum + (parseFloat(reward.amount || reward.value || reward.reward || 0));
-                                }, 0);
-                                console.log(`✅ Order ${order.id} found ${rewardsList.length} reward(s)! Total: ${totalRewardBTC} BTC`);
-                                console.log(`   Rewards structure:`, rewardsList[0]);
+                                if (rewardsData.list && Array.isArray(rewardsData.list)) {
+                                    rewardsList = rewardsData.list;
+                                } else if (rewardsData.rewards && Array.isArray(rewardsData.rewards)) {
+                                    rewardsList = rewardsData.rewards;
+                                } else if (rewardsData.items && Array.isArray(rewardsData.items)) {
+                                    rewardsList = rewardsData.items;
+                                } else if (Array.isArray(rewardsData)) {
+                                    rewardsList = rewardsData;
+                                }
+
+                                if (rewardsList && rewardsList.length > 0) {
+                                    // Sum up all rewards
+                                    totalRewardBTC = rewardsList.reduce((sum, reward) => {
+                                        return sum + (parseFloat(reward.amount || reward.value || reward.reward || 0));
+                                    }, 0);
+                                    console.log(`✅ Order ${order.id} found ${rewardsList.length} reward(s)! Total: ${totalRewardBTC} BTC`);
+                                    console.log(`   Rewards structure:`, rewardsList[0]);
+                                } else {
+                                    console.log(`⚠️ Order ${order.id} has blockheight >= 100 but no rewards in endpoint - Response:`, rewardsData);
+                                }
                             } else {
-                                console.log(`❌ Order ${order.id} (completed) has no rewards - Response:`, rewardsData);
+                                console.log(`⚠️ Order ${order.id} has blockheight >= 100 but null response from rewards endpoint`);
                             }
-                        } else {
-                            console.log(`❌ Order ${order.id} (completed) - null response from rewards endpoint`);
+                        } catch (error) {
+                            console.warn(`⚠️ Could not fetch rewards for order ${order.id}, continuing...`, error);
+                            // Continue with blockFound = true, totalRewardBTC = 0
                         }
-                    } catch (error) {
-                        console.warn(`⚠️ Could not fetch rewards for order ${order.id}, continuing...`, error);
-                        // Continue with blockFound = false, totalRewardBTC = 0
+                    } else {
+                        console.log(`⏳ Order ${order.id} is active with blockheight ${blockheight} - will fetch rewards when completed`);
                     }
                 } else {
-                    console.log(`⏳ Order ${order.id} is still active, skipping rewards check`);
+                    console.log(`❌ Order ${order.id} has blockheight ${blockheight} (< 100) - no block found yet`);
                 }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
