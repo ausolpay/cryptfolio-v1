@@ -4781,7 +4781,9 @@ function updateBTCHoldings() {
     const btcValueAud = totalToDisplay * btcPriceAud;
     const btcValueElement = document.getElementById('bitcoin-value-aud');
     if (btcValueElement) {
-        btcValueElement.textContent = `$${formatNumber(btcValueAud.toFixed(2))}`;
+        // Don't add $ - HTML template already has it outside the span
+        btcValueElement.textContent = formatNumber(btcValueAud.toFixed(2));
+        console.log(`💰 updateBTCHoldings set BTC AUD value: ${btcValueAud.toFixed(2)} (holdings: ${totalToDisplay}, price: ${btcPriceAud})`);
     }
 
     // Update total portfolio value
@@ -4898,29 +4900,39 @@ async function addCryptoById(cryptoId) {
         }
         
         const data = await response.json();
-        
+
         const crypto = {
             id: data.id,
             symbol: data.symbol,
             name: data.name,
             thumb: data.image.thumb
         };
-        
+
         // Add to user's cryptos if not already there
         if (!users[loggedInUser].cryptos.find(c => c.id === crypto.id)) {
             users[loggedInUser].cryptos.push(crypto);
             setStorageItem('users', JSON.stringify(users));
-            
+
             // Add crypto container to UI
             addCryptoContainer(crypto.id, crypto.symbol, crypto.name, crypto.thumb);
-            
+
             // Initialize holdings
             setStorageItem(`${loggedInUser}_${crypto.id}Holdings`, 0);
-            
+
             // Update API URL
             updateApiUrl();
+
+            // Set the initial price from CoinGecko data (prevents 0 price issue)
+            if (data.market_data && data.market_data.current_price && data.market_data.current_price.aud) {
+                const priceAud = data.market_data.current_price.aud;
+                const priceElement = document.getElementById(`${crypto.id}-price-aud`);
+                if (priceElement) {
+                    priceElement.textContent = `$${formatNumber(priceAud.toFixed(8), true)}`;
+                    console.log(`💲 Set initial price for ${crypto.id}: ${priceAud} AUD`);
+                }
+            }
         }
-        
+
         return crypto;
     } catch (error) {
         console.error('Error adding crypto:', error);
