@@ -4777,9 +4777,21 @@ function updateBTCHoldings() {
     btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
 
     // Update the AUD value for Bitcoin (same as manual update does)
-    const btcPriceAud = parseFloat(document.getElementById('bitcoin-price-aud')?.textContent.replace(/,/g, '').replace('$', '')) || 0;
+    const btcPriceElement = document.getElementById('bitcoin-price-aud');
+    const btcPriceText = btcPriceElement?.textContent || '$0';
+    const btcPriceAud = parseFloat(btcPriceText.replace(/,/g, '').replace('$', '')) || 0;
     const btcValueAud = totalToDisplay * btcPriceAud;
     const btcValueElement = document.getElementById('bitcoin-value-aud');
+
+    console.log(`🔍 updateBTCHoldings - Price element text: "${btcPriceText}"`);
+    console.log(`🔍 updateBTCHoldings - Parsed price: ${btcPriceAud}`);
+    console.log(`🔍 updateBTCHoldings - Holdings: ${totalToDisplay}`);
+    console.log(`🔍 updateBTCHoldings - Calculated AUD: ${btcValueAud.toFixed(2)}`);
+
+    if (btcPriceAud === 0) {
+        console.error(`❌ WARNING: BTC price is 0! AUD value will be 0!`);
+    }
+
     if (btcValueElement) {
         // Don't add $ - HTML template already has it outside the span
         btcValueElement.textContent = formatNumber(btcValueAud.toFixed(2));
@@ -4849,6 +4861,14 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 // Immediately fetch prices for the new crypto to ensure we have a real price
                 await fetchPrices();
                 console.log(`Fetched price for newly added ${cryptoId}`);
+
+                // Verify the price was actually set
+                const priceCheckElement = document.getElementById(`${cryptoId}-price-aud`);
+                if (priceCheckElement) {
+                    console.log(`🔍 Price after fetchPrices: "${priceCheckElement.textContent}"`);
+                } else {
+                    console.error(`❌ Price element still not found after fetchPrices`);
+                }
             } catch (error) {
                 console.error(`Failed to auto-add ${cryptoId}:`, error);
                 continue;
@@ -4938,13 +4958,20 @@ async function addCryptoById(cryptoId) {
             updateApiUrl();
 
             // Set the initial price from CoinGecko data (prevents 0 price issue)
+            console.log(`🔍 Checking for market_data in API response for ${crypto.id}...`);
             if (data.market_data && data.market_data.current_price && data.market_data.current_price.aud) {
                 const priceAud = data.market_data.current_price.aud;
                 const priceElement = document.getElementById(`${crypto.id}-price-aud`);
                 if (priceElement) {
                     priceElement.textContent = `$${formatNumber(priceAud.toFixed(8), true)}`;
-                    console.log(`💲 Set initial price for ${crypto.id}: ${priceAud} AUD`);
+                    console.log(`✅ Set initial price for ${crypto.id}: ${priceAud} AUD`);
+                    console.log(`✅ Price element now shows: "${priceElement.textContent}"`);
+                } else {
+                    console.error(`❌ Could not find price element for ${crypto.id}`);
                 }
+            } else {
+                console.warn(`⚠️ No market_data in API response for ${crypto.id}`);
+                console.log('API response keys:', Object.keys(data));
             }
         }
 
