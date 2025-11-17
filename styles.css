@@ -1305,9 +1305,19 @@ body.light-mode .package-progress-bar {
     animation: pulse 1s infinite;
 }
 
+/* Flashing animation for active packages with blocks */
+.block-found-indicator.flashing {
+    animation: flash 0.5s infinite;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+}
+
+@keyframes flash {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(1.2); }
 }
 
 .stats-section {

@@ -4777,12 +4777,23 @@ function displayActivePackages() {
         const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : 8;
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
+        // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
+        let rewardDisplay;
+        if (pkg.blockFound && pkg.reward > 0) {
+            // Show actual crypto reward when block found
+            rewardDisplay = `${pkg.reward.toFixed(rewardDecimals)} ${pkg.crypto}`;
+        } else {
+            // No block found yet
+            rewardDisplay = `0 ${pkg.crypto}`;
+        }
+
         card.innerHTML = `
-            ${pkg.blockFound ? '<div class="block-found-indicator">🚀</div>' : ''}
+            ${pkg.blockFound && pkg.active ? '<div class="block-found-indicator flashing">🚀</div>' : ''}
+            ${pkg.blockFound && !pkg.active ? '<div class="block-found-indicator">🚀</div>' : ''}
             <div class="package-card-name">${pkg.name}${pkg.blockFound && pkg.confirmedBlocks > 0 ? ` 🚀 x${pkg.confirmedBlocks}` : ''}</div>
             <div class="package-card-stat">
                 <span>Reward:</span>
-                <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${(pkg.btcEarnings || 0).toFixed(8)} BTC</span>
+                <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
             <div class="package-card-stat">
                 <span>Time:</span>
