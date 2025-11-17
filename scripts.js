@@ -3686,8 +3686,9 @@ async function fetchEasyMiningData() {
                 console.log(`Active Packages: ${easyMiningData.activePackages.length}`);
 
             } catch (apiError) {
-                // CORS error or API failure - use mock data for testing
+                // Handle different types of API errors
                 if (apiError.message.includes('fetch')) {
+                    // CORS error - use mock data for testing
                     console.warn('⚠️ CORS error detected - using mock data for testing');
                     console.warn('📝 To fix: Deploy with backend proxy or use serverless functions');
 
@@ -3700,7 +3701,23 @@ async function fetchEasyMiningData() {
                     console.log(`Available BTC: ${easyMiningData.availableBTC}`);
                     console.log(`Pending BTC: ${easyMiningData.pendingBTC}`);
                     console.log(`Active Packages: ${easyMiningData.activePackages.length}`);
+                } else if (apiError.message.includes('401')) {
+                    // 401 Authentication Error - provide specific guidance
+                    console.error('❌ 401 Authentication Error - API credentials rejected by NiceHash');
+                    console.error('📝 Common causes:');
+                    console.error('  1. Credentials are not in UUID format (must have dashes)');
+                    console.error('  2. API Key, API Secret, or Org ID is incorrect');
+                    console.error('  3. API Key lacks necessary permissions in NiceHash');
+                    console.error('  4. API Key has been revoked or expired');
+                    console.error('');
+                    console.error('🔧 Next steps:');
+                    console.error('  1. Check console above for credential validation results');
+                    console.error('  2. Verify credentials in NiceHash Settings → API Keys');
+                    console.error('  3. Create new API key if needed with Read/Write permissions');
+                    console.error('  4. Re-enter credentials in EasyMining Settings');
+                    throw apiError;
                 } else {
+                    // Other API errors
                     throw apiError;
                 }
             }
@@ -3727,7 +3744,24 @@ async function fetchEasyMiningData() {
         console.error('Error fetching EasyMining data:', error);
         // Don't alert for CORS errors as we're handling them gracefully
         if (!error.message.includes('fetch')) {
-            alert(`Error fetching EasyMining data: ${error.message}\n\nPlease check your API credentials.`);
+            if (error.message.includes('401')) {
+                // Specific message for authentication errors
+                alert('❌ API Error 401 - Authentication Failed\n\n' +
+                      'NiceHash rejected your API credentials.\n\n' +
+                      '✅ Quick Fixes:\n' +
+                      '1. Check credentials have dashes (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)\n' +
+                      '2. Verify you copied them correctly from NiceHash\n' +
+                      '3. Check API key has Read/Write permissions\n' +
+                      '4. Create fresh API key if expired\n\n' +
+                      '📝 Check browser console (F12) for detailed troubleshooting info.\n' +
+                      '📖 See NICEHASH_401_FIX.md for full guide.');
+            } else if (error.message.includes('Invalid credentials format')) {
+                // This is already handled by the validation function alert
+                // Don't show duplicate alert
+            } else {
+                // Generic error message for other issues
+                alert(`Error fetching EasyMining data: ${error.message}\n\nPlease check your API credentials and network connection.`);
+            }
         }
     }
 }
