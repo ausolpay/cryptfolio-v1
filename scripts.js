@@ -4771,9 +4771,10 @@ function displayActivePackages() {
 
     packagesToShow.forEach(pkg => {
         const card = document.createElement('div');
-        card.className = 'package-card';
+        // Add 'block-confirmed' class to packages that found blocks (for orange glow)
+        card.className = pkg.blockFound ? 'package-card block-confirmed' : 'package-card';
         card.onclick = () => showPackageDetailModal(pkg);
-        
+
         const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : 8;
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
@@ -4787,9 +4788,21 @@ function displayActivePackages() {
             rewardDisplay = `0 ${pkg.crypto}`;
         }
 
+        // Rocket icon logic:
+        // - ALL active packages: flashing rocket (indicates mining in progress)
+        // - Packages with blocks: solid rocket (indicates block found)
+        let rocketHtml = '';
+        if (pkg.active) {
+            // Active package: flashing rocket to show it's mining
+            rocketHtml = '<div class="block-found-indicator flashing">🚀</div>';
+        }
+        if (pkg.blockFound) {
+            // Block found: solid rocket (overrides flashing if both conditions true)
+            rocketHtml = '<div class="block-found-indicator">🚀</div>';
+        }
+
         card.innerHTML = `
-            ${pkg.blockFound && pkg.active ? '<div class="block-found-indicator flashing">🚀</div>' : ''}
-            ${pkg.blockFound && !pkg.active ? '<div class="block-found-indicator">🚀</div>' : ''}
+            ${rocketHtml}
             <div class="package-card-name">${pkg.name}${pkg.blockFound && pkg.confirmedBlocks > 0 ? ` 🚀 x${pkg.confirmedBlocks}` : ''}</div>
             <div class="package-card-stat">
                 <span>Reward:</span>
@@ -4807,7 +4820,7 @@ function displayActivePackages() {
                 <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
             </div>
         `;
-        
+
         container.appendChild(card);
     });
     

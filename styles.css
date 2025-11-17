@@ -1400,6 +1400,16 @@ body.light-mode .recommendation-card {
     color: #ffa500;
 }
 
+/* Package card with confirmed block - same styling as recommendation */
+.package-card.block-confirmed {
+    border: 2px solid #ffa500;
+    animation: glow 2s infinite;
+}
+
+body.light-mode .package-card.block-confirmed {
+    border: 2px solid #ffa500;
+}
+
 /* Package Detail Modal Styles */
 .package-detail-content {
     max-width: 1000px;
