@@ -3788,63 +3788,45 @@ function validateNiceHashCredentials() {
     const errors = [];
     const warnings = [];
 
-    // Standard UUID format (strict)
+    // UUID format for API Key and Org ID (36 characters)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    // More flexible format - just checks for dashes and alphanumeric (for NiceHash compatibility)
-    const flexibleRegex = /^[0-9a-fA-F-]{36}$/;
+    // Flexible format for API Secret (64-72 characters, hexadecimal)
+    const secretRegex = /^[0-9a-fA-F-]{64,72}$/;
 
     console.log('🔍 Validating NiceHash Credentials...');
     console.log('API Key received:', `"${easyMiningSettings.apiKey}"`, `(length: ${easyMiningSettings.apiKey ? easyMiningSettings.apiKey.length : 0})`);
     console.log('API Secret received:', `"${easyMiningSettings.apiSecret}"`, `(length: ${easyMiningSettings.apiSecret ? easyMiningSettings.apiSecret.length : 0})`);
     console.log('Org ID received:', `"${easyMiningSettings.orgId}"`, `(length: ${easyMiningSettings.orgId ? easyMiningSettings.orgId.length : 0})`);
 
-    // Check API Key
+    // Check API Key (UUID format, 36 characters)
     if (!easyMiningSettings.apiKey) {
         errors.push('API Key is missing');
     } else if (easyMiningSettings.apiKey.length !== 36) {
         errors.push(`API Key wrong length (got ${easyMiningSettings.apiKey.length}, expected 36)`);
         errors.push(`  → You entered: "${easyMiningSettings.apiKey}"`);
     } else if (!uuidRegex.test(easyMiningSettings.apiKey)) {
-        // Check if it matches flexible format
-        if (flexibleRegex.test(easyMiningSettings.apiKey)) {
-            warnings.push('API Key format is non-standard but may work (not strict UUID format)');
-        } else {
-            errors.push(`API Key format invalid (should be UUID with dashes, e.g., 12345678-1234-1234-1234-123456789abc)`);
-            errors.push(`  → You entered: "${easyMiningSettings.apiKey}"`);
-        }
+        warnings.push('API Key format is non-standard but may work (expected UUID format like: 12345678-1234-1234-1234-123456789abc)');
     }
 
-    // Check API Secret
+    // Check API Secret (hex string, 64-72 characters)
     if (!easyMiningSettings.apiSecret) {
         errors.push('API Secret is missing');
-    } else if (easyMiningSettings.apiSecret.length !== 36) {
-        errors.push(`API Secret wrong length (got ${easyMiningSettings.apiSecret.length}, expected 36)`);
+    } else if (easyMiningSettings.apiSecret.length < 64 || easyMiningSettings.apiSecret.length > 72) {
+        errors.push(`API Secret wrong length (got ${easyMiningSettings.apiSecret.length}, expected 64-72 characters)`);
         errors.push(`  → You entered: "${easyMiningSettings.apiSecret}"`);
-    } else if (!uuidRegex.test(easyMiningSettings.apiSecret)) {
-        // Check if it matches flexible format
-        if (flexibleRegex.test(easyMiningSettings.apiSecret)) {
-            warnings.push('API Secret format is non-standard but may work (not strict UUID format)');
-        } else {
-            errors.push('API Secret format invalid (should be UUID with dashes)');
-            errors.push(`  → You entered: "${easyMiningSettings.apiSecret}"`);
-        }
+    } else if (!secretRegex.test(easyMiningSettings.apiSecret)) {
+        warnings.push('API Secret format is non-standard but may work (expected hexadecimal string)');
     }
 
-    // Check Org ID
+    // Check Org ID (UUID format, 36 characters)
     if (!easyMiningSettings.orgId) {
         errors.push('Organization ID is missing');
     } else if (easyMiningSettings.orgId.length !== 36) {
         errors.push(`Organization ID wrong length (got ${easyMiningSettings.orgId.length}, expected 36)`);
         errors.push(`  → You entered: "${easyMiningSettings.orgId}"`);
     } else if (!uuidRegex.test(easyMiningSettings.orgId)) {
-        // Check if it matches flexible format
-        if (flexibleRegex.test(easyMiningSettings.orgId)) {
-            warnings.push('Organization ID format is non-standard but may work (not strict UUID format)');
-        } else {
-            errors.push('Organization ID format invalid (should be UUID with dashes)');
-            errors.push(`  → You entered: "${easyMiningSettings.orgId}"`);
-        }
+        warnings.push('Organization ID format is non-standard but may work (expected UUID format)');
     }
 
     // Show warnings if any
@@ -3858,13 +3840,13 @@ function validateNiceHashCredentials() {
         console.error('❌ NiceHash Credential Validation Failed:');
         errors.forEach(err => console.error('  - ' + err));
         console.log('');
-        console.log('📝 NiceHash credentials should look like:');
-        console.log('  API Key:    12345678-1234-1234-1234-123456789abc');
-        console.log('  API Secret: abcdefab-abcd-abcd-abcd-abcdefabcdef');
-        console.log('  Org ID:     87654321-4321-4321-4321-987654321fed');
+        console.log('📝 NiceHash credentials format:');
+        console.log('  API Key:    12345678-1234-1234-1234-123456789abc (36 characters, UUID format)');
+        console.log('  API Secret: 64-72 character hexadecimal string');
+        console.log('  Org ID:     87654321-4321-4321-4321-987654321fed (36 characters, UUID format)');
         console.log('');
-        console.log('⚠️  Make sure you copied them correctly from NiceHash with dashes included!');
-        console.log('💡 Tip: Look at the "length" value - it should be exactly 36 characters');
+        console.log('⚠️  Make sure you copied them correctly from NiceHash!');
+        console.log('💡 Check the "length" values above to see what you entered');
         console.log('💡 Check for hidden spaces or special characters');
         return false;
     }

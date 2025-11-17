@@ -150,14 +150,15 @@ Response status: 401
 Your credentials **MUST** look like this:
 
 ```
-API Key:    xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-API Secret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-Org ID:     xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+API Key:    xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 characters)
+API Secret: 64-72 character hexadecimal string
+Org ID:     xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 characters)
 ```
 
 **Rules:**
-- ✅ **36 characters total** (32 hex + 4 dashes)
-- ✅ **4 dashes** in each credential
+- ✅ **API Key:** 36 characters (UUID format with 4 dashes)
+- ✅ **API Secret:** 64-72 characters (hexadecimal string)
+- ✅ **Organization ID:** 36 characters (UUID format with 4 dashes)
 - ✅ **No spaces** before or after
 - ✅ **Copy/paste from NiceHash** exactly as shown
 

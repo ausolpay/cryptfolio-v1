@@ -11,16 +11,16 @@ This means NiceHash rejected your authentication. Here's how to fix it:
 NiceHash credentials are **UUIDs with dashes**. They should look like this:
 
 ```
-API Key:    12345678-1234-1234-1234-123456789abc
-API Secret: abcdefab-abcd-abcd-abcd-abcdefabcdef
-Org ID:     87654321-4321-4321-4321-987654321fed
+API Key:    12345678-1234-1234-1234-123456789abc (36 characters)
+API Secret: a1b2c3d4e5f6...64-72 character hexadecimal string
+Org ID:     87654321-4321-4321-4321-987654321fed (36 characters)
 ```
 
 **Format Rules:**
-- ✅ **Include the dashes** (4 dashes in each UUID)
-- ✅ **All lowercase or all uppercase** (case doesn't matter)
-- ✅ **Exactly 36 characters** (32 hex digits + 4 dashes)
-- ❌ **NO spaces** before or after
+- ✅ **API Key:** 36 characters, UUID format with dashes (e.g., xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- ✅ **API Secret:** 64-72 characters, hexadecimal string (may or may not have dashes)
+- ✅ **Organization ID:** 36 characters, UUID format with dashes
+- ❌ **NO spaces** before or after any credential
 - ❌ **NO extra characters**
 
 ---
@@ -98,10 +98,10 @@ NiceHash API keys have permissions. Make sure your key has:
 
 ## 🐛 Common Issues
 
-### Issue 1: Missing Dashes
+### Issue 1: Wrong Lengths
 ```
-❌ Wrong: 123456781234123412341234567 89abc
-✅ Right: 12345678-1234-1234-1234-123456789abc
+❌ Wrong: API Secret is 36 characters (should be 64-72)
+✅ Right: API Key is 36 chars, API Secret is 64-72 chars, Org ID is 36 chars
 ```
 
 ### Issue 2: Extra Spaces
@@ -158,7 +158,9 @@ Available BTC: 0.00012345
 
 ## 📝 Quick Checklist
 
-- [ ] Credentials are UUIDs with dashes (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- [ ] API Key is 36 characters (UUID format with dashes)
+- [ ] API Secret is 64-72 characters (hexadecimal string)
+- [ ] Organization ID is 36 characters (UUID format with dashes)
 - [ ] No extra spaces before/after credentials
 - [ ] API key has "Read" and "Write" permissions in NiceHash
 - [ ] Organization ID is correct
