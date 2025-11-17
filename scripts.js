@@ -4396,23 +4396,33 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Fetch rewards for this order from the rewards endpoint
-                const rewardsData = await fetchOrderRewards(order.id);
-
                 // Determine if block was found based on rewards endpoint
+                // Only fetch rewards for completed orders to avoid rate limiting
                 let blockFound = false;
                 let totalRewardBTC = 0;
 
-                if (rewardsData && rewardsData.list && Array.isArray(rewardsData.list) && rewardsData.list.length > 0) {
-                    // Has rewards!
-                    blockFound = true;
-                    // Sum up all rewards
-                    totalRewardBTC = rewardsData.list.reduce((sum, reward) => {
-                        return sum + (parseFloat(reward.amount || 0));
-                    }, 0);
-                    console.log(`✅ Order ${order.id} found ${rewardsData.list.length} reward(s)! Total: ${totalRewardBTC} BTC`);
+                if (!order.alive) {
+                    // Order is completed, fetch rewards
+                    try {
+                        const rewardsData = await fetchOrderRewards(order.id);
+
+                        if (rewardsData && rewardsData.list && Array.isArray(rewardsData.list) && rewardsData.list.length > 0) {
+                            // Has rewards!
+                            blockFound = true;
+                            // Sum up all rewards
+                            totalRewardBTC = rewardsData.list.reduce((sum, reward) => {
+                                return sum + (parseFloat(reward.amount || 0));
+                            }, 0);
+                            console.log(`✅ Order ${order.id} found ${rewardsData.list.length} reward(s)! Total: ${totalRewardBTC} BTC`);
+                        } else {
+                            console.log(`❌ Order ${order.id} (completed) has no rewards`);
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Could not fetch rewards for order ${order.id}, continuing...`);
+                        // Continue with blockFound = false, totalRewardBTC = 0
+                    }
                 } else {
-                    console.log(`❌ Order ${order.id} has no rewards`);
+                    console.log(`⏳ Order ${order.id} is still active, skipping rewards check`);
                 }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
