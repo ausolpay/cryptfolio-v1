@@ -4111,24 +4111,61 @@ function getAlgorithmInfo(algorithmId, pool) {
 
 // Determine package name from order data
 function determinePackageName(order, algoInfo) {
-    // Check if it's from a specific pool (package type)
+    // NiceHash EasyMining Package Names:
+    // Gold = SHA256 BTC mining
+    // Silver = SHA256 BCH mining
+    // Chromium = KawPow RVN mining
+    // Palladium DOGE = Scrypt DOGE+LTC dual mining
+    // Palladium LTC = Scrypt LTC mining
+    // Titanium = kHeavyHash KAS mining
+
+    // Try pool name first (active packages)
     if (order.pool && order.pool.name) {
         const poolName = order.pool.name.toLowerCase();
 
-        // Package type detection
         if (poolName.includes('gold')) return 'Gold Package';
         if (poolName.includes('silver')) return 'Silver Package';
-        if (poolName.includes('palladium') && poolName.includes('doge')) return 'Palladium DOGE Package';
-        if (poolName.includes('palladium') && poolName.includes('ltc')) return 'Palladium LTC Package';
+        if (poolName.includes('palladium') && poolName.includes('doge')) return 'Palladium DOGE';
+        if (poolName.includes('palladium') && poolName.includes('ltc')) return 'Palladium LTC';
         if (poolName.includes('palladium')) return 'Palladium Package';
         if (poolName.includes('chromium')) return 'Chromium Package';
         if (poolName.includes('titanium')) return 'Titanium Package';
 
-        // If pool name is descriptive, use it
+        // Return descriptive pool name
         return order.pool.name;
     }
 
-    // Fallback: Use algorithm name + type
+    // Fallback for completed packages (no pool info)
+    // Determine package type from algorithm + market
+    const algo = order.algorithm?.toString().toUpperCase() || '';
+    const market = order.market?.toString().toUpperCase() || '';
+
+    // Map based on algorithm and crypto
+    if (algo.includes('SHA256')) {
+        // Check if it's BTC or BCH based on market or other indicators
+        if (market.includes('BCH') || algoInfo.crypto === 'BCH') {
+            return 'Silver Package'; // SHA256 BCH
+        }
+        return 'Gold Package'; // SHA256 BTC (default)
+    }
+
+    if (algo.includes('KAWPOW')) {
+        return 'Chromium Package'; // KawPow RVN
+    }
+
+    if (algo.includes('SCRYPT')) {
+        // Check if DOGE or LTC
+        if (market.includes('DOGE') || algoInfo.crypto === 'DOGE') {
+            return 'Palladium DOGE'; // Scrypt DOGE+LTC
+        }
+        return 'Palladium LTC'; // Scrypt LTC
+    }
+
+    if (algo.includes('KHEAVYHASH') || algo.includes('HEAVYHASH')) {
+        return 'Titanium Package'; // kHeavyHash KAS
+    }
+
+    // Generic fallback
     const typeStr = order.type === 'TEAM' ? ' Team' : '';
     return `${algoInfo.name}${typeStr}`;
 }
@@ -4360,12 +4397,51 @@ function updateEasyMiningUI() {
     updateRecommendations();
 }
 
+// Current package filter tab
+let currentPackageTab = 'active';
+
+// Switch package tab
+function switchPackageTab(tab) {
+    currentPackageTab = tab;
+
+    // Update tab UI
+    document.querySelectorAll('.package-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.closest('.package-tab').classList.add('active');
+
+    // Refresh display
+    displayActivePackages();
+}
+
+window.switchPackageTab = switchPackageTab;
+
 function displayActivePackages() {
     const container = document.getElementById('active-packages-container');
     container.innerHTML = '';
-    
-    const packagesToShow = showAllPackages ? easyMiningData.activePackages : easyMiningData.activePackages.slice(0, 6);
-    
+
+    // Filter packages based on current tab
+    let filteredPackages = [];
+    if (currentPackageTab === 'active') {
+        filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.active === true);
+    } else if (currentPackageTab === 'completed') {
+        filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.active === false);
+    } else if (currentPackageTab === 'rewards') {
+        filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true);
+    }
+
+    // Update tab counts
+    document.getElementById('active-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.active === true).length;
+    document.getElementById('completed-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.active === false).length;
+    document.getElementById('rewards-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true).length;
+
+    const packagesToShow = showAllPackages ? filteredPackages : filteredPackages.slice(0, 6);
+
+    if (packagesToShow.length === 0) {
+        container.innerHTML = `<p style="text-align: center; color: #888; padding: 20px;">No ${currentPackageTab} packages</p>`;
+        return;
+    }
+
     packagesToShow.forEach(pkg => {
         const card = document.createElement('div');
         card.className = 'package-card';
@@ -4544,6 +4620,14 @@ function updateBTCHoldings() {
     const totalToDisplay = baseHoldings + additionalBalance;
     // Don't use formatNumber for BTC amounts - it adds commas in wrong places for small decimals
     btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
+
+    // Update the AUD value for Bitcoin (same as manual update does)
+    const btcPriceAud = parseFloat(document.getElementById('bitcoin-price-aud')?.textContent.replace(/,/g, '').replace('$', '')) || 0;
+    const btcValueAud = totalToDisplay * btcPriceAud;
+    const btcValueElement = document.getElementById('bitcoin-value-aud');
+    if (btcValueElement) {
+        btcValueElement.textContent = `$${formatNumber(btcValueAud.toFixed(2))}`;
+    }
 
     // Update total portfolio value
     updateTotalHoldings();

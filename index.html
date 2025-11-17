@@ -139,7 +139,24 @@
 
                 <div class="easymining-main-content">
                     <div class="active-packages-section">
-                        <h3>Active Packages</h3>
+                        <h3>My Packages</h3>
+
+                        <!-- Package Filter Tabs -->
+                        <div class="package-tabs">
+                            <button class="package-tab active" onclick="switchPackageTab('active')">
+                                Active
+                                <span id="active-count" class="tab-count">0</span>
+                            </button>
+                            <button class="package-tab" onclick="switchPackageTab('completed')">
+                                Completed
+                                <span id="completed-count" class="tab-count">0</span>
+                            </button>
+                            <button class="package-tab" onclick="switchPackageTab('rewards')">
+                                Rewards
+                                <span id="rewards-count" class="tab-count">0</span>
+                            </button>
+                        </div>
+
                         <div id="active-packages-container" class="active-packages-container"></div>
                         <button id="show-more-packages" onclick="toggleShowMorePackages()" style="display: none;">Show More</button>
                     </div>
