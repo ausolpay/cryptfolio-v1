@@ -3825,25 +3825,23 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     }
 
     // Create signature using HMAC-SHA256
-    // NiceHash message format: apiKey\0timestamp\0nonce\0\0orgId\0\0METHOD\0endpoint\0query
-    // For GET requests with no query or body, end after endpoint path
+    // NiceHash CORRECT format (from official docs):
+    // APIKey\0XTime\0XNonce\0\0OrganizationID\0\0HTTPMethod\0Path\0QueryString
+    // NOTE: API Key comes FIRST, then timestamp!
     const query = ''; // Empty for most endpoints
 
-    // Build message - only include query and body parts if they exist
-    let message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}`;
+    // Build message in CORRECT order: APIKey, Time, Nonce, empty, OrgID, empty, Method, Path, Query
+    let message = `${easyMiningSettings.apiKey}\x00${timestamp}\x00${nonce}\x00\x00${easyMiningSettings.orgId}\x00\x00${method}\x00${endpoint}\x00${query}`;
 
-    // Add query string (empty for GET requests)
-    message += `\x00${query}`;
-
-    // Only add body if present (for POST requests)
+    // For POST requests, add body after query
     if (bodyString) {
         message += `\x00${bodyString}`;
     }
 
     // Generate HMAC-SHA256 signature
-    // Try using API Secret WITH dashes (as provided by NiceHash)
-    const secretKey = easyMiningSettings.apiSecret; // Keep dashes
-    console.log('🔑 Using API Secret for signing:', secretKey.length, 'chars (with dashes)');
+    // API Secret should be used WITHOUT dashes (hex string only)
+    const secretKey = easyMiningSettings.apiSecret.replace(/-/g, '');
+    console.log('🔑 Using API Secret for signing:', secretKey.length, 'chars (dashes removed)');
 
     const signature = CryptoJS.HmacSHA256(message, secretKey).toString(CryptoJS.enc.Hex);
 
