@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:www.nicehash.com)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []

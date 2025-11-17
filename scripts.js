@@ -3863,12 +3863,23 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     console.log('Signature (full):', signature);
 
     // NiceHash API v2 requires specific header names (case-sensitive)
+    // X-Auth header format: "apiKey:signature"
+    const authHeader = `${easyMiningSettings.apiKey}:${signature}`;
+
+    console.log('📤 Headers being sent:');
+    console.log('  X-Time:', timestamp);
+    console.log('  X-Nonce:', nonce);
+    console.log('  X-Request-Id:', nonce);
+    console.log('  X-Organization-Id:', easyMiningSettings.orgId);
+    console.log('  X-Auth:', authHeader.substring(0, 50) + '...');
+
     return {
         'X-Time': timestamp,
         'X-Nonce': nonce,
-        'X-Auth-Signature': signature,
-        'X-Auth-Key': easyMiningSettings.apiKey,
+        'X-Request-Id': nonce,
         'X-Organization-Id': easyMiningSettings.orgId,
+        'X-Auth': authHeader,
+        'X-User-Agent': 'CryptFolio',
         'Content-Type': 'application/json'
     };
 }
