@@ -4609,33 +4609,34 @@ function updateStats() {
     // Calculate stats from actual package data
     const packages = easyMiningData.activePackages || [];
 
-    // All time stats - calculate from all packages
-    const totalBlocksAll = packages.filter(pkg => pkg.blockFound).length;
-    const totalSpentAll = packages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
-    const totalRewardAll = packages.reduce((sum, pkg) => sum + (pkg.reward || 0), 0);
+    // All time stats - calculate ONLY from packages with blocks found
+    const packagesWithBlocks = packages.filter(pkg => pkg.blockFound);
+    const totalBlocksAll = packagesWithBlocks.length;
+    const totalSpentAll = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
+    const totalRewardAll = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0); // Use actual BTC earnings
     const pnlAll = totalRewardAll - totalSpentAll;
 
-    // Today stats - packages started today
+    // Today stats - packages with blocks found started today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTimestamp = today.getTime();
 
-    const todayPackages = packages.filter(pkg => pkg.startTime >= todayTimestamp);
-    const totalBlocksToday = todayPackages.filter(pkg => pkg.blockFound).length;
+    const todayPackages = packages.filter(pkg => pkg.startTime >= todayTimestamp && pkg.blockFound);
+    const totalBlocksToday = todayPackages.length;
     const totalSpentToday = todayPackages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
-    const pnlToday = todayPackages.reduce((sum, pkg) => sum + (pkg.reward || 0), 0) - totalSpentToday;
+    const pnlToday = todayPackages.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0) - totalSpentToday;
 
     // Update UI - All time stats
     document.getElementById('total-blocks-all').textContent = totalBlocksAll;
-    document.getElementById('total-reward-all').textContent = `$${totalRewardAll.toFixed(2)}`;
-    document.getElementById('total-spent-all').textContent = `$${totalSpentAll.toFixed(2)}`;
-    document.getElementById('pnl-all').textContent = `$${pnlAll.toFixed(2)}`;
+    document.getElementById('total-reward-all').textContent = `${totalRewardAll.toFixed(8)} BTC`; // Show BTC with 8 decimals
+    document.getElementById('total-spent-all').textContent = `${totalSpentAll.toFixed(8)} BTC`; // Price spent is also in BTC
+    document.getElementById('pnl-all').textContent = `${pnlAll.toFixed(8)} BTC`;
     document.getElementById('pnl-all').className = pnlAll >= 0 ? 'stat-value positive' : 'stat-value negative';
 
     // Update UI - Today stats
     document.getElementById('total-blocks-today').textContent = totalBlocksToday;
-    document.getElementById('total-spent-today').textContent = `$${totalSpentToday.toFixed(2)}`;
-    document.getElementById('pnl-today').textContent = `$${pnlToday.toFixed(2)}`;
+    document.getElementById('total-spent-today').textContent = `${totalSpentToday.toFixed(8)} BTC`;
+    document.getElementById('pnl-today').textContent = `${pnlToday.toFixed(8)} BTC`;
     document.getElementById('pnl-today').className = pnlToday >= 0 ? 'stat-value positive' : 'stat-value negative';
 
     // Update the easyMiningData stats for persistence
@@ -4818,48 +4819,45 @@ async function autoUpdateCryptoHoldings(newBlocks) {
     if (!easyMiningSettings.autoUpdateHoldings) {
         return;
     }
-    
+
+    // Load tracked rewards to prevent double-adding
+    const trackedKey = `${loggedInUser}_easyMiningTrackedRewards`;
+    let trackedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
+
     // Get packages that found blocks
     const blocksFoundPackages = easyMiningData.activePackages.filter(pkg => pkg.blockFound);
-    
+
     for (const pkg of blocksFoundPackages) {
-        // Determine which crypto based on package type
-        let cryptoId = null;
-        let cryptoSymbol = null;
-        let rewardAmount = 0;
-        
-        // Map package types to cryptocurrencies
-        // Silver = BCH, Chromium = RVN, Gold = BTC, Palladium = DOGE/LTC, Titanium = KAS
-        if (pkg.name.toLowerCase().includes('silver') || pkg.name.toLowerCase().includes('bch')) {
-            cryptoId = 'bitcoin-cash';
-            cryptoSymbol = 'BCH';
-            rewardAmount = pkg.reward || 0.01; // Default BCH reward
-        } else if (pkg.name.toLowerCase().includes('chromium') || pkg.name.toLowerCase().includes('rvn')) {
-            cryptoId = 'ravencoin';
-            cryptoSymbol = 'RVN';
-            rewardAmount = pkg.reward || 100; // Default RVN reward
-        } else if (pkg.name.toLowerCase().includes('gold') || pkg.name.toLowerCase().includes('btc')) {
-            cryptoId = 'bitcoin';
-            cryptoSymbol = 'BTC';
-            rewardAmount = pkg.reward || 0.00001; // Default BTC reward
-        } else if (pkg.name.toLowerCase().includes('palladium') || pkg.name.toLowerCase().includes('pal')) {
-            // Palladium can be DOGE or LTC, check package details
-            if (pkg.name.toLowerCase().includes('doge')) {
-                cryptoId = 'dogecoin';
-                cryptoSymbol = 'DOGE';
-                rewardAmount = pkg.reward || 10; // Default DOGE reward
-            } else {
-                cryptoId = 'litecoin';
-                cryptoSymbol = 'LTC';
-                rewardAmount = pkg.reward || 0.01; // Default LTC reward
-            }
-        } else if (pkg.name.toLowerCase().includes('titanium') || pkg.name.toLowerCase().includes('kas')) {
-            cryptoId = 'kaspa';
-            cryptoSymbol = 'KAS';
-            rewardAmount = pkg.reward || 10; // Default KAS reward
+        // NiceHash pays ALL rewards in BTC regardless of what crypto was mined
+        // Use actual BTC earnings from API (already includes multiple blocks and fees deducted)
+        const cryptoId = 'bitcoin';
+        const cryptoSymbol = 'BTC';
+        const rewardAmount = pkg.btcEarnings || 0;
+
+        console.log(`💰 Package ${pkg.name} (${pkg.id}): Earned ${rewardAmount} BTC (Available: ${pkg.availableBTC}, Paid: ${pkg.paidBTC})`);
+
+        if (rewardAmount === 0) {
+            console.log(`⚠️ Skipping ${pkg.name} - no BTC earnings`);
+            continue;
         }
-        
-        if (!cryptoId) continue;
+
+        // Check if this exact reward amount has already been added for this package
+        const rewardKey = `${pkg.id}_${rewardAmount.toFixed(8)}`;
+        if (trackedRewards[rewardKey]) {
+            console.log(`ℹ️ Reward already processed for ${pkg.name} (${rewardAmount} BTC) - skipping`);
+            continue;
+        }
+
+        // Mark this reward as processed
+        trackedRewards[rewardKey] = {
+            packageId: pkg.id,
+            packageName: pkg.name,
+            amount: rewardAmount,
+            timestamp: Date.now()
+        };
+        setStorageItem(trackedKey, JSON.stringify(trackedRewards));
+        console.log(`✓ Marked reward as processed: ${rewardKey}`);
+
         
         // Check if crypto already exists in portfolio
         let crypto = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
