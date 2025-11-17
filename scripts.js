@@ -742,23 +742,24 @@ async function fetchPrices() {
                 }
 
                 priceElement.textContent = `$${formatNumber(priceAud.toFixed(8), true)}`;
-
-                // Get holdings - for Bitcoin, include NiceHash balance if EasyMining is enabled
-                let holdings;
-                if (crypto.id === 'bitcoin' && easyMiningSettings && (easyMiningSettings.includeAvailableBTC || easyMiningSettings.includePendingBTC)) {
-                    // For Bitcoin with EasyMining, get the total from the display (which includes NiceHash balance)
-                    const btcHoldingsElement = document.getElementById('bitcoin-holdings');
-                    holdings = btcHoldingsElement ? parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) : 0;
-                } else {
-                    // For other cryptos, get from localStorage
-                    holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
-                    console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
-                }
-
-                const audValue = holdings * priceAud;
-                document.getElementById(`${crypto.id}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
-                console.log(`🔄 fetchPrices updated ${crypto.id} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
             }
+
+            // Always recalculate AUD value, even if price hasn't changed
+            // This ensures holdings updates are reflected immediately
+            let holdings;
+            if (crypto.id === 'bitcoin' && easyMiningSettings && (easyMiningSettings.includeAvailableBTC || easyMiningSettings.includePendingBTC)) {
+                // For Bitcoin with EasyMining, get the total from the display (which includes NiceHash balance)
+                const btcHoldingsElement = document.getElementById('bitcoin-holdings');
+                holdings = btcHoldingsElement ? parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) : 0;
+            } else {
+                // For other cryptos, get from localStorage
+                holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
+            }
+
+            const audValue = holdings * priceAud;
+            document.getElementById(`${crypto.id}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
+            console.log(`🔄 fetchPrices updated ${crypto.id} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
         }
 
         if (pricesChanged) {
