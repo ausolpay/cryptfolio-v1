@@ -4427,23 +4427,6 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Check if this is a solo mining order and fetch rewards separately
-                if (order.soloMiningCoin) {
-                    console.log(`🎯 This is a SOLO MINING order for ${order.soloMiningCoin}! Fetching rewards separately...`);
-                    try {
-                        const rewardsData = await fetchOrderRewards(order.id);
-                        if (rewardsData && rewardsData.list && Array.isArray(rewardsData.list)) {
-                            // Merge rewards into order object
-                            order.soloReward = rewardsData.list;
-                            console.log(`✅ Fetched ${rewardsData.list.length} reward(s) for order ${order.id}`);
-                        } else {
-                            console.log(`⚠️ No rewards found in response for order ${order.id}. Response:`, rewardsData);
-                        }
-                    } catch (error) {
-                        console.error(`❌ Failed to fetch rewards for order ${order.id}:`, error);
-                    }
-                }
-
                 // Determine if block was found based on soloReward array
                 // According to NiceHash API docs, soloReward array contains:
                 // - payoutRewardBtc: actual reward amount in BTC
