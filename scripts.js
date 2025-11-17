@@ -742,7 +742,18 @@ async function fetchPrices() {
                 }
 
                 priceElement.textContent = `$${formatNumber(priceAud.toFixed(8), true)}`;
-                const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+
+                // Get holdings - for Bitcoin, include NiceHash balance if EasyMining is enabled
+                let holdings;
+                if (crypto.id === 'bitcoin' && easyMiningSettings && (easyMiningSettings.includeAvailableBTC || easyMiningSettings.includePendingBTC)) {
+                    // For Bitcoin with EasyMining, get the total from the display (which includes NiceHash balance)
+                    const btcHoldingsElement = document.getElementById('bitcoin-holdings');
+                    holdings = btcHoldingsElement ? parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) : 0;
+                } else {
+                    // For other cryptos, get from localStorage
+                    holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                }
+
                 document.getElementById(`${crypto.id}-value-aud`).textContent = formatNumber((holdings * priceAud).toFixed(2));
             }
         }
@@ -2671,7 +2682,17 @@ function debounceUpdateUI(cryptoId, priceInAud) {
     updateTimeout = setTimeout(() => {
         const priceElement = document.getElementById(`${cryptoId}-price-aud`);
         if (priceElement) {
-            const holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+            // Get holdings - for Bitcoin, include NiceHash balance if EasyMining is enabled
+            let holdings;
+            if (cryptoId === 'bitcoin' && easyMiningSettings && (easyMiningSettings.includeAvailableBTC || easyMiningSettings.includePendingBTC)) {
+                // For Bitcoin with EasyMining, get the total from the display (which includes NiceHash balance)
+                const btcHoldingsElement = document.getElementById('bitcoin-holdings');
+                holdings = btcHoldingsElement ? parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) : 0;
+            } else {
+                // For other cryptos, get from localStorage
+                holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+            }
+
             document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber((holdings * priceInAud).toFixed(2));
         }
 
@@ -4091,8 +4112,17 @@ function getAlgorithmInfo(algorithmId, pool) {
     };
 
     // Convert to uppercase for matching
-    const algoKey = algorithmId.toString().toUpperCase();
-    const info = algoMap[algoKey] || { name: algorithmId, crypto: 'BTC', cryptoSecondary: null };
+    // Handle algorithmId as object or string
+    let algoKey;
+    if (typeof algorithmId === 'object' && algorithmId !== null) {
+        // If algorithmId is an object, try to get the algorithm property or title
+        algoKey = (algorithmId.algorithm || algorithmId.title || algorithmId.name || '').toString().toUpperCase();
+    } else {
+        // Normal string conversion
+        algoKey = (algorithmId || '').toString().toUpperCase();
+    }
+
+    const info = algoMap[algoKey] || { name: (typeof algorithmId === 'string' ? algorithmId : algoKey), crypto: 'BTC', cryptoSecondary: null };
 
     // Check pool info for dual mining (Palladium packages mine DOGE+LTC)
     if (pool && pool.name) {
@@ -4241,20 +4271,27 @@ async function fetchNiceHashOrders() {
                 // Determine package name from market/pool/type
                 const packageName = determinePackageName(order, algoInfo);
 
+                // Calculate if package found a block (has rewards)
+                const rewardAmount = parseFloat(order.availableAmount || 0);
+                const hasRewards = rewardAmount > 0;
+
+                // Calculate total price spent on package (payedAmount is total paid)
+                const priceSpent = parseFloat(order.payedAmount || order.price || 0);
+
                 const pkg = {
                     id: order.id,
                     name: packageName,
                     crypto: algoInfo.crypto,
                     cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
-                    reward: parseFloat(order.availableAmount || 0),
+                    reward: rewardAmount,
                     algorithm: order.algorithm.toString(),
                     algorithmName: algoInfo.name,
                     hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
                     timeRemaining: calculateTimeRemaining(order.endTs),
                     progress: calculateProgress(order.startTs, order.endTs),
-                    blockFound: false, // Would need separate tracking
+                    blockFound: hasRewards, // True if package has earned rewards
                     isTeam: order.type === 'TEAM',
-                    price: parseFloat(order.price || 0),
+                    price: priceSpent, // Amount spent on this package
                     active: order.alive,
                     status: order.alive ? 'active' : 'completed',
                     startTime: order.startTs,
@@ -4448,8 +4485,8 @@ function displayActivePackages() {
         card.onclick = () => showPackageDetailModal(pkg);
         
         card.innerHTML = `
-            ${pkg.blockFound ? '<div class="block-found-indicator">🎉</div>' : ''}
-            <div class="package-card-name">${pkg.name}</div>
+            ${pkg.blockFound ? '<div class="block-found-indicator">🚀</div>' : ''}
+            <div class="package-card-name">${pkg.name}${pkg.blockFound ? ' 🚀' : ''}</div>
             <div class="package-card-stat">
                 <span>Reward:</span>
                 <span>${(pkg.reward || 0).toFixed(8)} ${pkg.crypto}</span>
@@ -4480,18 +4517,51 @@ function displayActivePackages() {
 }
 
 function updateStats() {
-    // All time stats
-    document.getElementById('total-blocks-all').textContent = easyMiningData.allTimeStats.totalBlocks;
-    document.getElementById('total-reward-all').textContent = `$${easyMiningData.allTimeStats.totalReward.toFixed(2)}`;
-    document.getElementById('total-spent-all').textContent = `$${easyMiningData.allTimeStats.totalSpent.toFixed(2)}`;
-    document.getElementById('pnl-all').textContent = `$${easyMiningData.allTimeStats.pnl.toFixed(2)}`;
-    document.getElementById('pnl-all').className = easyMiningData.allTimeStats.pnl >= 0 ? 'stat-value positive' : 'stat-value negative';
-    
-    // Today stats
-    document.getElementById('total-blocks-today').textContent = easyMiningData.todayStats.totalBlocks;
-    document.getElementById('total-spent-today').textContent = `$${easyMiningData.todayStats.totalSpent.toFixed(2)}`;
-    document.getElementById('pnl-today').textContent = `$${easyMiningData.todayStats.pnl.toFixed(2)}`;
-    document.getElementById('pnl-today').className = easyMiningData.todayStats.pnl >= 0 ? 'stat-value positive' : 'stat-value negative';
+    // Calculate stats from actual package data
+    const packages = easyMiningData.activePackages || [];
+
+    // All time stats - calculate from all packages
+    const totalBlocksAll = packages.filter(pkg => pkg.blockFound).length;
+    const totalSpentAll = packages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
+    const totalRewardAll = packages.reduce((sum, pkg) => sum + (pkg.reward || 0), 0);
+    const pnlAll = totalRewardAll - totalSpentAll;
+
+    // Today stats - packages started today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+
+    const todayPackages = packages.filter(pkg => pkg.startTime >= todayTimestamp);
+    const totalBlocksToday = todayPackages.filter(pkg => pkg.blockFound).length;
+    const totalSpentToday = todayPackages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
+    const pnlToday = todayPackages.reduce((sum, pkg) => sum + (pkg.reward || 0), 0) - totalSpentToday;
+
+    // Update UI - All time stats
+    document.getElementById('total-blocks-all').textContent = totalBlocksAll;
+    document.getElementById('total-reward-all').textContent = `$${totalRewardAll.toFixed(2)}`;
+    document.getElementById('total-spent-all').textContent = `$${totalSpentAll.toFixed(2)}`;
+    document.getElementById('pnl-all').textContent = `$${pnlAll.toFixed(2)}`;
+    document.getElementById('pnl-all').className = pnlAll >= 0 ? 'stat-value positive' : 'stat-value negative';
+
+    // Update UI - Today stats
+    document.getElementById('total-blocks-today').textContent = totalBlocksToday;
+    document.getElementById('total-spent-today').textContent = `$${totalSpentToday.toFixed(2)}`;
+    document.getElementById('pnl-today').textContent = `$${pnlToday.toFixed(2)}`;
+    document.getElementById('pnl-today').className = pnlToday >= 0 ? 'stat-value positive' : 'stat-value negative';
+
+    // Update the easyMiningData stats for persistence
+    easyMiningData.allTimeStats = {
+        totalBlocks: totalBlocksAll,
+        totalReward: totalRewardAll,
+        totalSpent: totalSpentAll,
+        pnl: pnlAll
+    };
+
+    easyMiningData.todayStats = {
+        totalBlocks: totalBlocksToday,
+        totalSpent: totalSpentToday,
+        pnl: pnlToday
+    };
 }
 
 function updateRecommendations() {
