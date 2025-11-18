@@ -4730,13 +4730,22 @@ async function fetchNiceHashOrders() {
             // Calculate block rewards from soloReward array
             const soloRewards = order.soloReward || [];
             let totalPackageRewardBTC = 0; // Total reward for entire package
-            let totalPackageCryptoReward = 0; // Total crypto reward using blockRewardWithNhFee
+            let totalPackageCryptoReward = 0; // Total crypto reward using payoutReward
             let confirmedBlockCount = 0;
             let pendingBlockCount = 0;
 
             soloRewards.forEach((reward, idx) => {
                 const btcReward = parseFloat(reward.payoutRewardBtc || 0);
-                const cryptoRewardAmount = parseFloat(reward.blockRewardWithNhFee || 0);
+
+                // Get crypto reward amount from payoutReward (actual payout)
+                let cryptoRewardAmount = 0;
+                if (order.soloMiningCoin === 'BTC' && reward.payoutRewardBtc) {
+                    cryptoRewardAmount = parseFloat(reward.payoutRewardBtc);
+                } else if (reward.payoutReward) {
+                    // Convert from smallest unit (satoshis equivalent) to full coins
+                    cryptoRewardAmount = parseFloat(reward.payoutReward) / 100000000;
+                }
+
                 const isConfirmed = reward.depositComplete === true;
 
                 if (btcReward > 0) {
@@ -4762,12 +4771,12 @@ async function fetchNiceHashOrders() {
                 console.log(`   ❌ No blocks found yet`);
             }
 
-            // Calculate crypto reward using blockRewardWithNhFee if available, otherwise fallback to standard
+            // Calculate crypto reward using payoutReward if available, otherwise fallback to standard
             let cryptoReward = 0;
             if (totalPackageCryptoReward > 0) {
-                // Use blockRewardWithNhFee from API
+                // Use payoutReward from API
                 cryptoReward = totalPackageCryptoReward;
-                console.log(`   💎 Using blockRewardWithNhFee: ${cryptoReward} ${order.soloMiningCoin}`);
+                console.log(`   💎 Using payoutReward: ${cryptoReward} ${order.soloMiningCoin}`);
             } else {
                 // Fallback to standard block reward
                 const blockReward = getBlockReward(order.soloMiningCoin);
@@ -4810,8 +4819,8 @@ async function fetchNiceHashOrders() {
                     console.log(`      → BTC reward calculation: ${totalPackageRewardBTC.toFixed(8)} × ${userSharePercentage.toFixed(4)} = ${totalRewardBTC.toFixed(8)} BTC`);
 
                     // Calculate user's share of crypto rewards
-                    // For team packages with blockRewardWithNhFee:
-                    // rewardPerShare = blockRewardWithNhFee / totalShares
+                    // For team packages with payoutReward:
+                    // rewardPerShare = payoutReward / totalShares
                     // myReward = rewardPerShare * myShares
                     if (totalPackageCryptoReward > 0) {
                         const rewardPerShare = totalPackageCryptoReward / totalShares;
@@ -5646,10 +5655,18 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
             console.log(`      🔍 Package crypto: ${pkg.crypto}, Reward coin: ${reward.coin || 'N/A'}, Using: ${crypto}`);
 
-            if (reward.blockRewardWithNhFee) {
-                // Use blockRewardWithNhFee from API (includes NiceHash fee deduction)
-                rewardAmount = parseFloat(reward.blockRewardWithNhFee);
-                console.log(`      💎 Using blockRewardWithNhFee: ${rewardAmount} ${crypto}`);
+            // Use payoutReward from API (actual block reward payout)
+            // For BTC: payoutRewardBtc is in BTC, payoutReward is in satoshis
+            // For other cryptos: payoutReward is in native units
+            if (crypto === 'BTC' && reward.payoutRewardBtc) {
+                // For Bitcoin, use payoutRewardBtc which is already in BTC
+                rewardAmount = parseFloat(reward.payoutRewardBtc);
+                console.log(`      💎 Using payoutRewardBtc: ${rewardAmount} BTC`);
+            } else if (reward.payoutReward) {
+                // For other cryptos, convert from smallest unit (satoshis equivalent)
+                // Most cryptos use 8 decimal places (100,000,000 units = 1 coin)
+                rewardAmount = parseFloat(reward.payoutReward) / 100000000;
+                console.log(`      💎 Using payoutReward: ${reward.payoutReward} (converted to ${rewardAmount} ${crypto})`);
             } else {
                 // Fallback to standard block reward
                 rewardAmount = getBlockReward(crypto);
@@ -5894,12 +5911,15 @@ function showPackageDetailPage(pkg) {
         </div>
         ` : ''}
         ${(() => {
-            // Calculate total crypto reward from blockRewardWithNhFee
+            // Calculate total crypto reward from payoutReward
             const soloRewards = pkg.fullOrderData?.soloReward || [];
             let totalCryptoReward = 0;
             soloRewards.forEach(reward => {
-                if (reward.blockRewardWithNhFee) {
-                    totalCryptoReward += parseFloat(reward.blockRewardWithNhFee);
+                // Use payoutReward from API (actual payout)
+                if (pkg.crypto === 'BTC' && reward.payoutRewardBtc) {
+                    totalCryptoReward += parseFloat(reward.payoutRewardBtc);
+                } else if (reward.payoutReward) {
+                    totalCryptoReward += parseFloat(reward.payoutReward) / 100000000;
                 }
             });
             const hasCryptoReward = totalCryptoReward > 0;
