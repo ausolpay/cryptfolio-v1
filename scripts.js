@@ -789,7 +789,10 @@ async function fetchPrices() {
             if (valueElement) {
                 const previousValue = valueElement.textContent;
                 valueElement.textContent = formatNumber(audValue.toFixed(2));
+
+                // SAVE Bitcoin AUD to localStorage (like manual update does)
                 if (crypto.id === 'bitcoin') {
+                    setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
                     console.log(`🔄 fetchPrices BTC - Previous AUD: ${previousValue}, New AUD: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
                     if (audValue === 0 && holdings > 0) {
                         console.error(`❌ fetchPrices set BTC AUD to 0 even though holdings is ${holdings}! Price must be 0!`);
@@ -1992,6 +1995,12 @@ function updateCryptoValue(cryptoId) {
 
     const currentValue = holdings * priceAud;
     document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(currentValue.toFixed(2));
+
+    // SAVE Bitcoin AUD to localStorage (like manual update does)
+    if (cryptoId === 'bitcoin') {
+        setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, currentValue);
+    }
+
     updateTotalHoldings();
     sortContainersByValue();
 }
@@ -2750,6 +2759,12 @@ function debounceUpdateUI(cryptoId, priceInAud) {
 
             const audValue = holdings * priceInAud;
             document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
+
+            // SAVE Bitcoin AUD to localStorage (like manual update does)
+            if (cryptoId === 'bitcoin') {
+                setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
+            }
+
             console.log(`🔄 debounceUpdateUI updated ${cryptoId} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceInAud})`);
         }
 
