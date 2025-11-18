@@ -318,6 +318,16 @@ function loadUserData() {
                                parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
                     // No formatting for BTC - use raw number with 8 decimals
                     holdingsElement.textContent = holdings.toFixed(8);
+
+                    // Also load and display the stored AUD value for Bitcoin
+                    const btcValueElement = document.getElementById('bitcoin-value-aud');
+                    if (btcValueElement) {
+                        const storedAUD = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayAUD`)) || 0;
+                        if (storedAUD > 0) {
+                            btcValueElement.textContent = formatNumber(storedAUD.toFixed(2));
+                            console.log(`📖 Loaded Bitcoin AUD from localStorage: $${storedAUD.toFixed(2)}`);
+                        }
+                    }
                 } else {
                     holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
                     holdingsElement.textContent = formatNumber(holdings.toFixed(3));
@@ -5494,6 +5504,10 @@ function updateBTCHoldings() {
         const btcPriceAud = parseFloat(btcPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
         const btcValueAud = totalToDisplay * btcPriceAud;
         btcValueElement.textContent = formatNumber(btcValueAud.toFixed(2));
+
+        // SAVE BTC AUD value to localStorage so it persists (same as manual update)
+        setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, btcValueAud);
+
         console.log(`💰 BTC AUD value: ${btcValueAud.toFixed(2)} (holdings: ${totalToDisplay}, price: ${btcPriceAud})`);
     }
 
