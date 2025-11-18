@@ -5042,14 +5042,18 @@ function calculateProgress(orderOrStartTimestamp, endTimestamp) {
             start = parseInt(startTimestamp);
         }
 
-        // Total duration in milliseconds
-        const totalDuration = parseInt(order.estimateDurationInSeconds) * 1000;
-
-        // Calculate elapsed time
+        // Calculate elapsed time since start
         const elapsed = now - start;
+
+        // estimateDurationInSeconds is REMAINING time, not total duration
+        const remainingMs = parseInt(order.estimateDurationInSeconds) * 1000;
+
+        // Total duration = elapsed + remaining
+        const totalDuration = elapsed + remainingMs;
 
         if (totalDuration <= 0) return 100;
 
+        // Progress = elapsed / total
         const progress = (elapsed / totalDuration) * 100;
         return Math.min(Math.max(progress, 0), 100);
     }
