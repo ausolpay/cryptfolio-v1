@@ -4567,8 +4567,16 @@ async function fetchNiceHashOrders() {
             console.log(`   - Pending solo rewards: ${btcPendingSolo} BTC`);
             console.log(`   - Available balance: ${btcAvailableSolo} BTC`);
 
+            const activeOrders = soloMiningOrders.filter(o => o.alive);
+            console.log(`   - Active solo mining orders: ${activeOrders.length}`);
+
             if (btcPendingSolo > 0) {
                 console.log(`🎉 PENDING SOLO REWARDS DETECTED! ${btcPendingSolo} BTC waiting for confirmation`);
+                if (activeOrders.length === 1) {
+                    console.log(`   ✅ Exactly 1 active order - can definitively assign pending block to order ${activeOrders[0].id}`);
+                } else if (activeOrders.length > 1) {
+                    console.log(`   ⚠️ ${activeOrders.length} active orders - cannot definitively assign pending block (will mark first active order)`);
+                }
             }
 
             // STEP 2: Fetch rewards endpoint for each order
@@ -4609,6 +4617,9 @@ async function fetchNiceHashOrders() {
                     .map(([id, rewards]) => ({ id, rewardCount: rewards.length }))
                 );
             }
+
+            // Track if we've assigned the pending block (only assign once)
+            let pendingBlockAssigned = false;
 
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
@@ -4693,15 +4704,20 @@ async function fetchNiceHashOrders() {
 
                 // HEURISTIC: If BTC has pending solo rewards AND this order is active solo mining,
                 // likely this order found a block (even if rewards endpoint is empty)
+                // IMPORTANT: Only assign pending block to ONE order (first active order encountered)
                 const hasActiveSoloMining = order.soloMiningCoin && order.alive;
                 const hasPendingSoloRewards = btcPendingSolo > 0;
+                const noConfirmedRewards = !rewardsArray || rewardsArray.length === 0;
 
-                if (hasActiveSoloMining && hasPendingSoloRewards && (!rewardsArray || rewardsArray.length === 0)) {
+                if (hasActiveSoloMining && hasPendingSoloRewards && noConfirmedRewards && !pendingBlockAssigned) {
                     console.log(`💡 HEURISTIC: Active solo mining order + pending BTC rewards = likely found pending block!`);
-                    console.log(`   Marking as having found block (pending confirmation)`);
+                    console.log(`   Assigning pending block to this order (first active order)`);
                     blockFound = true;
                     pendingBlockCount = 1;
                     totalPendingRewardBTC = btcPendingSolo;
+                    pendingBlockAssigned = true; // Don't assign to any other orders
+                } else if (hasActiveSoloMining && hasPendingSoloRewards && noConfirmedRewards && pendingBlockAssigned) {
+                    console.log(`   ⚠️ Active order but pending block already assigned to another order`);
                 }
 
                 if (rewardsArray && Array.isArray(rewardsArray) && rewardsArray.length > 0) {
@@ -4828,6 +4844,12 @@ async function fetchNiceHashOrders() {
                     // Store full order data
                     fullOrderData: order
                 };
+
+                console.log(`📦 Created package for order ${order.id}:`);
+                console.log(`   - Name: ${packageName}`);
+                console.log(`   - blockFound: ${blockFound}`);
+                console.log(`   - totalBlocks: ${totalBlocks} (${confirmedBlockCount} confirmed + ${pendingBlockCount} pending)`);
+                console.log(`   - Active: ${order.alive}`);
 
                 packages.push(pkg);
                 console.log(`✅ Mapped: ${pkg.name} (${pkg.miningType}) - Status: ${pkg.status} - Total Blocks: ${pkg.totalBlocks} (${pkg.confirmedBlocks} confirmed, ${pkg.pendingBlocks} pending) - BTC: ${pkg.btcEarnings.toFixed(8)} confirmed + ${pkg.btcPending.toFixed(8)} pending`);
