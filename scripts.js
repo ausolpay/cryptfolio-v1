@@ -309,9 +309,19 @@ function loadUserData() {
 
             const holdingsElement = document.getElementById(`${crypto.id}-holdings`);
             if (holdingsElement) {
-                holdingsElement.textContent = formatNumber(
-                    (parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0).toFixed(3)
-                );
+                // For Bitcoin, use display holdings (includes NiceHash balance)
+                // For other cryptos, use manual holdings from localStorage
+                let holdings = 0;
+                if (crypto.id === 'bitcoin') {
+                    // Try to load displayed holdings (manual + NiceHash) first
+                    holdings = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayHoldings`)) ||
+                               parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                    // No formatting for BTC - use raw number with 8 decimals
+                    holdingsElement.textContent = holdings.toFixed(8);
+                } else {
+                    holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                    holdingsElement.textContent = formatNumber(holdings.toFixed(3));
+                }
             }
         });
     }
@@ -5465,13 +5475,16 @@ function updateBTCHoldings() {
         }
     }
 
-    // Total to display = manual + NiceHash (DO NOT save to localStorage)
+    // Total to display = manual + NiceHash
     const totalToDisplay = manualHoldings + niceHashBalance;
 
     console.log(`💰 BTC Holdings: Manual ${manualHoldings.toFixed(8)} + NiceHash ${niceHashBalance.toFixed(8)} = Total ${totalToDisplay.toFixed(8)}`);
 
     // Update display (NO COMMAS for BTC - use raw number)
     btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
+
+    // SAVE displayed amount to localStorage so it persists across page loads
+    setStorageItem(`${loggedInUser}_bitcoin_displayHoldings`, totalToDisplay);
 
     // Update the AUD value for Bitcoin
     const btcPriceElement = document.getElementById('bitcoin-price-aud');
