@@ -3556,16 +3556,19 @@ function activateEasyMining() {
     easyMiningSettings.autoUpdateHoldings = document.getElementById('auto-update-holdings-toggle').checked;
     easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle').checked;
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle').checked;
-    
+
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
-    
+
     console.log('EasyMining activated with credentials');
-    
+
+    // Update BTC holdings display with new settings
+    updateBTCHoldingsDisplay();
+
     // Start polling and show section
     startEasyMiningPolling();
     document.getElementById('easymining-section').style.display = 'block';
-    
+
     closeEasyMiningSettingsModal();
     showModal('✅ EasyMining activated successfully!\n\nThe EasyMining section is now visible above your crypto boxes.');
 }
@@ -3598,6 +3601,9 @@ function activateEasyMiningFromPage() {
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
 
     console.log('EasyMining activated with credentials (from page)');
+
+    // Update BTC holdings display with new settings
+    updateBTCHoldingsDisplay();
 
     // Start polling and show section
     startEasyMiningPolling();
@@ -4191,6 +4197,45 @@ function convertBTCtoAUD(btcAmount) {
     return btcAmount * btcPriceAUD;
 }
 
+// Get total BTC holdings including NiceHash balance if toggles are enabled
+function getTotalBTCHoldings() {
+    // Get base holdings from localStorage
+    let totalBTC = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
+
+    // Add NiceHash balances if toggles are enabled
+    if (easyMiningSettings && easyMiningData) {
+        if (easyMiningSettings.includeAvailableBTC) {
+            const availableBTC = parseFloat(easyMiningData.availableBTC) || 0;
+            totalBTC += availableBTC;
+        }
+
+        if (easyMiningSettings.includePendingBTC) {
+            const pendingBTC = parseFloat(easyMiningData.pendingBTC) || 0;
+            totalBTC += pendingBTC;
+        }
+    }
+
+    return totalBTC;
+}
+
+// Update BTC holdings display with NiceHash balance if enabled
+function updateBTCHoldingsDisplay() {
+    const holdingsElement = document.getElementById('bitcoin-holdings');
+    if (!holdingsElement) return;
+
+    const totalBTC = getTotalBTCHoldings();
+    holdingsElement.textContent = formatNumber(totalBTC.toFixed(8));
+
+    // Update AUD value
+    const priceElement = document.getElementById('bitcoin-price-aud');
+    const valueElement = document.getElementById('bitcoin-value-aud');
+    if (priceElement && valueElement) {
+        const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+        const valueInAud = totalBTC * priceInAud;
+        valueElement.textContent = formatNumber(valueInAud.toFixed(2));
+    }
+}
+
 // Get block reward for a cryptocurrency
 function getBlockReward(crypto) {
     const blockRewards = {
@@ -4743,7 +4788,7 @@ async function fetchNiceHashOrders() {
                 algorithmName: algoInfo.name,
                 hashrate: `${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`,
                 timeRemaining: calculateTimeRemaining(order), // Pass full order object to use estimateDurationInSeconds for active packages
-                progress: calculateProgress(order.startTs, order.endTs),
+                progress: calculateProgress(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 blockFound: blockFound,
                 isTeam: isTeamPackage,
                 price: priceSpent, // User's price spent (share-adjusted for team packages)
@@ -4875,11 +4920,48 @@ function calculateTimeRemaining(orderOrTimestamp) {
 }
 
 // Helper function to calculate progress percentage
-function calculateProgress(startTimestamp, endTimestamp) {
+function calculateProgress(orderOrStartTimestamp, endTimestamp) {
+    // Handle both order object and timestamp parameters
+    let order = null;
+    let startTimestamp = null;
+
+    if (typeof orderOrStartTimestamp === 'object' && orderOrStartTimestamp !== null) {
+        // Full order object passed
+        order = orderOrStartTimestamp;
+        startTimestamp = order.startTs;
+        endTimestamp = order.endTs;
+    } else {
+        // Just timestamps passed (backwards compatibility)
+        startTimestamp = orderOrStartTimestamp;
+    }
+
     if (!startTimestamp || !endTimestamp) return 0;
 
     const now = Date.now();
 
+    // For active packages, use estimateDurationInSeconds if available
+    if (order && order.alive === true && order.estimateDurationInSeconds) {
+        // Parse start timestamp
+        let start;
+        if (typeof startTimestamp === 'string') {
+            start = new Date(startTimestamp).getTime();
+        } else {
+            start = parseInt(startTimestamp);
+        }
+
+        // Total duration in milliseconds
+        const totalDuration = parseInt(order.estimateDurationInSeconds) * 1000;
+
+        // Calculate elapsed time
+        const elapsed = now - start;
+
+        if (totalDuration <= 0) return 100;
+
+        const progress = (elapsed / totalDuration) * 100;
+        return Math.min(Math.max(progress, 0), 100);
+    }
+
+    // Fallback to endTimestamp calculation for completed packages or if estimateDurationInSeconds is not available
     // NiceHash timestamps can be in ISO format (string) or milliseconds (number)
     let start, end;
     if (typeof startTimestamp === 'string') {
@@ -4976,6 +5058,9 @@ function updateEasyMiningUI() {
     // Update balances
     document.getElementById('easymining-available-btc').textContent = easyMiningData.availableBTC;
     document.getElementById('easymining-pending-btc').textContent = easyMiningData.pendingBTC;
+
+    // Update BTC holdings display to include NiceHash balance if enabled
+    updateBTCHoldingsDisplay();
 
     // Display active packages
     displayActivePackages();
@@ -5413,115 +5498,145 @@ async function autoUpdateCryptoHoldings(newBlocks) {
         return;
     }
 
+    console.log(`\n${'='.repeat(80)}`);
+    console.log('🔄 AUTO-UPDATE CRYPTO HOLDINGS - Processing rewards');
+    console.log(`${'='.repeat(80)}\n`);
+
     // Load tracked rewards to prevent double-adding
-    const trackedKey = `${loggedInUser}_easyMiningTrackedRewards`;
-    let trackedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
+    const trackedKey = `${loggedInUser}_easyMiningAddedRewards`;
+    let addedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
 
-    // Get packages that found blocks
-    const blocksFoundPackages = easyMiningData.activePackages.filter(pkg => pkg.blockFound);
+    // Get all packages (active and completed) that found blocks
+    const allPackages = [...(easyMiningData.activePackages || []), ...(easyMiningData.completedPackages || [])];
+    const packagesWithBlocks = allPackages.filter(pkg => pkg.blockFound);
 
-    for (const pkg of blocksFoundPackages) {
-        // NiceHash pays ALL rewards in BTC regardless of what crypto was mined
-        // Use actual BTC earnings from API (already includes multiple blocks and fees deducted)
-        const cryptoId = 'bitcoin';
-        const cryptoSymbol = 'BTC';
-        const rewardAmount = pkg.btcEarnings || 0;
+    console.log(`📦 Processing ${packagesWithBlocks.length} packages with blocks found`);
 
-        console.log(`💰 Package ${pkg.name} (${pkg.id}): Earned ${rewardAmount} BTC from rewards endpoint`);
+    for (const pkg of packagesWithBlocks) {
+        console.log(`\n${'─'.repeat(80)}`);
+        console.log(`📦 Package: ${pkg.name} (${pkg.crypto})`);
+        console.log(`   Order ID: ${pkg.id}`);
+        console.log(`   Total blocks: ${pkg.totalBlocks}`);
 
-        if (rewardAmount === 0) {
-            console.log(`⚠️ Skipping ${pkg.name} - no BTC earnings`);
+        // Get the soloReward array from fullOrderData
+        const soloRewards = pkg.fullOrderData?.soloReward || [];
+
+        if (soloRewards.length === 0) {
+            console.log(`   ⚠️ No soloReward data available`);
             continue;
         }
 
-        // Check if this exact reward amount has already been added for this package
-        const rewardKey = `${pkg.id}_${rewardAmount.toFixed(8)}`;
-        if (trackedRewards[rewardKey]) {
-            console.log(`ℹ️ Reward already processed for ${pkg.name} (${rewardAmount} BTC) - skipping`);
-            continue;
-        }
+        // Process each individual reward/block
+        for (const reward of soloRewards) {
+            // Create unique ID for this specific reward
+            const rewardId = reward.id || `${pkg.id}_${reward.blockHeight || reward.blockHash}`;
 
-        // Mark this reward as processed
-        trackedRewards[rewardKey] = {
-            packageId: pkg.id,
-            packageName: pkg.name,
-            amount: rewardAmount,
-            timestamp: Date.now()
-        };
-        setStorageItem(trackedKey, JSON.stringify(trackedRewards));
-        console.log(`✓ Marked reward as processed: ${rewardKey}`);
+            console.log(`\n   🎁 Processing reward ${rewardId}`);
+            console.log(`      Block: ${reward.blockHeight || 'N/A'}`);
+            console.log(`      Coin: ${reward.coin}`);
+            console.log(`      Confirmed: ${reward.depositComplete}`);
 
-        
-        // Check if crypto already exists in portfolio
-        let crypto = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
-        
-        if (!crypto) {
-            // Auto-add crypto to portfolio
-            try {
-                await addCryptoById(cryptoId);
-                console.log(`Auto-added ${cryptoId} to portfolio`);
-
-                // Immediately fetch prices for the new crypto to ensure we have a real price
-                await fetchPrices();
-                console.log(`Fetched price for newly added ${cryptoId}`);
-
-                // Verify the price was actually set
-                const priceCheckElement = document.getElementById(`${cryptoId}-price-aud`);
-                if (priceCheckElement) {
-                    console.log(`🔍 Price after fetchPrices: "${priceCheckElement.textContent}"`);
-                } else {
-                    console.error(`❌ Price element still not found after fetchPrices`);
-                }
-            } catch (error) {
-                console.error(`Failed to auto-add ${cryptoId}:`, error);
+            // Check if this specific reward has already been added
+            if (addedRewards[rewardId]) {
+                console.log(`      ℹ️ Already added to holdings on ${new Date(addedRewards[rewardId].timestamp).toLocaleString()}`);
                 continue;
             }
+
+            // Only add confirmed rewards
+            if (!reward.depositComplete) {
+                console.log(`      ⏳ Skipping - not yet confirmed`);
+                continue;
+            }
+
+            // Get the block reward for this crypto
+            const crypto = reward.coin || pkg.crypto;
+            const blockReward = getBlockReward(crypto);
+
+            if (blockReward === 0) {
+                console.log(`      ⚠️ Unknown block reward for ${crypto}`);
+                continue;
+            }
+
+            // Map crypto symbol to CoinGecko ID
+            const cryptoMapping = {
+                'BTC': 'bitcoin',
+                'BCH': 'bitcoin-cash',
+                'RVN': 'ravencoin',
+                'DOGE': 'dogecoin',
+                'LTC': 'litecoin',
+                'KAS': 'kaspa'
+            };
+
+            const cryptoId = cryptoMapping[crypto] || crypto.toLowerCase();
+            const rewardAmount = blockReward;
+
+            console.log(`      💰 Adding ${rewardAmount} ${crypto} to holdings`);
+
+            // Check if crypto already exists in portfolio
+            let cryptoExists = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
+
+            if (!cryptoExists) {
+                // Auto-add crypto to portfolio
+                try {
+                    await addCryptoById(cryptoId);
+                    console.log(`      ✅ Auto-added ${cryptoId} to portfolio`);
+
+                    // Immediately fetch prices for the new crypto
+                    await fetchPrices();
+                    console.log(`      ✅ Fetched price for ${cryptoId}`);
+                } catch (error) {
+                    console.error(`      ❌ Failed to auto-add ${cryptoId}:`, error);
+                    continue;
+                }
+            }
+
+            // Update holdings for this crypto
+            const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+            const newHoldings = currentHoldings + rewardAmount;
+
+            // Save to localStorage
+            setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
+            console.log(`      💾 Updated ${cryptoId} holdings: ${currentHoldings} + ${rewardAmount} = ${newHoldings}`);
+
+            // Update holdings display
+            const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
+            if (holdingsElement) {
+                holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
+                console.log(`      📊 Updated holdings display`);
+            }
+
+            // Update the AUD value
+            const priceElement = document.getElementById(`${cryptoId}-price-aud`);
+            const valueElement = document.getElementById(`${cryptoId}-value-aud`);
+            if (priceElement && valueElement) {
+                const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+                const valueInAud = newHoldings * priceInAud;
+                valueElement.textContent = formatNumber(valueInAud.toFixed(2));
+                console.log(`      💰 Updated AUD value: $${valueInAud.toFixed(2)}`);
+
+                sortContainersByValue();
+            }
+
+            // Mark this reward as added
+            addedRewards[rewardId] = {
+                orderId: pkg.id,
+                packageName: pkg.name,
+                crypto: crypto,
+                amount: rewardAmount,
+                timestamp: Date.now(),
+                blockHeight: reward.blockHeight
+            };
+            setStorageItem(trackedKey, JSON.stringify(addedRewards));
+            console.log(`      ✓ Marked reward ${rewardId} as added`);
+
+            console.log(`      ✅ Successfully added ${rewardAmount} ${crypto} to holdings`);
         }
-
-        // Update holdings for this crypto
-        const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
-        const newHoldings = currentHoldings + rewardAmount;
-
-        // Save to localStorage first
-        setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
-        console.log(`💾 Saved to localStorage: ${loggedInUser}_${cryptoId}Holdings = ${newHoldings}`);
-
-        // Verify it was saved
-        const verified = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`));
-        console.log(`✓ Verified localStorage read back: ${verified}`);
-
-        // Update holdings display
-        const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
-        if (holdingsElement) {
-            holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
-            console.log(`📊 Updated holdings display for ${cryptoId}: ${newHoldings}`);
-        }
-
-        // Update the AUD value (same logic as manual updateHoldings uses)
-        const priceElement = document.getElementById(`${cryptoId}-price-aud`);
-        const valueElement = document.getElementById(`${cryptoId}-value-aud`);
-        if (priceElement && valueElement) {
-            const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-            const valueInAud = newHoldings * priceInAud;
-
-            // Log detailed debug info
-            console.log(`🔍 Price element text: "${priceElement.textContent}"`);
-            console.log(`🔍 Parsed price: ${priceInAud}`);
-            console.log(`🔍 Calculated AUD value: ${valueInAud.toFixed(2)}`);
-
-            // Set value without adding extra "$" - formatNumber doesn't add currency symbols
-            valueElement.textContent = formatNumber(valueInAud.toFixed(2));
-            console.log(`💰 Updated AUD value for ${cryptoId}: ${valueInAud.toFixed(2)} AUD (price: ${priceInAud}, holdings: ${newHoldings})`);
-
-            // Also call sortContainersByValue like manual update does
-            sortContainersByValue();
-        } else {
-            console.error(`❌ Could not find price or value element for ${cryptoId}`);
-        }
-
-        console.log(`✅ Added ${rewardAmount} ${cryptoSymbol} from block reward. New balance: ${newHoldings}`);
     }
-    
+
+    console.log(`\n${'='.repeat(80)}`);
+    console.log('✅ AUTO-UPDATE COMPLETE');
+    console.log(`${'='.repeat(80)}\n`);
+
     // Update total portfolio value
     updateTotalHoldings();
 }
