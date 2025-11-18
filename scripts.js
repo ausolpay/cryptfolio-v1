@@ -499,32 +499,28 @@ function updateHoldings(crypto) {
     const holdings = parseFloat(input.value);
 
     if (!isNaN(holdings)) {
-        // Save the updated holdings in storage
+        // Save the updated MANUAL holdings in storage
         setStorageItem(`${loggedInUser}_${crypto}Holdings`, holdings);
 
-        // For Bitcoin, reset NiceHash balance tracking since user is entering manual amount
-        if (crypto === 'bitcoin') {
-            setStorageItem(`${loggedInUser}_bitcoinNiceHashBalance`, 0);
+        // For Bitcoin, update display to include NiceHash balance
+        if (crypto === 'bitcoin' && typeof updateBTCHoldings === 'function') {
+            // Call updateBTCHoldings which will display manual + NiceHash
+            updateBTCHoldings();
+        } else {
+            // For other cryptos, update normally
+            document.getElementById(`${crypto}-holdings`).textContent = formatNumber(holdings.toFixed(3));
+
+            // Get the current price in AUD
+            const priceElement = document.getElementById(`${crypto}-price-aud`);
+            const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+
+            // Update the value in AUD
+            document.getElementById(`${crypto}-value-aud`).textContent = formatNumber((holdings * priceInAud).toFixed(2));
         }
-
-        // Update the displayed holdings in the UI
-        document.getElementById(`${crypto}-holdings`).textContent = formatNumber(holdings.toFixed(3));
-
-        // Get the current price in AUD
-        const priceElement = document.getElementById(`${crypto}-price-aud`);
-        const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-
-        // Update the value in AUD
-        document.getElementById(`${crypto}-value-aud`).textContent = formatNumber((holdings * priceInAud).toFixed(2));
 
         // Update the total holdings and re-sort containers by value
         updateTotalHoldings();
         sortContainersByValue();
-
-        // For Bitcoin, re-add NiceHash balance if enabled
-        if (crypto === 'bitcoin' && typeof updateBTCHoldings === 'function') {
-            updateBTCHoldings();
-        }
 
         // Clear the input value and remove focus
         input.value = '';
@@ -5278,11 +5274,18 @@ function updateStats() {
 
     // Update UI - Today stats (in AUD)
     const totalRewardTodayAUD = convertBTCtoAUD(totalRewardTodayBTC);
-    document.getElementById('total-blocks-today').textContent = totalBlocksToday;
-    document.getElementById('total-reward-today').textContent = `$${formatNumber(totalRewardTodayAUD.toFixed(2))}`;
-    document.getElementById('total-spent-today').textContent = `$${formatNumber(totalSpentTodayAUD.toFixed(2))}`;
-    document.getElementById('pnl-today').textContent = `$${formatNumber(pnlTodayAUD.toFixed(2))}`;
-    document.getElementById('pnl-today').className = pnlTodayAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
+    const blocksElem = document.getElementById('total-blocks-today');
+    const rewardTodayElem = document.getElementById('total-reward-today');
+    const spentTodayElem = document.getElementById('total-spent-today');
+    const pnlTodayElem = document.getElementById('pnl-today');
+
+    if (blocksElem) blocksElem.textContent = totalBlocksToday;
+    if (rewardTodayElem) rewardTodayElem.textContent = `$${formatNumber(totalRewardTodayAUD.toFixed(2))}`;
+    if (spentTodayElem) spentTodayElem.textContent = `$${formatNumber(totalSpentTodayAUD.toFixed(2))}`;
+    if (pnlTodayElem) {
+        pnlTodayElem.textContent = `$${formatNumber(pnlTodayAUD.toFixed(2))}`;
+        pnlTodayElem.className = pnlTodayAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
+    }
 
     // Update the easyMiningData stats for persistence (store in BTC)
     easyMiningData.allTimeStats = {
@@ -5419,67 +5422,46 @@ function checkForNewBlocks() {
 }
 
 function updateBTCHoldings() {
-    // Only update if user has BTC and toggles are enabled
-    if (!easyMiningSettings.includeAvailableBTC && !easyMiningSettings.includePendingBTC) {
-        return;
-    }
-    
     // Find BTC in user's cryptos
     const btcCrypto = users[loggedInUser].cryptos.find(c => c.id === 'bitcoin');
     if (!btcCrypto) {
         return;
     }
-    
-    // Get current BTC holdings from the input/display (user's actual holdings)
+
     const btcHoldingsElement = document.getElementById('bitcoin-holdings');
     if (!btcHoldingsElement) return;
-    
-    // Get user's actual holdings (manual entries + block rewards)
-    let userHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
 
-    // Get previously saved NiceHash balance to avoid double-counting
-    let previousNiceHashBalance = parseFloat(getStorageItem(`${loggedInUser}_bitcoinNiceHashBalance`)) || 0;
+    // Get user's MANUAL holdings (stored in localStorage)
+    let manualHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
 
-    // Calculate current NiceHash balance
-    let currentNiceHashBalance = 0;
-    if (easyMiningSettings.includeAvailableBTC) {
-        currentNiceHashBalance += parseFloat(easyMiningData.availableBTC) || 0;
+    // Calculate NiceHash balance to add
+    let niceHashBalance = 0;
+    if (easyMiningSettings && easyMiningData) {
+        if (easyMiningSettings.includeAvailableBTC) {
+            niceHashBalance += parseFloat(easyMiningData.availableBTC) || 0;
+        }
+        if (easyMiningSettings.includePendingBTC) {
+            niceHashBalance += parseFloat(easyMiningData.pendingBTC) || 0;
+        }
     }
-    if (easyMiningSettings.includePendingBTC) {
-        currentNiceHashBalance += parseFloat(easyMiningData.pendingBTC) || 0;
-    }
 
-    // Remove previous NiceHash balance, add current NiceHash balance
-    const totalToDisplay = userHoldings - previousNiceHashBalance + currentNiceHashBalance;
+    // Total to display = manual + NiceHash (DO NOT save to localStorage)
+    const totalToDisplay = manualHoldings + niceHashBalance;
 
-    // SAVE TO LOCALSTORAGE - This makes it persist!
-    setStorageItem(`${loggedInUser}_bitcoinHoldings`, totalToDisplay);
-    setStorageItem(`${loggedInUser}_bitcoinNiceHashBalance`, currentNiceHashBalance);
-    console.log(`💾 Saved BTC: ${totalToDisplay} (user: ${userHoldings}, prev NiceHash: ${previousNiceHashBalance}, current NiceHash: ${currentNiceHashBalance})`);
+    console.log(`💰 BTC Holdings: Manual ${manualHoldings.toFixed(8)} + NiceHash ${niceHashBalance.toFixed(8)} = Total ${totalToDisplay.toFixed(8)}`);
 
     // Update display
-    btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
+    btcHoldingsElement.textContent = formatNumber(totalToDisplay.toFixed(8));
 
-    // Update the AUD value for Bitcoin (same as manual update does)
+    // Update the AUD value for Bitcoin
     const btcPriceElement = document.getElementById('bitcoin-price-aud');
-    const btcPriceText = btcPriceElement?.textContent || '$0';
-    const btcPriceAud = parseFloat(btcPriceText.replace(/,/g, '').replace('$', '')) || 0;
-    const btcValueAud = totalToDisplay * btcPriceAud;
     const btcValueElement = document.getElementById('bitcoin-value-aud');
 
-    console.log(`🔍 updateBTCHoldings - Price element text: "${btcPriceText}"`);
-    console.log(`🔍 updateBTCHoldings - Parsed price: ${btcPriceAud}`);
-    console.log(`🔍 updateBTCHoldings - Holdings: ${totalToDisplay}`);
-    console.log(`🔍 updateBTCHoldings - Calculated AUD: ${btcValueAud.toFixed(2)}`);
-
-    if (btcPriceAud === 0) {
-        console.error(`❌ WARNING: BTC price is 0! AUD value will be 0!`);
-    }
-
-    if (btcValueElement) {
-        // Don't add $ - HTML template already has it outside the span
+    if (btcPriceElement && btcValueElement) {
+        const btcPriceAud = parseFloat(btcPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+        const btcValueAud = totalToDisplay * btcPriceAud;
         btcValueElement.textContent = formatNumber(btcValueAud.toFixed(2));
-        console.log(`💰 updateBTCHoldings set BTC AUD value: ${btcValueAud.toFixed(2)} (holdings: ${totalToDisplay}, price: ${btcPriceAud})`);
+        console.log(`💰 BTC AUD value: ${btcValueAud.toFixed(2)} (holdings: ${totalToDisplay}, price: ${btcPriceAud})`);
     }
 
     // Update total portfolio value
