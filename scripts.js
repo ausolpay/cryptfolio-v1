@@ -5450,8 +5450,8 @@ function updateBTCHoldings() {
 
     console.log(`💰 BTC Holdings: Manual ${manualHoldings.toFixed(8)} + NiceHash ${niceHashBalance.toFixed(8)} = Total ${totalToDisplay.toFixed(8)}`);
 
-    // Update display
-    btcHoldingsElement.textContent = formatNumber(totalToDisplay.toFixed(8));
+    // Update display (NO COMMAS for BTC - use raw number)
+    btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
 
     // Update the AUD value for Bitcoin
     const btcPriceElement = document.getElementById('bitcoin-price-aud');
