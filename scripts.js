@@ -4090,13 +4090,13 @@ async function fetchCurrencyBalanceExtended(currency) {
     }
 }
 
-// Fetch detailed order information by order ID (includes soloReward array)
-async function fetchOrderDetails(orderId) {
+// Fetch rewards for Easy Mining Solo Ticket by order ID
+async function fetchOrderRewards(orderId) {
     try {
-        const endpoint = `/main/api/v2/hashpower/order/${orderId}`;
+        const endpoint = `/main/api/v2/hashpower/order/${orderId}/rewards`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
-        console.log(`📦 Fetching order details for ${orderId}...`);
+        console.log(`🎁 Fetching rewards for order ${orderId}...`);
 
         let response;
 
@@ -4120,24 +4120,26 @@ async function fetchOrderDetails(orderId) {
         }
 
         if (!response.ok) {
-            console.warn(`⚠️ Failed to fetch order ${orderId} details: ${response.status}`);
+            console.warn(`⚠️ Failed to fetch rewards for order ${orderId}: ${response.status}`);
             return null;
         }
 
         const data = await response.json();
-        console.log(`✅ Order ${orderId} details:`, JSON.stringify(data, null, 2));
+        console.log(`✅ Order ${orderId} rewards response:`, JSON.stringify(data, null, 2));
 
-        // Check if soloReward array exists in the detailed order
-        if (data.soloReward && Array.isArray(data.soloReward) && data.soloReward.length > 0) {
-            console.log(`🎁 Order ${orderId} has ${data.soloReward.length} soloReward entries!`);
-            console.log(`🎁 soloReward data:`, JSON.stringify(data.soloReward, null, 2));
+        // The endpoint returns an array directly
+        if (Array.isArray(data) && data.length > 0) {
+            console.log(`🎁 Order ${orderId} has ${data.length} reward entries!`);
+            console.log(`🎁 Reward data:`, JSON.stringify(data, null, 2));
+        } else if (Array.isArray(data) && data.length === 0) {
+            console.log(`❌ Order ${orderId} has no rewards yet (empty array)`);
         } else {
-            console.log(`❌ Order ${orderId} has no soloReward array in detailed response`);
+            console.log(`⚠️ Unexpected response format for order ${orderId}:`, data);
         }
 
         return data;
     } catch (error) {
-        console.error(`❌ Error fetching order ${orderId} details:`, error);
+        console.error(`❌ Error fetching rewards for order ${orderId}:`, error);
         return null;
     }
 }
@@ -4533,35 +4535,35 @@ async function fetchNiceHashOrders() {
                 console.log('🎁 Order IDs with soloReward:', ordersWithSoloReward.map(o => o.id));
             }
 
-            // PARALLEL FETCH: Get detailed order information for each solo mining order
-            // The detailed endpoint /main/api/v2/hashpower/order/{orderId} includes soloReward array
+            // PARALLEL FETCH: Get rewards for each solo mining order
+            // Endpoint: GET /main/api/v2/hashpower/order/{id}/rewards
             const soloMiningOrders = data.list.filter(o => o.soloMiningCoin);
 
             console.log(`🎯 Found ${soloMiningOrders.length} solo mining orders`);
-            console.log(`📦 Fetching detailed order data (with soloReward arrays) for all ${soloMiningOrders.length} orders in parallel...`);
+            console.log(`🎁 Fetching rewards for all ${soloMiningOrders.length} orders in parallel...`);
 
-            // Fetch detailed info for all solo mining orders in parallel
-            const orderDetailsPromises = soloMiningOrders.map(order =>
-                fetchOrderDetails(order.id)
+            // Fetch rewards for all solo mining orders in parallel
+            const orderRewardsPromises = soloMiningOrders.map(order =>
+                fetchOrderRewards(order.id)
             );
 
-            const orderDetailsResults = await Promise.all(orderDetailsPromises);
+            const orderRewardsResults = await Promise.all(orderRewardsPromises);
 
-            // Create a map of order ID -> detailed order data (with soloReward array)
-            const orderDetailsMap = {};
-            orderDetailsResults.forEach((detailedOrder, index) => {
-                if (detailedOrder) {
-                    orderDetailsMap[soloMiningOrders[index].id] = detailedOrder;
+            // Create a map of order ID -> rewards array
+            const orderRewardsMap = {};
+            orderRewardsResults.forEach((rewardsArray, index) => {
+                if (rewardsArray) {
+                    orderRewardsMap[soloMiningOrders[index].id] = rewardsArray;
                 }
             });
 
-            console.log(`✅ Fetched detailed data for ${Object.keys(orderDetailsMap).length} orders`);
+            console.log(`✅ Fetched rewards for ${Object.keys(orderRewardsMap).length} orders`);
 
-            // Count how many orders have soloReward data
-            const ordersWithRewards = Object.values(orderDetailsMap).filter(
-                order => order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0
+            // Count how many orders have rewards
+            const ordersWithRewards = Object.values(orderRewardsMap).filter(
+                rewards => Array.isArray(rewards) && rewards.length > 0
             );
-            console.log(`🎁 ${ordersWithRewards.length} orders have soloReward data!`);
+            console.log(`🎁 ${ordersWithRewards.length} orders have reward data!`);
 
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
@@ -4619,22 +4621,22 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Determine if block was found using detailed order data
-                // Get soloReward array from the detailed order endpoint
+                // Determine if block was found using rewards endpoint
+                // GET /main/api/v2/hashpower/order/{id}/rewards returns array directly
                 let blockFound = false;
                 let totalRewardBTC = 0;
                 let confirmedBlockCount = 0;
                 let pendingBlockCount = 0;
                 let totalPendingRewardBTC = 0;
 
-                // Get detailed order data (has soloReward array)
-                const detailedOrder = orderDetailsMap[order.id];
+                // Get rewards array for this order
+                const rewardsArray = orderRewardsMap[order.id];
 
-                if (detailedOrder && detailedOrder.soloReward && Array.isArray(detailedOrder.soloReward) && detailedOrder.soloReward.length > 0) {
-                    console.log(`🎁 Order ${order.id} has ${detailedOrder.soloReward.length} soloReward entries!`);
+                if (rewardsArray && Array.isArray(rewardsArray) && rewardsArray.length > 0) {
+                    console.log(`🎁 Order ${order.id} has ${rewardsArray.length} reward entries!`);
 
                     // Process each reward entry
-                    detailedOrder.soloReward.forEach((reward, index) => {
+                    rewardsArray.forEach((reward, index) => {
                         const rewardBtc = parseFloat(reward.payoutRewardBtc || 0);
                         const isDeposited = reward.depositComplete === true;
                         const confirmations = parseInt(reward.confirmations || 0);
@@ -4687,10 +4689,10 @@ async function fetchNiceHashOrders() {
                         console.log(`   - Pending: ${pendingBlockCount} block(s), ${totalPendingRewardBTC.toFixed(8)} BTC`);
                         console.log(`   - Total: ${(totalRewardBTC + totalPendingRewardBTC).toFixed(8)} BTC`);
                     } else {
-                        console.log(`❌ Order ${order.id} has ${detailedOrder.soloReward.length} soloReward entries but all have zero rewards`);
+                        console.log(`❌ Order ${order.id} has ${rewardsArray.length} reward entries but all have zero rewards`);
                     }
                 } else {
-                    console.log(`❌ Order ${order.id} has no soloReward data in detailed endpoint`);
+                    console.log(`❌ Order ${order.id} has no rewards (endpoint returned empty/null)`);
                 }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
