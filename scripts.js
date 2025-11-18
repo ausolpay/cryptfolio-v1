@@ -4096,11 +4096,13 @@ async function fetchOrderRewards(orderId) {
         const endpoint = `/main/api/v2/hashpower/order/${orderId}/rewards`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
-        console.log(`🎁 Fetching rewards for order ${orderId}...`);
+        console.log(`🎁 [${orderId}] Fetching rewards...`);
+        console.log(`   Endpoint: ${endpoint}`);
 
         let response;
 
         if (USE_VERCEL_PROXY) {
+            console.log(`   Using proxy: ${VERCEL_PROXY_ENDPOINT}`);
             response = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
@@ -4113,33 +4115,42 @@ async function fetchOrderRewards(orderId) {
                 })
             });
         } else {
-            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+            const url = `https://api2.nicehash.com${endpoint}`;
+            console.log(`   Direct call: ${url}`);
+            response = await fetch(url, {
                 method: 'GET',
                 headers: headers
             });
         }
 
+        console.log(`   Response status: ${response.status} ${response.statusText}`);
+
         if (!response.ok) {
-            console.warn(`⚠️ Failed to fetch rewards for order ${orderId}: ${response.status}`);
+            const errorText = await response.text();
+            console.warn(`⚠️ [${orderId}] Failed to fetch rewards: ${response.status}`);
+            console.warn(`   Error body:`, errorText);
             return null;
         }
 
         const data = await response.json();
-        console.log(`✅ Order ${orderId} rewards response:`, JSON.stringify(data, null, 2));
+        console.log(`✅ [${orderId}] Rewards response type: ${Array.isArray(data) ? 'Array' : typeof data}`);
 
         // The endpoint returns an array directly
         if (Array.isArray(data) && data.length > 0) {
-            console.log(`🎁 Order ${orderId} has ${data.length} reward entries!`);
-            console.log(`🎁 Reward data:`, JSON.stringify(data, null, 2));
+            console.log(`🎁 [${orderId}] Has ${data.length} reward entries!`);
+            console.log(`   Full reward data:`, JSON.stringify(data, null, 2));
         } else if (Array.isArray(data) && data.length === 0) {
-            console.log(`❌ Order ${orderId} has no rewards yet (empty array)`);
+            console.log(`   [${orderId}] Empty rewards array (no blocks found yet)`);
         } else {
-            console.log(`⚠️ Unexpected response format for order ${orderId}:`, data);
+            console.log(`⚠️ [${orderId}] Unexpected response format:`, typeof data);
+            console.log(`   Response:`, JSON.stringify(data, null, 2));
         }
 
         return data;
     } catch (error) {
-        console.error(`❌ Error fetching rewards for order ${orderId}:`, error);
+        console.error(`❌ [${orderId}] Error fetching rewards:`, error);
+        console.error(`   Error message:`, error.message);
+        console.error(`   Error stack:`, error.stack);
         return null;
     }
 }
@@ -4540,30 +4551,48 @@ async function fetchNiceHashOrders() {
             const soloMiningOrders = data.list.filter(o => o.soloMiningCoin);
 
             console.log(`🎯 Found ${soloMiningOrders.length} solo mining orders`);
+            console.log(`📋 Solo mining order IDs:`, soloMiningOrders.map(o => ({
+                id: o.id,
+                coin: o.soloMiningCoin,
+                alive: o.alive
+            })));
             console.log(`🎁 Fetching rewards for all ${soloMiningOrders.length} orders in parallel...`);
 
             // Fetch rewards for all solo mining orders in parallel
-            const orderRewardsPromises = soloMiningOrders.map(order =>
-                fetchOrderRewards(order.id)
-            );
+            const orderRewardsPromises = soloMiningOrders.map(order => {
+                console.log(`  → Queueing rewards fetch for order ${order.id} (${order.soloMiningCoin})`);
+                return fetchOrderRewards(order.id);
+            });
 
             const orderRewardsResults = await Promise.all(orderRewardsPromises);
 
             // Create a map of order ID -> rewards array
             const orderRewardsMap = {};
             orderRewardsResults.forEach((rewardsArray, index) => {
+                const orderId = soloMiningOrders[index].id;
                 if (rewardsArray) {
-                    orderRewardsMap[soloMiningOrders[index].id] = rewardsArray;
+                    orderRewardsMap[orderId] = rewardsArray;
+                    console.log(`  ✅ Stored rewards for order ${orderId}: ${Array.isArray(rewardsArray) ? rewardsArray.length : 0} rewards`);
+                } else {
+                    console.log(`  ❌ No rewards data for order ${orderId} (returned null)`);
                 }
             });
 
             console.log(`✅ Fetched rewards for ${Object.keys(orderRewardsMap).length} orders`);
+            console.log(`🔑 orderRewardsMap keys:`, Object.keys(orderRewardsMap));
 
             // Count how many orders have rewards
             const ordersWithRewards = Object.values(orderRewardsMap).filter(
                 rewards => Array.isArray(rewards) && rewards.length > 0
             );
             console.log(`🎁 ${ordersWithRewards.length} orders have reward data!`);
+
+            if (ordersWithRewards.length > 0) {
+                console.log(`🎁 Orders with rewards:`, Object.entries(orderRewardsMap)
+                    .filter(([id, rewards]) => Array.isArray(rewards) && rewards.length > 0)
+                    .map(([id, rewards]) => ({ id, rewardCount: rewards.length }))
+                );
+            }
 
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
@@ -4630,7 +4659,18 @@ async function fetchNiceHashOrders() {
                 let totalPendingRewardBTC = 0;
 
                 // Get rewards array for this order
+                console.log(`🔎 Checking rewards for order ${order.id}...`);
+                console.log(`   - Is solo mining order? ${!!order.soloMiningCoin} (${order.soloMiningCoin || 'N/A'})`);
+                console.log(`   - Order ID exists in orderRewardsMap? ${order.id in orderRewardsMap}`);
+
                 const rewardsArray = orderRewardsMap[order.id];
+
+                if (rewardsArray !== undefined) {
+                    console.log(`   - Rewards data type: ${Array.isArray(rewardsArray) ? 'Array' : typeof rewardsArray}`);
+                    console.log(`   - Rewards count: ${Array.isArray(rewardsArray) ? rewardsArray.length : 'N/A'}`);
+                } else {
+                    console.log(`   - Rewards: undefined (not in map)`);
+                }
 
                 if (rewardsArray && Array.isArray(rewardsArray) && rewardsArray.length > 0) {
                     console.log(`🎁 Order ${order.id} has ${rewardsArray.length} reward entries!`);
