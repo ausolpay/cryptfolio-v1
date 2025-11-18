@@ -3993,6 +3993,51 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
 }
 
 // Fetch balances from NiceHash API
+// Fetch mining payments/earnings for a currency (includes solo mining blocks)
+async function fetchMiningPayments(currency) {
+    try {
+        const timestamp = Date.now();
+        const endpoint = `/main/api/v2/accounting/hashpowerEarnings/${currency}?timestamp=${timestamp}&page=0&size=100`;
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        console.log(`⛏️ Fetching mining payments for ${currency}...`);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: headers
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: headers
+            });
+        }
+
+        if (!response.ok) {
+            console.warn(`⚠️ Failed to fetch ${currency} mining payments: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        console.log(`✅ ${currency} mining payments response:`, JSON.stringify(data, null, 2));
+
+        return data;
+    } catch (error) {
+        console.error(`❌ Error fetching ${currency} mining payments:`, error);
+        return null;
+    }
+}
+
 // Fetch balance for specific currency with extended response for solo rewards
 async function fetchCurrencyBalanceExtended(currency) {
     try {
@@ -4444,22 +4489,33 @@ async function fetchNiceHashOrders() {
 
             console.log(`🎯 Found ${soloMiningCurrencies.length} solo mining currencies: ${soloMiningCurrencies.join(', ')}`);
 
-            // Fetch all currency balances in parallel
+            // Fetch all currency balances AND mining payments in parallel
             const currencyBalancePromises = soloMiningCurrencies.map(currency =>
                 fetchCurrencyBalanceExtended(currency)
             );
+            const miningPaymentsPromises = soloMiningCurrencies.map(currency =>
+                fetchMiningPayments(currency)
+            );
 
-            const currencyBalances = await Promise.all(currencyBalancePromises);
+            const [currencyBalances, miningPayments] = await Promise.all([
+                Promise.all(currencyBalancePromises),
+                Promise.all(miningPaymentsPromises)
+            ]);
 
-            // Create a map of currency -> balance data for easy lookup
+            // Create maps for easy lookup
             const balanceMap = {};
+            const paymentsMap = {};
             soloMiningCurrencies.forEach((currency, index) => {
                 if (currencyBalances[index]) {
                     balanceMap[currency] = currencyBalances[index];
                 }
+                if (miningPayments[index]) {
+                    paymentsMap[currency] = miningPayments[index];
+                }
             });
 
             console.log('💰 Fetched extended balances for currencies:', Object.keys(balanceMap));
+            console.log('⛏️ Fetched mining payments for currencies:', Object.keys(paymentsMap));
 
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
