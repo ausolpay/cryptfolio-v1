@@ -752,10 +752,17 @@ async function fetchPrices() {
 
             // Always recalculate AUD value, even if price hasn't changed
             // This ensures holdings updates are reflected immediately
-            // Read from localStorage for ALL cryptos (including Bitcoin)
-            // Bitcoin's localStorage now includes NiceHash balance (updated by updateBTCHoldings)
-            let holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
-            console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
+            // For Bitcoin, read from display element (includes NiceHash balance)
+            // For other cryptos, read from localStorage
+            let holdings = 0;
+            if (crypto.id === 'bitcoin') {
+                const holdingsElement = document.getElementById('bitcoin-holdings');
+                holdings = holdingsElement ? parseFloat(holdingsElement.textContent.replace(/,/g, '')) || 0 : 0;
+                console.log(`📖 fetchPrices reading ${crypto.id} from display: ${holdings} (includes NiceHash)`);
+            } else {
+                holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
+            }
 
             const audValue = holdings * priceAud;
             const valueElement = document.getElementById(`${crypto.id}-value-aud`);
