@@ -4476,475 +4476,211 @@ async function fetchOrderRewards(orderId) {
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
     console.log(`\n${'#'.repeat(80)}`);
-    console.log(`📡📡📡 FETCHNICEHASHORDERS FUNCTION CALLED 📡📡📡`);
+    console.log(`📡📡📡 FETCHNICEHASHORDERS - Using Solo Mining Endpoint 📡📡📡`);
     console.log(`${'#'.repeat(80)}\n`);
 
     try {
-        // Try myOrders endpoint to check if it includes soloReward data
-        const timestamp = Date.now() + nicehashTimeOffset;
-        const endpoint = `/main/api/v2/hashpower/myOrders?ts=${timestamp}&op=LE&limit=100`;
-        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+        // Fetch from TWO endpoints to get complete picture:
+        // 1. Packages with rewards (blocks found) - includes active AND completed
+        // 2. Active packages (may not have found blocks yet)
 
-        console.log('📡 Fetching orders from NiceHash myOrders endpoint...');
-        console.log('📋 Endpoint:', endpoint);
-        console.log('📋 Checking if soloReward data is included...');
+        console.log('📡 Fetching solo mining data from 2 endpoints...');
 
-        let response;
+        // ENDPOINT 1: Packages with rewards (any that found blocks)
+        const endpoint1 = `/main/api/v2/hashpower/solo/order?rewardsOnly=true&limit=1000`;
+        const headers1 = generateNiceHashAuthHeaders('GET', endpoint1);
 
+        console.log('📋 Endpoint 1 (with rewards):', endpoint1);
+
+        let response1;
         if (USE_VERCEL_PROXY) {
-            // Use Vercel serverless function as proxy
-            console.log('✅ Using Vercel proxy:', VERCEL_PROXY_ENDPOINT);
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response1 = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    endpoint: endpoint,
-                    method: 'GET',
-                    headers: headers
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: endpoint1, method: 'GET', headers: headers1 })
             });
         } else {
-            // Direct call to NiceHash
-            console.log('Direct call to:', `https://api2.nicehash.com${endpoint}`);
-            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+            response1 = await fetch(`https://api2.nicehash.com${endpoint1}`, {
                 method: 'GET',
-                headers: headers
+                headers: headers1
             });
         }
 
-        console.log('Response status:', response.status);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Error Response:', errorText);
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        if (!response1.ok) {
+            throw new Error(`API Error (rewards): ${response1.status}`);
         }
 
-        const data = await response.json();
-        console.log('📦 Orders API Response:', data);
+        const dataWithRewards = await response1.json();
+        const packagesWithRewards = Array.isArray(dataWithRewards) ? dataWithRewards : (dataWithRewards.list || []);
+        console.log(`✅ Found ${packagesWithRewards.length} packages with rewards`);
 
-        // Map NiceHash orders to our package format
-        const packages = [];
+        // ENDPOINT 2: Active packages (including ones without blocks)
+        const endpoint2 = `/main/api/v2/hashpower/solo/order?limit=100&active=true`;
+        const headers2 = generateNiceHashAuthHeaders('GET', endpoint2);
 
-        if (data && data.list && Array.isArray(data.list)) {
-            console.log(`📋 Found ${data.list.length} total orders`);
+        console.log('📋 Endpoint 2 (active):', endpoint2);
 
-            // Quick scan: How many orders have soloReward arrays?
-            const ordersWithSoloReward = data.list.filter(o => o.soloReward && Array.isArray(o.soloReward) && o.soloReward.length > 0);
-            console.log(`🎁 Orders with soloReward arrays: ${ordersWithSoloReward.length} out of ${data.list.length}`);
-            if (ordersWithSoloReward.length > 0) {
-                console.log('🎁 Order IDs with soloReward:', ordersWithSoloReward.map(o => o.id));
-            }
-
-            // MULTI-SOURCE APPROACH: Check both rewards endpoint AND soloReward arrays
-            // Process ALL orders, not just those with soloMiningCoin set
-            // Some packages may have soloReward arrays even without soloMiningCoin field
-            const ordersWithSoloMiningCoin = data.list.filter(o => o.soloMiningCoin);
-            const ordersWithSoloRewardArray = data.list.filter(o => o.soloReward && Array.isArray(o.soloReward) && o.soloReward.length > 0);
-
-            // Combine both: orders with soloMiningCoin OR orders with soloReward arrays
-            const ordersToCheck = [...new Set([...ordersWithSoloMiningCoin, ...ordersWithSoloRewardArray])];
-
-            console.log(`\n${'='.repeat(80)}`);
-            console.log(`🎯 BLOCK DETECTION - ORDER IDENTIFICATION`);
-            console.log(`   Total orders in response: ${data.list.length}`);
-            console.log(`   Orders with soloMiningCoin: ${ordersWithSoloMiningCoin.length}`);
-            console.log(`   Orders with soloReward arrays: ${ordersWithSoloRewardArray.length}`);
-            console.log(`   Orders to check for blocks: ${ordersToCheck.length}`);
-            console.log(`${'='.repeat(80)}`);
-
-            if (ordersToCheck.length === 0) {
-                console.warn(`⚠️ NO ORDERS TO CHECK FOR BLOCKS!`);
-                console.warn(`   Neither soloMiningCoin nor soloReward arrays found`);
-                console.warn(`   Blocks may still be detected if orders have embedded soloReward data`);
-            } else {
-                console.log(`✅ Orders to check for blocks:`);
-                ordersToCheck.forEach((o, i) => {
-                    const hasCoin = !!o.soloMiningCoin;
-                    const hasRewards = !!(o.soloReward && o.soloReward.length > 0);
-                    console.log(`   ${i + 1}. Order ID: ${o.id}, Coin: ${o.soloMiningCoin || 'N/A'}, Active: ${o.alive}, Has Rewards: ${hasRewards}`);
-                });
-            }
-
-            // STEP 1: Check BTC balance for pending solo rewards
-            console.log(`💰 Step 1: Checking BTC balance for pending solo rewards...`);
-            const btcBalance = await fetchCurrencyBalanceExtended('BTC');
-            const btcPendingSolo = parseFloat(btcBalance?.pendingDetails?.solo || 0);
-            const btcAvailableSolo = parseFloat(btcBalance?.available || 0);
-
-            console.log(`💰 BTC Solo Mining Status:`);
-            console.log(`   - Pending solo rewards: ${btcPendingSolo} BTC`);
-            console.log(`   - Available balance: ${btcAvailableSolo} BTC`);
-
-            const activeOrders = ordersToCheck.filter(o => o.alive);
-            console.log(`   - Active orders to check: ${activeOrders.length}`);
-
-            if (btcPendingSolo > 0) {
-                console.log(`🎉 PENDING SOLO REWARDS DETECTED! ${btcPendingSolo} BTC waiting for confirmation`);
-                if (activeOrders.length === 1) {
-                    console.log(`   ✅ Exactly 1 active order - can definitively assign pending block to order ${activeOrders[0].id}`);
-                } else if (activeOrders.length > 1) {
-                    console.log(`   ⚠️ ${activeOrders.length} active orders - cannot definitively assign pending block (will mark first active order)`);
-                }
-            }
-
-            // STEP 2: Fetch rewards endpoint for each order that needs checking
-            console.log(`🎁 Step 2: Fetching confirmed rewards for all ${ordersToCheck.length} orders in parallel...`);
-
-            // Fetch rewards for all orders that may have blocks
-            const orderRewardsPromises = ordersToCheck.map(order => {
-                const coinInfo = order.soloMiningCoin || 'Unknown';
-                console.log(`  → Queueing rewards fetch for order ${order.id} (${coinInfo})`);
-                return fetchOrderRewards(order.id);
+        let response2;
+        if (USE_VERCEL_PROXY) {
+            response2 = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: endpoint2, method: 'GET', headers: headers2 })
             });
-
-            const orderRewardsResults = await Promise.all(orderRewardsPromises);
-
-            // Create a map of order ID -> rewards array
-            const orderRewardsMap = {};
-            orderRewardsResults.forEach((rewardsArray, index) => {
-                const orderId = ordersToCheck[index].id;
-                if (rewardsArray) {
-                    orderRewardsMap[orderId] = rewardsArray;
-                    console.log(`  ✅ Stored rewards for order ${orderId}: ${Array.isArray(rewardsArray) ? rewardsArray.length : 0} rewards`);
-                } else {
-                    console.log(`  ❌ No rewards data for order ${orderId} (returned null)`);
-                }
-            });
-
-            console.log(`✅ Fetched rewards for ${Object.keys(orderRewardsMap).length} orders`);
-            console.log(`🔑 orderRewardsMap keys:`, Object.keys(orderRewardsMap));
-
-            // Count how many orders have rewards
-            const ordersWithRewards = Object.values(orderRewardsMap).filter(
-                rewards => Array.isArray(rewards) && rewards.length > 0
-            );
-            console.log(`🎁 ${ordersWithRewards.length} orders have reward data!`);
-
-            if (ordersWithRewards.length > 0) {
-                console.log(`🎁 Orders with rewards:`, Object.entries(orderRewardsMap)
-                    .filter(([id, rewards]) => Array.isArray(rewards) && rewards.length > 0)
-                    .map(([id, rewards]) => ({ id, rewardCount: rewards.length }))
-                );
-            }
-
-            // Note: Rewards go to external addresses, not to NiceHash balance
-            // We don't need to track pending BTC - we rely on soloReward arrays
-
-            // Log the FIRST order with ALL fields to see what's available
-            if (data.list.length > 0) {
-                console.log('🔍 COMPLETE first order object with ALL fields:',JSON.stringify(data.list[0], null, 2));
-
-                // Log specific solo mining fields from first order
-                const firstOrder = data.list[0];
-                console.log('📋 Solo mining fields in first order:', {
-                    id: firstOrder.id,
-                    soloMiningCoin: firstOrder.soloMiningCoin,
-                    soloMiningMergeCoin: firstOrder.soloMiningMergeCoin,
-                    soloMiningRewardAddr: firstOrder.soloMiningRewardAddr,
-                    soloTicketId: firstOrder.soloTicketId,
-                    hasSoloRewardArray: firstOrder.soloReward !== undefined,
-                    soloRewardLength: firstOrder.soloReward?.length || 0,
-                    soloRewardData: firstOrder.soloReward
-                });
-            }
-
-            for (const order of data.list) {
-                // Log if this order has soloReward array (BEFORE any processing)
-                if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
-                    console.log('🚨 ORDER WITH REWARDS:', order.id, '- Rewards:', order.soloReward.length);
-                }
-
-                console.log('🔍 Order summary:', {
-                    id: order.id,
-                    algorithm: order.algorithm?.algorithm || order.algorithm,
-                    type: order.type,
-                    market: order.market,
-                    alive: order.alive,
-                    soloRewardCount: order.soloReward?.length || 0,
-                    availableAmount: order.availableAmount,
-                    payedAmount: order.payedAmount,
-                    price: order.price,
-                    amount: order.amount,
-                    requestedAmount: order.requestedAmount,
-                    startTs: order.startTs,
-                    endTs: order.endTs,
-                    displayMarketFactor: order.displayMarketFactor,
-                    pool: order.pool
-                });
-
-                // Map algorithm to crypto and package type
-                const algorithmCode = order.algorithm?.algorithm || order.algorithm;
-                const algoInfo = getAlgorithmInfo(algorithmCode, order.pool);
-                console.log(`📌 Algorithm Info for order ${order.id}:`, algoInfo);
-
-                // Determine package name from market/pool/type
-                const packageName = determinePackageName(order, algoInfo);
-                console.log(`📦 Package name determined: "${packageName}"`);
-
-                // Determine if block was found using MULTIPLE sources:
-                // 1. Rewards endpoint (confirmed/deposited blocks) - PRIMARY SOURCE
-                // 2. BTC balance pending (pending blocks not yet confirmed) - SECONDARY HEURISTIC
-                let blockFound = false;
-                let totalRewardBTC = 0;
-                let confirmedBlockCount = 0;
-                let pendingBlockCount = 0;
-                let totalPendingRewardBTC = 0;
-
-                // Get rewards array for this order
-                // PRIORITY: Use soloReward array from order object (already in myOrders response)
-                // FALLBACK: Use separate rewards endpoint data
-                console.log(`🔎 Checking rewards for order ${order.id}...`);
-                console.log(`   - Is solo mining order? ${!!order.soloMiningCoin} (${order.soloMiningCoin || 'N/A'})`);
-                console.log(`   - Is active/alive? ${order.alive}`);
-                console.log(`   - Has soloReward in order object? ${!!(order.soloReward && order.soloReward.length > 0)}`);
-                console.log(`   - Order ID exists in orderRewardsMap? ${order.id in orderRewardsMap}`);
-                console.log(`   - Algorithm: ${order.algorithm?.algorithm || order.algorithm}`);
-                console.log(`   - Pool: ${order.pool?.name || 'Unknown'}`);
-
-                // Use soloReward array from order object if available (PRIMARY SOURCE)
-                let rewardsArray = null;
-                if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
-                    rewardsArray = order.soloReward;
-                    console.log(`   ✅ Using soloReward array from order object (${rewardsArray.length} rewards)`);
-                } else {
-                    // Fall back to separate rewards endpoint
-                    rewardsArray = orderRewardsMap[order.id];
-                    if (rewardsArray && rewardsArray.length > 0) {
-                        console.log(`   ✅ Using rewards from separate endpoint (${rewardsArray.length} rewards)`);
-                    } else {
-                        console.log(`   ℹ️ No rewards found in either source`);
-                    }
-                }
-
-                if (rewardsArray !== undefined && rewardsArray !== null) {
-                    console.log(`   - Rewards data type: ${Array.isArray(rewardsArray) ? 'Array' : typeof rewardsArray}`);
-                    console.log(`   - Rewards count: ${Array.isArray(rewardsArray) ? rewardsArray.length : 'N/A'}`);
-                } else {
-                    console.log(`   - Rewards: none`);
-                }
-
-                // STEP 1: Process rewards from the rewards endpoint (PRIMARY SOURCE)
-                if (rewardsArray && Array.isArray(rewardsArray) && rewardsArray.length > 0) {
-                    console.log(`🎁 Order ${order.id} has ${rewardsArray.length} reward entries`);
-
-                    // Process each reward entry
-                    rewardsArray.forEach((reward, index) => {
-                        const rewardBtc = parseFloat(reward.payoutRewardBtc || 0);
-                        const isDeposited = reward.depositComplete === true;
-                        const confirmations = parseInt(reward.confirmations || 0);
-                        const minConfirmations = parseInt(reward.minConfirmations || 0);
-                        const isConfirmed = confirmations >= minConfirmations;
-
-                        console.log(`  📦 Reward #${index + 1} DETAILS:`, {
-                            id: reward.id,
-                            orderId: reward.orderId,
-                            blockHeight: reward.blockHeight,
-                            blockHash: reward.blockHash,
-                            coin: reward.coin,
-                            payoutRewardBtc: rewardBtc,
-                            payoutReward: reward.payoutReward,
-                            payoutAddress: reward.payoutAddress,
-                            depositComplete: isDeposited,
-                            confirmations: confirmations,
-                            minConfirmations: minConfirmations,
-                            isConfirmed: isConfirmed,
-                            shared: reward.shared,
-                            createdTs: reward.createdTs,
-                            time: reward.time
-                        });
-
-                        // Track blocks by confirmation state
-                        if (rewardBtc > 0) {
-                            if (isDeposited || isConfirmed) {
-                                // Confirmed block
-                                totalRewardBTC += rewardBtc;
-                                confirmedBlockCount++;
-                                console.log(`  ✅ CONFIRMED BLOCK: ${rewardBtc.toFixed(8)} BTC at block #${reward.blockHeight}`);
-                            } else {
-                                // Pending block (found but waiting for confirmations)
-                                totalPendingRewardBTC += rewardBtc;
-                                pendingBlockCount++;
-                                const remaining = minConfirmations - confirmations;
-                                console.log(`  ⏳ PENDING BLOCK: ${rewardBtc.toFixed(8)} BTC at block #${reward.blockHeight} (${confirmations}/${minConfirmations} confirmations, ${remaining} remaining)`);
-                            }
-                        } else {
-                            console.log(`  ⚠️ Zero reward entry (possibly orphaned or error)`);
-                        }
-                    });
-
-                    // Block is "found" if there are ANY rewards > 0 (confirmed OR pending)
-                    const totalBlocks = confirmedBlockCount + pendingBlockCount;
-                    if (totalBlocks > 0) {
-                        blockFound = true;
-                        console.log(`✅ Order ${order.id} FOUND ${totalBlocks} BLOCK(S) via rewards endpoint!`);
-                        console.log(`   - Confirmed: ${confirmedBlockCount} block(s), ${totalRewardBTC.toFixed(8)} BTC`);
-                        console.log(`   - Pending: ${pendingBlockCount} block(s), ${totalPendingRewardBTC.toFixed(8)} BTC`);
-                        console.log(`   - Total: ${(totalRewardBTC + totalPendingRewardBTC).toFixed(8)} BTC`);
-                    } else {
-                        console.log(`❌ Order ${order.id} has ${rewardsArray.length} reward entries but all have zero rewards`);
-                    }
-                }
-
-                // Note: Rewards go to external addresses, so pending balance won't help
-                // We rely entirely on the soloReward array from the API response
-
-                if (!blockFound) {
-                    console.log(`ℹ️ Order ${order.id}: No blocks found yet (checked soloReward array)`);
-                }
-
-                // Final summary for this order
-                if (blockFound) {
-                    const totalBlocks = confirmedBlockCount + pendingBlockCount;
-                    console.log(`🎉 BLOCK DETECTED for order ${order.id}!`);
-                    console.log(`   - Total blocks: ${totalBlocks} (${confirmedBlockCount} confirmed, ${pendingBlockCount} pending)`);
-                    console.log(`   - BTC rewards: ${totalRewardBTC.toFixed(8)} confirmed + ${totalPendingRewardBTC.toFixed(8)} pending`);
-                }
-
-                // Calculate total price spent on package (amount is total BTC spent on order)
-                const priceSpent = parseFloat(order.amount || 0);
-
-                // Get standard block reward for this crypto
-                const blockReward = getBlockReward(algoInfo.crypto);
-
-                // Calculate actual crypto reward based on total blocks (confirmed + pending)
-                // We show the expected reward if any block was found, regardless of confirmation status
-                const totalBlocks = confirmedBlockCount + pendingBlockCount;
-                let cryptoReward = 0;
-                if (totalBlocks > 0) {
-                    // Show expected reward (block reward × number of blocks found)
-                    cryptoReward = blockReward * totalBlocks;
-                } else {
-                    cryptoReward = 0; // No blocks found yet
-                }
-
-                // Determine mining type display (e.g., "BTC Mining", "BCH Mining")
-                let miningType = `${algoInfo.crypto} Mining`;
-                if (algoInfo.cryptoSecondary) {
-                    miningType = `${algoInfo.crypto}+${algoInfo.cryptoSecondary} Dual Mining`;
-                }
-
-                const pkg = {
-                    id: order.id,
-                    name: packageName,
-                    crypto: algoInfo.crypto,
-                    cryptoSecondary: algoInfo.cryptoSecondary, // For dual mining (Palladium)
-                    miningType: miningType, // "BTC Mining", "BCH Mining", etc.
-                    reward: cryptoReward, // Crypto reward (2500 RVN, 3.125 BTC, etc.) - total from all blocks
-                    btcEarnings: totalRewardBTC, // Total BTC earnings from confirmed rewards only
-                    btcPending: totalPendingRewardBTC, // Total BTC earnings from pending rewards
-                    confirmedBlocks: confirmedBlockCount, // Number of confirmed blocks
-                    pendingBlocks: pendingBlockCount, // Number of pending blocks (waiting confirmations)
-                    totalBlocks: totalBlocks, // Total blocks found (confirmed + pending)
-                    algorithm: order.algorithm.toString(),
-                    algorithmName: algoInfo.name,
-                    hashrate: `${order.requestedAmount || '0'} ${order.displayMarketFactor || 'TH'}`,
-                    timeRemaining: calculateTimeRemaining(order.endTs),
-                    progress: calculateProgress(order.startTs, order.endTs),
-                    blockFound: blockFound, // True if ANY block was found (confirmed or pending)
-                    isTeam: order.type === 'TEAM',
-                    price: priceSpent, // BTC amount spent on this package
-                    active: order.alive,
-                    status: order.alive ? 'active' : 'completed',
-                    startTime: order.startTs,
-                    endTime: order.endTs,
-                    marketFactor: order.displayMarketFactor,
-                    poolName: order.pool?.name || 'Unknown',
-                    // Store full order data
-                    fullOrderData: order
-                };
-
-                console.log(`\n${'📦'.repeat(40)}`);
-                console.log(`📦 PACKAGE CREATED FOR ORDER ${order.id}`);
-                console.log(`${'📦'.repeat(40)}`);
-                console.log(`   Name: ${packageName}`);
-                console.log(`   Algorithm: ${pkg.algorithmName}`);
-                console.log(`   Mining: ${pkg.miningType}`);
-                console.log(`   Active: ${order.alive}`);
-                console.log(`   Status: ${pkg.status}`);
-                console.log(`\n   🎯 BLOCK DETECTION RESULTS:`);
-                console.log(`   ├─ blockFound: ${blockFound ? '✅ YES' : '❌ NO'}`);
-                console.log(`   ├─ totalBlocks: ${totalBlocks}`);
-                console.log(`   ├─ confirmedBlocks: ${confirmedBlockCount}`);
-                console.log(`   ├─ pendingBlocks: ${pendingBlockCount}`);
-                console.log(`   ├─ btcEarnings (confirmed): ${pkg.btcEarnings.toFixed(8)} BTC`);
-                console.log(`   └─ btcPending: ${pkg.btcPending.toFixed(8)} BTC`);
-                console.log(`\n   📊 WHY?`);
-                if (blockFound) {
-                    console.log(`   ✅ Block found because:`);
-                    if (confirmedBlockCount > 0) {
-                        console.log(`      - ${confirmedBlockCount} confirmed block(s) detected in soloReward array`);
-                    }
-                    if (pendingBlockCount > 0) {
-                        console.log(`      - ${pendingBlockCount} pending block(s) detected in soloReward array`);
-                    }
-                } else {
-                    console.log(`   ❌ No blocks found because:`);
-                    console.log(`      - soloReward array was empty or had no rewards > 0 BTC`);
-                }
-                console.log(`${'═'.repeat(80)}\n`);
-
-                packages.push(pkg);
-                console.log(`✅ Package added to list: ${pkg.name} (${pkg.miningType})`);
-            }
         } else {
-            console.log('⚠️ No orders found in response');
-        }
-
-        // Detailed breakdown for debugging
-        const activePackages = packages.filter(p => p.active);
-        const completedPackages = packages.filter(p => !p.active);
-        const packagesWithBlocks = packages.filter(p => p.blockFound);
-        const activeWithBlocks = activePackages.filter(p => p.blockFound);
-        const completedWithBlocks = completedPackages.filter(p => p.blockFound);
-
-        console.log(`\n📊 PACKAGE SUMMARY:`);
-        console.log(`  Total: ${packages.length}`);
-        console.log(`  Active: ${activePackages.length} (${activeWithBlocks.length} with blocks)`);
-        console.log(`  Completed: ${completedPackages.length} (${completedWithBlocks.length} with blocks)`);
-        console.log(`  Total with confirmed blocks: ${packagesWithBlocks.length}`);
-
-        if (completedWithBlocks.length > 0) {
-            console.log(`\n🎉 Completed packages with confirmed blocks:`);
-            completedWithBlocks.forEach(pkg => {
-                console.log(`  ✓ ${pkg.name} - ${pkg.miningType} - ${pkg.confirmedBlocks} blocks - ${pkg.btcEarnings} BTC`);
+            response2 = await fetch(`https://api2.nicehash.com${endpoint2}`, {
+                method: 'GET',
+                headers: headers2
             });
         }
 
-        console.log(`\n${'🔥'.repeat(80)}`);
-        console.log(`🔥 FINAL BLOCK DETECTION SUMMARY`);
-        console.log(`${'🔥'.repeat(80)}`);
-        console.log(`\n📊 Packages being returned to checkForNewBlocks():`);
-        packages.forEach((pkg, index) => {
-            console.log(`\n${index + 1}. ${pkg.name} (${pkg.id}):`);
-            console.log(`   - blockFound: ${pkg.blockFound}`);
-            console.log(`   - totalBlocks: ${pkg.totalBlocks}`);
-            console.log(`   - confirmedBlocks: ${pkg.confirmedBlocks}`);
-            console.log(`   - pendingBlocks: ${pkg.pendingBlocks}`);
-            console.log(`   - btcEarnings: ${pkg.btcEarnings} BTC`);
-            console.log(`   - active: ${pkg.active}`);
+        if (!response2.ok) {
+            throw new Error(`API Error (active): ${response2.status}`);
+        }
+
+        const dataActive = await response2.json();
+        const activePackages = Array.isArray(dataActive) ? dataActive : (dataActive.list || []);
+        console.log(`✅ Found ${activePackages.length} active packages`);
+
+        // Merge both lists, avoiding duplicates (use order ID as key)
+        const orderMap = new Map();
+
+        // Add packages with rewards first
+        packagesWithRewards.forEach(order => {
+            orderMap.set(order.id, order);
         });
 
-        const totalBlocksAcrossAll = packages.reduce((sum, pkg) => sum + (pkg.totalBlocks || 0), 0);
-        const countPackagesWithBlocks = packages.filter(pkg => pkg.blockFound).length;
+        // Add active packages (will overwrite if already exists, ensuring latest data)
+        activePackages.forEach(order => {
+            orderMap.set(order.id, order);
+        });
 
-        console.log(`\n🎯 CRITICAL NUMBERS FOR BLOCK DETECTION:`);
-        console.log(`   - Total blocks across ALL packages: ${totalBlocksAcrossAll}`);
-        console.log(`   - Number of packages with blocks: ${countPackagesWithBlocks}`);
-        console.log(`   - This is what checkForNewBlocks() will compare!`);
-        console.log(`${'🔥'.repeat(80)}\n`);
+        const orders = Array.from(orderMap.values());
+
+        console.log(`\n${'='.repeat(80)}`);
+        console.log('📦 MERGED SOLO MINING DATA');
+        console.log(`${'='.repeat(80)}`);
+        console.log(`📋 Total unique packages: ${orders.length}`);
+
+        if (orders.length > 0) {
+            console.log('🔍 First package sample:', {
+                id: orders[0].id,
+                packageName: orders[0].packageName,
+                soloMiningCoin: orders[0].soloMiningCoin,
+                alive: orders[0].alive,
+                soloRewardCount: orders[0].soloReward?.length || 0
+            });
+        }
+
+        const packages = [];
+        const ordersWithBlocks = orders.filter(o => o.soloReward && o.soloReward.length > 0);
+        console.log(`🎁 Packages with blocks: ${ordersWithBlocks.length}/${orders.length}\n`);
+
+        // Process each package
+        for (const order of orders) {
+            console.log(`\n${'─'.repeat(80)}`);
+            console.log(`📦 Processing: ${order.packageName || 'Unknown'} (${order.id.substring(0, 8)}...)`);
+            console.log(`   Coin: ${order.soloMiningCoin}, Active: ${order.alive}`);
+
+            // Calculate block rewards from soloReward array
+            const soloRewards = order.soloReward || [];
+            let totalRewardBTC = 0;
+            let confirmedBlockCount = 0;
+            let pendingBlockCount = 0;
+
+            soloRewards.forEach((reward, idx) => {
+                const btcReward = parseFloat(reward.payoutRewardBtc || 0);
+                const isConfirmed = reward.depositComplete === true;
+
+                if (btcReward > 0) {
+                    totalRewardBTC += btcReward;
+                    if (isConfirmed) {
+                        confirmedBlockCount++;
+                        console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Confirmed)`);
+                    } else {
+                        pendingBlockCount++;
+                        console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})`);
+                    }
+                }
+            });
+
+            const totalBlocks = confirmedBlockCount + pendingBlockCount;
+            const blockFound = totalBlocks > 0;
+
+            if (blockFound) {
+                console.log(`   🎉 TOTAL: ${totalBlocks} blocks, ${totalRewardBTC.toFixed(8)} BTC`);
+            } else {
+                console.log(`   ❌ No blocks found yet`);
+            }
+
+            // Get block reward for this coin
+            const blockReward = getBlockReward(order.soloMiningCoin);
+
+            // Calculate crypto reward (blocks × block reward)
+            const cryptoReward = totalBlocks > 0 ? blockReward * totalBlocks : 0;
+
+            // Calculate price spent (use packagePrice or amount field)
+            const priceSpent = parseFloat(order.packagePrice || order.amount || 0);
+
+            // Determine algorithm info
+            const algorithmCode = order.algorithm?.algorithm || order.algorithm;
+            const algoInfo = getAlgorithmInfo(algorithmCode, order.pool);
+
+            // Create package object
+            const pkg = {
+                id: order.id,
+                name: order.packageName || `${order.soloMiningCoin} Package`, // Use packageName from API!
+                crypto: order.soloMiningCoin, // Direct from API
+                cryptoSecondary: order.soloMiningMergeCoin, // For dual mining
+                miningType: `${order.soloMiningCoin} Mining`,
+                reward: cryptoReward, // Crypto amount (e.g., 2500 RVN, 3.125 BTC)
+                btcEarnings: totalRewardBTC, // Total BTC from all blocks
+                btcPending: 0, // Could calculate from pending blocks if needed
+                confirmedBlocks: confirmedBlockCount,
+                pendingBlocks: pendingBlockCount,
+                totalBlocks: totalBlocks,
+                algorithm: algorithmCode,
+                algorithmName: algoInfo.name,
+                hashrate: `${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`,
+                timeRemaining: calculateTimeRemaining(order.endTs),
+                progress: calculateProgress(order.startTs, order.endTs),
+                blockFound: blockFound,
+                isTeam: order.type?.code === 'TEAM',
+                price: priceSpent,
+                active: order.alive,
+                status: order.alive ? 'active' : 'completed',
+                startTime: order.startTs,
+                endTime: order.endTs,
+                marketFactor: order.displayMarketFactor,
+                poolName: order.pool?.name || 'Solo Mining',
+                packageSort: order.packageSort || 0, // For ordering packages
+                packageDuration: order.packageDuration || 0,
+                fullOrderData: order
+            };
+
+            console.log(`   ✅ Package created: ${pkg.name} - ${pkg.miningType}`);
+            console.log(`      Blocks: ${pkg.totalBlocks}, Reward: ${pkg.reward} ${pkg.crypto}, BTC: ${pkg.btcEarnings.toFixed(8)}`);
+
+            packages.push(pkg);
+        }
+
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`📊 FINAL SUMMARY`);
+        console.log(`   Total packages: ${packages.length}`);
+        console.log(`   Active: ${packages.filter(p => p.active).length}`);
+        console.log(`   Completed: ${packages.filter(p => !p.active).length}`);
+        console.log(`   With blocks: ${packages.filter(p => p.blockFound).length}`);
+        console.log(`   Total blocks found: ${packages.reduce((sum, p) => sum + p.totalBlocks, 0)}`);
+        console.log(`${'='.repeat(80)}\n`);
 
         return packages;
+
     } catch (error) {
         console.error('❌ Error fetching NiceHash orders:', error);
-        // Re-throw the error so the parent function can handle CORS fallback
         throw error;
     }
 }
 
-// Helper function to format timestamp to readable date and time
 function formatDateTime(timestamp) {
     if (!timestamp) return 'Unknown';
 
