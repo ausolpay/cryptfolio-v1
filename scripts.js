@@ -787,16 +787,18 @@ async function fetchPrices() {
             const audValue = holdings * priceAud;
             const valueElement = document.getElementById(`${crypto.id}-value-aud`);
             if (valueElement) {
-                const previousValue = valueElement.textContent;
-                valueElement.textContent = formatNumber(audValue.toFixed(2));
+                // For Bitcoin: only update display if price is valid (> 0)
+                // This prevents showing $0.00 when price hasn't loaded yet
+                if (crypto.id === 'bitcoin' && priceAud === 0) {
+                    console.warn(`⚠️ fetchPrices BTC - NOT updating display because price is 0 (keeping stored value visible)`);
+                } else {
+                    valueElement.textContent = formatNumber(audValue.toFixed(2));
 
-                // SAVE Bitcoin AUD to localStorage ONLY if price is valid (> 0)
-                // This prevents overwriting good values with 0 when price hasn't loaded yet
-                if (crypto.id === 'bitcoin' && priceAud > 0) {
-                    setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
-                    console.log(`🔄 fetchPrices BTC - Saved AUD: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
-                } else if (crypto.id === 'bitcoin' && priceAud === 0) {
-                    console.warn(`⚠️ fetchPrices BTC - NOT saving AUD because price is 0 (would overwrite stored value)`);
+                    // SAVE Bitcoin AUD to localStorage when price is valid
+                    if (crypto.id === 'bitcoin') {
+                        setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
+                        console.log(`🔄 fetchPrices BTC - Updated & saved AUD: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
+                    }
                 }
             }
             console.log(`🔄 fetchPrices updated ${crypto.id} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
@@ -1994,12 +1996,18 @@ function updateCryptoValue(cryptoId) {
     }
 
     const currentValue = holdings * priceAud;
-    document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(currentValue.toFixed(2));
 
-    // SAVE Bitcoin AUD to localStorage ONLY if price is valid (> 0)
-    // This prevents overwriting good values with 0 when price hasn't loaded yet
-    if (cryptoId === 'bitcoin' && priceAud > 0) {
-        setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, currentValue);
+    // For Bitcoin: only update display and save if price is valid (> 0)
+    // This prevents showing/saving $0.00 when price hasn't loaded yet
+    if (cryptoId === 'bitcoin' && priceAud === 0) {
+        console.warn(`⚠️ updateCryptoValue BTC - NOT updating display because price is 0 (keeping stored value visible)`);
+    } else {
+        document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(currentValue.toFixed(2));
+
+        // SAVE Bitcoin AUD to localStorage when price is valid
+        if (cryptoId === 'bitcoin') {
+            setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, currentValue);
+        }
     }
 
     updateTotalHoldings();
@@ -2759,15 +2767,21 @@ function debounceUpdateUI(cryptoId, priceInAud) {
             }
 
             const audValue = holdings * priceInAud;
-            document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
 
-            // SAVE Bitcoin AUD to localStorage ONLY if price is valid (> 0)
-            // This prevents overwriting good values with 0 when price hasn't loaded yet
-            if (cryptoId === 'bitcoin' && priceInAud > 0) {
-                setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
+            // For Bitcoin: only update display and save if price is valid (> 0)
+            // This prevents showing/saving $0.00 when price hasn't loaded yet
+            if (cryptoId === 'bitcoin' && priceInAud === 0) {
+                console.warn(`⚠️ debounceUpdateUI BTC - NOT updating display because price is 0 (keeping stored value visible)`);
+            } else {
+                document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
+
+                // SAVE Bitcoin AUD to localStorage when price is valid
+                if (cryptoId === 'bitcoin') {
+                    setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
+                }
+
+                console.log(`🔄 debounceUpdateUI updated ${cryptoId} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceInAud})`);
             }
-
-            console.log(`🔄 debounceUpdateUI updated ${cryptoId} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceInAud})`);
         }
 
         updateTotalHoldings();
@@ -5538,15 +5552,15 @@ function updateBTCHoldings() {
     if (btcPriceElement && btcValueElement) {
         const btcPriceAud = parseFloat(btcPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
         const btcValueAud = totalToDisplay * btcPriceAud;
-        btcValueElement.textContent = formatNumber(btcValueAud.toFixed(2));
 
-        // SAVE BTC AUD value to localStorage ONLY if price is valid (> 0)
-        // This prevents overwriting good values with 0 when price hasn't loaded yet
+        // Only update display and save if price is valid (> 0)
+        // This prevents showing/saving $0.00 when price hasn't loaded yet
         if (btcPriceAud > 0) {
+            btcValueElement.textContent = formatNumber(btcValueAud.toFixed(2));
             setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, btcValueAud);
-            console.log(`💰 BTC AUD saved: ${btcValueAud.toFixed(2)} (holdings: ${totalToDisplay}, price: ${btcPriceAud})`);
+            console.log(`💰 BTC AUD updated & saved: ${btcValueAud.toFixed(2)} (holdings: ${totalToDisplay}, price: ${btcPriceAud})`);
         } else {
-            console.warn(`⚠️ updateBTCHoldings - NOT saving AUD because price is 0 (would overwrite stored value)`);
+            console.warn(`⚠️ updateBTCHoldings - NOT updating display/saving AUD because price is 0 (keeping stored value visible)`);
         }
     }
 
