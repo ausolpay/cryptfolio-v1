@@ -4655,6 +4655,16 @@ async function fetchNiceHashOrders() {
             console.log(`      → Total reward: ${totalRewardBTC.toFixed(8)} BTC`);
             console.log(`      → Profit: ${(totalRewardBTC - priceSpent).toFixed(8)} BTC`);
 
+            console.log(`   ⏱️  Time Remaining Data:`);
+            console.log(`      alive: ${order.alive}`);
+            console.log(`      estimateDurationInSeconds: ${order.estimateDurationInSeconds}`);
+            console.log(`      endTs: ${order.endTs}`);
+            if (order.alive && order.estimateDurationInSeconds) {
+                console.log(`      → Using estimateDurationInSeconds for active package`);
+            } else {
+                console.log(`      → Using endTs calculation`);
+            }
+
             // Determine algorithm info
             const algorithmCode = order.algorithm?.algorithm || order.algorithm;
             const algoInfo = getAlgorithmInfo(algorithmCode, order.pool);
@@ -4675,7 +4685,7 @@ async function fetchNiceHashOrders() {
                 algorithm: algorithmCode,
                 algorithmName: algoInfo.name,
                 hashrate: `${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`,
-                timeRemaining: calculateTimeRemaining(order.endTs),
+                timeRemaining: calculateTimeRemaining(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 progress: calculateProgress(order.startTs, order.endTs),
                 blockFound: blockFound,
                 isTeam: order.type?.code === 'TEAM',
@@ -4740,7 +4750,38 @@ function formatDateTime(timestamp) {
 }
 
 // Helper function to calculate time remaining
-function calculateTimeRemaining(endTimestamp) {
+// Can accept either a full order object or just an endTimestamp for backwards compatibility
+function calculateTimeRemaining(orderOrTimestamp) {
+    // Handle both order object and timestamp
+    let order = null;
+    let endTimestamp = null;
+
+    if (typeof orderOrTimestamp === 'object' && orderOrTimestamp !== null) {
+        // Full order object passed
+        order = orderOrTimestamp;
+        endTimestamp = order.endTs;
+    } else {
+        // Just timestamp passed (backwards compatibility)
+        endTimestamp = orderOrTimestamp;
+    }
+
+    // For active packages, use estimateDurationInSeconds if available
+    if (order && order.alive === true && order.estimateDurationInSeconds) {
+        const remainingSeconds = parseInt(order.estimateDurationInSeconds);
+
+        if (remainingSeconds <= 0) return 'Completed';
+
+        const days = Math.floor(remainingSeconds / (60 * 60 * 24));
+        const hours = Math.floor((remainingSeconds % (60 * 60 * 24)) / (60 * 60));
+        const minutes = Math.floor((remainingSeconds % (60 * 60)) / 60);
+
+        if (days > 0) {
+            return `${days}d ${hours}h`;
+        }
+        return `${hours}h ${minutes}m`;
+    }
+
+    // Fallback to endTimestamp calculation for completed packages or if estimateDurationInSeconds is not available
     if (!endTimestamp) return 'Unknown';
 
     const now = Date.now();
