@@ -5315,22 +5315,19 @@ function displayActivePackages() {
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
         // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
-        // For dual mining packages (e.g., Palladium DOGE/LTC), show both rewards
+        // For dual mining packages (e.g., Palladium DOGE/LTC), only show secondary reward when actually won
         let rewardDisplay;
         if (pkg.blockFound && pkg.reward > 0) {
             // Show primary crypto reward when block found
             rewardDisplay = `${pkg.reward.toFixed(rewardDecimals)} ${pkg.crypto}`;
 
-            // Add secondary reward if dual mining package won both
+            // Add secondary reward ONLY if actually won (not 0)
             if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
                 rewardDisplay += ` + ${pkg.rewardSecondary.toFixed(secondaryRewardDecimals)} ${pkg.cryptoSecondary}`;
             }
         } else {
-            // No block found yet
+            // No block found yet - only show primary crypto
             rewardDisplay = `0 ${pkg.crypto}`;
-            if (pkg.cryptoSecondary) {
-                rewardDisplay += ` + 0 ${pkg.cryptoSecondary}`;
-            }
         }
 
         // Rocket icon logic:
