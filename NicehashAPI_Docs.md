@@ -706,7 +706,7 @@ orderCreated: {
 orderCancelled: {
   "type": "OrderCancelled",
   "orderId": "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
-}
+}\
 orderAmountUpdated: {
   "type": "OrderAmountUpdated",
   "orderId": "c3d4e5f6-a7b8-9012-3456-7890abcdef12",
