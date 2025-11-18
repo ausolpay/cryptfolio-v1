@@ -4133,17 +4133,44 @@ async function fetchOrderRewards(orderId) {
         }
 
         const data = await response.json();
-        console.log(`✅ [${orderId}] Rewards response type: ${Array.isArray(data) ? 'Array' : typeof data}`);
 
-        // The endpoint returns an array directly
+        // ============================================================================
+        // REWARDS RESPONSE FOR USER TO COPY
+        // ============================================================================
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`🎯 REWARDS ENDPOINT RESPONSE - ORDER ID: ${orderId}`);
+        console.log(`   Endpoint: GET /main/api/v2/hashpower/order/${orderId}/rewards`);
+        console.log(`   Response Type: ${Array.isArray(data) ? 'Array' : typeof data}`);
+        console.log(`   Array Length: ${Array.isArray(data) ? data.length : 'N/A'}`);
+        console.log(`${'='.repeat(80)}`);
+
+        // Log the COMPLETE raw response - easy to copy
+        console.log(`📋 COMPLETE RAW RESPONSE (copy this):`);
+        console.log(JSON.stringify(data, null, 2));
+        console.log(`${'='.repeat(80)}\n`);
+
+        // Additional detailed breakdown if data exists
         if (Array.isArray(data) && data.length > 0) {
-            console.log(`🎁 [${orderId}] Has ${data.length} reward entries!`);
-            console.log(`   Full reward data:`, JSON.stringify(data, null, 2));
+            console.log(`✅ [${orderId}] Found ${data.length} reward entries!`);
+            data.forEach((reward, index) => {
+                console.log(`\n  📦 Reward Entry #${index + 1}:`);
+                console.log(`     - id: ${reward.id}`);
+                console.log(`     - orderId: ${reward.orderId}`);
+                console.log(`     - coin: ${reward.coin}`);
+                console.log(`     - blockHeight: ${reward.blockHeight}`);
+                console.log(`     - blockHash: ${reward.blockHash}`);
+                console.log(`     - payoutRewardBtc: ${reward.payoutRewardBtc}`);
+                console.log(`     - payoutReward: ${reward.payoutReward}`);
+                console.log(`     - depositComplete: ${reward.depositComplete}`);
+                console.log(`     - confirmations: ${reward.confirmations}`);
+                console.log(`     - minConfirmations: ${reward.minConfirmations}`);
+                console.log(`     - createdTs: ${reward.createdTs}`);
+                console.log(`     - time: ${reward.time}`);
+            });
         } else if (Array.isArray(data) && data.length === 0) {
-            console.log(`   [${orderId}] Empty rewards array (no blocks found yet)`);
+            console.log(`❌ [${orderId}] Empty rewards array (no blocks found yet)`);
         } else {
-            console.log(`⚠️ [${orderId}] Unexpected response format:`, typeof data);
-            console.log(`   Response:`, JSON.stringify(data, null, 2));
+            console.log(`⚠️ [${orderId}] Unexpected response format!`);
         }
 
         return data;
