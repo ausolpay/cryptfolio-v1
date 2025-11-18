@@ -7,49 +7,87 @@ async function fetchNiceHashOrders() {
     console.log(`${'#'.repeat(80)}\n`);
 
     try {
-        // Use the solo/order endpoint which gives us packages with proper names and rewards
-        const timestamp = Date.now() + nicehashTimeOffset;
-        const endpoint = `/main/api/v2/hashpower/solo/order?rewardsOnly=true&limit=1000`;
-        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+        // Fetch from TWO endpoints to get complete picture:
+        // 1. Packages with rewards (blocks found) - includes active AND completed
+        // 2. Active packages (may not have found blocks yet)
 
-        console.log('📡 Fetching solo mining packages from NiceHash...');
-        console.log('📋 Endpoint:', endpoint);
+        console.log('📡 Fetching solo mining data from 2 endpoints...');
 
-        let response;
+        // ENDPOINT 1: Packages with rewards (any that found blocks)
+        const endpoint1 = `/main/api/v2/hashpower/solo/order?rewardsOnly=true&limit=1000`;
+        const headers1 = generateNiceHashAuthHeaders('GET', endpoint1);
 
+        console.log('📋 Endpoint 1 (with rewards):', endpoint1);
+
+        let response1;
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response1 = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    endpoint: endpoint,
-                    method: 'GET',
-                    headers: headers
-                })
+                body: JSON.stringify({ endpoint: endpoint1, method: 'GET', headers: headers1 })
             });
         } else {
-            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+            response1 = await fetch(`https://api2.nicehash.com${endpoint1}`, {
                 method: 'GET',
-                headers: headers
+                headers: headers1
             });
         }
 
-        console.log('Response status:', response.status);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Error Response:', errorText);
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        if (!response1.ok) {
+            throw new Error(`API Error (rewards): ${response1.status}`);
         }
 
-        const data = await response.json();
-        console.log(`\n${'='.repeat(80)}`);
-        console.log('📦 SOLO MINING API RESPONSE');
-        console.log(`${'='.repeat(80)}`);
+        const dataWithRewards = await response1.json();
+        const packagesWithRewards = Array.isArray(dataWithRewards) ? dataWithRewards : (dataWithRewards.list || []);
+        console.log(`✅ Found ${packagesWithRewards.length} packages with rewards`);
 
-        // The solo/order endpoint returns an array directly
-        const orders = Array.isArray(data) ? data : (data.list || []);
-        console.log(`📋 Found ${orders.length} solo mining packages`);
+        // ENDPOINT 2: Active packages (including ones without blocks)
+        const endpoint2 = `/main/api/v2/hashpower/solo/order?limit=100&active=true`;
+        const headers2 = generateNiceHashAuthHeaders('GET', endpoint2);
+
+        console.log('📋 Endpoint 2 (active):', endpoint2);
+
+        let response2;
+        if (USE_VERCEL_PROXY) {
+            response2 = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: endpoint2, method: 'GET', headers: headers2 })
+            });
+        } else {
+            response2 = await fetch(`https://api2.nicehash.com${endpoint2}`, {
+                method: 'GET',
+                headers: headers2
+            });
+        }
+
+        if (!response2.ok) {
+            throw new Error(`API Error (active): ${response2.status}`);
+        }
+
+        const dataActive = await response2.json();
+        const activePackages = Array.isArray(dataActive) ? dataActive : (dataActive.list || []);
+        console.log(`✅ Found ${activePackages.length} active packages`);
+
+        // Merge both lists, avoiding duplicates (use order ID as key)
+        const orderMap = new Map();
+
+        // Add packages with rewards first
+        packagesWithRewards.forEach(order => {
+            orderMap.set(order.id, order);
+        });
+
+        // Add active packages (will overwrite if already exists, ensuring latest data)
+        activePackages.forEach(order => {
+            orderMap.set(order.id, order);
+        });
+
+        const orders = Array.from(orderMap.values());
+
+        console.log(`\n${'='.repeat(80)}`);
+        console.log('📦 MERGED SOLO MINING DATA');
+        console.log(`${'='.repeat(80)}`);
+        console.log(`📋 Total unique packages: ${orders.length}`);
 
         if (orders.length > 0) {
             console.log('🔍 First package sample:', {
