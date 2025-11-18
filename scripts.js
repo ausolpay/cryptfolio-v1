@@ -4950,11 +4950,11 @@ async function fetchNiceHashOrders() {
         });
 
         const totalBlocksAcrossAll = packages.reduce((sum, pkg) => sum + (pkg.totalBlocks || 0), 0);
-        const packagesWithBlocks = packages.filter(pkg => pkg.blockFound).length;
+        const countPackagesWithBlocks = packages.filter(pkg => pkg.blockFound).length;
 
         console.log(`\n🎯 CRITICAL NUMBERS FOR BLOCK DETECTION:`);
         console.log(`   - Total blocks across ALL packages: ${totalBlocksAcrossAll}`);
-        console.log(`   - Number of packages with blocks: ${packagesWithBlocks}`);
+        console.log(`   - Number of packages with blocks: ${countPackagesWithBlocks}`);
         console.log(`   - This is what checkForNewBlocks() will compare!`);
         console.log(`${'🔥'.repeat(80)}\n`);
 
