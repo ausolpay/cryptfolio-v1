@@ -5618,23 +5618,31 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
             console.log(`      💾 Updated ${cryptoId} holdings: ${currentHoldings} + ${rewardAmount} = ${newHoldings}`);
 
-            // Update holdings display
-            const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
-            if (holdingsElement) {
-                holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
-                console.log(`      📊 Updated holdings display`);
-            }
-
-            // Update the AUD value
-            const priceElement = document.getElementById(`${cryptoId}-price-aud`);
-            const valueElement = document.getElementById(`${cryptoId}-value-aud`);
-            if (priceElement && valueElement) {
-                const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-                const valueInAud = newHoldings * priceInAud;
-                valueElement.textContent = formatNumber(valueInAud.toFixed(2));
-                console.log(`      💰 Updated AUD value: $${valueInAud.toFixed(2)}`);
-
+            // For Bitcoin, use updateBTCHoldings() to include NiceHash balance (same as manual update)
+            // For other cryptos, update display and AUD directly
+            if (cryptoId === 'bitcoin' && typeof updateBTCHoldings === 'function') {
+                console.log(`      🔄 Calling updateBTCHoldings() to add NiceHash balance`);
+                updateBTCHoldings();
                 sortContainersByValue();
+            } else {
+                // Update holdings display
+                const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
+                if (holdingsElement) {
+                    holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
+                    console.log(`      📊 Updated holdings display`);
+                }
+
+                // Update the AUD value
+                const priceElement = document.getElementById(`${cryptoId}-price-aud`);
+                const valueElement = document.getElementById(`${cryptoId}-value-aud`);
+                if (priceElement && valueElement) {
+                    const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+                    const valueInAud = newHoldings * priceInAud;
+                    valueElement.textContent = formatNumber(valueInAud.toFixed(2));
+                    console.log(`      💰 Updated AUD value: $${valueInAud.toFixed(2)}`);
+
+                    sortContainersByValue();
+                }
             }
 
             // Mark this reward as added
