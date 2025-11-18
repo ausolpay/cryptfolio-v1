@@ -4542,16 +4542,39 @@ async function fetchNiceHashOrders() {
         const activePackages = Array.isArray(dataActive) ? dataActive : (dataActive.list || []);
         console.log(`✅ Found ${activePackages.length} active packages`);
 
-        // Merge both lists, avoiding duplicates (use order ID as key)
+        // ENDPOINT 3: Completed packages (including ones without blocks)
+        const endpoint3 = `/main/api/v2/hashpower/solo/order?limit=1000&status=COMPLETED`;
+        const headers3 = generateNiceHashAuthHeaders('GET', endpoint3);
+
+        console.log('📋 Endpoint 3 (completed):', endpoint3);
+
+        let response3;
+        if (USE_VERCEL_PROXY) {
+            response3 = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: endpoint3, method: 'GET', headers: headers3 })
+            });
+        } else {
+            response3 = await fetch(`https://api2.nicehash.com${endpoint3}`, {
+                method: 'GET',
+                headers: headers3
+            });
+        }
+
+        if (!response3.ok) {
+            throw new Error(`API Error (completed): ${response3.status}`);
+        }
+
+        const dataCompleted = await response3.json();
+        const completedPackages = Array.isArray(dataCompleted) ? dataCompleted : (dataCompleted.list || []);
+        console.log(`✅ Found ${completedPackages.length} completed packages`);
+
+        // Merge all three lists, avoiding duplicates (use order ID as key)
         const orderMap = new Map();
 
-        // Add packages with rewards first
-        packagesWithRewards.forEach(order => {
-            orderMap.set(order.id, order);
-        });
-
-        // Add active packages (will overwrite if already exists, ensuring latest data)
-        activePackages.forEach(order => {
+        // Add all packages to the map
+        [...packagesWithRewards, ...activePackages, ...completedPackages].forEach(order => {
             orderMap.set(order.id, order);
         });
 
@@ -4619,8 +4642,18 @@ async function fetchNiceHashOrders() {
             // Calculate crypto reward (blocks × block reward)
             const cryptoReward = totalBlocks > 0 ? blockReward * totalBlocks : 0;
 
-            // Calculate price spent (use packagePrice or amount field)
+            // Calculate price spent - use packagePrice first, then amount
+            // packagePrice is the actual BTC cost of the package
             const priceSpent = parseFloat(order.packagePrice || order.amount || 0);
+
+            console.log(`   💰 Financial Data:`);
+            console.log(`      packagePrice: ${order.packagePrice} BTC`);
+            console.log(`      amount: ${order.amount} BTC`);
+            console.log(`      payedAmount: ${order.payedAmount} BTC (already spent on hashpower)`);
+            console.log(`      availableAmount: ${order.availableAmount} BTC (remaining)`);
+            console.log(`      → Using priceSpent: ${priceSpent} BTC`);
+            console.log(`      → Total reward: ${totalRewardBTC.toFixed(8)} BTC`);
+            console.log(`      → Profit: ${(totalRewardBTC - priceSpent).toFixed(8)} BTC`);
 
             // Determine algorithm info
             const algorithmCode = order.algorithm?.algorithm || order.algorithm;
@@ -5005,27 +5038,50 @@ function updateStats() {
         })));
     }
 
-    // All time stats - calculate ONLY from packages with blocks found
+    // All time stats - sum up ALL blocks and rewards from ALL packages
     const packagesWithBlocks = packages.filter(pkg => pkg.blockFound === true);
-    const totalBlocksAll = packagesWithBlocks.length;
-    const totalSpentBTC = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
+
+    // Total blocks = sum of totalBlocks from each package (not just package count!)
+    const totalBlocksAll = packages.reduce((sum, pkg) => sum + (pkg.totalBlocks || 0), 0);
+
+    // Total spent = sum price from ALL packages (not just ones with blocks)
+    const totalSpentBTC = packages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
+
+    // Total reward = sum btcEarnings from packages that found blocks
     const totalRewardBTC = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0);
+
     const pnlBTC = totalRewardBTC - totalSpentBTC;
+
+    console.log(`\n💰 STATS CALCULATION:`);
+    console.log(`   Total packages: ${packages.length}`);
+    console.log(`   Packages with blocks: ${packagesWithBlocks.length}`);
+    console.log(`   Total blocks found: ${totalBlocksAll}`);
+    console.log(`   Total spent: ${totalSpentBTC.toFixed(8)} BTC`);
+    console.log(`   Total rewards: ${totalRewardBTC.toFixed(8)} BTC`);
+    console.log(`   PnL: ${pnlBTC.toFixed(8)} BTC`);
 
     // Convert BTC to AUD for display
     const totalSpentAUD = convertBTCtoAUD(totalSpentBTC);
     const totalRewardAUD = convertBTCtoAUD(totalRewardBTC);
     const pnlAUD = convertBTCtoAUD(pnlBTC);
 
-    // Today stats - packages with blocks found started today
+    // Today stats - packages started today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTimestamp = today.getTime();
 
-    const todayPackages = packages.filter(pkg => pkg.startTime >= todayTimestamp && pkg.blockFound === true);
-    const totalBlocksToday = todayPackages.length;
+    const todayPackages = packages.filter(pkg => new Date(pkg.startTime).getTime() >= todayTimestamp);
+    const todayPackagesWithBlocks = todayPackages.filter(pkg => pkg.blockFound === true);
+
+    // Total blocks today = sum of totalBlocks from packages started today
+    const totalBlocksToday = todayPackages.reduce((sum, pkg) => sum + (pkg.totalBlocks || 0), 0);
+
+    // Total spent today = sum price from packages started today
     const totalSpentTodayBTC = todayPackages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
-    const totalRewardTodayBTC = todayPackages.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0);
+
+    // Total reward today = sum btcEarnings from packages started today that found blocks
+    const totalRewardTodayBTC = todayPackagesWithBlocks.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0);
+
     const pnlTodayBTC = totalRewardTodayBTC - totalSpentTodayBTC;
 
     // Convert today's BTC to AUD
