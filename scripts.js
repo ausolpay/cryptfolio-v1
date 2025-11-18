@@ -4874,9 +4874,19 @@ async function fetchNiceHashOrders() {
                 } else {
                     endTime = parseInt(order.endTs);
                 }
+
+                console.log(`   🕐 Time Check for ${order.packageName || order.id}:`);
+                console.log(`      alive flag: ${order.alive}`);
+                console.log(`      now: ${new Date(now).toISOString()}`);
+                console.log(`      endTs: ${new Date(endTime).toISOString()}`);
+                console.log(`      now >= endTime: ${now >= endTime}`);
+
                 // If end time has passed, mark as not active regardless of alive flag
                 if (now >= endTime) {
+                    console.log(`      → Marking as NOT ACTIVE (time expired)`);
                     isActive = false;
+                } else {
+                    console.log(`      → Keeping as ACTIVE (time remaining)`);
                 }
             }
 
