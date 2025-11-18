@@ -3841,10 +3841,18 @@ async function fetchEasyMiningData() {
             }
         } else {
             console.warn('API credentials incomplete, using fallback data');
-            easyMiningData.availableBTC = '0.00000000';
-            easyMiningData.pendingBTC = '0.00000000';
-            easyMiningData.activePackages = [];
+            // Preserve last known balances instead of resetting to 0
+            // This prevents losing NiceHash balance when credentials are missing
+            const storedData = JSON.parse(getStorageItem(`${loggedInUser}_easyMiningData`)) || {};
+            easyMiningData.availableBTC = storedData.availableBTC || '0.00000000';
+            easyMiningData.pendingBTC = storedData.pendingBTC || '0.00000000';
+            easyMiningData.activePackages = storedData.activePackages || [];
+            console.log(`📦 Using stored balances: Available ${easyMiningData.availableBTC}, Pending ${easyMiningData.pendingBTC}`);
         }
+
+        // Save easyMiningData to localStorage to persist balances
+        setStorageItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        console.log(`💾 Saved EasyMining data to localStorage`);
 
         // Fetch public package data from NiceHash
         await fetchPublicPackageData();
@@ -5485,8 +5493,18 @@ function updateBTCHoldings() {
         }
     }
 
-    // Total to display = manual + NiceHash
-    const totalToDisplay = manualHoldings + niceHashBalance;
+    // If NiceHash balance is 0 but we have a stored display value with NiceHash, preserve it
+    // This prevents losing NiceHash balance when API temporarily fails or credentials missing
+    const storedDisplayHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayHoldings`)) || 0;
+    let totalToDisplay;
+    if (niceHashBalance === 0 && storedDisplayHoldings > manualHoldings) {
+        // Use stored value which includes last known NiceHash balance
+        console.log(`⚠️ NiceHash balance is 0, preserving stored display value: ${storedDisplayHoldings.toFixed(8)}`);
+        totalToDisplay = storedDisplayHoldings;
+    } else {
+        // Total to display = manual + NiceHash
+        totalToDisplay = manualHoldings + niceHashBalance;
+    }
 
     console.log(`💰 BTC Holdings: Manual ${manualHoldings.toFixed(8)} + NiceHash ${niceHashBalance.toFixed(8)} = Total ${totalToDisplay.toFixed(8)}`);
 
