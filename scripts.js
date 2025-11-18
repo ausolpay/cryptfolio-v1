@@ -6507,6 +6507,18 @@ function initializeEasyMining() {
     const savedData = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningData`));
     if (savedData) {
         easyMiningData = { ...easyMiningData, ...savedData };
+        console.log(`📦 EasyMining data loaded from localStorage:`, {
+            availableBTC: easyMiningData.availableBTC,
+            pendingBTC: easyMiningData.pendingBTC,
+            packages: easyMiningData.activePackages?.length || 0
+        });
+    }
+
+    // CRITICAL: Update Bitcoin holdings to include NiceHash balance
+    // This ensures manual + NiceHash is displayed and AUD is calculated correctly
+    if (typeof updateBTCHoldings === 'function') {
+        console.log(`🔄 Calling updateBTCHoldings() to recalculate BTC total (manual + NiceHash)`);
+        updateBTCHoldings();
     }
 
     // Restore rocket display from saved data
