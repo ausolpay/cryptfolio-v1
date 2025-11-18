@@ -4864,30 +4864,31 @@ async function fetchNiceHashOrders() {
             const algorithmCode = order.algorithm?.algorithm || order.algorithm;
             const algoInfo = getAlgorithmInfo(algorithmCode, order.pool);
 
-            // Check if package is truly active (not just alive flag, but also time-based check)
-            let isActive = order.alive;
-            if (order.endTs) {
-                const now = Date.now();
-                let endTime;
-                if (typeof order.endTs === 'string') {
-                    endTime = new Date(order.endTs).getTime();
-                } else {
-                    endTime = parseInt(order.endTs);
-                }
+            // Determine if package is active based on estimateDurationInSeconds and status
+            let isActive = true;
 
-                console.log(`   🕐 Time Check for ${order.packageName || order.id}:`);
-                console.log(`      alive flag: ${order.alive}`);
-                console.log(`      now: ${new Date(now).toISOString()}`);
-                console.log(`      endTs: ${new Date(endTime).toISOString()}`);
-                console.log(`      now >= endTime: ${now >= endTime}`);
+            console.log(`   🕐 Active Status Check for ${order.packageName || order.id}:`);
+            console.log(`      alive flag: ${order.alive}`);
+            console.log(`      estimateDurationInSeconds: ${order.estimateDurationInSeconds}`);
+            console.log(`      status: ${order.status?.code || 'N/A'}`);
 
-                // If end time has passed, mark as not active regardless of alive flag
-                if (now >= endTime) {
-                    console.log(`      → Marking as NOT ACTIVE (time expired)`);
-                    isActive = false;
-                } else {
-                    console.log(`      → Keeping as ACTIVE (time remaining)`);
-                }
+            // Package is NOT active if:
+            // 1. estimateDurationInSeconds is 0 (time expired)
+            // 2. Status indicates completion (COMPLETED, CANCELLED, DEAD, EXPIRED, etc.)
+            // 3. alive flag is false
+
+            if (order.estimateDurationInSeconds === 0) {
+                console.log(`      → NOT ACTIVE: estimateDurationInSeconds is 0 (time expired)`);
+                isActive = false;
+            } else if (order.status?.code && ['COMPLETED', 'CANCELLED', 'DEAD', 'EXPIRED', 'ERROR'].includes(order.status.code)) {
+                console.log(`      → NOT ACTIVE: status is ${order.status.code}`);
+                isActive = false;
+            } else if (order.alive === false) {
+                console.log(`      → NOT ACTIVE: alive flag is false`);
+                isActive = false;
+            } else {
+                console.log(`      → ACTIVE: estimateDurationInSeconds = ${order.estimateDurationInSeconds}, status = ${order.status?.code || 'N/A'}, alive = ${order.alive}`);
+                isActive = true;
             }
 
             // Create package object
