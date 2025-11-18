@@ -4546,8 +4546,8 @@ async function fetchNiceHashOrders() {
                 console.log('🎁 Order IDs with soloReward:', ordersWithSoloReward.map(o => o.id));
             }
 
-            // PARALLEL FETCH: Get rewards for each solo mining order
-            // Endpoint: GET /main/api/v2/hashpower/order/{id}/rewards
+            // MULTI-SOURCE APPROACH: Check both rewards endpoint AND BTC balance
+            // Some blocks may be pending and only show in balance, not in rewards endpoint
             const soloMiningOrders = data.list.filter(o => o.soloMiningCoin);
 
             console.log(`🎯 Found ${soloMiningOrders.length} solo mining orders`);
@@ -4556,7 +4556,23 @@ async function fetchNiceHashOrders() {
                 coin: o.soloMiningCoin,
                 alive: o.alive
             })));
-            console.log(`🎁 Fetching rewards for all ${soloMiningOrders.length} orders in parallel...`);
+
+            // STEP 1: Check BTC balance for pending solo rewards
+            console.log(`💰 Step 1: Checking BTC balance for pending solo rewards...`);
+            const btcBalance = await fetchCurrencyBalanceExtended('BTC');
+            const btcPendingSolo = parseFloat(btcBalance?.pendingDetails?.solo || 0);
+            const btcAvailableSolo = parseFloat(btcBalance?.available || 0);
+
+            console.log(`💰 BTC Solo Mining Status:`);
+            console.log(`   - Pending solo rewards: ${btcPendingSolo} BTC`);
+            console.log(`   - Available balance: ${btcAvailableSolo} BTC`);
+
+            if (btcPendingSolo > 0) {
+                console.log(`🎉 PENDING SOLO REWARDS DETECTED! ${btcPendingSolo} BTC waiting for confirmation`);
+            }
+
+            // STEP 2: Fetch rewards endpoint for each order
+            console.log(`🎁 Step 2: Fetching confirmed rewards for all ${soloMiningOrders.length} orders in parallel...`);
 
             // Fetch rewards for all solo mining orders in parallel
             const orderRewardsPromises = soloMiningOrders.map(order => {
@@ -4650,8 +4666,10 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Determine if block was found using rewards endpoint
-                // GET /main/api/v2/hashpower/order/{id}/rewards returns array directly
+                // Determine if block was found using MULTIPLE sources:
+                // 1. Rewards endpoint (confirmed/deposited blocks)
+                // 2. BTC balance pending (pending blocks not yet confirmed)
+                // 3. Order status (active solo mining orders)
                 let blockFound = false;
                 let totalRewardBTC = 0;
                 let confirmedBlockCount = 0;
@@ -4661,6 +4679,7 @@ async function fetchNiceHashOrders() {
                 // Get rewards array for this order
                 console.log(`🔎 Checking rewards for order ${order.id}...`);
                 console.log(`   - Is solo mining order? ${!!order.soloMiningCoin} (${order.soloMiningCoin || 'N/A'})`);
+                console.log(`   - Is active/alive? ${order.alive}`);
                 console.log(`   - Order ID exists in orderRewardsMap? ${order.id in orderRewardsMap}`);
 
                 const rewardsArray = orderRewardsMap[order.id];
@@ -4670,6 +4689,19 @@ async function fetchNiceHashOrders() {
                     console.log(`   - Rewards count: ${Array.isArray(rewardsArray) ? rewardsArray.length : 'N/A'}`);
                 } else {
                     console.log(`   - Rewards: undefined (not in map)`);
+                }
+
+                // HEURISTIC: If BTC has pending solo rewards AND this order is active solo mining,
+                // likely this order found a block (even if rewards endpoint is empty)
+                const hasActiveSoloMining = order.soloMiningCoin && order.alive;
+                const hasPendingSoloRewards = btcPendingSolo > 0;
+
+                if (hasActiveSoloMining && hasPendingSoloRewards && (!rewardsArray || rewardsArray.length === 0)) {
+                    console.log(`💡 HEURISTIC: Active solo mining order + pending BTC rewards = likely found pending block!`);
+                    console.log(`   Marking as having found block (pending confirmation)`);
+                    blockFound = true;
+                    pendingBlockCount = 1;
+                    totalPendingRewardBTC = btcPendingSolo;
                 }
 
                 if (rewardsArray && Array.isArray(rewardsArray) && rewardsArray.length > 0) {
@@ -4731,8 +4763,17 @@ async function fetchNiceHashOrders() {
                     } else {
                         console.log(`❌ Order ${order.id} has ${rewardsArray.length} reward entries but all have zero rewards`);
                     }
-                } else {
+                } else if (!blockFound) {
+                    // Only log "no rewards" if we didn't detect via heuristic
                     console.log(`❌ Order ${order.id} has no rewards (endpoint returned empty/null)`);
+                }
+
+                // Final summary for this order
+                if (blockFound) {
+                    const totalBlocks = confirmedBlockCount + pendingBlockCount;
+                    console.log(`🎉 BLOCK DETECTED for order ${order.id}!`);
+                    console.log(`   - Total blocks: ${totalBlocks} (${confirmedBlockCount} confirmed, ${pendingBlockCount} pending)`);
+                    console.log(`   - BTC rewards: ${totalRewardBTC.toFixed(8)} confirmed + ${totalPendingRewardBTC.toFixed(8)} pending`);
                 }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
