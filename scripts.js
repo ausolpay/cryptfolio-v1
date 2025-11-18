@@ -5179,9 +5179,18 @@ function generateMockBlocks() {
 // =============================================================================
 
 function updateEasyMiningUI() {
-    // Update balances
+    // Update balances (BTC)
     document.getElementById('easymining-available-btc').textContent = easyMiningData.availableBTC;
     document.getElementById('easymining-pending-btc').textContent = easyMiningData.pendingBTC;
+
+    // Convert BTC balances to AUD and update
+    const availableBTC = parseFloat(easyMiningData.availableBTC) || 0;
+    const pendingBTC = parseFloat(easyMiningData.pendingBTC) || 0;
+    const availableAUD = convertBTCtoAUD(availableBTC);
+    const pendingAUD = convertBTCtoAUD(pendingBTC);
+
+    document.getElementById('easymining-available-aud').textContent = `$${formatNumber(availableAUD.toFixed(2))}`;
+    document.getElementById('easymining-pending-aud').textContent = `$${formatNumber(pendingAUD.toFixed(2))}`;
 
     // Display active packages
     displayActivePackages();
@@ -5422,12 +5431,12 @@ function updateStats() {
     // Update UI - Today stats (in AUD)
     const totalRewardTodayAUD = convertBTCtoAUD(totalRewardTodayBTC);
     const blocksElem = document.getElementById('total-blocks-today');
-    const rewardTodayElem = document.getElementById('total-reward-today');
+    const rewardsTodayElem = document.getElementById('rewards-today');
     const spentTodayElem = document.getElementById('total-spent-today');
     const pnlTodayElem = document.getElementById('pnl-today');
 
     if (blocksElem) blocksElem.textContent = totalBlocksToday;
-    if (rewardTodayElem) rewardTodayElem.textContent = `$${formatNumber(totalRewardTodayAUD.toFixed(2))}`;
+    if (rewardsTodayElem) rewardsTodayElem.textContent = `$${formatNumber(totalRewardTodayAUD.toFixed(2))}`;
     if (spentTodayElem) spentTodayElem.textContent = `$${formatNumber(totalSpentTodayAUD.toFixed(2))}`;
     if (pnlTodayElem) {
         pnlTodayElem.textContent = `$${formatNumber(pnlTodayAUD.toFixed(2))}`;
