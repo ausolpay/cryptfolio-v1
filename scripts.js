@@ -5198,8 +5198,19 @@ function displayActivePackages() {
         filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.active === true);
     } else if (currentPackageTab === 'completed') {
         filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.active === false);
+        // Sort completed packages by end time (latest first)
+        filteredPackages.sort((a, b) => {
+            const getEndTime = (pkg) => {
+                if (pkg.endTime) {
+                    return typeof pkg.endTime === 'string' ? new Date(pkg.endTime).getTime() : pkg.endTime;
+                }
+                return 0;
+            };
+            return getEndTime(b) - getEndTime(a); // Descending order (latest first)
+        });
     } else if (currentPackageTab === 'rewards') {
-        // Log detailed info about Rewards tab filtering
+        // Rewards tab: show packages with blocks (both active and completed)
+        // Don't show at top - just order by date like completed packages
         console.log('🎁 REWARDS TAB - Filtering packages with blockFound === true');
         const packagesWithBlocks = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true);
 
@@ -5243,17 +5254,17 @@ function displayActivePackages() {
         }
 
         // Rocket icon logic:
-        // - ALL active packages: flashing rocket (indicates mining in progress)
-        // - Packages with blocks: solid rocket (indicates block found)
+        // - Active packages without blocks: flashing rocket (mining in progress)
+        // - Packages with blocks (active or completed): solid rocket (block found)
         let rocketHtml = '';
-        if (pkg.active) {
-            // Active package: flashing rocket to show it's mining
+        if (pkg.blockFound) {
+            // Block found: solid rocket (no flashing, even if active)
+            rocketHtml = '<div class="block-found-indicator">🚀</div>';
+        } else if (pkg.active) {
+            // Active package without blocks: flashing rocket to show it's mining
             rocketHtml = '<div class="block-found-indicator flashing">🚀</div>';
         }
-        if (pkg.blockFound) {
-            // Block found: solid rocket (overrides flashing if both conditions true)
-            rocketHtml = '<div class="block-found-indicator">🚀</div>';
-        }
+        // Completed packages without blocks: no rocket icon
 
         // Block count badge - show total blocks with pending count if applicable
         let blockBadge = '';
