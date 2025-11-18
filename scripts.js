@@ -5254,15 +5254,16 @@ function displayActivePackages() {
         }
 
         // Rocket icon logic:
-        // - Active packages without blocks: flashing rocket (mining in progress)
-        // - Packages with blocks (active or completed): solid rocket (block found)
+        // - Active packages: flashing rocket (mining in progress, regardless of blocks found)
+        // - Completed packages with blocks: solid rocket (block found)
+        // - Completed packages without blocks: no rocket
         let rocketHtml = '';
-        if (pkg.blockFound) {
-            // Block found: solid rocket (no flashing, even if active)
-            rocketHtml = '<div class="block-found-indicator">🚀</div>';
-        } else if (pkg.active) {
-            // Active package without blocks: flashing rocket to show it's mining
+        if (pkg.active) {
+            // Active package: always flashing rocket (shows it's currently mining)
             rocketHtml = '<div class="block-found-indicator flashing">🚀</div>';
+        } else if (pkg.blockFound) {
+            // Completed package with blocks: solid rocket (no flashing)
+            rocketHtml = '<div class="block-found-indicator">🚀</div>';
         }
         // Completed packages without blocks: no rocket icon
 
