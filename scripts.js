@@ -3690,8 +3690,17 @@ window.clearRockets = clearRockets;
 // =============================================================================
 
 async function fetchEasyMiningData() {
+    console.log(`\n${'@'.repeat(80)}`);
+    console.log(`⚡⚡⚡ FETCHEASYMININGDATA POLLING TRIGGERED ⚡⚡⚡`);
+    console.log(`   Enabled: ${easyMiningSettings.enabled}`);
+    console.log(`   Has API Key: ${!!easyMiningSettings.apiKey}`);
+    console.log(`   Has API Secret: ${!!easyMiningSettings.apiSecret}`);
+    console.log(`   Has Org ID: ${!!easyMiningSettings.orgId}`);
+    console.log(`${'@'.repeat(80)}\n`);
+
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
-        console.log('EasyMining not enabled or API key not set');
+        console.warn('⚠️ EasyMining not enabled or API key not set - STOPPING HERE');
+        console.warn('   Please enable EasyMining and add credentials in Settings');
         return;
     }
 
@@ -4456,6 +4465,10 @@ async function fetchOrderRewards(orderId) {
 
 // Fetch active orders from NiceHash API
 async function fetchNiceHashOrders() {
+    console.log(`\n${'#'.repeat(80)}`);
+    console.log(`📡📡📡 FETCHNICEHASHORDERS FUNCTION CALLED 📡📡📡`);
+    console.log(`${'#'.repeat(80)}\n`);
+
     try {
         // Try myOrders endpoint to check if it includes soloReward data
         const timestamp = Date.now() + nicehashTimeOffset;
