@@ -4605,9 +4605,22 @@ async function fetchNiceHashOrders() {
             console.log(`📦 Processing: ${order.packageName || 'Unknown'} (${order.id.substring(0, 8)}...)`);
             console.log(`   Coin: ${order.soloMiningCoin}, Active: ${order.alive}`);
 
+            // Log team/share related fields for debugging
+            console.log(`   📊 Team/Share Data:`);
+            console.log(`      type: ${JSON.stringify(order.type)}`);
+            console.log(`      packagePrice: ${order.packagePrice}`);
+            console.log(`      packageShares: ${order.packageShares}`);
+            console.log(`      ownedShares: ${order.ownedShares}`);
+            console.log(`      sharePrice: ${order.sharePrice}`);
+            console.log(`      numberOfShares: ${order.numberOfShares}`);
+            console.log(`      myShares: ${order.myShares}`);
+
+            // Check if this is a team package
+            const isTeamPackage = order.type?.code === 'TEAM';
+
             // Calculate block rewards from soloReward array
             const soloRewards = order.soloReward || [];
-            let totalRewardBTC = 0;
+            let totalPackageRewardBTC = 0; // Total reward for entire package
             let confirmedBlockCount = 0;
             let pendingBlockCount = 0;
 
@@ -4616,13 +4629,13 @@ async function fetchNiceHashOrders() {
                 const isConfirmed = reward.depositComplete === true;
 
                 if (btcReward > 0) {
-                    totalRewardBTC += btcReward;
+                    totalPackageRewardBTC += btcReward;
                     if (isConfirmed) {
                         confirmedBlockCount++;
-                        console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Confirmed)`);
+                        console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Confirmed)${reward.shared ? ' [SHARED]' : ''}`);
                     } else {
                         pendingBlockCount++;
-                        console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})`);
+                        console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})${reward.shared ? ' [SHARED]' : ''}`);
                     }
                 }
             });
@@ -4631,7 +4644,7 @@ async function fetchNiceHashOrders() {
             const blockFound = totalBlocks > 0;
 
             if (blockFound) {
-                console.log(`   🎉 TOTAL: ${totalBlocks} blocks, ${totalRewardBTC.toFixed(8)} BTC`);
+                console.log(`   🎉 TOTAL: ${totalBlocks} blocks, ${totalPackageRewardBTC.toFixed(8)} BTC (package total)`);
             } else {
                 console.log(`   ❌ No blocks found yet`);
             }
@@ -4640,11 +4653,55 @@ async function fetchNiceHashOrders() {
             const blockReward = getBlockReward(order.soloMiningCoin);
 
             // Calculate crypto reward (blocks × block reward)
-            const cryptoReward = totalBlocks > 0 ? blockReward * totalBlocks : 0;
+            let cryptoReward = totalBlocks > 0 ? blockReward * totalBlocks : 0;
 
-            // Calculate price spent - use packagePrice first, then amount
-            // packagePrice is the actual BTC cost of the package
-            const priceSpent = parseFloat(order.packagePrice || order.amount || 0);
+            // For team packages, calculate user's share of costs and rewards
+            let priceSpent = 0;
+            let totalRewardBTC = 0;
+            let userSharePercentage = 1.0; // Default to 100% for non-team packages
+
+            if (isTeamPackage) {
+                // Try different possible field names for shares
+                const ownedShares = order.ownedShares || order.myShares || 0;
+                const totalShares = order.packageShares || order.numberOfShares || order.totalShares || 1;
+                const sharePrice = order.sharePrice;
+
+                console.log(`   👥 TEAM PACKAGE - Calculating user's share:`);
+                console.log(`      Owned shares: ${ownedShares}`);
+                console.log(`      Total shares: ${totalShares}`);
+                console.log(`      Share price: ${sharePrice} BTC`);
+
+                if (totalShares > 0 && ownedShares > 0) {
+                    userSharePercentage = ownedShares / totalShares;
+
+                    // Calculate user's price spent
+                    if (sharePrice) {
+                        // Use sharePrice × owned shares
+                        priceSpent = parseFloat(sharePrice) * ownedShares;
+                        console.log(`      → Price calculation: ${sharePrice} × ${ownedShares} = ${priceSpent.toFixed(8)} BTC`);
+                    } else {
+                        // Fallback: calculate from total package price
+                        const totalPackagePrice = parseFloat(order.packagePrice || order.amount || 0);
+                        priceSpent = totalPackagePrice * userSharePercentage;
+                        console.log(`      → Price calculation: ${totalPackagePrice} × ${userSharePercentage.toFixed(4)} = ${priceSpent.toFixed(8)} BTC`);
+                    }
+
+                    // Calculate user's share of rewards
+                    totalRewardBTC = totalPackageRewardBTC * userSharePercentage;
+                    console.log(`      → Reward calculation: ${totalPackageRewardBTC.toFixed(8)} × ${userSharePercentage.toFixed(4)} = ${totalRewardBTC.toFixed(8)} BTC`);
+
+                    // Adjust crypto reward for user's share
+                    cryptoReward = cryptoReward * userSharePercentage;
+                } else {
+                    console.log(`      ⚠️ WARNING: Missing share data, using full package values`);
+                    priceSpent = parseFloat(order.packagePrice || order.amount || 0);
+                    totalRewardBTC = totalPackageRewardBTC;
+                }
+            } else {
+                // Standard (non-team) package - use full amounts
+                priceSpent = parseFloat(order.packagePrice || order.amount || 0);
+                totalRewardBTC = totalPackageRewardBTC;
+            }
 
             console.log(`   💰 Financial Data:`);
             console.log(`      packagePrice: ${order.packagePrice} BTC`);
@@ -4676,8 +4733,8 @@ async function fetchNiceHashOrders() {
                 crypto: order.soloMiningCoin, // Direct from API
                 cryptoSecondary: order.soloMiningMergeCoin, // For dual mining
                 miningType: `${order.soloMiningCoin} Mining`,
-                reward: cryptoReward, // Crypto amount (e.g., 2500 RVN, 3.125 BTC)
-                btcEarnings: totalRewardBTC, // Total BTC from all blocks
+                reward: cryptoReward, // Crypto amount (user's share for team packages)
+                btcEarnings: totalRewardBTC, // User's BTC earnings (share-adjusted for team packages)
                 btcPending: 0, // Could calculate from pending blocks if needed
                 confirmedBlocks: confirmedBlockCount,
                 pendingBlocks: pendingBlockCount,
@@ -4688,8 +4745,14 @@ async function fetchNiceHashOrders() {
                 timeRemaining: calculateTimeRemaining(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 progress: calculateProgress(order.startTs, order.endTs),
                 blockFound: blockFound,
-                isTeam: order.type?.code === 'TEAM',
-                price: priceSpent,
+                isTeam: isTeamPackage,
+                price: priceSpent, // User's price spent (share-adjusted for team packages)
+                // Team package share information
+                ownedShares: isTeamPackage ? (order.ownedShares || order.myShares || 0) : null,
+                totalShares: isTeamPackage ? (order.packageShares || order.numberOfShares || order.totalShares || 1) : null,
+                sharePrice: isTeamPackage ? order.sharePrice : null,
+                userSharePercentage: userSharePercentage,
+                // Package metadata
                 active: order.alive,
                 status: order.alive ? 'active' : 'completed',
                 startTime: order.startTs,
@@ -5542,7 +5605,10 @@ function showPackageDetailPage(pkg) {
 
     // Set package name and subtitle
     document.getElementById('package-detail-page-name').textContent = pkg.name;
-    document.getElementById('package-detail-page-subtitle').textContent = pkg.miningType || `${pkg.crypto} Mining`;
+    // Add order number under the package name
+    const subtitle = pkg.miningType || `${pkg.crypto} Mining`;
+    const orderNumber = pkg.id ? `Order #${pkg.id.substring(0, 8)}` : '';
+    document.getElementById('package-detail-page-subtitle').textContent = orderNumber ? `${orderNumber} • ${subtitle}` : subtitle;
 
     // Populate package info
     const infoGrid = document.getElementById('package-detail-page-info');
@@ -5577,9 +5643,15 @@ function showPackageDetailPage(pkg) {
             <span class="stat-value">Team Package</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Shares:</span>
-            <span class="stat-value">${pkg.shares || 'N/A'}</span>
+            <span class="stat-label">My Shares:</span>
+            <span class="stat-value">${pkg.ownedShares || 'N/A'} / ${pkg.totalShares || 'N/A'} (${(pkg.userSharePercentage * 100).toFixed(2)}%)</span>
         </div>
+        ${pkg.sharePrice ? `
+        <div class="stat-item">
+            <span class="stat-label">Price Per Share:</span>
+            <span class="stat-value">${pkg.sharePrice.toFixed(8)} BTC</span>
+        </div>
+        ` : ''}
         ` : ''}
         <div class="stat-item">
             <span class="stat-label">Price Spent:</span>
