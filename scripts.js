@@ -2291,12 +2291,28 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'MEXC') {
                     triangleElement.classList.toggle('triangle-down', !isPriceUp);
 
                     priceElement.textContent = `$${formatNumber(priceInAud.toFixed(8), true)}`; // Update price
-                    const holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${coingeckoId}Holdings`)) || 0;
+
+                    // For Bitcoin, use display holdings (manual + NiceHash balance) instead of just manual holdings
+                    let holdings;
+                    if (coingeckoId === 'bitcoin') {
+                        // Use stored display holdings which includes NiceHash balance
+                        holdings = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayHoldings`)) ||
+                                   parseFloat(localStorage.getItem(`${loggedInUser}_${coingeckoId}Holdings`)) || 0;
+                    } else {
+                        holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${coingeckoId}Holdings`)) || 0;
+                    }
+
                     const holdingsValueAud = holdings * priceInAud;
 
                     // Update holdings value directly
                     const valueElement = document.getElementById(`${coingeckoId}-value-aud`);
                     valueElement.textContent = formatNumber(holdingsValueAud.toFixed(2));
+
+                    // For Bitcoin, save the AUD value to localStorage so it persists
+                    if (coingeckoId === 'bitcoin' && priceInAud > 0) {
+                        setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, holdingsValueAud);
+                        console.log(`💰 Saved Bitcoin AUD from WebSocket update: $${holdingsValueAud.toFixed(2)}`);
+                    }
 
                     // Now update the chart modal holdings and value if it's open
                     if (currentCryptoId === coingeckoId) {
