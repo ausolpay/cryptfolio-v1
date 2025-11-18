@@ -502,6 +502,11 @@ function updateHoldings(crypto) {
         // Save the updated holdings in storage
         setStorageItem(`${loggedInUser}_${crypto}Holdings`, holdings);
 
+        // For Bitcoin, reset NiceHash balance tracking since user is entering manual amount
+        if (crypto === 'bitcoin') {
+            setStorageItem(`${loggedInUser}_bitcoinNiceHashBalance`, 0);
+        }
+
         // Update the displayed holdings in the UI
         document.getElementById(`${crypto}-holdings`).textContent = formatNumber(holdings.toFixed(3));
 
@@ -515,6 +520,11 @@ function updateHoldings(crypto) {
         // Update the total holdings and re-sort containers by value
         updateTotalHoldings();
         sortContainersByValue();
+
+        // For Bitcoin, re-add NiceHash balance if enabled
+        if (crypto === 'bitcoin' && typeof updateBTCHoldings === 'function') {
+            updateBTCHoldings();
+        }
 
         // Clear the input value and remove focus
         input.value = '';
@@ -4197,44 +4207,6 @@ function convertBTCtoAUD(btcAmount) {
     return btcAmount * btcPriceAUD;
 }
 
-// Get total BTC holdings including NiceHash balance if toggles are enabled
-function getTotalBTCHoldings() {
-    // Get base holdings from localStorage
-    let totalBTC = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
-
-    // Add NiceHash balances if toggles are enabled
-    if (easyMiningSettings && easyMiningData) {
-        if (easyMiningSettings.includeAvailableBTC) {
-            const availableBTC = parseFloat(easyMiningData.availableBTC) || 0;
-            totalBTC += availableBTC;
-        }
-
-        if (easyMiningSettings.includePendingBTC) {
-            const pendingBTC = parseFloat(easyMiningData.pendingBTC) || 0;
-            totalBTC += pendingBTC;
-        }
-    }
-
-    return totalBTC;
-}
-
-// Update BTC holdings display with NiceHash balance if enabled
-function updateBTCHoldingsDisplay() {
-    const holdingsElement = document.getElementById('bitcoin-holdings');
-    if (!holdingsElement) return;
-
-    const totalBTC = getTotalBTCHoldings();
-    holdingsElement.textContent = formatNumber(totalBTC.toFixed(8));
-
-    // Update AUD value
-    const priceElement = document.getElementById('bitcoin-price-aud');
-    const valueElement = document.getElementById('bitcoin-value-aud');
-    if (priceElement && valueElement) {
-        const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-        const valueInAud = totalBTC * priceInAud;
-        valueElement.textContent = formatNumber(valueInAud.toFixed(2));
-    }
-}
 
 // Get block reward for a cryptocurrency
 function getBlockReward(crypto) {
@@ -5080,9 +5052,6 @@ function updateEasyMiningUI() {
     document.getElementById('easymining-available-btc').textContent = easyMiningData.availableBTC;
     document.getElementById('easymining-pending-btc').textContent = easyMiningData.pendingBTC;
 
-    // Update BTC holdings display to include NiceHash balance if enabled
-    updateBTCHoldingsDisplay();
-
     // Display active packages
     displayActivePackages();
 
@@ -5308,7 +5277,9 @@ function updateStats() {
     document.getElementById('pnl-all').className = pnlAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
 
     // Update UI - Today stats (in AUD)
+    const totalRewardTodayAUD = convertBTCtoAUD(totalRewardTodayBTC);
     document.getElementById('total-blocks-today').textContent = totalBlocksToday;
+    document.getElementById('total-reward-today').textContent = `$${formatNumber(totalRewardTodayAUD.toFixed(2))}`;
     document.getElementById('total-spent-today').textContent = `$${formatNumber(totalSpentTodayAUD.toFixed(2))}`;
     document.getElementById('pnl-today').textContent = `$${formatNumber(pnlTodayAUD.toFixed(2))}`;
     document.getElementById('pnl-today').className = pnlTodayAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
@@ -5323,6 +5294,7 @@ function updateStats() {
 
     easyMiningData.todayStats = {
         totalBlocks: totalBlocksToday,
+        totalReward: totalRewardTodayBTC,
         totalSpent: totalSpentTodayBTC,
         pnl: pnlTodayBTC
     };
@@ -5527,11 +5499,11 @@ async function autoUpdateCryptoHoldings(newBlocks) {
     const trackedKey = `${loggedInUser}_easyMiningAddedRewards`;
     let addedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
 
-    // Get all packages (active and completed) that found blocks
-    const allPackages = [...(easyMiningData.activePackages || []), ...(easyMiningData.completedPackages || [])];
-    const packagesWithBlocks = allPackages.filter(pkg => pkg.blockFound);
+    // Get ONLY active packages that found blocks (user requested active packages only)
+    const activePackages = easyMiningData.activePackages || [];
+    const packagesWithBlocks = activePackages.filter(pkg => pkg.blockFound && pkg.active);
 
-    console.log(`📦 Processing ${packagesWithBlocks.length} packages with blocks found`);
+    console.log(`📦 Processing ${packagesWithBlocks.length} ACTIVE packages with blocks found`);
 
     for (const pkg of packagesWithBlocks) {
         console.log(`\n${'─'.repeat(80)}`);
@@ -5569,9 +5541,12 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 continue;
             }
 
-            // Get the block reward for this crypto - use blockRewardWithNhFee from API if available
-            const crypto = reward.coin || pkg.crypto;
+            // IMPORTANT: Use package's crypto, not reward.coin (reward.coin can be incorrect for some packages)
+            // For active packages, always trust pkg.crypto over reward.coin
+            const crypto = pkg.crypto;
             let rewardAmount = 0;
+
+            console.log(`      🔍 Package crypto: ${pkg.crypto}, Reward coin: ${reward.coin || 'N/A'}, Using: ${crypto}`);
 
             if (reward.blockRewardWithNhFee) {
                 // Use blockRewardWithNhFee from API (includes NiceHash fee deduction)
@@ -5812,10 +5787,35 @@ function showPackageDetailPage(pkg) {
             <span class="stat-value" style="color: #00ff00;">🚀 ${pkg.confirmedBlocks} Block${pkg.confirmedBlocks > 1 ? 's' : ''}</span>
         </div>
         ` : ''}
+        ${(() => {
+            // Calculate total crypto reward from blockRewardWithNhFee
+            const soloRewards = pkg.fullOrderData?.soloReward || [];
+            let totalCryptoReward = 0;
+            soloRewards.forEach(reward => {
+                if (reward.blockRewardWithNhFee) {
+                    totalCryptoReward += parseFloat(reward.blockRewardWithNhFee);
+                }
+            });
+            const hasCryptoReward = totalCryptoReward > 0;
+            const displayReward = pkg.isTeam ? pkg.reward : totalCryptoReward || pkg.reward;
+
+            return hasCryptoReward || pkg.reward > 0 ? `
+        <div class="stat-item">
+            <span class="stat-label">Total Reward:</span>
+            <span class="stat-value" style="color: #00ff00;">${displayReward.toFixed(8)} ${pkg.crypto}${pkg.isTeam ? ' (your share)' : ''}</span>
+        </div>
+        ${pkg.isTeam && totalCryptoReward > 0 ? `
+        <div class="stat-item">
+            <span class="stat-label">Pool Total Reward:</span>
+            <span class="stat-value" style="color: #ffa500;">${totalCryptoReward.toFixed(8)} ${pkg.crypto}</span>
+        </div>
+        ` : ''}
+            ` : '';
+        })()}
         ${pkg.btcEarnings > 0 ? `
         <div class="stat-item">
             <span class="stat-label">BTC Earnings:</span>
-            <span class="stat-value" style="color: #00ff00;">${pkg.btcEarnings.toFixed(8)} BTC</span>
+            <span class="stat-value" style="color: #00ff00;">${pkg.btcEarnings.toFixed(8)} BTC${pkg.isTeam ? ' (your share)' : ''}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">BTC in AUD:</span>
