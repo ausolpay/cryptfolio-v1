@@ -4728,18 +4728,24 @@ async function fetchNiceHashOrders() {
             const isTeamPackage = order.type?.code === 'TEAM';
 
             // Calculate block rewards from soloReward array
+            // For dual mining (e.g., Palladium DOGE/LTC), track rewards by coin type
             const soloRewards = order.soloReward || [];
             let totalPackageRewardBTC = 0; // Total reward for entire package
-            let totalPackageCryptoReward = 0; // Total crypto reward using payoutReward
+            let totalPackageCryptoReward = 0; // Total crypto reward for primary coin
+            let totalPackageSecondaryCryptoReward = 0; // Total crypto reward for secondary coin (merged mining)
             let confirmedBlockCount = 0;
             let pendingBlockCount = 0;
 
+            // Track rewards by coin type for dual mining packages
+            const rewardsByCoin = {};
+
             soloRewards.forEach((reward, idx) => {
                 const btcReward = parseFloat(reward.payoutRewardBtc || 0);
+                const rewardCoin = reward.coin; // Actual coin from the reward (DOGE, LTC, etc.)
 
                 // Get crypto reward amount from payoutReward (actual payout)
                 let cryptoRewardAmount = 0;
-                if (order.soloMiningCoin === 'BTC' && reward.payoutRewardBtc) {
+                if (rewardCoin === 'BTC' && reward.payoutRewardBtc) {
                     cryptoRewardAmount = parseFloat(reward.payoutRewardBtc);
                 } else if (reward.payoutReward) {
                     // Convert from smallest unit (satoshis equivalent) to full coins
@@ -4750,17 +4756,31 @@ async function fetchNiceHashOrders() {
 
                 if (btcReward > 0) {
                     totalPackageRewardBTC += btcReward;
-                    totalPackageCryptoReward += cryptoRewardAmount;
+
+                    // Track rewards by coin type
+                    if (!rewardsByCoin[rewardCoin]) {
+                        rewardsByCoin[rewardCoin] = 0;
+                    }
+                    rewardsByCoin[rewardCoin] += cryptoRewardAmount;
 
                     if (isConfirmed) {
                         confirmedBlockCount++;
-                        console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${reward.coin} (Confirmed)${reward.shared ? ' [SHARED]' : ''}`);
+                        console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${rewardCoin} (Confirmed)${reward.shared ? ' [SHARED]' : ''}`);
                     } else {
                         pendingBlockCount++;
-                        console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${reward.coin} (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})${reward.shared ? ' [SHARED]' : ''}`);
+                        console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${rewardCoin} (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})${reward.shared ? ' [SHARED]' : ''}`);
                     }
                 }
             });
+
+            // Separate primary and secondary rewards
+            // For Palladium packages, primary is usually DOGE, secondary is LTC
+            totalPackageCryptoReward = rewardsByCoin[order.soloMiningCoin] || 0;
+            totalPackageSecondaryCryptoReward = rewardsByCoin[order.soloMiningMergeCoin] || 0;
+
+            console.log(`   💎 Rewards by coin:`, rewardsByCoin);
+            console.log(`   💎 Primary (${order.soloMiningCoin}): ${totalPackageCryptoReward}`);
+            console.log(`   💎 Secondary (${order.soloMiningMergeCoin}): ${totalPackageSecondaryCryptoReward}`);
 
             const totalBlocks = confirmedBlockCount + pendingBlockCount;
             const blockFound = totalBlocks > 0;
@@ -4790,6 +4810,7 @@ async function fetchNiceHashOrders() {
             let userSharePercentage = 1.0; // Default to 100% for non-team packages
             let myShares = null;
             let totalShares = null;
+            let secondaryCryptoReward = 0; // For dual mining (e.g., LTC in Palladium packages)
             const SHARE_COST = 0.0001; // Each share costs 0.0001 BTC
 
             if (isTeamPackage) {
@@ -4818,17 +4839,24 @@ async function fetchNiceHashOrders() {
                     totalRewardBTC = totalPackageRewardBTC * userSharePercentage;
                     console.log(`      → BTC reward calculation: ${totalPackageRewardBTC.toFixed(8)} × ${userSharePercentage.toFixed(4)} = ${totalRewardBTC.toFixed(8)} BTC`);
 
-                    // Calculate user's share of crypto rewards
+                    // Calculate user's share of primary crypto rewards
                     // For team packages with payoutReward:
                     // rewardPerShare = payoutReward / totalShares
                     // myReward = rewardPerShare * myShares
                     if (totalPackageCryptoReward > 0) {
                         const rewardPerShare = totalPackageCryptoReward / totalShares;
                         cryptoReward = rewardPerShare * myShares;
-                        console.log(`      → Crypto reward calculation: (${totalPackageCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${cryptoReward.toFixed(8)} ${order.soloMiningCoin}`);
+                        console.log(`      → Primary crypto reward calculation: (${totalPackageCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${cryptoReward.toFixed(8)} ${order.soloMiningCoin}`);
                     } else {
                         cryptoReward = cryptoReward * userSharePercentage;
-                        console.log(`      → Crypto reward calculation (fallback): ${cryptoReward} × ${userSharePercentage.toFixed(4)}`);
+                        console.log(`      → Primary crypto reward calculation (fallback): ${cryptoReward} × ${userSharePercentage.toFixed(4)}`);
+                    }
+
+                    // Calculate user's share of secondary crypto rewards (for dual mining)
+                    if (totalPackageSecondaryCryptoReward > 0) {
+                        const secondaryRewardPerShare = totalPackageSecondaryCryptoReward / totalShares;
+                        secondaryCryptoReward = secondaryRewardPerShare * myShares;
+                        console.log(`      → Secondary crypto reward calculation: (${totalPackageSecondaryCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${secondaryCryptoReward.toFixed(8)} ${order.soloMiningMergeCoin}`);
                     }
                 } else {
                     console.log(`      ⚠️ WARNING: Unable to calculate shares (addedAmount or packagePrice missing)`);
@@ -4839,6 +4867,8 @@ async function fetchNiceHashOrders() {
                 // Standard (non-team) package - use full amounts
                 priceSpent = parseFloat(order.packagePrice || order.amount || 0);
                 totalRewardBTC = totalPackageRewardBTC;
+                // For non-team dual mining packages, use full secondary rewards
+                secondaryCryptoReward = totalPackageSecondaryCryptoReward;
             }
 
             console.log(`   💰 Financial Data:`);
@@ -4895,10 +4925,11 @@ async function fetchNiceHashOrders() {
             const pkg = {
                 id: order.id,
                 name: order.packageName || `${order.soloMiningCoin} Package`, // Use packageName from API!
-                crypto: order.soloMiningCoin, // Direct from API
-                cryptoSecondary: order.soloMiningMergeCoin, // For dual mining
+                crypto: order.soloMiningCoin, // Direct from API (primary coin)
+                cryptoSecondary: order.soloMiningMergeCoin, // For dual mining (secondary coin)
                 miningType: `${order.soloMiningCoin} Mining`,
-                reward: cryptoReward, // Crypto amount (user's share for team packages)
+                reward: cryptoReward, // Primary crypto amount (user's share for team packages)
+                rewardSecondary: secondaryCryptoReward, // Secondary crypto amount for dual mining (user's share for team packages)
                 btcEarnings: totalRewardBTC, // User's BTC earnings (share-adjusted for team packages)
                 btcPending: 0, // Could calculate from pending blocks if needed
                 confirmedBlocks: confirmedBlockCount,
@@ -4930,7 +4961,10 @@ async function fetchNiceHashOrders() {
             };
 
             console.log(`   ✅ Package created: ${pkg.name} - ${pkg.miningType}`);
-            console.log(`      Blocks: ${pkg.totalBlocks}, Reward: ${pkg.reward} ${pkg.crypto}, BTC: ${pkg.btcEarnings.toFixed(8)}`);
+            console.log(`      Blocks: ${pkg.totalBlocks}, Primary Reward: ${pkg.reward} ${pkg.crypto}, BTC: ${pkg.btcEarnings.toFixed(8)}`);
+            if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
+                console.log(`      Secondary Reward: ${pkg.rewardSecondary} ${pkg.cryptoSecondary}`);
+            }
 
             packages.push(pkg);
         }
@@ -5277,16 +5311,26 @@ function displayActivePackages() {
         card.onclick = () => showPackageDetailModal(pkg);
 
         const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : 8;
+        const secondaryRewardDecimals = (pkg.cryptoSecondary === 'RVN' || pkg.cryptoSecondary === 'DOGE') ? 0 : 8;
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
         // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
+        // For dual mining packages (e.g., Palladium DOGE/LTC), show both rewards
         let rewardDisplay;
         if (pkg.blockFound && pkg.reward > 0) {
-            // Show actual crypto reward when block found
+            // Show primary crypto reward when block found
             rewardDisplay = `${pkg.reward.toFixed(rewardDecimals)} ${pkg.crypto}`;
+
+            // Add secondary reward if dual mining package won both
+            if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
+                rewardDisplay += ` + ${pkg.rewardSecondary.toFixed(secondaryRewardDecimals)} ${pkg.cryptoSecondary}`;
+            }
         } else {
             // No block found yet
             rewardDisplay = `0 ${pkg.crypto}`;
+            if (pkg.cryptoSecondary) {
+                rewardDisplay += ` + 0 ${pkg.cryptoSecondary}`;
+            }
         }
 
         // Rocket icon logic:
@@ -5771,6 +5815,100 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             }
         }
 
+        // Process secondary rewards (for dual mining packages like Palladium DOGE/LTC)
+        if (pkg.cryptoSecondary && pkg.rewardSecondary > 0) {
+            console.log(`\n   💎 SECONDARY REWARD DETECTED (Dual Mining)`);
+            console.log(`   Secondary crypto: ${pkg.cryptoSecondary}`);
+            console.log(`   Secondary reward: ${pkg.rewardSecondary}`);
+
+            const secondaryCrypto = pkg.cryptoSecondary;
+            const secondaryRewardAmount = parseFloat(pkg.rewardSecondary) || 0;
+
+            if (secondaryRewardAmount > 0 && !isNaN(secondaryRewardAmount)) {
+                // Map secondary crypto symbol to CoinGecko ID
+                const secondaryCryptoId = cryptoMapping[secondaryCrypto] || secondaryCrypto.toLowerCase();
+
+                console.log(`   💰 Adding ${secondaryRewardAmount} ${secondaryCrypto} to holdings`);
+
+                // Check if this secondary reward was already added
+                const secondaryPackageKey = `${pkg.id}_secondary`;
+                let secondaryAmountToAdd = secondaryRewardAmount;
+
+                if (addedRewards[secondaryPackageKey]) {
+                    console.log(`   ℹ️ Secondary reward already processed`);
+                    console.log(`   Previous amount: ${addedRewards[secondaryPackageKey].amount} ${secondaryCrypto}`);
+
+                    // Check if secondary reward amount has changed
+                    if (addedRewards[secondaryPackageKey].amount === secondaryRewardAmount) {
+                        console.log(`   ✓ No new secondary rewards since last check, skipping`);
+                    } else {
+                        console.log(`   🎉 Secondary reward increased from ${addedRewards[secondaryPackageKey].amount} to ${secondaryRewardAmount}`);
+                        secondaryAmountToAdd = secondaryRewardAmount - addedRewards[secondaryPackageKey].amount;
+                    }
+                }
+
+                // Check if secondary crypto already exists in portfolio
+                let secondaryCryptoExists = users[loggedInUser].cryptos.find(c => c.id === secondaryCryptoId);
+
+                if (!secondaryCryptoExists) {
+                    // Auto-add secondary crypto to portfolio
+                    try {
+                        await addCryptoById(secondaryCryptoId);
+                        console.log(`   ✅ Auto-added ${secondaryCryptoId} to portfolio`);
+
+                        // Immediately fetch prices for the new crypto
+                        await fetchPrices();
+                        console.log(`   ✅ Fetched price for ${secondaryCryptoId}`);
+                    } catch (error) {
+                        console.error(`   ❌ Failed to auto-add ${secondaryCryptoId}:`, error);
+                    }
+                }
+
+                if (secondaryAmountToAdd > 0) {
+                    // Update holdings for secondary crypto
+                    const currentSecondaryHoldings = parseFloat(getStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`)) || 0;
+                    const newSecondaryHoldings = currentSecondaryHoldings + secondaryAmountToAdd;
+
+                    // Save to localStorage
+                    setStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`, newSecondaryHoldings);
+                    console.log(`   💾 Updated ${secondaryCryptoId} holdings: ${currentSecondaryHoldings} + ${secondaryAmountToAdd} = ${newSecondaryHoldings}`);
+
+                    // Update holdings display
+                    const secondaryHoldingsElement = document.getElementById(`${secondaryCryptoId}-holdings`);
+                    if (secondaryHoldingsElement) {
+                        secondaryHoldingsElement.textContent = formatNumber(newSecondaryHoldings.toFixed(8));
+                        console.log(`   📊 Updated secondary holdings display`);
+                    }
+
+                    // Update the AUD value
+                    const secondaryPriceElement = document.getElementById(`${secondaryCryptoId}-price-aud`);
+                    const secondaryValueElement = document.getElementById(`${secondaryCryptoId}-value-aud`);
+                    if (secondaryPriceElement && secondaryValueElement) {
+                        const secondaryPriceInAud = parseFloat(secondaryPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+                        const secondaryValueInAud = newSecondaryHoldings * secondaryPriceInAud;
+                        secondaryValueElement.textContent = formatNumber(secondaryValueInAud.toFixed(2));
+                        console.log(`   💰 Updated secondary AUD value: $${secondaryValueInAud.toFixed(2)}`);
+
+                        sortContainersByValue();
+                    }
+
+                    // Mark secondary reward as processed
+                    addedRewards[secondaryPackageKey] = {
+                        orderId: pkg.id,
+                        packageName: pkg.name,
+                        crypto: secondaryCrypto,
+                        amount: secondaryRewardAmount,
+                        timestamp: Date.now(),
+                        totalBlocks: pkg.totalBlocks
+                    };
+                    setStorageItem(trackedKey, JSON.stringify(addedRewards));
+                    console.log(`   ✓ Marked secondary reward as processed (total: ${secondaryRewardAmount} ${secondaryCrypto})`);
+
+                    console.log(`   ✅ Successfully added ${secondaryAmountToAdd} ${secondaryCrypto} to holdings`);
+                }
+            }
+        }
+
         // Mark this package as processed with current reward amount
         addedRewards[packageKey] = {
             orderId: pkg.id,
@@ -5956,29 +6094,50 @@ function showPackageDetailPage(pkg) {
         </div>
         ` : ''}
         ${(() => {
-            // Calculate total crypto reward from payoutReward
+            // Calculate total crypto rewards from payoutReward (by coin type for dual mining)
             const soloRewards = pkg.fullOrderData?.soloReward || [];
-            let totalCryptoReward = 0;
+            const rewardsByCoin = {};
+
             soloRewards.forEach(reward => {
+                const coin = reward.coin;
+                if (!rewardsByCoin[coin]) {
+                    rewardsByCoin[coin] = 0;
+                }
                 // Use payoutReward from API (actual payout)
-                if (pkg.crypto === 'BTC' && reward.payoutRewardBtc) {
-                    totalCryptoReward += parseFloat(reward.payoutRewardBtc);
+                if (coin === 'BTC' && reward.payoutRewardBtc) {
+                    rewardsByCoin[coin] += parseFloat(reward.payoutRewardBtc);
                 } else if (reward.payoutReward) {
-                    totalCryptoReward += parseFloat(reward.payoutReward) / 100000000;
+                    rewardsByCoin[coin] += parseFloat(reward.payoutReward) / 100000000;
                 }
             });
-            const hasCryptoReward = totalCryptoReward > 0;
+
+            const totalCryptoReward = rewardsByCoin[pkg.crypto] || 0;
+            const totalSecondaryCryptoReward = pkg.cryptoSecondary ? (rewardsByCoin[pkg.cryptoSecondary] || 0) : 0;
+            const hasCryptoReward = totalCryptoReward > 0 || totalSecondaryCryptoReward > 0;
             const displayReward = pkg.isTeam ? pkg.reward : totalCryptoReward || pkg.reward;
+            const displaySecondaryReward = pkg.isTeam ? pkg.rewardSecondary : totalSecondaryCryptoReward || pkg.rewardSecondary;
 
             return hasCryptoReward || pkg.reward > 0 ? `
         <div class="stat-item">
-            <span class="stat-label">Total Reward:</span>
+            <span class="stat-label">Primary Reward:</span>
             <span class="stat-value" style="color: #00ff00;">${displayReward.toFixed(8)} ${pkg.crypto}${pkg.isTeam ? ' (your share)' : ''}</span>
         </div>
+        ${displaySecondaryReward > 0 && pkg.cryptoSecondary ? `
+        <div class="stat-item">
+            <span class="stat-label">Secondary Reward:</span>
+            <span class="stat-value" style="color: #00ff00;">${displaySecondaryReward.toFixed(8)} ${pkg.cryptoSecondary}${pkg.isTeam ? ' (your share)' : ''}</span>
+        </div>
+        ` : ''}
         ${pkg.isTeam && totalCryptoReward > 0 ? `
         <div class="stat-item">
-            <span class="stat-label">Pool Total Reward:</span>
+            <span class="stat-label">Pool Primary Total:</span>
             <span class="stat-value" style="color: #ffa500;">${totalCryptoReward.toFixed(8)} ${pkg.crypto}</span>
+        </div>
+        ` : ''}
+        ${pkg.isTeam && totalSecondaryCryptoReward > 0 && pkg.cryptoSecondary ? `
+        <div class="stat-item">
+            <span class="stat-label">Pool Secondary Total:</span>
+            <span class="stat-value" style="color: #ffa500;">${totalSecondaryCryptoReward.toFixed(8)} ${pkg.cryptoSecondary}</span>
         </div>
         ` : ''}
             ` : '';
