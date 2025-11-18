@@ -4366,6 +4366,10 @@ function determinePackageName(order, algoInfo) {
 
 // Fetch rewards for a specific order
 async function fetchOrderRewards(orderId) {
+    console.log(`\n${'*'.repeat(80)}`);
+    console.log(`🚀🚀🚀 FETCHORDERREWARDS CALLED FOR ORDER: ${orderId} 🚀🚀🚀`);
+    console.log(`${'*'.repeat(80)}\n`);
+
     try {
         const timestamp = Date.now() + nicehashTimeOffset;
         const endpoint = `/main/api/v2/hashpower/order/${orderId}/rewards`;
@@ -4515,12 +4519,22 @@ async function fetchNiceHashOrders() {
             // Some blocks may be pending and only show in balance, not in rewards endpoint
             const soloMiningOrders = data.list.filter(o => o.soloMiningCoin);
 
-            console.log(`🎯 Found ${soloMiningOrders.length} solo mining orders`);
-            console.log(`📋 Solo mining order IDs:`, soloMiningOrders.map(o => ({
-                id: o.id,
-                coin: o.soloMiningCoin,
-                alive: o.alive
-            })));
+            console.log(`\n${'='.repeat(80)}`);
+            console.log(`🎯 SOLO MINING ORDERS DETECTION`);
+            console.log(`   Total orders in response: ${data.list.length}`);
+            console.log(`   Solo mining orders found: ${soloMiningOrders.length}`);
+            console.log(`${'='.repeat(80)}`);
+
+            if (soloMiningOrders.length === 0) {
+                console.warn(`⚠️ NO SOLO MINING ORDERS FOUND!`);
+                console.warn(`   This means fetchOrderRewards will NOT be called.`);
+                console.warn(`   Check if you have active solo mining packages.`);
+            } else {
+                console.log(`✅ Solo mining order details:`);
+                soloMiningOrders.forEach((o, i) => {
+                    console.log(`   ${i + 1}. Order ID: ${o.id}, Coin: ${o.soloMiningCoin}, Active: ${o.alive}`);
+                });
+            }
 
             // STEP 1: Check BTC balance for pending solo rewards
             console.log(`💰 Step 1: Checking BTC balance for pending solo rewards...`);
