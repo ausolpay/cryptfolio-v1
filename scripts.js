@@ -1952,7 +1952,17 @@ function sortContainersByValue() {
 
 function updateCryptoValue(cryptoId) {
     const priceAud = parseFloat(document.getElementById(`${cryptoId}-price-aud`).textContent.replace(/,/g, '').replace('$', '')) || 0;
-    const holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+
+    // For Bitcoin, read from display element (includes NiceHash balance)
+    // For other cryptos, read from localStorage
+    let holdings = 0;
+    if (cryptoId === 'bitcoin') {
+        const holdingsElement = document.getElementById('bitcoin-holdings');
+        holdings = holdingsElement ? parseFloat(holdingsElement.textContent.replace(/,/g, '')) || 0 : 0;
+    } else {
+        holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+    }
+
     const currentValue = holdings * priceAud;
     document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(currentValue.toFixed(2));
     updateTotalHoldings();
