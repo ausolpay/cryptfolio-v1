@@ -4090,98 +4090,6 @@ async function fetchCurrencyBalanceExtended(currency) {
     }
 }
 
-// Fetch rewards for Easy Mining Solo Ticket by order ID
-async function fetchOrderRewards(orderId) {
-    try {
-        const endpoint = `/main/api/v2/hashpower/order/${orderId}/rewards`;
-        const headers = generateNiceHashAuthHeaders('GET', endpoint);
-
-        console.log(`🎁 [${orderId}] Fetching rewards...`);
-        console.log(`   Endpoint: ${endpoint}`);
-
-        let response;
-
-        if (USE_VERCEL_PROXY) {
-            console.log(`   Using proxy: ${VERCEL_PROXY_ENDPOINT}`);
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    endpoint: endpoint,
-                    method: 'GET',
-                    headers: headers
-                })
-            });
-        } else {
-            const url = `https://api2.nicehash.com${endpoint}`;
-            console.log(`   Direct call: ${url}`);
-            response = await fetch(url, {
-                method: 'GET',
-                headers: headers
-            });
-        }
-
-        console.log(`   Response status: ${response.status} ${response.statusText}`);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.warn(`⚠️ [${orderId}] Failed to fetch rewards: ${response.status}`);
-            console.warn(`   Error body:`, errorText);
-            return null;
-        }
-
-        const data = await response.json();
-
-        // ============================================================================
-        // REWARDS RESPONSE FOR USER TO COPY
-        // ============================================================================
-        console.log(`\n${'='.repeat(80)}`);
-        console.log(`🎯 REWARDS ENDPOINT RESPONSE - ORDER ID: ${orderId}`);
-        console.log(`   Endpoint: GET /main/api/v2/hashpower/order/${orderId}/rewards`);
-        console.log(`   Response Type: ${Array.isArray(data) ? 'Array' : typeof data}`);
-        console.log(`   Array Length: ${Array.isArray(data) ? data.length : 'N/A'}`);
-        console.log(`${'='.repeat(80)}`);
-
-        // Log the COMPLETE raw response - easy to copy
-        console.log(`📋 COMPLETE RAW RESPONSE (copy this):`);
-        console.log(JSON.stringify(data, null, 2));
-        console.log(`${'='.repeat(80)}\n`);
-
-        // Additional detailed breakdown if data exists
-        if (Array.isArray(data) && data.length > 0) {
-            console.log(`✅ [${orderId}] Found ${data.length} reward entries!`);
-            data.forEach((reward, index) => {
-                console.log(`\n  📦 Reward Entry #${index + 1}:`);
-                console.log(`     - id: ${reward.id}`);
-                console.log(`     - orderId: ${reward.orderId}`);
-                console.log(`     - coin: ${reward.coin}`);
-                console.log(`     - blockHeight: ${reward.blockHeight}`);
-                console.log(`     - blockHash: ${reward.blockHash}`);
-                console.log(`     - payoutRewardBtc: ${reward.payoutRewardBtc}`);
-                console.log(`     - payoutReward: ${reward.payoutReward}`);
-                console.log(`     - depositComplete: ${reward.depositComplete}`);
-                console.log(`     - confirmations: ${reward.confirmations}`);
-                console.log(`     - minConfirmations: ${reward.minConfirmations}`);
-                console.log(`     - createdTs: ${reward.createdTs}`);
-                console.log(`     - time: ${reward.time}`);
-            });
-        } else if (Array.isArray(data) && data.length === 0) {
-            console.log(`❌ [${orderId}] Empty rewards array (no blocks found yet)`);
-        } else {
-            console.log(`⚠️ [${orderId}] Unexpected response format!`);
-        }
-
-        return data;
-    } catch (error) {
-        console.error(`❌ [${orderId}] Error fetching rewards:`, error);
-        console.error(`   Error message:`, error.message);
-        console.error(`   Error stack:`, error.stack);
-        return null;
-    }
-}
-
 async function fetchNiceHashBalances() {
     try {
         const endpoint = '/main/api/v2/accounting/accounts2';
@@ -4492,17 +4400,47 @@ async function fetchOrderRewards(orderId) {
         }
 
         const data = await response.json();
-        console.log(`✅ Rewards response for order ${orderId}:`, JSON.stringify(data, null, 2));
 
-        // Log specific fields to understand structure
-        if (data) {
-            console.log(`  - Has 'list' property: ${data.list !== undefined}`);
-            console.log(`  - Has 'rewards' property: ${data.rewards !== undefined}`);
-            console.log(`  - Has 'items' property: ${data.items !== undefined}`);
-            console.log(`  - Data keys:`, Object.keys(data));
-            if (data.list) console.log(`  - list length: ${data.list?.length}`);
-            if (data.rewards) console.log(`  - rewards length: ${data.rewards?.length}`);
-            if (data.items) console.log(`  - items length: ${data.items?.length}`);
+        // ============================================================================
+        // REWARDS RESPONSE FOR USER TO COPY
+        // ============================================================================
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`🎯 REWARDS ENDPOINT RESPONSE - ORDER ID: ${orderId}`);
+        console.log(`   Endpoint: GET /main/api/v2/hashpower/order/${orderId}/rewards`);
+        console.log(`   Response Type: ${Array.isArray(data) ? 'Array' : typeof data}`);
+        console.log(`   Array Length: ${Array.isArray(data) ? data.length : 'N/A'}`);
+        console.log(`${'='.repeat(80)}`);
+
+        // Log the COMPLETE raw response - easy to copy
+        console.log(`📋 COMPLETE RAW RESPONSE (copy this):`);
+        console.log(JSON.stringify(data, null, 2));
+        console.log(`${'='.repeat(80)}\n`);
+
+        // Additional detailed breakdown if data exists
+        if (Array.isArray(data) && data.length > 0) {
+            console.log(`✅ [${orderId}] Found ${data.length} reward entries!`);
+            data.forEach((reward, index) => {
+                console.log(`\n  📦 Reward Entry #${index + 1}:`);
+                console.log(`     - id: ${reward.id}`);
+                console.log(`     - orderId: ${reward.orderId}`);
+                console.log(`     - coin: ${reward.coin}`);
+                console.log(`     - blockHeight: ${reward.blockHeight}`);
+                console.log(`     - blockHash: ${reward.blockHash}`);
+                console.log(`     - payoutRewardBtc: ${reward.payoutRewardBtc}`);
+                console.log(`     - payoutReward: ${reward.payoutReward}`);
+                console.log(`     - depositComplete: ${reward.depositComplete}`);
+                console.log(`     - confirmations: ${reward.confirmations}`);
+                console.log(`     - minConfirmations: ${reward.minConfirmations}`);
+                console.log(`     - createdTs: ${reward.createdTs}`);
+                console.log(`     - time: ${reward.time}`);
+            });
+        } else if (Array.isArray(data) && data.length === 0) {
+            console.log(`❌ [${orderId}] Empty rewards array (no blocks found yet)`);
+        } else {
+            console.log(`⚠️ [${orderId}] Unexpected response format!`);
+            console.log(`   Data keys:`, Object.keys(data || {}));
+            if (data?.list) console.log(`   - Has 'list' property: length ${data.list.length}`);
+            if (data?.rewards) console.log(`   - Has 'rewards' property: length ${data.rewards.length}`);
         }
 
         return data;
