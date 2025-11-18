@@ -4864,6 +4864,22 @@ async function fetchNiceHashOrders() {
             const algorithmCode = order.algorithm?.algorithm || order.algorithm;
             const algoInfo = getAlgorithmInfo(algorithmCode, order.pool);
 
+            // Check if package is truly active (not just alive flag, but also time-based check)
+            let isActive = order.alive;
+            if (order.endTs) {
+                const now = Date.now();
+                let endTime;
+                if (typeof order.endTs === 'string') {
+                    endTime = new Date(order.endTs).getTime();
+                } else {
+                    endTime = parseInt(order.endTs);
+                }
+                // If end time has passed, mark as not active regardless of alive flag
+                if (now >= endTime) {
+                    isActive = false;
+                }
+            }
+
             // Create package object
             const pkg = {
                 id: order.id,
@@ -4891,8 +4907,8 @@ async function fetchNiceHashOrders() {
                 sharePrice: isTeamPackage ? SHARE_COST : null,
                 userSharePercentage: userSharePercentage,
                 // Package metadata
-                active: order.alive,
-                status: order.alive ? 'active' : 'completed',
+                active: isActive,
+                status: isActive ? 'active' : 'completed',
                 startTime: order.startTs,
                 endTime: order.endTs,
                 marketFactor: order.displayMarketFactor,
