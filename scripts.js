@@ -4654,6 +4654,7 @@ async function fetchNiceHashOrders() {
             console.log(`   📊 Team/Share Data:`);
             console.log(`      type: ${JSON.stringify(order.type)}`);
             console.log(`      packagePrice: ${order.packagePrice}`);
+            console.log(`      addedAmount: ${order.addedAmount}`);
             console.log(`      packageShares: ${order.packageShares}`);
             console.log(`      ownedShares: ${order.ownedShares}`);
             console.log(`      sharePrice: ${order.sharePrice}`);
@@ -4666,21 +4667,25 @@ async function fetchNiceHashOrders() {
             // Calculate block rewards from soloReward array
             const soloRewards = order.soloReward || [];
             let totalPackageRewardBTC = 0; // Total reward for entire package
+            let totalPackageCryptoReward = 0; // Total crypto reward using blockRewardWithNhFee
             let confirmedBlockCount = 0;
             let pendingBlockCount = 0;
 
             soloRewards.forEach((reward, idx) => {
                 const btcReward = parseFloat(reward.payoutRewardBtc || 0);
+                const cryptoRewardAmount = parseFloat(reward.blockRewardWithNhFee || 0);
                 const isConfirmed = reward.depositComplete === true;
 
                 if (btcReward > 0) {
                     totalPackageRewardBTC += btcReward;
+                    totalPackageCryptoReward += cryptoRewardAmount;
+
                     if (isConfirmed) {
                         confirmedBlockCount++;
-                        console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Confirmed)${reward.shared ? ' [SHARED]' : ''}`);
+                        console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${reward.coin} (Confirmed)${reward.shared ? ' [SHARED]' : ''}`);
                     } else {
                         pendingBlockCount++;
-                        console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})${reward.shared ? ' [SHARED]' : ''}`);
+                        console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${reward.coin} (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})${reward.shared ? ' [SHARED]' : ''}`);
                     }
                 }
             });
@@ -4689,56 +4694,72 @@ async function fetchNiceHashOrders() {
             const blockFound = totalBlocks > 0;
 
             if (blockFound) {
-                console.log(`   🎉 TOTAL: ${totalBlocks} blocks, ${totalPackageRewardBTC.toFixed(8)} BTC (package total)`);
+                console.log(`   🎉 TOTAL: ${totalBlocks} blocks, ${totalPackageRewardBTC.toFixed(8)} BTC, ${totalPackageCryptoReward} ${order.soloMiningCoin} (package total)`);
             } else {
                 console.log(`   ❌ No blocks found yet`);
             }
 
-            // Get block reward for this coin
-            const blockReward = getBlockReward(order.soloMiningCoin);
-
-            // Calculate crypto reward (blocks × block reward)
-            let cryptoReward = totalBlocks > 0 ? blockReward * totalBlocks : 0;
+            // Calculate crypto reward using blockRewardWithNhFee if available, otherwise fallback to standard
+            let cryptoReward = 0;
+            if (totalPackageCryptoReward > 0) {
+                // Use blockRewardWithNhFee from API
+                cryptoReward = totalPackageCryptoReward;
+                console.log(`   💎 Using blockRewardWithNhFee: ${cryptoReward} ${order.soloMiningCoin}`);
+            } else {
+                // Fallback to standard block reward
+                const blockReward = getBlockReward(order.soloMiningCoin);
+                cryptoReward = totalBlocks > 0 ? blockReward * totalBlocks : 0;
+                console.log(`   💎 Using standard block reward: ${cryptoReward} ${order.soloMiningCoin}`);
+            }
 
             // For team packages, calculate user's share of costs and rewards
             let priceSpent = 0;
             let totalRewardBTC = 0;
             let userSharePercentage = 1.0; // Default to 100% for non-team packages
+            let myShares = null;
+            let totalShares = null;
+            const SHARE_COST = 0.0001; // Each share costs 0.0001 BTC
 
             if (isTeamPackage) {
-                // Try different possible field names for shares
-                const ownedShares = order.ownedShares || order.myShares || 0;
-                const totalShares = order.packageShares || order.numberOfShares || order.totalShares || 1;
-                const sharePrice = order.sharePrice;
-
                 console.log(`   👥 TEAM PACKAGE - Calculating user's share:`);
-                console.log(`      Owned shares: ${ownedShares}`);
-                console.log(`      Total shares: ${totalShares}`);
-                console.log(`      Share price: ${sharePrice} BTC`);
+                console.log(`      Share cost: ${SHARE_COST} BTC per share`);
 
-                if (totalShares > 0 && ownedShares > 0) {
-                    userSharePercentage = ownedShares / totalShares;
+                // Use addedAmount as price spent for team packages
+                const addedAmount = parseFloat(order.addedAmount || 0);
+                priceSpent = addedAmount;
+                console.log(`      addedAmount (my price spent): ${addedAmount.toFixed(8)} BTC`);
 
-                    // Calculate user's price spent
-                    if (sharePrice) {
-                        // Use sharePrice × owned shares
-                        priceSpent = parseFloat(sharePrice) * ownedShares;
-                        console.log(`      → Price calculation: ${sharePrice} × ${ownedShares} = ${priceSpent.toFixed(8)} BTC`);
-                    } else {
-                        // Fallback: calculate from total package price
-                        const totalPackagePrice = parseFloat(order.packagePrice || order.amount || 0);
-                        priceSpent = totalPackagePrice * userSharePercentage;
-                        console.log(`      → Price calculation: ${totalPackagePrice} × ${userSharePercentage.toFixed(4)} = ${priceSpent.toFixed(8)} BTC`);
-                    }
+                // Calculate my shares: addedAmount / 0.0001
+                myShares = addedAmount > 0 ? addedAmount / SHARE_COST : 0;
+                console.log(`      My shares: ${addedAmount.toFixed(8)} / ${SHARE_COST} = ${myShares.toFixed(2)}`);
 
-                    // Calculate user's share of rewards
+                // Calculate total shares: packagePrice / 0.0001
+                const packagePrice = parseFloat(order.packagePrice || 0);
+                totalShares = packagePrice > 0 ? packagePrice / SHARE_COST : 1;
+                console.log(`      Total shares: ${packagePrice.toFixed(8)} / ${SHARE_COST} = ${totalShares.toFixed(2)}`);
+
+                if (totalShares > 0 && myShares > 0) {
+                    userSharePercentage = myShares / totalShares;
+                    console.log(`      User share percentage: ${myShares.toFixed(2)} / ${totalShares.toFixed(2)} = ${(userSharePercentage * 100).toFixed(2)}%`);
+
+                    // Calculate user's share of BTC rewards
                     totalRewardBTC = totalPackageRewardBTC * userSharePercentage;
-                    console.log(`      → Reward calculation: ${totalPackageRewardBTC.toFixed(8)} × ${userSharePercentage.toFixed(4)} = ${totalRewardBTC.toFixed(8)} BTC`);
+                    console.log(`      → BTC reward calculation: ${totalPackageRewardBTC.toFixed(8)} × ${userSharePercentage.toFixed(4)} = ${totalRewardBTC.toFixed(8)} BTC`);
 
-                    // Adjust crypto reward for user's share
-                    cryptoReward = cryptoReward * userSharePercentage;
+                    // Calculate user's share of crypto rewards
+                    // For team packages with blockRewardWithNhFee:
+                    // rewardPerShare = blockRewardWithNhFee / totalShares
+                    // myReward = rewardPerShare * myShares
+                    if (totalPackageCryptoReward > 0) {
+                        const rewardPerShare = totalPackageCryptoReward / totalShares;
+                        cryptoReward = rewardPerShare * myShares;
+                        console.log(`      → Crypto reward calculation: (${totalPackageCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${cryptoReward.toFixed(8)} ${order.soloMiningCoin}`);
+                    } else {
+                        cryptoReward = cryptoReward * userSharePercentage;
+                        console.log(`      → Crypto reward calculation (fallback): ${cryptoReward} × ${userSharePercentage.toFixed(4)}`);
+                    }
                 } else {
-                    console.log(`      ⚠️ WARNING: Missing share data, using full package values`);
+                    console.log(`      ⚠️ WARNING: Unable to calculate shares (addedAmount or packagePrice missing)`);
                     priceSpent = parseFloat(order.packagePrice || order.amount || 0);
                     totalRewardBTC = totalPackageRewardBTC;
                 }
@@ -4793,9 +4814,9 @@ async function fetchNiceHashOrders() {
                 isTeam: isTeamPackage,
                 price: priceSpent, // User's price spent (share-adjusted for team packages)
                 // Team package share information
-                ownedShares: isTeamPackage ? (order.ownedShares || order.myShares || 0) : null,
-                totalShares: isTeamPackage ? (order.packageShares || order.numberOfShares || order.totalShares || 1) : null,
-                sharePrice: isTeamPackage ? order.sharePrice : null,
+                ownedShares: isTeamPackage ? myShares : null,
+                totalShares: isTeamPackage ? totalShares : null,
+                sharePrice: isTeamPackage ? SHARE_COST : null,
                 userSharePercentage: userSharePercentage,
                 // Package metadata
                 active: order.alive,
@@ -5548,11 +5569,21 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 continue;
             }
 
-            // Get the block reward for this crypto
+            // Get the block reward for this crypto - use blockRewardWithNhFee from API if available
             const crypto = reward.coin || pkg.crypto;
-            const blockReward = getBlockReward(crypto);
+            let rewardAmount = 0;
 
-            if (blockReward === 0) {
+            if (reward.blockRewardWithNhFee) {
+                // Use blockRewardWithNhFee from API (includes NiceHash fee deduction)
+                rewardAmount = parseFloat(reward.blockRewardWithNhFee);
+                console.log(`      💎 Using blockRewardWithNhFee: ${rewardAmount} ${crypto}`);
+            } else {
+                // Fallback to standard block reward
+                rewardAmount = getBlockReward(crypto);
+                console.log(`      💎 Using standard block reward: ${rewardAmount} ${crypto}`);
+            }
+
+            if (rewardAmount === 0) {
                 console.log(`      ⚠️ Unknown block reward for ${crypto}`);
                 continue;
             }
@@ -5568,7 +5599,6 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             };
 
             const cryptoId = cryptoMapping[crypto] || crypto.toLowerCase();
-            const rewardAmount = blockReward;
 
             console.log(`      💰 Adding ${rewardAmount} ${crypto} to holdings`);
 
