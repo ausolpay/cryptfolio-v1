@@ -4538,24 +4538,33 @@ async function fetchNiceHashOrders() {
                 console.log('🎁 Order IDs with soloReward:', ordersWithSoloReward.map(o => o.id));
             }
 
-            // MULTI-SOURCE APPROACH: Check both rewards endpoint AND BTC balance
-            // Some blocks may be pending and only show in balance, not in rewards endpoint
-            const soloMiningOrders = data.list.filter(o => o.soloMiningCoin);
+            // MULTI-SOURCE APPROACH: Check both rewards endpoint AND soloReward arrays
+            // Process ALL orders, not just those with soloMiningCoin set
+            // Some packages may have soloReward arrays even without soloMiningCoin field
+            const ordersWithSoloMiningCoin = data.list.filter(o => o.soloMiningCoin);
+            const ordersWithSoloRewardArray = data.list.filter(o => o.soloReward && Array.isArray(o.soloReward) && o.soloReward.length > 0);
+
+            // Combine both: orders with soloMiningCoin OR orders with soloReward arrays
+            const ordersToCheck = [...new Set([...ordersWithSoloMiningCoin, ...ordersWithSoloRewardArray])];
 
             console.log(`\n${'='.repeat(80)}`);
-            console.log(`🎯 SOLO MINING ORDERS DETECTION`);
+            console.log(`🎯 BLOCK DETECTION - ORDER IDENTIFICATION`);
             console.log(`   Total orders in response: ${data.list.length}`);
-            console.log(`   Solo mining orders found: ${soloMiningOrders.length}`);
+            console.log(`   Orders with soloMiningCoin: ${ordersWithSoloMiningCoin.length}`);
+            console.log(`   Orders with soloReward arrays: ${ordersWithSoloRewardArray.length}`);
+            console.log(`   Orders to check for blocks: ${ordersToCheck.length}`);
             console.log(`${'='.repeat(80)}`);
 
-            if (soloMiningOrders.length === 0) {
-                console.warn(`⚠️ NO SOLO MINING ORDERS FOUND!`);
-                console.warn(`   This means fetchOrderRewards will NOT be called.`);
-                console.warn(`   Check if you have active solo mining packages.`);
+            if (ordersToCheck.length === 0) {
+                console.warn(`⚠️ NO ORDERS TO CHECK FOR BLOCKS!`);
+                console.warn(`   Neither soloMiningCoin nor soloReward arrays found`);
+                console.warn(`   Blocks may still be detected if orders have embedded soloReward data`);
             } else {
-                console.log(`✅ Solo mining order details:`);
-                soloMiningOrders.forEach((o, i) => {
-                    console.log(`   ${i + 1}. Order ID: ${o.id}, Coin: ${o.soloMiningCoin}, Active: ${o.alive}`);
+                console.log(`✅ Orders to check for blocks:`);
+                ordersToCheck.forEach((o, i) => {
+                    const hasCoin = !!o.soloMiningCoin;
+                    const hasRewards = !!(o.soloReward && o.soloReward.length > 0);
+                    console.log(`   ${i + 1}. Order ID: ${o.id}, Coin: ${o.soloMiningCoin || 'N/A'}, Active: ${o.alive}, Has Rewards: ${hasRewards}`);
                 });
             }
 
@@ -4569,8 +4578,8 @@ async function fetchNiceHashOrders() {
             console.log(`   - Pending solo rewards: ${btcPendingSolo} BTC`);
             console.log(`   - Available balance: ${btcAvailableSolo} BTC`);
 
-            const activeOrders = soloMiningOrders.filter(o => o.alive);
-            console.log(`   - Active solo mining orders: ${activeOrders.length}`);
+            const activeOrders = ordersToCheck.filter(o => o.alive);
+            console.log(`   - Active orders to check: ${activeOrders.length}`);
 
             if (btcPendingSolo > 0) {
                 console.log(`🎉 PENDING SOLO REWARDS DETECTED! ${btcPendingSolo} BTC waiting for confirmation`);
@@ -4581,12 +4590,13 @@ async function fetchNiceHashOrders() {
                 }
             }
 
-            // STEP 2: Fetch rewards endpoint for each order
-            console.log(`🎁 Step 2: Fetching confirmed rewards for all ${soloMiningOrders.length} orders in parallel...`);
+            // STEP 2: Fetch rewards endpoint for each order that needs checking
+            console.log(`🎁 Step 2: Fetching confirmed rewards for all ${ordersToCheck.length} orders in parallel...`);
 
-            // Fetch rewards for all solo mining orders in parallel
-            const orderRewardsPromises = soloMiningOrders.map(order => {
-                console.log(`  → Queueing rewards fetch for order ${order.id} (${order.soloMiningCoin})`);
+            // Fetch rewards for all orders that may have blocks
+            const orderRewardsPromises = ordersToCheck.map(order => {
+                const coinInfo = order.soloMiningCoin || 'Unknown';
+                console.log(`  → Queueing rewards fetch for order ${order.id} (${coinInfo})`);
                 return fetchOrderRewards(order.id);
             });
 
@@ -4595,7 +4605,7 @@ async function fetchNiceHashOrders() {
             // Create a map of order ID -> rewards array
             const orderRewardsMap = {};
             orderRewardsResults.forEach((rewardsArray, index) => {
-                const orderId = soloMiningOrders[index].id;
+                const orderId = ordersToCheck[index].id;
                 if (rewardsArray) {
                     orderRewardsMap[orderId] = rewardsArray;
                     console.log(`  ✅ Stored rewards for order ${orderId}: ${Array.isArray(rewardsArray) ? rewardsArray.length : 0} rewards`);
@@ -4642,23 +4652,9 @@ async function fetchNiceHashOrders() {
             }
 
             for (const order of data.list) {
-                console.log(`\n${'═'.repeat(80)}`);
-                console.log(`📋 PROCESSING ORDER: ${order.id}`);
-                console.log(`${'═'.repeat(80)}`);
-
                 // Log if this order has soloReward array (BEFORE any processing)
-                if (order.soloReward && Array.isArray(order.soloReward)) {
-                    console.log('🚨🚨🚨 ORDER WITH SOLOREWARD ARRAY DETECTED! 🚨🚨🚨');
-                    console.log('Order ID:', order.id);
-                    console.log('Is Alive (active):', order.alive);
-                    console.log('Algorithm:', order.algorithm?.algorithm || order.algorithm);
-                    console.log('soloReward array length:', order.soloReward.length);
-                    console.log('COMPLETE soloReward array:', JSON.stringify(order.soloReward, null, 2));
-                } else {
-                    console.log('ℹ️ No soloReward array in order object');
-                    console.log('   - order.soloReward exists?', order.soloReward !== undefined);
-                    console.log('   - Is array?', Array.isArray(order.soloReward));
-                    console.log('   - Length:', order.soloReward?.length || 0);
+                if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
+                    console.log('🚨 ORDER WITH REWARDS:', order.id, '- Rewards:', order.soloReward.length);
                 }
 
                 console.log('🔍 Order summary:', {
@@ -4705,6 +4701,8 @@ async function fetchNiceHashOrders() {
                 console.log(`   - Is active/alive? ${order.alive}`);
                 console.log(`   - Has soloReward in order object? ${!!(order.soloReward && order.soloReward.length > 0)}`);
                 console.log(`   - Order ID exists in orderRewardsMap? ${order.id in orderRewardsMap}`);
+                console.log(`   - Algorithm: ${order.algorithm?.algorithm || order.algorithm}`);
+                console.log(`   - Pool: ${order.pool?.name || 'Unknown'}`);
 
                 // Use soloReward array from order object if available (PRIMARY SOURCE)
                 let rewardsArray = null;
@@ -4730,35 +4728,15 @@ async function fetchNiceHashOrders() {
 
                 // STEP 1: Process rewards from the rewards endpoint (PRIMARY SOURCE)
                 if (rewardsArray && Array.isArray(rewardsArray) && rewardsArray.length > 0) {
-                    console.log(`\n${'🎁'.repeat(40)}`);
-                    console.log(`🎁 Order ${order.id} has ${rewardsArray.length} reward entries!`);
-                    console.log(`${'🎁'.repeat(40)}`);
+                    console.log(`🎁 Order ${order.id} has ${rewardsArray.length} reward entries`);
 
                     // Process each reward entry
                     rewardsArray.forEach((reward, index) => {
-                        console.log(`\n  ┌${'─'.repeat(76)}┐`);
-                        console.log(`  │ REWARD #${index + 1} PROCESSING`);
-                        console.log(`  └${'─'.repeat(76)}┘`);
-
                         const rewardBtc = parseFloat(reward.payoutRewardBtc || 0);
                         const isDeposited = reward.depositComplete === true;
                         const confirmations = parseInt(reward.confirmations || 0);
                         const minConfirmations = parseInt(reward.minConfirmations || 0);
                         const isConfirmed = confirmations >= minConfirmations;
-
-                        console.log(`  🔍 RAW REWARD DATA:`, {
-                            payoutRewardBtc: reward.payoutRewardBtc,
-                            payoutReward: reward.payoutReward,
-                            depositComplete: reward.depositComplete,
-                            confirmations: reward.confirmations,
-                            minConfirmations: reward.minConfirmations
-                        });
-
-                        console.log(`  📊 PARSED VALUES:`);
-                        console.log(`     - rewardBtc: ${rewardBtc}`);
-                        console.log(`     - isDeposited: ${isDeposited}`);
-                        console.log(`     - confirmations: ${confirmations}/${minConfirmations}`);
-                        console.log(`     - isConfirmed: ${isConfirmed}`);
 
                         console.log(`  📦 Reward #${index + 1} DETAILS:`, {
                             id: reward.id,
