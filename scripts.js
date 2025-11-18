@@ -4090,6 +4090,58 @@ async function fetchCurrencyBalanceExtended(currency) {
     }
 }
 
+// Fetch detailed order information by order ID (includes soloReward array)
+async function fetchOrderDetails(orderId) {
+    try {
+        const endpoint = `/main/api/v2/hashpower/order/${orderId}`;
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        console.log(`📦 Fetching order details for ${orderId}...`);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: headers
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: headers
+            });
+        }
+
+        if (!response.ok) {
+            console.warn(`⚠️ Failed to fetch order ${orderId} details: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        console.log(`✅ Order ${orderId} details:`, JSON.stringify(data, null, 2));
+
+        // Check if soloReward array exists in the detailed order
+        if (data.soloReward && Array.isArray(data.soloReward) && data.soloReward.length > 0) {
+            console.log(`🎁 Order ${orderId} has ${data.soloReward.length} soloReward entries!`);
+            console.log(`🎁 soloReward data:`, JSON.stringify(data.soloReward, null, 2));
+        } else {
+            console.log(`❌ Order ${orderId} has no soloReward array in detailed response`);
+        }
+
+        return data;
+    } catch (error) {
+        console.error(`❌ Error fetching order ${orderId} details:`, error);
+        return null;
+    }
+}
+
 async function fetchNiceHashBalances() {
     try {
         const endpoint = '/main/api/v2/accounting/accounts2';
@@ -4481,42 +4533,35 @@ async function fetchNiceHashOrders() {
                 console.log('🎁 Order IDs with soloReward:', ordersWithSoloReward.map(o => o.id));
             }
 
-            // PARALLEL FETCH: Get extended BTC balance and mining payments
-            // Solo mining rewards are PAID OUT IN BTC, not in the coin being mined!
-            const soloMiningCurrencies = [...new Set(data.list
-                .filter(o => o.soloMiningCoin)
-                .map(o => o.soloMiningCoin))];
+            // PARALLEL FETCH: Get detailed order information for each solo mining order
+            // The detailed endpoint /main/api/v2/hashpower/order/{orderId} includes soloReward array
+            const soloMiningOrders = data.list.filter(o => o.soloMiningCoin);
 
-            console.log(`🎯 Found ${soloMiningCurrencies.length} solo mining currencies: ${soloMiningCurrencies.join(', ')}`);
-            console.log('💡 IMPORTANT: Solo mining rewards are paid out in BTC, not the mined currency!');
+            console.log(`🎯 Found ${soloMiningOrders.length} solo mining orders`);
+            console.log(`📦 Fetching detailed order data (with soloReward arrays) for all ${soloMiningOrders.length} orders in parallel...`);
 
-            // Fetch BTC balance (where solo rewards appear) AND BTC mining payments (individual transactions)
-            const [btcBalance, btcPayments] = await Promise.all([
-                fetchCurrencyBalanceExtended('BTC'),
-                fetchMiningPayments('BTC')
-            ]);
+            // Fetch detailed info for all solo mining orders in parallel
+            const orderDetailsPromises = soloMiningOrders.map(order =>
+                fetchOrderDetails(order.id)
+            );
 
-            console.log('💰 BTC balance with pending solo rewards:', btcBalance);
-            console.log('⛏️ BTC mining payments (should contain SOLO_REWARD transactions):', btcPayments);
+            const orderDetailsResults = await Promise.all(orderDetailsPromises);
 
-            // Extract solo reward transactions from BTC payments
-            let soloRewardTransactions = [];
-            if (btcPayments && btcPayments.list && Array.isArray(btcPayments.list)) {
-                soloRewardTransactions = btcPayments.list.filter(tx =>
-                    tx.accountType &&
-                    (tx.accountType.enumName === 'SOLO_REWARD' ||
-                     tx.accountType.enumName === 'SOLO_REWARD_FEE' ||
-                     tx.accountType.enumName === 'SOLO_REWARD_FEE_GEO')
-                );
-                console.log(`🎁 Found ${soloRewardTransactions.length} solo reward transactions in BTC payments!`);
-                if (soloRewardTransactions.length > 0) {
-                    console.log('🎁 Solo reward transactions:', JSON.stringify(soloRewardTransactions, null, 2));
+            // Create a map of order ID -> detailed order data (with soloReward array)
+            const orderDetailsMap = {};
+            orderDetailsResults.forEach((detailedOrder, index) => {
+                if (detailedOrder) {
+                    orderDetailsMap[soloMiningOrders[index].id] = detailedOrder;
                 }
-            }
+            });
 
-            // Also store BTC pending solo amount for display
-            const btcPendingSolo = btcBalance?.pendingDetails?.solo || 0;
-            console.log(`💰 Total pending solo rewards in BTC: ${btcPendingSolo}`);
+            console.log(`✅ Fetched detailed data for ${Object.keys(orderDetailsMap).length} orders`);
+
+            // Count how many orders have soloReward data
+            const ordersWithRewards = Object.values(orderDetailsMap).filter(
+                order => order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0
+            );
+            console.log(`🎁 ${ordersWithRewards.length} orders have soloReward data!`);
 
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
@@ -4574,79 +4619,78 @@ async function fetchNiceHashOrders() {
                 const packageName = determinePackageName(order, algoInfo);
                 console.log(`📦 Package name determined: "${packageName}"`);
 
-                // Determine if block was found by matching BTC solo reward transactions
-                // Solo rewards are in BTC payments, not in order.soloReward array
-                // Match transactions to this order using metadata field
-
+                // Determine if block was found using detailed order data
+                // Get soloReward array from the detailed order endpoint
                 let blockFound = false;
                 let totalRewardBTC = 0;
                 let confirmedBlockCount = 0;
                 let pendingBlockCount = 0;
                 let totalPendingRewardBTC = 0;
 
-                // Find solo reward transactions that belong to this order
-                // The metadata field should contain the order ID or ticket ID
-                const orderRewards = soloRewardTransactions.filter(tx => {
-                    // Try to match by order ID in metadata
-                    if (tx.metadata) {
-                        try {
-                            const metadata = JSON.parse(tx.metadata);
-                            // Check if metadata contains this order's ID or soloTicketId
-                            return metadata.orderId === order.id ||
-                                   metadata.ticketId === order.soloTicketId ||
-                                   metadata.id === order.id;
-                        } catch (e) {
-                            // If metadata is not JSON, check if it contains the order ID as string
-                            return tx.metadata.includes(order.id) ||
-                                   (order.soloTicketId && tx.metadata.includes(order.soloTicketId));
-                        }
-                    }
-                    return false;
-                });
+                // Get detailed order data (has soloReward array)
+                const detailedOrder = orderDetailsMap[order.id];
 
-                if (orderRewards.length > 0) {
-                    console.log(`🎁 Order ${order.id} has ${orderRewards.length} BTC solo reward transaction(s)!`);
+                if (detailedOrder && detailedOrder.soloReward && Array.isArray(detailedOrder.soloReward) && detailedOrder.soloReward.length > 0) {
+                    console.log(`🎁 Order ${order.id} has ${detailedOrder.soloReward.length} soloReward entries!`);
 
-                    orderRewards.forEach((tx, index) => {
-                        const rewardBtc = parseFloat(tx.amount || 0);
+                    // Process each reward entry
+                    detailedOrder.soloReward.forEach((reward, index) => {
+                        const rewardBtc = parseFloat(reward.payoutRewardBtc || 0);
+                        const isDeposited = reward.depositComplete === true;
+                        const confirmations = parseInt(reward.confirmations || 0);
+                        const minConfirmations = parseInt(reward.minConfirmations || 0);
+                        const isConfirmed = confirmations >= minConfirmations;
 
-                        console.log(`  📦 Reward Transaction #${index + 1}:`, {
-                            id: tx.id,
-                            created: new Date(tx.created).toISOString(),
-                            amount: rewardBtc,
-                            accountType: tx.accountType?.enumName,
-                            metadata: tx.metadata,
-                            feeAmount: tx.feeAmount
+                        console.log(`  📦 Reward #${index + 1} DETAILS:`, {
+                            id: reward.id,
+                            orderId: reward.orderId,
+                            blockHeight: reward.blockHeight,
+                            blockHash: reward.blockHash,
+                            coin: reward.coin,
+                            payoutRewardBtc: rewardBtc,
+                            payoutReward: reward.payoutReward,
+                            payoutAddress: reward.payoutAddress,
+                            depositComplete: isDeposited,
+                            confirmations: confirmations,
+                            minConfirmations: minConfirmations,
+                            isConfirmed: isConfirmed,
+                            shared: reward.shared,
+                            createdTs: reward.createdTs,
+                            time: reward.time
                         });
 
-                        // For now, treat all BTC solo rewards as confirmed
-                        // (If they appear in hashpowerEarnings, they've been processed)
+                        // Track blocks by confirmation state
                         if (rewardBtc > 0) {
-                            totalRewardBTC += rewardBtc;
-                            confirmedBlockCount++;
-                            console.log(`  ✅ CONFIRMED BLOCK REWARD: ${rewardBtc.toFixed(8)} BTC`);
+                            if (isDeposited || isConfirmed) {
+                                // Confirmed block
+                                totalRewardBTC += rewardBtc;
+                                confirmedBlockCount++;
+                                console.log(`  ✅ CONFIRMED BLOCK: ${rewardBtc.toFixed(8)} BTC at block #${reward.blockHeight}`);
+                            } else {
+                                // Pending block (found but waiting for confirmations)
+                                totalPendingRewardBTC += rewardBtc;
+                                pendingBlockCount++;
+                                const remaining = minConfirmations - confirmations;
+                                console.log(`  ⏳ PENDING BLOCK: ${rewardBtc.toFixed(8)} BTC at block #${reward.blockHeight} (${confirmations}/${minConfirmations} confirmations, ${remaining} remaining)`);
+                            }
+                        } else {
+                            console.log(`  ⚠️ Zero reward entry (possibly orphaned or error)`);
                         }
                     });
 
-                    if (confirmedBlockCount > 0) {
+                    // Block is "found" if there are ANY rewards > 0 (confirmed OR pending)
+                    const totalBlocks = confirmedBlockCount + pendingBlockCount;
+                    if (totalBlocks > 0) {
                         blockFound = true;
-                        console.log(`✅ Order ${order.id} FOUND ${confirmedBlockCount} BLOCK(S)!`);
-                        console.log(`   - Total BTC earned: ${totalRewardBTC.toFixed(8)} BTC`);
+                        console.log(`✅ Order ${order.id} FOUND ${totalBlocks} BLOCK(S)!`);
+                        console.log(`   - Confirmed: ${confirmedBlockCount} block(s), ${totalRewardBTC.toFixed(8)} BTC`);
+                        console.log(`   - Pending: ${pendingBlockCount} block(s), ${totalPendingRewardBTC.toFixed(8)} BTC`);
+                        console.log(`   - Total: ${(totalRewardBTC + totalPendingRewardBTC).toFixed(8)} BTC`);
+                    } else {
+                        console.log(`❌ Order ${order.id} has ${detailedOrder.soloReward.length} soloReward entries but all have zero rewards`);
                     }
                 } else {
-                    // Check if order has soloReward array (fallback, though it's usually empty)
-                    if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
-                        console.log(`🎁 Order ${order.id} has ${order.soloReward.length} soloReward entries in order data`);
-                        blockFound = true;
-                        confirmedBlockCount = order.soloReward.length;
-                    } else {
-                        console.log(`❌ Order ${order.id} - no solo reward transactions found in BTC payments`);
-                    }
-                }
-
-                // Also check pending rewards from BTC balance
-                if (order.soloMiningCoin && btcPendingSolo > 0) {
-                    console.log(`💰 Note: BTC balance shows ${btcPendingSolo} BTC total pending solo rewards (across all orders)`);
+                    console.log(`❌ Order ${order.id} has no soloReward data in detailed endpoint`);
                 }
 
                 // Calculate total price spent on package (amount is total BTC spent on order)
