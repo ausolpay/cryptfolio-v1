@@ -3993,6 +3993,58 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
 }
 
 // Fetch balances from NiceHash API
+// Fetch balance for specific currency with extended response for solo rewards
+async function fetchCurrencyBalanceExtended(currency) {
+    try {
+        const endpoint = `/main/api/v2/accounting/account2/${currency}?extendedResponse=true`;
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        console.log(`💰 Fetching extended balance for ${currency}...`);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: headers
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: headers
+            });
+        }
+
+        if (!response.ok) {
+            console.warn(`⚠️ Failed to fetch ${currency} balance: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        console.log(`✅ ${currency} balance with extended response:`, JSON.stringify(data, null, 2));
+
+        // Check for solo rewards in pendingDetails
+        if (data.pendingDetails) {
+            console.log(`🎁 ${currency} pendingDetails:`, {
+                solo: data.pendingDetails.solo,
+                soloRewards: data.pendingDetails.soloRewards
+            });
+        }
+
+        return data;
+    } catch (error) {
+        console.error(`❌ Error fetching ${currency} balance:`, error);
+        return null;
+    }
+}
+
 async function fetchNiceHashBalances() {
     try {
         const endpoint = '/main/api/v2/accounting/accounts2';
@@ -4384,6 +4436,31 @@ async function fetchNiceHashOrders() {
                 console.log('🎁 Order IDs with soloReward:', ordersWithSoloReward.map(o => o.id));
             }
 
+            // PARALLEL FETCH: Get extended balances for all solo mining currencies
+            // This will give us pendingDetails.soloRewards data
+            const soloMiningCurrencies = [...new Set(data.list
+                .filter(o => o.soloMiningCoin)
+                .map(o => o.soloMiningCoin))];
+
+            console.log(`🎯 Found ${soloMiningCurrencies.length} solo mining currencies: ${soloMiningCurrencies.join(', ')}`);
+
+            // Fetch all currency balances in parallel
+            const currencyBalancePromises = soloMiningCurrencies.map(currency =>
+                fetchCurrencyBalanceExtended(currency)
+            );
+
+            const currencyBalances = await Promise.all(currencyBalancePromises);
+
+            // Create a map of currency -> balance data for easy lookup
+            const balanceMap = {};
+            soloMiningCurrencies.forEach((currency, index) => {
+                if (currencyBalances[index]) {
+                    balanceMap[currency] = currencyBalances[index];
+                }
+            });
+
+            console.log('💰 Fetched extended balances for currencies:', Object.keys(balanceMap));
+
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
                 console.log('🔍 COMPLETE first order object with ALL fields:',JSON.stringify(data.list[0], null, 2));
@@ -4394,10 +4471,17 @@ async function fetchNiceHashOrders() {
                     soloMiningCoin: firstOrder.soloMiningCoin,
                     soloMiningMergeCoin: firstOrder.soloMiningMergeCoin,
                     soloMiningRewardAddr: firstOrder.soloMiningRewardAddr,
+                    soloTicketId: firstOrder.soloTicketId,
                     hasSoloRewardArray: firstOrder.soloReward !== undefined,
                     soloRewardLength: firstOrder.soloReward?.length || 0,
                     soloRewardData: firstOrder.soloReward
                 });
+
+                // If this order has solo mining, show the balance data
+                if (firstOrder.soloMiningCoin && balanceMap[firstOrder.soloMiningCoin]) {
+                    console.log(`💰 Extended balance data for ${firstOrder.soloMiningCoin}:`,
+                        balanceMap[firstOrder.soloMiningCoin]);
+                }
             }
 
             for (const order of data.list) {
