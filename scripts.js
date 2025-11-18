@@ -3741,6 +3741,16 @@ async function fetchEasyMiningData() {
                 console.log(`Pending BTC: ${easyMiningData.pendingBTC}`);
                 console.log(`Active Packages: ${easyMiningData.activePackages.length}`);
 
+                // Log block detection data for each package
+                console.log('\n📦 PACKAGE BLOCK DETECTION DATA:');
+                easyMiningData.activePackages.forEach((pkg, index) => {
+                    console.log(`  ${index + 1}. ${pkg.name}:`);
+                    console.log(`     - blockFound: ${pkg.blockFound}`);
+                    console.log(`     - totalBlocks: ${pkg.totalBlocks || 0} (confirmed: ${pkg.confirmedBlocks || 0}, pending: ${pkg.pendingBlocks || 0})`);
+                    console.log(`     - btcEarnings: ${pkg.btcEarnings || 0} BTC`);
+                    console.log(`     - active: ${pkg.active}`);
+                });
+
             } catch (apiError) {
                 // Handle different types of API errors
                 if (apiError.message.includes('fetch')) {
@@ -4610,8 +4620,8 @@ async function fetchNiceHashOrders() {
                 );
             }
 
-            // Track if we've assigned the pending block (only assign once)
-            let pendingBlockAssigned = false;
+            // Note: Rewards go to external addresses, not to NiceHash balance
+            // We don't need to track pending BTC - we rely on soloReward arrays
 
             // Log the FIRST order with ALL fields to see what's available
             if (data.list.length > 0) {
@@ -4670,9 +4680,8 @@ async function fetchNiceHashOrders() {
                 console.log(`📦 Package name determined: "${packageName}"`);
 
                 // Determine if block was found using MULTIPLE sources:
-                // 1. Rewards endpoint (confirmed/deposited blocks)
-                // 2. BTC balance pending (pending blocks not yet confirmed)
-                // 3. Order status (active solo mining orders)
+                // 1. Rewards endpoint (confirmed/deposited blocks) - PRIMARY SOURCE
+                // 2. BTC balance pending (pending blocks not yet confirmed) - SECONDARY HEURISTIC
                 let blockFound = false;
                 let totalRewardBTC = 0;
                 let confirmedBlockCount = 0;
@@ -4680,38 +4689,37 @@ async function fetchNiceHashOrders() {
                 let totalPendingRewardBTC = 0;
 
                 // Get rewards array for this order
+                // PRIORITY: Use soloReward array from order object (already in myOrders response)
+                // FALLBACK: Use separate rewards endpoint data
                 console.log(`🔎 Checking rewards for order ${order.id}...`);
                 console.log(`   - Is solo mining order? ${!!order.soloMiningCoin} (${order.soloMiningCoin || 'N/A'})`);
                 console.log(`   - Is active/alive? ${order.alive}`);
+                console.log(`   - Has soloReward in order object? ${!!(order.soloReward && order.soloReward.length > 0)}`);
                 console.log(`   - Order ID exists in orderRewardsMap? ${order.id in orderRewardsMap}`);
 
-                const rewardsArray = orderRewardsMap[order.id];
+                // Use soloReward array from order object if available (PRIMARY SOURCE)
+                let rewardsArray = null;
+                if (order.soloReward && Array.isArray(order.soloReward) && order.soloReward.length > 0) {
+                    rewardsArray = order.soloReward;
+                    console.log(`   ✅ Using soloReward array from order object (${rewardsArray.length} rewards)`);
+                } else {
+                    // Fall back to separate rewards endpoint
+                    rewardsArray = orderRewardsMap[order.id];
+                    if (rewardsArray && rewardsArray.length > 0) {
+                        console.log(`   ✅ Using rewards from separate endpoint (${rewardsArray.length} rewards)`);
+                    } else {
+                        console.log(`   ℹ️ No rewards found in either source`);
+                    }
+                }
 
-                if (rewardsArray !== undefined) {
+                if (rewardsArray !== undefined && rewardsArray !== null) {
                     console.log(`   - Rewards data type: ${Array.isArray(rewardsArray) ? 'Array' : typeof rewardsArray}`);
                     console.log(`   - Rewards count: ${Array.isArray(rewardsArray) ? rewardsArray.length : 'N/A'}`);
                 } else {
-                    console.log(`   - Rewards: undefined (not in map)`);
+                    console.log(`   - Rewards: none`);
                 }
 
-                // HEURISTIC: If BTC has pending solo rewards AND this order is active solo mining,
-                // likely this order found a block (even if rewards endpoint is empty)
-                // IMPORTANT: Only assign pending block to ONE order (first active order encountered)
-                const hasActiveSoloMining = order.soloMiningCoin && order.alive;
-                const hasPendingSoloRewards = btcPendingSolo > 0;
-                const noConfirmedRewards = !rewardsArray || rewardsArray.length === 0;
-
-                if (hasActiveSoloMining && hasPendingSoloRewards && noConfirmedRewards && !pendingBlockAssigned) {
-                    console.log(`💡 HEURISTIC: Active solo mining order + pending BTC rewards = likely found pending block!`);
-                    console.log(`   Assigning pending block to this order (first active order)`);
-                    blockFound = true;
-                    pendingBlockCount = 1;
-                    totalPendingRewardBTC = btcPendingSolo;
-                    pendingBlockAssigned = true; // Don't assign to any other orders
-                } else if (hasActiveSoloMining && hasPendingSoloRewards && noConfirmedRewards && pendingBlockAssigned) {
-                    console.log(`   ⚠️ Active order but pending block already assigned to another order`);
-                }
-
+                // STEP 1: Process rewards from the rewards endpoint (PRIMARY SOURCE)
                 if (rewardsArray && Array.isArray(rewardsArray) && rewardsArray.length > 0) {
                     console.log(`🎁 Order ${order.id} has ${rewardsArray.length} reward entries!`);
 
@@ -4764,16 +4772,20 @@ async function fetchNiceHashOrders() {
                     const totalBlocks = confirmedBlockCount + pendingBlockCount;
                     if (totalBlocks > 0) {
                         blockFound = true;
-                        console.log(`✅ Order ${order.id} FOUND ${totalBlocks} BLOCK(S)!`);
+                        console.log(`✅ Order ${order.id} FOUND ${totalBlocks} BLOCK(S) via rewards endpoint!`);
                         console.log(`   - Confirmed: ${confirmedBlockCount} block(s), ${totalRewardBTC.toFixed(8)} BTC`);
                         console.log(`   - Pending: ${pendingBlockCount} block(s), ${totalPendingRewardBTC.toFixed(8)} BTC`);
                         console.log(`   - Total: ${(totalRewardBTC + totalPendingRewardBTC).toFixed(8)} BTC`);
                     } else {
                         console.log(`❌ Order ${order.id} has ${rewardsArray.length} reward entries but all have zero rewards`);
                     }
-                } else if (!blockFound) {
-                    // Only log "no rewards" if we didn't detect via heuristic
-                    console.log(`❌ Order ${order.id} has no rewards (endpoint returned empty/null)`);
+                }
+
+                // Note: Rewards go to external addresses, so pending balance won't help
+                // We rely entirely on the soloReward array from the API response
+
+                if (!blockFound) {
+                    console.log(`ℹ️ Order ${order.id}: No blocks found yet (checked soloReward array)`);
                 }
 
                 // Final summary for this order
@@ -5328,28 +5340,53 @@ function updateRecommendations() {
 }
 
 function checkForNewBlocks() {
-    const currentBlockCount = easyMiningData.activePackages.filter(pkg => pkg.blockFound).length;
-    
-    if (currentBlockCount > easyMiningData.lastBlockCount) {
-        // New block found!
-        const newBlocks = currentBlockCount - easyMiningData.lastBlockCount;
+    console.log(`\n${'🔍'.repeat(40)}`);
+    console.log(`🔍 CHECKFORNEWBLOCKS - Analyzing packages for block detection`);
+
+    // Calculate total blocks found across ALL packages (confirmed + pending)
+    const currentBlockCount = easyMiningData.activePackages.reduce((total, pkg) => {
+        const blocks = pkg.totalBlocks || 0;
+        if (blocks > 0) {
+            console.log(`  📦 ${pkg.name}: ${blocks} block(s) (confirmed: ${pkg.confirmedBlocks || 0}, pending: ${pkg.pendingBlocks || 0})`);
+        }
+        return total + blocks;
+    }, 0);
+
+    console.log(`📊 Current total blocks: ${currentBlockCount}`);
+    console.log(`📊 Previous total blocks: ${easyMiningData.lastBlockCount || 0}`);
+    console.log(`${'🔍'.repeat(40)}\n`);
+
+    if (currentBlockCount > (easyMiningData.lastBlockCount || 0)) {
+        // New block(s) found!
+        const newBlocks = currentBlockCount - (easyMiningData.lastBlockCount || 0);
+        console.log(`🎉🎉🎉 NEW BLOCK(S) DETECTED! 🎉🎉🎉`);
+        console.log(`   New blocks found: ${newBlocks}`);
+        console.log(`   Total session blocks: ${easyMiningData.blocksFoundSession + newBlocks}`);
+
         easyMiningData.blocksFoundSession = Math.min(20, easyMiningData.blocksFoundSession + newBlocks);
-        
+
         // Update display
-        const rocketsHtml = '🚀'.repeat(Math.min(10, easyMiningData.blocksFoundSession)) + 
+        const rocketsHtml = '🚀'.repeat(Math.min(10, easyMiningData.blocksFoundSession)) +
                            (easyMiningData.blocksFoundSession > 10 ? '<br>' + '🚀'.repeat(easyMiningData.blocksFoundSession - 10) : '');
         document.getElementById('blocks-found-rockets').innerHTML = rocketsHtml;
-        
+
         // Play sound
         playSound('block-found-sound');
-        
+
         // Auto-update crypto holdings if enabled
         if (easyMiningSettings.autoUpdateHoldings) {
+            console.log(`💰 Auto-update enabled - adding ${newBlocks} block(s) to holdings`);
             autoUpdateCryptoHoldings(newBlocks);
+        } else {
+            console.log(`⚠️ Auto-update disabled - blocks found but not auto-adding to holdings`);
         }
-        
+
         easyMiningData.lastBlockCount = currentBlockCount;
         localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+    } else if (currentBlockCount === easyMiningData.lastBlockCount) {
+        console.log(`ℹ️ No new blocks detected (count unchanged)`);
+    } else {
+        console.log(`⚠️ Block count decreased? This might indicate a data sync issue`);
     }
 }
 
