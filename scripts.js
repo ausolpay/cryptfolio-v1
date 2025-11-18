@@ -827,7 +827,17 @@ function updateTotalHoldings() {
 
     users[loggedInUser].cryptos.forEach(crypto => {
         const priceAud = parseFloat(document.getElementById(`${crypto.id}-price-aud`).textContent.replace(/,/g, '').replace('$', '')) || 0;
-        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+
+        // For Bitcoin, read from display element (includes NiceHash balance)
+        // For other cryptos, read from localStorage
+        let holdings = 0;
+        if (crypto.id === 'bitcoin') {
+            const holdingsElement = document.getElementById('bitcoin-holdings');
+            holdings = holdingsElement ? parseFloat(holdingsElement.textContent.replace(/,/g, '')) || 0 : 0;
+        } else {
+            holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        }
+
         totalHoldings += holdings * priceAud;
     });
 
