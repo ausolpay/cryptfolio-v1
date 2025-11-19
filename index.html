@@ -404,10 +404,31 @@
             <div class="toggles">
                 <div class="audio-toggle">
                     <label class="switch">
-                        <input type="checkbox" id="audio-toggle">
+                        <input type="checkbox" id="holdings-audio-toggle">
                         <span class="slider"></span>
                     </label>
-                    <span>Audio</span>
+                    <span>Holdings Audio</span>
+                </div>
+                <div class="setting-item">
+                    <label class="switch">
+                        <input type="checkbox" id="holdings-vibrate-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <label for="holdings-vibrate-toggle" id="holdings-vibrate-label">Holdings Vibe: Off</label>
+                </div>
+                <div class="audio-toggle">
+                    <label class="switch">
+                        <input type="checkbox" id="easymining-audio-toggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span>EasyMining Audio</span>
+                </div>
+                <div class="setting-item">
+                    <label class="switch">
+                        <input type="checkbox" id="easymining-vibrate-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <label for="easymining-vibrate-toggle" id="easymining-vibrate-label">EasyMining Vibe: Off</label>
                 </div>
                 <div class="dark-mode-toggle">
                     <label class="switch">
@@ -415,13 +436,6 @@
                         <span class="slider"></span>
                     </label>
                     <span>Dark Mode</span>
-                </div>
-                <div class="setting-item">
-                    <label class="switch">
-                        <input type="checkbox" id="vibrate-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <label for="vibrate-toggle" id="vibrate-label">Vibe: Off</label>
                 </div>
             </div>
             <div style="margin-top: 20px;">
@@ -671,14 +685,19 @@
     </div>
 
     <!-- Audio elements for notifications -->
+    <!-- Holdings Sounds -->
     <audio id="good-sound" src="sounds/good-sound.mp3" preload="auto" muted></audio>
     <audio id="bad-sound" src="sounds/bad-sound.mp3" preload="auto" muted></audio>
     <audio id="level-up-sound" src="sounds/level-up-sound.mp3" preload="auto" muted></audio>
     <audio id="warning-sound" src="sounds/warning-sound.mp3" preload="auto" muted></audio>
     <audio id="milestone-sound" src="sounds/milestone-sound.mp3" preload="auto" muted></audio>
     <audio id="record-high-sound" src="sounds/record-high-sound.mp3" preload="auto" muted></audio>
-    <audio id="block-found-sound" src="sounds/level-up-sound.mp3" preload="auto" muted></audio>
-    <audio id="package-alert-sound" src="sounds/warning-sound.mp3" preload="auto" muted></audio>
+
+    <!-- EasyMining Sounds -->
+    <audio id="block-found-sound" src="sounds/blockfound.mp3" preload="auto" muted></audio>
+    <audio id="no-blocks-found-sound" src="sounds/noblocksfound.mp3" preload="auto" muted></audio>
+    <audio id="block-found-complete-sound" src="sounds/blockfoundcomplete.mp3" preload="auto" muted></audio>
+    <audio id="package-start-sound" src="sounds/packagestart.mp3" preload="auto" muted></audio>
 
 
 

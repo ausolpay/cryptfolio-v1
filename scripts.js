@@ -132,32 +132,74 @@ function initializeApp() {
         initializeAutocomplete();
 
 
-        // Initialize the audio toggle
-        const audioToggle = document.getElementById('audio-toggle');
-        audioToggle.checked = false;
-        audioToggle.addEventListener('change', function () {
-            const goodSound = document.getElementById('good-sound');
-            const badSound = document.getElementById('bad-sound');
-            const levelUpSound = document.getElementById('level-up-sound');
-            const warningSound = document.getElementById('warning-sound');
-            const milestoneSound = document.getElementById('milestone-sound');
-            const recordHighSound = document.getElementById('record-high-sound'); 
+        // Initialize the holdings audio toggle
+        const holdingsAudioToggle = document.getElementById('holdings-audio-toggle');
+        const isHoldingsAudioEnabled = getStorageItem('isHoldingsAudioEnabled') === 'true';
+        holdingsAudioToggle.checked = isHoldingsAudioEnabled;
 
+        // Set initial mute state for holdings sounds
+        const goodSound = document.getElementById('good-sound');
+        const badSound = document.getElementById('bad-sound');
+        const levelUpSound = document.getElementById('level-up-sound');
+        const warningSound = document.getElementById('warning-sound');
+        const milestoneSound = document.getElementById('milestone-sound');
+        const recordHighSound = document.getElementById('record-high-sound');
+
+        goodSound.muted = !isHoldingsAudioEnabled;
+        badSound.muted = !isHoldingsAudioEnabled;
+        levelUpSound.muted = !isHoldingsAudioEnabled;
+        warningSound.muted = !isHoldingsAudioEnabled;
+        milestoneSound.muted = !isHoldingsAudioEnabled;
+        recordHighSound.muted = !isHoldingsAudioEnabled;
+
+        holdingsAudioToggle.addEventListener('change', function () {
             if (this.checked) {
                 goodSound.muted = false;
                 badSound.muted = false;
                 levelUpSound.muted = false;
                 warningSound.muted = false;
                 milestoneSound.muted = false;
-                recordHighSound.muted = false; 
+                recordHighSound.muted = false;
             } else {
                 goodSound.muted = true;
                 badSound.muted = true;
                 levelUpSound.muted = true;
                 warningSound.muted = true;
                 milestoneSound.muted = true;
-                recordHighSound.muted = true; 
+                recordHighSound.muted = true;
             }
+            setStorageItem('isHoldingsAudioEnabled', this.checked);
+        });
+
+        // Initialize the EasyMining audio toggle
+        const easyMiningAudioToggle = document.getElementById('easymining-audio-toggle');
+        const isEasyMiningAudioEnabled = getStorageItem('isEasyMiningAudioEnabled') === 'true';
+        easyMiningAudioToggle.checked = isEasyMiningAudioEnabled;
+
+        // Set initial mute state for EasyMining sounds
+        const blockFoundSound = document.getElementById('block-found-sound');
+        const noBlocksFoundSound = document.getElementById('no-blocks-found-sound');
+        const blockFoundCompleteSound = document.getElementById('block-found-complete-sound');
+        const packageStartSound = document.getElementById('package-start-sound');
+
+        blockFoundSound.muted = !isEasyMiningAudioEnabled;
+        noBlocksFoundSound.muted = !isEasyMiningAudioEnabled;
+        blockFoundCompleteSound.muted = !isEasyMiningAudioEnabled;
+        packageStartSound.muted = !isEasyMiningAudioEnabled;
+
+        easyMiningAudioToggle.addEventListener('change', function () {
+            if (this.checked) {
+                blockFoundSound.muted = false;
+                noBlocksFoundSound.muted = false;
+                blockFoundCompleteSound.muted = false;
+                packageStartSound.muted = false;
+            } else {
+                blockFoundSound.muted = true;
+                noBlocksFoundSound.muted = true;
+                blockFoundCompleteSound.muted = true;
+                packageStartSound.muted = true;
+            }
+            setStorageItem('isEasyMiningAudioEnabled', this.checked);
         });
 
         // Initialize the dark mode toggle
@@ -841,17 +883,32 @@ async function fetchPricesFromUniswap(symbol) {
 }
 
 
-const vibrateToggle = document.getElementById('vibrate-toggle');
-const vibrateLabel = document.getElementById('vibrate-label');
-let isVibrateEnabled = getStorageItem('isVibrateEnabled') === 'true';
+// Holdings vibrate toggle
+const holdingsVibrateToggle = document.getElementById('holdings-vibrate-toggle');
+const holdingsVibrateLabel = document.getElementById('holdings-vibrate-label');
+let isHoldingsVibrateEnabled = getStorageItem('isHoldingsVibrateEnabled') === 'true';
 
-vibrateToggle.checked = isVibrateEnabled;
-vibrateLabel.textContent = isVibrateEnabled ? 'Vibe: On' : 'Vibe: Off';
+holdingsVibrateToggle.checked = isHoldingsVibrateEnabled;
+holdingsVibrateLabel.textContent = isHoldingsVibrateEnabled ? 'Holdings Vibe: On' : 'Holdings Vibe: Off';
 
-vibrateToggle.addEventListener('change', function () {
-isVibrateEnabled = this.checked;
-vibrateLabel.textContent = isVibrateEnabled ? 'Vibe: On' : 'Vibe: Off';
-setStorageItem('isVibrateEnabled', isVibrateEnabled);
+holdingsVibrateToggle.addEventListener('change', function () {
+    isHoldingsVibrateEnabled = this.checked;
+    holdingsVibrateLabel.textContent = isHoldingsVibrateEnabled ? 'Holdings Vibe: On' : 'Holdings Vibe: Off';
+    setStorageItem('isHoldingsVibrateEnabled', isHoldingsVibrateEnabled);
+});
+
+// EasyMining vibrate toggle
+const easyMiningVibrateToggle = document.getElementById('easymining-vibrate-toggle');
+const easyMiningVibrateLabel = document.getElementById('easymining-vibrate-label');
+let isEasyMiningVibrateEnabled = getStorageItem('isEasyMiningVibrateEnabled') === 'true';
+
+easyMiningVibrateToggle.checked = isEasyMiningVibrateEnabled;
+easyMiningVibrateLabel.textContent = isEasyMiningVibrateEnabled ? 'EasyMining Vibe: On' : 'EasyMining Vibe: Off';
+
+easyMiningVibrateToggle.addEventListener('change', function () {
+    isEasyMiningVibrateEnabled = this.checked;
+    easyMiningVibrateLabel.textContent = isEasyMiningVibrateEnabled ? 'EasyMining Vibe: On' : 'EasyMining Vibe: Off';
+    setStorageItem('isEasyMiningVibrateEnabled', isEasyMiningVibrateEnabled);
 });
 
 function updateTotalHoldings() {
@@ -871,14 +928,14 @@ function updateTotalHoldings() {
             playSound('good-sound');
             flashColor('total-holdings', 'flash-green');
             flashColor('modal-total-holdings', 'flash-green');
-            if (isVibrateEnabled && "vibrate" in navigator) {
+            if (isHoldingsVibrateEnabled && "vibrate" in navigator) {
                 navigator.vibrate(100);
             }
         } else if (totalHoldings < previousTotalHoldings) {
             playSound('bad-sound');
             flashColor('total-holdings', 'flash-red');
             flashColor('modal-total-holdings', 'flash-red');
-            if (isVibrateEnabled && "vibrate" in navigator) {
+            if (isHoldingsVibrateEnabled && "vibrate" in navigator) {
                 navigator.vibrate(300);
             }
         }
@@ -1259,7 +1316,7 @@ function playSound(soundId) {
             playMilestoneAnimation();
             playMilestoneModalAnimation();
 
-            if (isVibrateEnabled && "vibrate" in navigator) {
+            if (isHoldingsVibrateEnabled && "vibrate" in navigator) {
                 navigator.vibrate([100, 100, 100, 100, 100, 100]); // 6 vibrations of 100ms each
                 console.log("Vibration triggered.");
             }
@@ -4006,6 +4063,9 @@ async function fetchEasyMiningData() {
         // Check for new blocks found
         checkForNewBlocks();
 
+        // Check for package status changes (start/complete)
+        checkForPackageStatusChanges();
+
         // Update BTC holdings if toggles are enabled
         updateBTCHoldings();
 
@@ -6076,8 +6136,11 @@ function checkForNewBlocks() {
             .join('');
         document.getElementById('blocks-found-rockets').innerHTML = rocketsHtml;
 
-        // Play sound
+        // Play sound and vibrate for new block found
         playSound('block-found-sound');
+        if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+            navigator.vibrate([100, 50, 100]); // Fast vibrate twice
+        }
 
         // Auto-update crypto holdings if enabled
         if (easyMiningSettings.autoUpdateHoldings) {
@@ -6094,6 +6157,77 @@ function checkForNewBlocks() {
     } else {
         console.log(`⚠️ Block count decreased? This might indicate a data sync issue`);
     }
+}
+
+function checkForPackageStatusChanges() {
+    console.log(`\n${'📊'.repeat(40)}`);
+    console.log(`📊 CHECKING PACKAGE STATUS CHANGES`);
+
+    // Load previous package states
+    const previousStatesKey = `${loggedInUser}_packageStates`;
+    let previousStates = JSON.parse(getStorageItem(previousStatesKey)) || {};
+
+    const currentPackages = easyMiningData.activePackages || [];
+    let newStates = {};
+
+    currentPackages.forEach(pkg => {
+        const pkgId = pkg.id;
+        const currentState = {
+            active: pkg.active,
+            blockFound: pkg.blockFound || false,
+            totalBlocks: pkg.totalBlocks || 0
+        };
+
+        const previousState = previousStates[pkgId];
+
+        // Store current state for next check
+        newStates[pkgId] = currentState;
+
+        if (!previousState) {
+            // First time seeing this package
+            console.log(`  📦 New package detected: ${pkg.name}`);
+            if (currentState.active) {
+                // Package is starting
+                console.log(`  🚀 PACKAGE STARTING: ${pkg.name}`);
+                playSound('package-start-sound');
+                if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+                    navigator.vibrate(200); // Vibrate once for 200ms
+                }
+            }
+        } else {
+            // Check for status changes
+            if (previousState.active && !currentState.active) {
+                // Package just completed
+                if (currentState.blockFound || currentState.totalBlocks > 0) {
+                    // Package completed WITH blocks found
+                    console.log(`  ✅ PACKAGE COMPLETED WITH REWARD: ${pkg.name} (${currentState.totalBlocks} blocks)`);
+                    playSound('block-found-complete-sound');
+                    if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+                        navigator.vibrate([200, 100, 200, 100, 200]); // Vibrate 3 times
+                    }
+                } else {
+                    // Package completed WITHOUT blocks found
+                    console.log(`  ❌ PACKAGE COMPLETED WITHOUT REWARD: ${pkg.name}`);
+                    playSound('no-blocks-found-sound');
+                    if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+                        navigator.vibrate([200, 100, 200, 100, 200]); // Vibrate 3 times
+                    }
+                }
+            } else if (!previousState.active && currentState.active) {
+                // Package became active
+                console.log(`  🚀 PACKAGE BECAME ACTIVE: ${pkg.name}`);
+                playSound('package-start-sound');
+                if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+                    navigator.vibrate(200); // Vibrate once for 200ms
+                }
+            }
+        }
+    });
+
+    // Save current states for next check
+    setStorageItem(previousStatesKey, JSON.stringify(newStates));
+    console.log(`📊 Package status check complete`);
+    console.log(`${'📊'.repeat(40)}\n`);
 }
 
 function updateBTCHoldings() {
