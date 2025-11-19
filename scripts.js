@@ -7021,8 +7021,8 @@ async function fetchAvailableSoloPackages() {
         const data = await response.json();
         console.log('✅ Solo packages response:', data);
 
-        // Return the packages array (adjust based on actual API response structure)
-        return data.packages || data.list || data || [];
+        // Solo packages API returns a direct array
+        return Array.isArray(data) ? data : [];
 
     } catch (error) {
         console.error('❌ Error fetching solo packages:', error);
@@ -7069,8 +7069,8 @@ async function fetchAvailableTeamPackages() {
         const data = await response.json();
         console.log('✅ Team packages response:', data);
 
-        // Return the packages array (adjust based on actual API response structure)
-        return data.packages || data.list || data || [];
+        // Team packages API returns { list: [...] }
+        return data.list || [];
 
     } catch (error) {
         console.error('❌ Error fetching team packages:', error);
@@ -7102,13 +7102,14 @@ function createSoloPackageCard(pkg) {
     card.className = 'buy-package-card';
 
     // Extract package details from API response
-    const packageName = pkg.name || pkg.packageName || 'Unknown Package';
-    const crypto = pkg.coin || pkg.crypto || pkg.soloMiningCoin || 'Unknown';
-    const ticketId = pkg.ticketId || pkg.id;
-    const packagePrice = pkg.packagePrice || pkg.price || 0;
-    const totalBlocks = pkg.totalBlocks || 0;
-    const probability = pkg.winProbability || pkg.probability || 'N/A';
-    const potentialReward = pkg.blockReward || pkg.reward || 'N/A';
+    // Solo package structure: { id, name, price, probability, currencyAlgo: { currency, blockReward }, duration }
+    const packageName = pkg.name || 'Unknown Package';
+    const crypto = pkg.currencyAlgo?.currency || 'Unknown';
+    const ticketId = pkg.id;
+    const packagePrice = pkg.price || 0;
+    const probability = pkg.probability || 'N/A';
+    const potentialReward = pkg.currencyAlgo?.blockReward || 'N/A';
+    const duration = pkg.duration || 0;
 
     // Calculate price in AUD (assuming BTC price)
     const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
@@ -7135,8 +7136,8 @@ function createSoloPackageCard(pkg) {
                 <span>${potentialReward} ${crypto}</span>
             </div>
             <div class="buy-package-stat">
-                <span>Total Blocks:</span>
-                <span>${totalBlocks}</span>
+                <span>Duration:</span>
+                <span>${duration}s</span>
             </div>
         </div>
         <button class="buy-package-button" onclick="buySoloPackage('${ticketId}', '${crypto}', ${packagePrice})">
@@ -7153,16 +7154,21 @@ function createTeamPackageCard(pkg) {
     card.className = 'buy-package-card team-package-card';
 
     // Extract package details from API response
-    const packageName = pkg.name || pkg.packageName || 'Unknown Package';
-    const crypto = pkg.coin || pkg.crypto || pkg.soloMiningCoin || 'Unknown';
+    // Team package structure: { id, currencyAlgoTicket: { name, price, probability, currencyAlgo: { currency, blockReward } }, numberOfParticipants, fullAmount, addedAmount }
+    const ticket = pkg.currencyAlgoTicket || {};
+    const packageName = ticket.name || 'Unknown Package';
+    const crypto = ticket.currencyAlgo?.currency || 'Unknown';
     const packageId = pkg.id;
-    const packagePrice = pkg.packagePrice || pkg.price || 0;
-    const totalShares = pkg.totalShares || 0;
-    const availableShares = pkg.availableShares || pkg.shares?.available || 0;
-    const sharePrice = totalShares > 0 ? packagePrice / totalShares : 0.0001;
-    const probability = pkg.winProbability || pkg.probability || 'N/A';
-    const potentialReward = pkg.blockReward || pkg.reward || 'N/A';
-    const participants = pkg.numberOfParticipants || pkg.participants || 0;
+    const packagePrice = ticket.price || 0;
+    const fullAmount = pkg.fullAmount || packagePrice;
+    const addedAmount = pkg.addedAmount || 0;
+    const availableAmount = fullAmount - addedAmount;
+    const sharePrice = 0.0001; // Standard share price
+    const totalShares = Math.floor(packagePrice / sharePrice);
+    const availableShares = Math.floor(availableAmount / sharePrice);
+    const probability = ticket.probability || 'N/A';
+    const potentialReward = ticket.currencyAlgo?.blockReward || 'N/A';
+    const participants = pkg.numberOfParticipants || 0;
 
     // Calculate price in AUD (assuming BTC price)
     const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
