@@ -4350,7 +4350,7 @@ function getBlockReward(crypto) {
         'RVN': 2500,       // Ravencoin (after 2022 halving)
         'DOGE': 10000,     // Dogecoin (fixed)
         'LTC': 6.25,       // Litecoin (after August 2023 halving)
-        'KAS': 150,        // Kaspa (approximate, varies monthly)
+        'KAS': 3.8890873,  // Kaspa (current block reward)
         'ETH': 2,          // Ethereum (after merge, for reference)
         'ETC': 2.56        // Ethereum Classic
     };
