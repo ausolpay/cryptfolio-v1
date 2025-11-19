@@ -5179,18 +5179,57 @@ function generateMockPackages() {
         const isTeam = typeData.name.toLowerCase().startsWith('team');
         console.log(`   📦 Mock Package: "${typeData.name}" → isTeam: ${isTeam}`);
 
+        // Calculate team package values using correct formula
+        const SHARE_COST = 0.0001; // BTC per share
+        let myShares = 1;
+        let totalShares = 1;
+        let userSharePercentage = 1.0;
+        let priceSpent = 0;
+        let packagePrice = 0;
+        let calculatedReward = typeData.reward;
+
+        if (isTeam) {
+            // Generate realistic team package values
+            const addedAmount = (Math.random() * 0.009 + 0.001); // 0.001 to 0.01 BTC
+            packagePrice = (Math.random() * 0.45 + 0.05); // 0.05 to 0.5 BTC
+
+            // Calculate shares using the formula
+            myShares = addedAmount / SHARE_COST;
+            totalShares = packagePrice / SHARE_COST;
+            userSharePercentage = myShares / totalShares;
+            priceSpent = addedAmount; // User's actual contribution
+
+            // Calculate user's share of reward
+            calculatedReward = typeData.reward * userSharePercentage;
+
+            console.log(`      Team Package Calculations:`);
+            console.log(`         addedAmount: ${addedAmount.toFixed(8)} BTC`);
+            console.log(`         packagePrice: ${packagePrice.toFixed(8)} BTC`);
+            console.log(`         myShares: ${myShares.toFixed(2)}`);
+            console.log(`         totalShares: ${totalShares.toFixed(2)}`);
+            console.log(`         sharePercentage: ${(userSharePercentage * 100).toFixed(2)}%`);
+            console.log(`         myReward: ${calculatedReward.toFixed(8)} ${typeData.crypto}`);
+        } else {
+            // Solo package - full values
+            priceSpent = Math.random() * 50 + 10;
+            calculatedReward = typeData.reward;
+        }
+
         packages.push({
             id: `pkg_${i}`,
             name: typeData.name,
             crypto: typeData.crypto,
-            reward: typeData.reward,
+            reward: calculatedReward, // User's proportional reward for team packages
             probability: `1:${Math.floor(Math.random() * 500) + 50}`,
             timeRemaining: Math.floor(Math.random() * 24) + 'h',
             progress: Math.floor(Math.random() * 100),
             blockFound: Math.random() > 0.95,
             isTeam: isTeam,
-            shares: isTeam ? Math.floor(Math.random() * 200) + 10 : 1,
-            price: (Math.random() * 50 + 10).toFixed(2),
+            ownedShares: isTeam ? myShares : null,
+            totalShares: isTeam ? totalShares : null,
+            sharePrice: isTeam ? SHARE_COST : null,
+            userSharePercentage: userSharePercentage,
+            price: priceSpent, // User's actual cost
             blocks: generateMockBlocks(),
             algorithm: 'SHA256', // Example algorithm
             hashrate: `${(Math.random() * 100).toFixed(2)} TH/s`
