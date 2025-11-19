@@ -1046,7 +1046,7 @@ body.light-mode .conversion-input-group input {
 
 /* EasyMining Section Styles */
 .easymining-section {
-    margin: 20px auto;
+    margin: 20px 25px;
     max-width: 1400px;
     min-width: 300px; /* Match crypto box width for consistent responsive behavior */
     background-color: #1e1e1e;
@@ -1739,7 +1739,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Add horizontal padding, reduce gaps slightly, keep multi-column layout */
 @media (max-width: 768px) {
     .easymining-section {
-        margin: 20px 15px; /* Add horizontal margins for breathing room */
+        margin: 20px 20px; /* Add horizontal margins for breathing room */
         min-width: 280px;
     }
 
@@ -1764,7 +1764,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Two balance items per row, buttons still side by side */
 @media (max-width: 600px) {
     .easymining-section {
-        margin: 15px 12px; /* Maintain padding from screen edges */
+        margin: 15px; /* Maintain padding from screen edges */
         padding: 12px;
     }
 
@@ -1815,7 +1815,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Two balance items per row still, but smaller screens may need single column for balances */
 @media (max-width: 450px) {
     .easymining-section {
-        margin: 10px; /* Consistent padding from screen edges */
+        margin: 12px; /* Consistent padding from screen edges */
         padding: 10px;
         min-width: 260px;
     }
@@ -1845,7 +1845,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* NOW we stack everything - single column for balances, buttons wrap to separate lines */
 @media (max-width: 400px) {
     .easymining-section {
-        margin: 10px; /* Maintain padding from edges */
+        margin: 12px; /* Maintain padding from edges */
         padding: 10px;
         min-width: 240px;
     }
@@ -1890,7 +1890,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Ultra Small Mobile (below 320px) */
 @media (max-width: 320px) {
     .easymining-section {
-        margin: 8px; /* Still maintain some spacing */
+        margin: 10px; /* Still maintain some spacing */
         padding: 8px;
     }
 
