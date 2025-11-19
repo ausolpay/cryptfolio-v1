@@ -5305,6 +5305,17 @@ function displayActivePackages() {
     }
 
     packagesToShow.forEach(pkg => {
+        // Debug team package data
+        if (pkg.isTeam) {
+            console.log(`\n🔍 TEAM PACKAGE UI DATA: ${pkg.name}`);
+            console.log(`   isTeam: ${pkg.isTeam}`);
+            console.log(`   ownedShares: ${pkg.ownedShares}`);
+            console.log(`   totalShares: ${pkg.totalShares}`);
+            console.log(`   userSharePercentage: ${pkg.userSharePercentage}`);
+            console.log(`   price: ${pkg.price}`);
+            console.log(`   reward: ${pkg.reward}`);
+        }
+
         const card = document.createElement('div');
         // Add 'block-confirmed' class to packages that found blocks (for orange glow)
         card.className = pkg.blockFound ? 'package-card block-confirmed' : 'package-card';
@@ -5363,7 +5374,7 @@ function displayActivePackages() {
                 <span>Reward${pkg.isTeam ? ' (My Share)' : ''}:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
-            ${pkg.isTeam && pkg.ownedShares && pkg.totalShares ? `
+            ${pkg.isTeam && pkg.ownedShares !== null && pkg.totalShares !== null ? `
             <div class="package-card-stat">
                 <span>My Shares:</span>
                 <span>${pkg.ownedShares.toFixed(0)} / ${pkg.totalShares.toFixed(0)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)</span>
@@ -6022,6 +6033,18 @@ async function addCryptoById(cryptoId) {
 function showPackageDetailPage(pkg) {
     console.log('Showing Package Detail Page for:', pkg.name);
 
+    // Debug team package data
+    if (pkg.isTeam) {
+        console.log(`\n🔍 TEAM PACKAGE DETAIL DATA: ${pkg.name}`);
+        console.log(`   isTeam: ${pkg.isTeam}`);
+        console.log(`   ownedShares: ${pkg.ownedShares}`);
+        console.log(`   totalShares: ${pkg.totalShares}`);
+        console.log(`   userSharePercentage: ${pkg.userSharePercentage}`);
+        console.log(`   price: ${pkg.price}`);
+        console.log(`   reward: ${pkg.reward}`);
+        console.log(`   btcEarnings: ${pkg.btcEarnings}`);
+    }
+
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
@@ -6073,7 +6096,7 @@ function showPackageDetailPage(pkg) {
         </div>
         <div class="stat-item">
             <span class="stat-label">My Shares:</span>
-            <span class="stat-value">${pkg.ownedShares || 'N/A'} / ${pkg.totalShares || 'N/A'} (${(pkg.userSharePercentage * 100).toFixed(2)}%)</span>
+            <span class="stat-value">${pkg.ownedShares !== null ? pkg.ownedShares.toFixed(2) : 'N/A'} / ${pkg.totalShares !== null ? pkg.totalShares.toFixed(2) : 'N/A'} (${(pkg.userSharePercentage * 100).toFixed(2)}%)</span>
         </div>
         ${pkg.sharePrice ? `
         <div class="stat-item">
