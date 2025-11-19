@@ -1296,7 +1296,67 @@ body.light-mode .package-tab.active {
 
     .stat-item {
         padding: 6px; /* Reduce padding on mobile */
+        font-size: 13px;
+    }
+
+    /* Ensure all headings fit */
+    .stats-group h3 {
+        font-size: 16px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        word-wrap: break-word;
+    }
+
+    .active-packages-section h3 {
+        font-size: 16px;
+        word-wrap: break-word;
+    }
+
+    /* Reduce tab padding on mobile */
+    .package-tab {
+        padding: 8px 12px;
         font-size: 14px;
+    }
+
+    .tab-count {
+        font-size: 11px;
+        padding: 2px 6px;
+    }
+
+    /* Ensure stat labels and values fit */
+    .stat-label {
+        font-size: 12px;
+    }
+
+    .stat-value {
+        font-size: 12px;
+        word-wrap: break-word;
+    }
+
+    /* Reduce margins in stats groups */
+    .stats-group {
+        margin-bottom: 15px;
+    }
+
+    /* Package card adjustments */
+    .package-card-name {
+        font-size: 13px;
+    }
+
+    .package-card-stat {
+        font-size: 12px;
+    }
+
+    /* Reduce button padding on mobile */
+    button {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    /* Ensure show more button fits */
+    #show-more-packages {
+        max-width: 100%;
+        width: 100%;
     }
 }
 
