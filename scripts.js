@@ -5358,17 +5358,23 @@ function displayActivePackages() {
 
         card.innerHTML = `
             ${rocketHtml}
-            <div class="package-card-name">${pkg.name}${blockBadge}</div>
+            <div class="package-card-name">${pkg.name}${blockBadge}${pkg.isTeam ? ' 👥' : ''}</div>
             <div class="package-card-stat">
-                <span>Reward:</span>
+                <span>Reward${pkg.isTeam ? ' (My Share)' : ''}:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
+            ${pkg.isTeam && pkg.ownedShares && pkg.totalShares ? `
+            <div class="package-card-stat">
+                <span>My Shares:</span>
+                <span>${pkg.ownedShares.toFixed(0)} / ${pkg.totalShares.toFixed(0)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)</span>
+            </div>
+            ` : ''}
             <div class="package-card-stat">
                 <span>Time:</span>
                 <span>${pkg.timeRemaining}</span>
             </div>
             <div class="package-card-stat">
-                <span>Price:</span>
+                <span>Price${pkg.isTeam ? ' (My Share)' : ''}:</span>
                 <span>$${priceAUD.toFixed(2)} AUD</span>
             </div>
             <div class="package-progress-bar">
