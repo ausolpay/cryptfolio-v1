@@ -5144,8 +5144,18 @@ async function fetchNiceHashOrders() {
                 console.log(`   💎 POTENTIAL REWARD CALCULATION:`);
 
                 // Extract blockReward from API structure
-                const primaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.currencyAlgo?.blockReward || 0;
-                const secondaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.mergeCurrencyAlgo?.blockReward || 0;
+                let primaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.currencyAlgo?.blockReward || 0;
+                let secondaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.mergeCurrencyAlgo?.blockReward || 0;
+
+                // Fallback: Use getBlockReward() if API doesn't provide blockReward (for solo packages)
+                if (primaryBlockReward === 0 && order.soloMiningCoin) {
+                    primaryBlockReward = getBlockReward(order.soloMiningCoin);
+                    console.log(`      → Using fallback blockReward for ${order.soloMiningCoin}: ${primaryBlockReward}`);
+                }
+                if (secondaryBlockReward === 0 && order.soloMiningMergeCoin) {
+                    secondaryBlockReward = getBlockReward(order.soloMiningMergeCoin);
+                    console.log(`      → Using fallback blockReward for ${order.soloMiningMergeCoin}: ${secondaryBlockReward}`);
+                }
 
                 console.log(`      Primary coin (${order.soloMiningCoin}) blockReward: ${primaryBlockReward}`);
                 if (order.soloMiningMergeCoin) {
