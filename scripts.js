@@ -4985,6 +4985,20 @@ async function fetchNiceHashOrders() {
                             if (userMember.shares) {
                                 console.log(`         ✅ Found shares object in active package:`, userMember.shares);
                             }
+
+                            // ✅ FIX: Extract rewards from active team package if blocks found
+                            if (userMember.rewards && userMember.rewards.length > 0) {
+                                const memberRewards = userMember.rewards;
+                                console.log(`         ✅ Found rewards in active team package:`, JSON.stringify(memberRewards, null, 2));
+                                console.log(`         Number of rewards: ${memberRewards.length}`);
+
+                                // Extract primary reward (same as completed packages)
+                                const primaryRewardData = memberRewards.find(r => r.coin === order.soloMiningCoin);
+                                if (primaryRewardData) {
+                                    userMemberReward = parseFloat(primaryRewardData.rewardAmount || 0);
+                                    console.log(`         ✅ Primary reward (${order.soloMiningCoin}): ${userMemberReward}`);
+                                }
+                            }
                         } else {
                             console.log(`         ⚠️ User not found in active package members, using root addedAmount`);
                             addedAmount = parseFloat(order.addedAmount || 0);
@@ -6131,6 +6145,20 @@ async function autoUpdateCryptoHoldings(newBlocks) {
         if (addedRewards[packageKey]) {
             // Only add the difference if package was previously processed
             amountToAdd = rewardAmount - addedRewards[packageKey].amount;
+
+            // ✅ FIX: Prevent negative amounts (API data inconsistency)
+            if (amountToAdd < 0) {
+                console.log(`   ⚠️ WARNING: Reward amount decreased! Preventing negative addition.`);
+                console.log(`   Previous: ${addedRewards[packageKey].amount}, Current: ${rewardAmount}`);
+                console.log(`   This package will be skipped to prevent subtracting from holdings.`);
+                continue; // Skip this package entirely
+            }
+        }
+
+        // ✅ SAFETY: Final check to ensure amountToAdd is valid and positive
+        if (isNaN(amountToAdd) || amountToAdd <= 0) {
+            console.log(`   ⚠️ Invalid or zero amount to add (${amountToAdd}), skipping`);
+            continue;
         }
 
         // Update holdings for this crypto
@@ -6194,9 +6222,17 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                     // Check if secondary reward amount has changed
                     if (addedRewards[secondaryPackageKey].amount === secondaryRewardAmount) {
                         console.log(`   ✓ No new secondary rewards since last check, skipping`);
+                        secondaryAmountToAdd = 0; // ✅ FIX: Set to 0 to prevent re-adding
                     } else {
                         console.log(`   🎉 Secondary reward increased from ${addedRewards[secondaryPackageKey].amount} to ${secondaryRewardAmount}`);
                         secondaryAmountToAdd = secondaryRewardAmount - addedRewards[secondaryPackageKey].amount;
+
+                        // ✅ FIX: Prevent negative amounts (API data inconsistency)
+                        if (secondaryAmountToAdd < 0) {
+                            console.log(`   ⚠️ WARNING: Secondary reward decreased! Preventing negative addition.`);
+                            console.log(`   Previous: ${addedRewards[secondaryPackageKey].amount}, Current: ${secondaryRewardAmount}`);
+                            secondaryAmountToAdd = 0;
+                        }
                     }
                 }
 
@@ -6217,7 +6253,8 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                     }
                 }
 
-                if (secondaryAmountToAdd > 0) {
+                // ✅ SAFETY: Final check to ensure secondaryAmountToAdd is valid and positive
+                if (secondaryAmountToAdd > 0 && !isNaN(secondaryAmountToAdd)) {
                     // Update holdings for secondary crypto
                     const currentSecondaryHoldings = parseFloat(getStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`)) || 0;
                     const newSecondaryHoldings = currentSecondaryHoldings + secondaryAmountToAdd;
