@@ -1591,7 +1591,7 @@ body.light-mode .package-card.block-confirmed {
 /* Package Detail Page Mobile Styles */
 @media (max-width: 768px) {
     #package-detail-page {
-        width: 380px; /* Wider container for better readability */
+        width: 370px; /* Wider container for better readability */
         box-sizing: content-box;
         padding: 20px;
         padding-bottom: 80px; /* Extra space above bottom buttons */
