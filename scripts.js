@@ -7168,12 +7168,17 @@ function initializeEasyMining() {
     // Load saved data
     const savedData = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningData`));
     if (savedData) {
-        easyMiningData = { ...easyMiningData, ...savedData };
+        // ✅ FIX: Don't load availableBTC and pendingBTC from localStorage
+        // These should only come from fresh API data to prevent showing incorrect amounts on page load
+        // Old stored balance values would be added to manual holdings before fresh data loads
+        const { availableBTC, pendingBTC, ...dataToLoad } = savedData;
+        easyMiningData = { ...easyMiningData, ...dataToLoad };
         console.log(`📦 EasyMining data loaded from localStorage:`, {
-            availableBTC: easyMiningData.availableBTC,
-            pendingBTC: easyMiningData.pendingBTC,
+            availableBTC: easyMiningData.availableBTC, // Will be 0 (from initial state)
+            pendingBTC: easyMiningData.pendingBTC, // Will be 0 (from initial state)
             packages: easyMiningData.activePackages?.length || 0
         });
+        console.log(`   ℹ️ Note: availableBTC and pendingBTC NOT loaded from storage (will fetch fresh)`);
     }
 
     // CRITICAL: Update Bitcoin holdings to include NiceHash balance
