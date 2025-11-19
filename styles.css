@@ -1279,15 +1279,15 @@ body.light-mode .package-tab.active {
     }
 
     .active-packages-section {
-        padding: 10px; /* Reduce padding on mobile */
+        padding: 8px; /* Reduce padding on mobile */
     }
 
     .stats-section {
-        padding: 10px; /* Reduce padding on mobile */
+        padding: 8px; /* Reduce padding on mobile */
     }
 
     .recommendations-section {
-        padding: 10px; /* Reduce padding on mobile */
+        padding: 8px; /* Reduce padding on mobile */
     }
 
     .package-card {
@@ -1295,22 +1295,23 @@ body.light-mode .package-tab.active {
     }
 
     .stat-item {
-        padding: 4px 6px; /* Reduce padding on mobile */
-        font-size: 12px;
-        gap: 8px;
+        padding: 3px 5px; /* Reduce padding on mobile */
+        font-size: 11px;
+        gap: 6px;
+        margin: 8px 0; /* Reduce margin */
     }
 
     /* Ensure all headings fit */
     .stats-group h3 {
-        font-size: 15px;
-        margin-bottom: 8px;
-        padding-bottom: 6px;
+        font-size: 14px;
+        margin-bottom: 6px;
+        padding-bottom: 5px;
         word-wrap: break-word;
     }
 
     .active-packages-section h3 {
-        font-size: 15px;
-        margin-bottom: 8px;
+        font-size: 14px;
+        margin-bottom: 6px;
         word-wrap: break-word;
     }
 
@@ -1339,7 +1340,11 @@ body.light-mode .package-tab.active {
 
     /* Reduce margins in stats groups */
     .stats-group {
-        margin-bottom: 12px;
+        margin-bottom: 10px;
+    }
+
+    .stats-group:last-child {
+        margin-bottom: 0;
     }
 
     /* Package card adjustments */
