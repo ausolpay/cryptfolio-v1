@@ -1085,6 +1085,8 @@ body.light-mode .easymining-section {
 
 .easymining-content {
     margin-top: 20px;
+    padding: 0 10px; /* Add horizontal padding to respect parent margins when expanded */
+    box-sizing: border-box;
 }
 
 .easymining-balances {
@@ -1097,6 +1099,7 @@ body.light-mode .easymining-section {
     padding: 15px;
     background-color: rgba(30, 30, 30, 0.5);
     border-radius: 8px;
+    box-sizing: border-box; /* Ensure padding is included in width */
 }
 
 .balance-item {
@@ -1143,6 +1146,7 @@ body.light-mode .balance-label {
     padding: 15px;
     background-color: rgba(30, 30, 30, 0.5);
     border-radius: 8px;
+    box-sizing: border-box; /* Ensure padding is included in width */
 }
 
 .blocks-found-label {
@@ -1178,6 +1182,7 @@ body.light-mode .balance-label {
     background-color: rgba(30, 30, 30, 0.5);
     padding: 20px;
     border-radius: 8px;
+    box-sizing: border-box; /* Ensure padding is included in width */
 }
 
 /* Package Tabs */
@@ -1252,6 +1257,7 @@ body.light-mode .package-tab.active {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 15px;
     margin-bottom: 15px;
+    box-sizing: border-box; /* Ensure width calculations include any padding */
 }
 
 .package-card {
@@ -1334,6 +1340,7 @@ body.light-mode .package-progress-bar {
     background-color: rgba(30, 30, 30, 0.5);
     padding: 20px;
     border-radius: 8px;
+    box-sizing: border-box; /* Ensure padding is included in width */
 }
 
 .stats-group {
@@ -1378,6 +1385,7 @@ body.light-mode .stat-label {
     background-color: rgba(30, 30, 30, 0.5);
     padding: 20px;
     border-radius: 8px;
+    box-sizing: border-box; /* Ensure padding is included in width */
 }
 
 .recommendations-container {
@@ -1820,6 +1828,10 @@ body.light-mode .easymining-settings-form input[type="password"] {
         min-width: 260px;
     }
 
+    .easymining-content {
+        padding: 0 13px; /* 12px margin + 13px padding = 25px total */
+    }
+
     .easymining-balances {
         gap: 8px;
         padding: 10px;
@@ -1892,6 +1904,10 @@ body.light-mode .easymining-settings-form input[type="password"] {
     .easymining-section {
         margin: 10px; /* Still maintain some spacing */
         padding: 8px;
+    }
+
+    .easymining-content {
+        padding: 0 15px; /* 10px margin + 15px padding = 25px total */
     }
 
     .balance-label {
