@@ -4582,6 +4582,27 @@ async function fetchOrderRewards(orderId) {
 }
 
 // Fetch active orders from NiceHash API
+/*
+ * FETCHNICEHASHORDERS - Team Package Data Mapping
+ *
+ * This function correctly handles Team Packages from NiceHash EasyMining API.
+ *
+ * KEY CHANGES:
+ * 1. User identification: Uses easyMiningSettings.orgId (logged-in user) instead of order.organizationId
+ * 2. Share calculation: Uses shares object (small, medium, large) from sharedTicket.members[] array
+ * 3. Dual mining: Handles Team Palladium (DOGE/LTC) by checking rewards[] array for multiple coins
+ * 4. Amount spent: Uses addedAmount from user's entry in sharedTicket.members[] array
+ * 5. Display format: Shows shares as "X/Y" (integers) not decimals
+ *
+ * TEAM PACKAGE DETECTION:
+ * - Check if packageName starts with "team" (case-insensitive)
+ * - Special case: "Team Palladium" mines both DOGE and LTC
+ *
+ * DATA SOURCES:
+ * - Active packages: GET /main/api/v2/hashpower/solo/order?active=true
+ * - Completed packages: GET /main/api/v2/hashpower/solo/order?status=COMPLETED
+ * - Packages with rewards: GET /main/api/v2/hashpower/solo/order?rewardsOnly=true
+ */
 async function fetchNiceHashOrders() {
     console.log(`\n${'#'.repeat(80)}`);
     console.log(`📡📡📡 FETCHNICEHASHORDERS - Using Solo Mining Endpoint 📡📡📡`);
@@ -4781,6 +4802,8 @@ async function fetchNiceHashOrders() {
             totalPackageSecondaryCryptoReward = rewardsByCoin[order.soloMiningMergeCoin] || 0;
 
             // DUAL-MINING DETECTION LOGIC
+            // For Team Palladium and other dual-mining packages, we need to detect which coins were actually won
+            // Team Palladium mines both DOGE and LTC simultaneously (merged mining)
             // Check which coins were actually won by inspecting soloReward array
             const soloRewardCoins = soloRewards.map(r => r.coin);
             const hasPrimaryReward = soloRewardCoins.includes(order.soloMiningCoin);
@@ -4788,6 +4811,7 @@ async function fetchNiceHashOrders() {
             const isDualMining = hasPrimaryReward && hasSecondaryReward;
 
             console.log(`   🔍 DUAL-MINING DETECTION:`);
+            console.log(`      Package: ${packageName}`);
             console.log(`      soloReward array length: ${soloRewards.length}`);
             console.log(`      Coins in soloReward: [${soloRewardCoins.join(', ')}]`);
             console.log(`      Primary coin (${order.soloMiningCoin}): ${hasPrimaryReward ? '✅ WON' : '❌ NOT WON'}`);
@@ -4844,9 +4868,11 @@ async function fetchNiceHashOrders() {
                     // COMPLETED TEAM PACKAGE - Parse sharedTicket.members array
                     console.log(`      🔍 COMPLETED TEAM PACKAGE - Parsing sharedTicket.members array:`);
 
-                    const userOrgId = order.organizationId;
+                    // CRITICAL: Use easyMiningSettings.orgId (the logged-in user's org ID), NOT order.organizationId
+                    const userOrgId = easyMiningSettings.orgId;
                     const members = order.sharedTicket.members || [];
-                    console.log(`         User Org ID: ${userOrgId}`);
+                    console.log(`         User Org ID (from settings): ${userOrgId}`);
+                    console.log(`         Order owner Org ID: ${order.organizationId}`);
                     console.log(`         Total members: ${members.length}`);
 
                     // Find user's member entry
@@ -4859,13 +4885,19 @@ async function fetchNiceHashOrders() {
                         // Extract crypto rewards from the rewards array (not rewardAmount which is BTC)
                         const memberRewards = userMember.rewards || [];
                         console.log(`         User's addedAmount: ${addedAmount.toFixed(8)} BTC`);
-                        console.log(`         User's member rewards:`, JSON.stringify(memberRewards, null, 2));
+                        console.log(`         User's member rewards array:`, JSON.stringify(memberRewards, null, 2));
+                        console.log(`         Number of rewards: ${memberRewards.length}`);
+
+                        // Log each reward coin
+                        memberRewards.forEach((r, idx) => {
+                            console.log(`         Reward #${idx + 1}: ${r.coin} = ${r.rewardAmount} (fee: ${r.rewardFeeAmount})`);
+                        });
 
                         // Find primary coin reward
                         const primaryRewardData = memberRewards.find(r => r.coin === order.soloMiningCoin);
                         if (primaryRewardData) {
                             userMemberReward = parseFloat(primaryRewardData.rewardAmount || 0);
-                            console.log(`         Primary (${order.soloMiningCoin}): ${userMemberReward}`);
+                            console.log(`         ✅ Primary (${order.soloMiningCoin}): ${userMemberReward}`);
                         } else {
                             userMemberReward = 0;
                             console.log(`         ⚠️ No primary reward for ${order.soloMiningCoin}`);
@@ -4937,12 +4969,16 @@ async function fetchNiceHashOrders() {
 
                     // Calculate user's share of secondary crypto rewards (for dual mining)
                     // For completed packages, check if secondary reward exists in member data
+                    // This handles Team Palladium (DOGE/LTC) and other dual-mining packages
                     if (isCompletedTeam && userMember?.rewards && userMember.rewards.length > 1) {
                         // Multiple rewards = dual mining, get secondary reward
+                        console.log(`      🔍 DUAL-MINING DETECTED in member rewards (${userMember.rewards.length} rewards)`);
                         const secondaryRewardData = userMember.rewards.find(r => r.coin !== order.soloMiningCoin);
                         if (secondaryRewardData) {
                             secondaryCryptoReward = parseFloat(secondaryRewardData.rewardAmount || 0);
                             console.log(`      → SECONDARY CRYPTO REWARD (from members array): ${secondaryCryptoReward.toFixed(8)} ${secondaryRewardData.coin}`);
+                        } else {
+                            console.log(`      ⚠️ Multiple rewards but couldn't find secondary coin`);
                         }
                     } else if (totalPackageSecondaryCryptoReward > 0) {
                         const secondaryRewardPerShare = totalPackageSecondaryCryptoReward / totalShares;
@@ -5530,7 +5566,7 @@ function displayActivePackages() {
             ${pkg.isTeam && pkg.ownedShares !== null && pkg.ownedShares !== undefined && pkg.totalShares !== null && pkg.totalShares !== undefined && pkg.ownedShares > 0 && pkg.totalShares > 0 ? `
             <div class="package-card-stat">
                 <span>My Shares:</span>
-                <span>${pkg.ownedShares.toFixed(0)} / ${pkg.totalShares.toFixed(0)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)</span>
+                <span>${Math.round(pkg.ownedShares)} / ${Math.round(pkg.totalShares)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
@@ -6245,25 +6281,33 @@ function showPackageDetailPage(pkg) {
         ${pkg.isTeam ? `
         <div class="stat-item">
             <span class="stat-label">Package Type:</span>
-            <span class="stat-value">Team Package</span>
+            <span class="stat-value">Team Package 👥</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">My Shares:</span>
-            <span class="stat-value">${pkg.ownedShares !== null ? pkg.ownedShares.toFixed(2) : 'N/A'} / ${pkg.totalShares !== null ? pkg.totalShares.toFixed(2) : 'N/A'} (${(pkg.userSharePercentage * 100).toFixed(2)}%)</span>
+            <span class="stat-value">${pkg.ownedShares !== null ? Math.round(pkg.ownedShares) : 'N/A'} / ${pkg.totalShares !== null ? Math.round(pkg.totalShares) : 'N/A'} (${(pkg.userSharePercentage * 100).toFixed(2)}%)</span>
         </div>
         ${pkg.sharePrice ? `
         <div class="stat-item">
             <span class="stat-label">Price Per Share:</span>
             <span class="stat-value">${pkg.sharePrice.toFixed(8)} BTC</span>
         </div>
+        <div class="stat-item">
+            <span class="stat-label">Total Package Price:</span>
+            <span class="stat-value">${pkg.fullOrderData?.packagePrice ? pkg.fullOrderData.packagePrice.toFixed(8) + ' BTC' : 'N/A'}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Total Participants:</span>
+            <span class="stat-value">${pkg.fullOrderData?.sharedTicket?.numberOfParticipants || 'N/A'}</span>
+        </div>
         ` : ''}
         ` : ''}
         <div class="stat-item">
-            <span class="stat-label">Price Spent:</span>
+            <span class="stat-label">${pkg.isTeam ? 'Amount I Spent:' : 'Price Spent:'}</span>
             <span class="stat-value">$${convertBTCtoAUD(pkg.price).toFixed(2)} AUD</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">BTC Cost:</span>
+            <span class="stat-label">${pkg.isTeam ? 'BTC I Spent:' : 'BTC Cost:'}</span>
             <span class="stat-value">${pkg.price.toFixed(8)} BTC</span>
         </div>
         ${pkg.blockFound && pkg.confirmedBlocks > 0 ? `
