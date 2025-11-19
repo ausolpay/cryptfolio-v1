@@ -3806,6 +3806,9 @@ window.clearRockets = clearRockets;
 
 // Track if this is the first data load
 let isFirstEasyMiningLoad = true;
+let loadingProgressInterval = null;
+let currentProgress = 0;
+let targetProgress = 0;
 
 function showEasyMiningLoadingBar() {
     const loadingBar = document.getElementById('easymining-loading-bar');
@@ -3814,6 +3817,8 @@ function showEasyMiningLoadingBar() {
     if (loadingBar && section) {
         loadingBar.style.display = 'block';
         section.style.display = 'none';
+        currentProgress = 0;
+        targetProgress = 0;
         console.log('🔄 Showing EasyMining loading bar');
     }
 }
@@ -3821,6 +3826,12 @@ function showEasyMiningLoadingBar() {
 function hideEasyMiningLoadingBar() {
     const loadingBar = document.getElementById('easymining-loading-bar');
     const section = document.getElementById('easymining-section');
+
+    // Stop progress animation
+    if (loadingProgressInterval) {
+        clearInterval(loadingProgressInterval);
+        loadingProgressInterval = null;
+    }
 
     if (loadingBar && section) {
         loadingBar.style.display = 'none';
@@ -3834,6 +3845,26 @@ function updateEasyMiningLoadingProgress(percentage) {
     const progressBar = document.getElementById('easymining-loading-progress');
     if (progressBar) {
         progressBar.style.width = `${percentage}%`;
+        currentProgress = percentage;
+    }
+}
+
+// Smooth progress animator - gradually fills bar instead of jumping
+function setEasyMiningLoadingTarget(target) {
+    targetProgress = target;
+
+    // Start smooth animation if not already running
+    if (!loadingProgressInterval && isFirstEasyMiningLoad) {
+        loadingProgressInterval = setInterval(() => {
+            if (currentProgress < targetProgress) {
+                // Gradually increase progress (1% every 50ms = smooth fill)
+                currentProgress += 1;
+                if (currentProgress > targetProgress) {
+                    currentProgress = targetProgress;
+                }
+                updateEasyMiningLoadingProgress(currentProgress);
+            }
+        }, 50); // Update every 50ms for smooth animation
     }
 }
 
@@ -3859,7 +3890,7 @@ async function fetchEasyMiningData() {
     // Show loading bar only on first load
     if (isFirstEasyMiningLoad) {
         showEasyMiningLoadingBar();
-        updateEasyMiningLoadingProgress(0);
+        setEasyMiningLoadingTarget(10); // Start with smooth progress to 10%
     }
 
     try {
@@ -3878,8 +3909,9 @@ async function fetchEasyMiningData() {
             }
 
             // Sync time with NiceHash server first
+            if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(30); // Continue to 30%
             await syncNiceHashTime();
-            if (isFirstEasyMiningLoad) updateEasyMiningLoadingProgress(20);
+            if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(40); // Move to 40% after sync
 
             // Try to fetch real data, but use mock data as fallback if CORS fails
             let balances = { available: 0, pending: 0 };
@@ -3887,11 +3919,12 @@ async function fetchEasyMiningData() {
 
             try {
                 // Attempt real API calls
+                if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(60); // Progress to 60%
                 balances = await fetchNiceHashBalances();
-                if (isFirstEasyMiningLoad) updateEasyMiningLoadingProgress(50);
+                if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(75); // Move to 75% after balances
 
                 orders = await fetchNiceHashOrders();
-                if (isFirstEasyMiningLoad) updateEasyMiningLoadingProgress(80);
+                if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(90); // Move to 90% after orders
 
                 // If we got here, API calls succeeded
                 easyMiningData.availableBTC = balances.available.toFixed(8);
@@ -3978,11 +4011,11 @@ async function fetchEasyMiningData() {
 
         // Complete loading and show section (only on first load)
         if (isFirstEasyMiningLoad) {
-            updateEasyMiningLoadingProgress(100);
-            // Small delay to show 100% before hiding
+            setEasyMiningLoadingTarget(100);
+            // Wait for smooth animation to reach 100% before hiding
             setTimeout(() => {
                 hideEasyMiningLoadingBar();
-            }, 300);
+            }, 800); // 800ms allows time to animate from 90% to 100% smoothly
         }
 
     } catch (error) {
