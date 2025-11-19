@@ -4724,8 +4724,10 @@ async function fetchNiceHashOrders() {
             console.log(`      numberOfShares: ${order.numberOfShares}`);
             console.log(`      myShares: ${order.myShares}`);
 
-            // Check if this is a team package
-            const isTeamPackage = order.type?.code === 'TEAM';
+            // Check if this is a team package - detect by name starting with "team" (case-insensitive)
+            const packageName = order.packageName || '';
+            const isTeamPackage = packageName.toLowerCase().startsWith('team');
+            console.log(`   🔍 Team detection: "${packageName}" → isTeam: ${isTeamPackage}`);
 
             // Calculate block rewards from soloReward array
             // For dual mining (e.g., Palladium DOGE/LTC), track rewards by coin type
@@ -5159,20 +5161,24 @@ function generateMockPackages() {
     ];
     
     const teamTypes = [
-        { name: 'Silver Team', crypto: 'BCH', reward: 0.05 },
-        { name: 'Pal Team', crypto: 'DOGE', reward: 50 },
-        { name: 'Gold Team', crypto: 'BTC', reward: 0.0001 }
+        { name: 'Team Silver', crypto: 'BCH', reward: 0.05 },
+        { name: 'Team Pal', crypto: 'DOGE', reward: 50 },
+        { name: 'Team Gold', crypto: 'BTC', reward: 0.0001 }
     ];
     
     const packages = [];
     const numPackages = Math.floor(Math.random() * 10) + 5;
     
     for (let i = 0; i < numPackages; i++) {
-        const isTeam = Math.random() > 0.7;
-        const typeData = isTeam 
+        const shouldBeTeam = Math.random() > 0.7;
+        const typeData = shouldBeTeam
             ? teamTypes[Math.floor(Math.random() * teamTypes.length)]
             : packageTypes[Math.floor(Math.random() * packageTypes.length)];
-        
+
+        // Detect team packages by name (case-insensitive "team" prefix)
+        const isTeam = typeData.name.toLowerCase().startsWith('team');
+        console.log(`   📦 Mock Package: "${typeData.name}" → isTeam: ${isTeam}`);
+
         packages.push({
             id: `pkg_${i}`,
             name: typeData.name,
@@ -5190,7 +5196,11 @@ function generateMockPackages() {
             hashrate: `${(Math.random() * 100).toFixed(2)} TH/s`
         });
     }
-    
+
+    const teamCount = packages.filter(pkg => pkg.isTeam).length;
+    const soloCount = packages.length - teamCount;
+    console.log(`   ✅ Generated ${packages.length} mock packages: ${teamCount} team, ${soloCount} solo`);
+
     return packages;
 }
 
