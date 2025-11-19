@@ -3718,12 +3718,11 @@ function activateEasyMining() {
     // Update BTC holdings display with new settings
     updateBTCHoldingsDisplay();
 
-    // Start polling and show section
+    // Start polling (section will be shown automatically after loading bar completes)
     startEasyMiningPolling();
-    document.getElementById('easymining-section').style.display = 'block';
 
     closeEasyMiningSettingsModal();
-    showModal('✅ EasyMining activated successfully!\n\nThe EasyMining section is now visible above your crypto boxes.');
+    showModal('✅ EasyMining activated successfully!\n\nThe EasyMining section will appear after loading completes.');
 }
 
 // Page-based version of activateEasyMining
@@ -3761,13 +3760,12 @@ function activateEasyMiningFromPage() {
     // Update BTC holdings display with new settings
     updateBTCHoldingsDisplay();
 
-    // Start polling and show section
+    // Start polling (section will be shown automatically after loading bar completes)
     startEasyMiningPolling();
-    document.getElementById('easymining-section').style.display = 'block';
 
     // Go back to app page
     showAppPage();
-    alert('✅ EasyMining activated successfully!\n\nThe EasyMining section is now visible above your crypto boxes.');
+    alert('✅ EasyMining activated successfully!\n\nThe EasyMining section will appear after loading completes.');
 }
 
 function clearAPICredentials() {
@@ -7890,10 +7888,11 @@ function initializeEasyMining() {
     const section = document.getElementById('easymining-section');
     if (section) {
         if (easyMiningSettings.enabled) {
-            // Show section and start polling if EasyMining is enabled
-            section.style.display = 'block';
+            // Hide section initially - it will be shown after loading bar completes
+            section.style.display = 'none';
+            // Start polling if EasyMining is enabled (section will be shown after loading bar completes)
             startEasyMiningPolling();
-            console.log('✅ EasyMining section shown (enabled in settings)');
+            console.log('✅ EasyMining enabled - starting polling (section will appear after loading)');
         } else {
             // Hide section if not enabled
             section.style.display = 'none';
