@@ -4999,8 +4999,9 @@ async function fetchNiceHashOrders() {
                     console.log(`      → BTC reward calculation: ${totalPackageRewardBTC.toFixed(8)} × ${userSharePercentage.toFixed(4)} = ${totalRewardBTC.toFixed(8)} BTC`);
 
                     // Calculate user's share of primary crypto rewards
-                    if (isCompletedTeam && userMemberReward !== null) {
-                        // COMPLETED: Use pre-calculated reward from members array
+                    // ✅ FIXED: Use userMemberReward for both active and completed team packages if available in members array
+                    if (isTeamPackage && userMemberReward !== null) {
+                        // TEAM PACKAGE: Use pre-calculated reward from members array (works for both active and completed)
                         cryptoReward = userMemberReward;
                         console.log(`      → PRIMARY CRYPTO REWARD (from members array): ${cryptoReward.toFixed(8)} ${order.soloMiningCoin}`);
                     } else if (totalPackageCryptoReward > 0) {
@@ -5014,9 +5015,10 @@ async function fetchNiceHashOrders() {
                     }
 
                     // Calculate user's share of secondary crypto rewards (for dual mining)
-                    // For completed packages, check if secondary reward exists in member data
+                    // For team packages (both active and completed), check if secondary reward exists in member data
                     // This handles Team Palladium (DOGE/LTC) and other dual-mining packages
-                    if (isCompletedTeam && userMember?.rewards && userMember.rewards.length > 1) {
+                    // ✅ FIXED: Changed from isCompletedTeam to isTeamPackage to work for active packages too
+                    if (isTeamPackage && userMember?.rewards && userMember.rewards.length > 1) {
                         // Multiple rewards = dual mining, get secondary reward
                         console.log(`      🔍 DUAL-MINING DETECTED in member rewards (${userMember.rewards.length} rewards)`);
                         const secondaryRewardData = userMember.rewards.find(r => r.coin !== order.soloMiningCoin);
