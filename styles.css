@@ -1279,70 +1279,72 @@ body.light-mode .package-tab.active {
     }
 
     .active-packages-section {
-        padding: 6px; /* Reduce padding on mobile */
+        padding: 4px; /* Reduce padding on mobile */
     }
 
     .stats-section {
-        padding: 6px; /* Reduce padding on mobile */
+        padding: 4px; /* Reduce padding on mobile */
     }
 
     .recommendations-section {
-        padding: 6px; /* Reduce padding on mobile */
+        padding: 4px; /* Reduce padding on mobile */
     }
 
     .package-card {
-        padding: 8px; /* Reduce padding on mobile */
+        padding: 6px; /* Reduce padding on mobile */
     }
 
     .stat-item {
-        padding: 2px 4px; /* Reduce padding on mobile */
-        font-size: 10px;
-        gap: 4px;
-        margin: 6px 0; /* Reduce margin */
+        padding: 1px 2px; /* Reduce padding on mobile */
+        font-size: 9px;
+        gap: 2px;
+        margin: 4px 0; /* Reduce margin */
     }
 
     /* Ensure all headings fit */
     .stats-group h3 {
-        font-size: 13px;
-        margin-bottom: 5px;
-        padding-bottom: 4px;
+        font-size: 12px;
+        margin-bottom: 4px;
+        padding-bottom: 3px;
         word-wrap: break-word;
     }
 
     .active-packages-section h3 {
-        font-size: 13px;
-        margin-bottom: 5px;
+        font-size: 12px;
+        margin-bottom: 4px;
         word-wrap: break-word;
     }
 
     /* Reduce tab padding on mobile */
     .package-tab {
-        padding: 6px 10px;
-        font-size: 13px;
-        gap: 6px;
+        padding: 5px 8px;
+        font-size: 12px;
+        gap: 4px;
     }
 
     .tab-count {
-        font-size: 10px;
-        padding: 2px 5px;
+        font-size: 9px;
+        padding: 1px 4px;
     }
 
     /* Ensure stat labels and values fit */
     .stat-label {
-        font-size: 10px;
+        font-size: 9px;
+        flex-shrink: 0;
     }
 
     .stat-value {
-        font-size: 10px;
+        font-size: 9px;
         word-wrap: break-word;
         overflow-wrap: break-word;
-        max-width: 140px; /* Constrain value width */
+        max-width: 120px; /* Constrain value width */
         text-align: right;
+        flex-shrink: 1;
     }
 
     /* Reduce margins in stats groups */
     .stats-group {
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
 
     .stats-group:last-child {
@@ -1351,23 +1353,23 @@ body.light-mode .package-tab.active {
 
     /* Package card adjustments */
     .package-card-name {
-        font-size: 11px;
+        font-size: 10px;
     }
 
     .package-card-stat {
-        font-size: 10px;
+        font-size: 9px;
     }
 
     /* Reduce package card stats label */
     .package-card p {
-        font-size: 10px;
-        margin: 3px 0;
+        font-size: 9px;
+        margin: 2px 0;
     }
 
     /* Reduce button padding on mobile */
     button {
-        padding: 6px 10px;
-        font-size: 13px;
+        padding: 5px 8px;
+        font-size: 12px;
     }
 
     /* Ensure show more button fits */
@@ -1378,13 +1380,14 @@ body.light-mode .package-tab.active {
 
     /* Reduce active packages container gap */
     .active-packages-container {
-        gap: 8px;
+        gap: 6px;
     }
 
     /* Reduce package tabs margin */
     .package-tabs {
-        margin-bottom: 12px;
-        padding-bottom: 8px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        gap: 6px;
     }
 }
 
