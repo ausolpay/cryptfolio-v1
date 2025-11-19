@@ -7191,13 +7191,18 @@ function initializeEasyMining() {
     // Restore rocket display from saved data
     restoreRockets();
 
-    // Always show the section, but control content visibility based on enabled status
+    // ✅ FIX: Only show section if EasyMining is enabled (hide by default until activated)
     const section = document.getElementById('easymining-section');
     if (section) {
-        section.style.display = 'block';
-
         if (easyMiningSettings.enabled) {
+            // Show section and start polling if EasyMining is enabled
+            section.style.display = 'block';
             startEasyMiningPolling();
+            console.log('✅ EasyMining section shown (enabled in settings)');
+        } else {
+            // Hide section if not enabled
+            section.style.display = 'none';
+            console.log('🔒 EasyMining section hidden (not enabled)');
         }
     }
 }
