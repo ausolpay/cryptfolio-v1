@@ -4398,14 +4398,16 @@ function getAlgorithmInfo(algorithmId, pool) {
     const info = algoMap[algoKey] || { name: (typeof algorithmId === 'string' ? algorithmId : algoKey), crypto: 'BTC', cryptoSecondary: null };
 
     // Check pool info for dual mining (Palladium packages mine DOGE+LTC)
+    // IMPORTANT: For Team Palladium, DOGE is primary, LTC is secondary
     if (pool && pool.name) {
         const poolName = pool.name.toLowerCase();
         if (poolName.includes('palladium') && poolName.includes('doge')) {
             info.crypto = 'DOGE';
             info.cryptoSecondary = 'LTC';
         } else if (poolName.includes('palladium') && poolName.includes('ltc')) {
-            info.crypto = 'LTC';
-            info.cryptoSecondary = 'DOGE';
+            // Even for LTC-labeled pools, set DOGE as primary for Team Palladium
+            info.crypto = 'DOGE';
+            info.cryptoSecondary = 'LTC';
         }
     }
 
@@ -5054,7 +5056,7 @@ async function fetchNiceHashOrders() {
                 name: order.packageName || `${order.soloMiningCoin} Package`, // Use packageName from API!
                 crypto: order.soloMiningCoin, // Direct from API (primary coin)
                 cryptoSecondary: order.soloMiningMergeCoin, // For dual mining (secondary coin)
-                miningType: `${order.soloMiningCoin} Mining`,
+                miningType: order.soloMiningMergeCoin ? `${order.soloMiningCoin}+${order.soloMiningMergeCoin}` : `${order.soloMiningCoin} Mining`,
                 reward: cryptoReward, // Primary crypto amount (user's share for team packages)
                 rewardSecondary: secondaryCryptoReward, // Secondary crypto amount for dual mining (user's share for team packages)
                 btcEarnings: totalRewardBTC, // User's BTC earnings (share-adjusted for team packages)
@@ -5515,19 +5517,25 @@ function displayActivePackages() {
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
         // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
-        // For dual mining packages (e.g., Palladium DOGE/LTC), only show secondary reward when actually won
+        // For Team Palladium dual mining, show both DOGE and LTC on separate lines
         let rewardDisplay;
+        let hasSecondaryReward = pkg.rewardSecondary > 0 && pkg.cryptoSecondary;
+
         if (pkg.blockFound && pkg.reward > 0) {
             // Show primary crypto reward when block found
             rewardDisplay = `${pkg.reward.toFixed(rewardDecimals)} ${pkg.crypto}`;
 
-            // Add secondary reward ONLY if actually won (not 0)
-            if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
-                rewardDisplay += ` + ${pkg.rewardSecondary.toFixed(secondaryRewardDecimals)} ${pkg.cryptoSecondary}`;
+            // For Team Palladium, add line break and show secondary on new line
+            if (hasSecondaryReward) {
+                rewardDisplay += `<br>${pkg.rewardSecondary.toFixed(secondaryRewardDecimals)} ${pkg.cryptoSecondary}`;
             }
         } else {
-            // No block found yet - only show primary crypto
-            rewardDisplay = `0 ${pkg.crypto}`;
+            // No block found yet - show both cryptos for Team Palladium
+            if (pkg.cryptoSecondary) {
+                rewardDisplay = `0 ${pkg.crypto}<br>0 ${pkg.cryptoSecondary}`;
+            } else {
+                rewardDisplay = `0 ${pkg.crypto}`;
+            }
         }
 
         // Rocket icon logic:
@@ -5544,23 +5552,17 @@ function displayActivePackages() {
         }
         // Completed packages without blocks: no rocket icon
 
-        // Block count badge - show total blocks with pending count if applicable
+        // Block count badge - show total blocks count
         let blockBadge = '';
         if (pkg.blockFound && pkg.totalBlocks > 0) {
-            if (pkg.pendingBlocks > 0) {
-                // Show total blocks with pending count
-                blockBadge = ` 🚀 x${pkg.totalBlocks} (${pkg.pendingBlocks} pending)`;
-            } else {
-                // All blocks confirmed
-                blockBadge = ` 🚀 x${pkg.totalBlocks}`;
-            }
+            blockBadge = ` 🚀 x${pkg.totalBlocks}`;
         }
 
         card.innerHTML = `
             ${rocketHtml}
-            <div class="package-card-name">${pkg.name}${blockBadge}${pkg.isTeam ? ' 👥' : ''}</div>
+            <div class="package-card-name">${pkg.name}${blockBadge}</div>
             <div class="package-card-stat">
-                <span>Reward${pkg.isTeam ? ' (My Share)' : ''}:</span>
+                <span>Reward:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
             ${pkg.isTeam && pkg.ownedShares !== null && pkg.ownedShares !== undefined && pkg.totalShares !== null && pkg.totalShares !== undefined && pkg.ownedShares > 0 && pkg.totalShares > 0 ? `
@@ -5574,7 +5576,7 @@ function displayActivePackages() {
                 <span>${pkg.timeRemaining}</span>
             </div>
             <div class="package-card-stat">
-                <span>Price${pkg.isTeam ? ' (My Share)' : ''}:</span>
+                <span>Price:</span>
                 <span>$${priceAUD.toFixed(2)} AUD</span>
             </div>
             <div class="package-progress-bar">
@@ -6259,8 +6261,8 @@ function showPackageDetailPage(pkg) {
             <span class="stat-value" style="color: #ffa500;">${pkg.miningType || `${pkg.crypto} Mining`}</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">Cryptocurrency:</span>
-            <span class="stat-value" style="color: #00ff00;">${pkg.crypto}${pkg.cryptoSecondary ? '+' + pkg.cryptoSecondary : ''}</span>
+            <span class="stat-label">Cryptocurrencies:</span>
+            <span class="stat-value" style="color: #00ff00;">${pkg.cryptoSecondary ? `${pkg.crypto}+${pkg.cryptoSecondary}` : pkg.crypto}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Hashrate:</span>
@@ -6281,7 +6283,7 @@ function showPackageDetailPage(pkg) {
         ${pkg.isTeam ? `
         <div class="stat-item">
             <span class="stat-label">Package Type:</span>
-            <span class="stat-value">Team Package 👥</span>
+            <span class="stat-value">Team Package</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">My Shares:</span>
@@ -6303,11 +6305,11 @@ function showPackageDetailPage(pkg) {
         ` : ''}
         ` : ''}
         <div class="stat-item">
-            <span class="stat-label">${pkg.isTeam ? 'Amount I Spent:' : 'Price Spent:'}</span>
+            <span class="stat-label">${pkg.isTeam ? 'Amount Spent:' : 'Price Spent:'}</span>
             <span class="stat-value">$${convertBTCtoAUD(pkg.price).toFixed(2)} AUD</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">${pkg.isTeam ? 'BTC I Spent:' : 'BTC Cost:'}</span>
+            <span class="stat-label">${pkg.isTeam ? 'BTC Spent:' : 'BTC Cost:'}</span>
             <span class="stat-value">${pkg.price.toFixed(8)} BTC</span>
         </div>
         ${pkg.blockFound && pkg.confirmedBlocks > 0 ? `
@@ -6343,12 +6345,12 @@ function showPackageDetailPage(pkg) {
             return hasCryptoReward || pkg.reward > 0 ? `
         <div class="stat-item">
             <span class="stat-label">Primary Reward:</span>
-            <span class="stat-value" style="color: #00ff00;">${displayReward.toFixed(8)} ${pkg.crypto}${pkg.isTeam ? ' (your share)' : ''}</span>
+            <span class="stat-value" style="color: #00ff00;">${displayReward.toFixed(8)} ${pkg.crypto}</span>
         </div>
         ${displaySecondaryReward > 0 && pkg.cryptoSecondary ? `
         <div class="stat-item">
             <span class="stat-label">Secondary Reward:</span>
-            <span class="stat-value" style="color: #00ff00;">${displaySecondaryReward.toFixed(8)} ${pkg.cryptoSecondary}${pkg.isTeam ? ' (your share)' : ''}</span>
+            <span class="stat-value" style="color: #00ff00;">${displaySecondaryReward.toFixed(8)} ${pkg.cryptoSecondary}</span>
         </div>
         ` : ''}
         ${pkg.isTeam && totalCryptoReward > 0 ? `
@@ -6368,7 +6370,7 @@ function showPackageDetailPage(pkg) {
         ${pkg.btcEarnings > 0 ? `
         <div class="stat-item">
             <span class="stat-label">BTC Earnings:</span>
-            <span class="stat-value" style="color: #00ff00;">${pkg.btcEarnings.toFixed(8)} BTC${pkg.isTeam ? ' (your share)' : ''}</span>
+            <span class="stat-value" style="color: #00ff00;">${pkg.btcEarnings.toFixed(8)} BTC</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">BTC in AUD:</span>
