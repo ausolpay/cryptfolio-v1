@@ -1591,15 +1591,17 @@ body.light-mode .package-card.block-confirmed {
 /* Package Detail Page Mobile Styles */
 @media (max-width: 768px) {
     #package-detail-page {
-        width: 300px; /* Match crypto box width */
-        box-sizing: content-box; /* Match crypto box sizing */
-        padding: 20px; /* Match crypto box padding */
+        width: 380px; /* Wider container for better readability */
+        box-sizing: content-box;
+        padding: 20px;
+        padding-bottom: 80px; /* Extra space above bottom buttons */
         margin: 0 auto; /* Center on page */
     }
 
     .package-detail-page-content {
         padding: 0; /* Remove extra padding since parent has 20px */
         max-width: 100%;
+        padding-bottom: 20px; /* Additional gap above buttons */
     }
 
     .package-info-grid {
