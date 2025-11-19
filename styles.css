@@ -105,6 +105,13 @@ h3 {
     margin: 10px 0;
 }
 
+/* Crypto Containers - Limit to 4 boxes per row */
+#crypto-containers {
+    max-width: 1450px; /* Fits 4 boxes (352px each = 1408px) with some breathing room */
+    margin: 0 auto;
+    text-align: center; /* Center boxes when fewer than 4 */
+}
+
 .crypto-container {
     background-color: #1e1e1e;
     border: 1px solid #333;
