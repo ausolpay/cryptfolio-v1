@@ -6215,17 +6215,29 @@ function checkForPackageStatusChanges() {
             // First time seeing this package
             console.log(`  📦 New package detected: ${pkg.name}`);
 
-            // Only play sound if this is NOT the first initialization (page load)
-            // This prevents sound spam when loading into already-active packages
-            if (!isFirstInitialization && currentState.active) {
-                // Package is starting (and we have previous state data, so this is a real new package)
-                console.log(`  🚀 PACKAGE STARTING: ${pkg.name}`);
-                playSound('package-start-sound');
-                if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
-                    navigator.vibrate(200); // Vibrate once for 200ms
+            if (currentState.active) {
+                // Check if package just started by looking at elapsed time
+                const now = Date.now();
+                const startTime = pkg.startTime; // startTs from NiceHash API
+                let elapsedSeconds = 0;
+
+                if (startTime) {
+                    // Calculate elapsed time since package started
+                    elapsedSeconds = Math.floor((now - startTime) / 1000);
+                    console.log(`  ⏱️ Package elapsed time: ${elapsedSeconds} seconds`);
                 }
-            } else if (isFirstInitialization && currentState.active) {
-                console.log(`  ℹ️ Package already active on page load: ${pkg.name} (no sound played)`);
+
+                // Only play sound if package just started (elapsed time < 60 seconds)
+                // This prevents sound on page load for already-running packages
+                if (elapsedSeconds < 60) {
+                    console.log(`  🚀 PACKAGE STARTING: ${pkg.name} (just started, playing sound)`);
+                    playSound('package-start-sound');
+                    if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+                        navigator.vibrate(200); // Vibrate once for 200ms
+                    }
+                } else {
+                    console.log(`  ℹ️ Package already running: ${pkg.name} (${Math.floor(elapsedSeconds / 60)} minutes elapsed, no sound played)`);
+                }
             }
         } else {
             // Check for status changes
