@@ -1591,11 +1591,15 @@ body.light-mode .package-card.block-confirmed {
 /* Package Detail Page Mobile Styles */
 @media (max-width: 768px) {
     #package-detail-page {
-        padding: 0 15px; /* Add outer padding on mobile */
+        width: 300px; /* Match crypto box width */
+        box-sizing: content-box; /* Match crypto box sizing */
+        padding: 20px; /* Match crypto box padding */
+        margin: 0 auto; /* Center on page */
     }
 
     .package-detail-page-content {
-        padding: 0 10px; /* Additional inner padding */
+        padding: 0; /* Remove extra padding since parent has 20px */
+        max-width: 100%;
     }
 
     .package-info-grid {
