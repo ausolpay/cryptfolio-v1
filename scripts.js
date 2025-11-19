@@ -3883,6 +3883,7 @@ function showEasyMiningLoadingBar() {
 function hideEasyMiningLoadingBar() {
     const loadingBar = document.getElementById('easymining-loading-bar');
     const section = document.getElementById('easymining-section');
+    const progressBar = document.getElementById('easymining-loading-progress');
 
     // Stop progress animation
     if (loadingProgressInterval) {
@@ -3894,6 +3895,16 @@ function hideEasyMiningLoadingBar() {
         loadingBar.style.display = 'none';
         section.style.display = 'block';
         isFirstEasyMiningLoad = false; // Mark as no longer first load
+
+        // Reset progress variables to 0
+        currentProgress = 0;
+        targetProgress = 0;
+
+        // Reset progress bar width to 0%
+        if (progressBar) {
+            progressBar.style.width = '0%';
+        }
+
         console.log('✅ Hiding EasyMining loading bar, showing section');
     }
 }
