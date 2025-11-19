@@ -1091,6 +1091,7 @@ body.light-mode .easymining-section {
     box-sizing: border-box;
     max-width: 100%; /* Ensure content doesn't overflow container */
     width: 100%;
+    overflow-x: hidden; /* Prevent horizontal overflow */
 }
 
 .easymining-balances {
@@ -1267,6 +1268,14 @@ body.light-mode .package-tab.active {
     gap: 15px;
     margin-bottom: 15px;
     box-sizing: border-box; /* Ensure width calculations include any padding */
+    max-width: 100%; /* Ensure container doesn't overflow */
+}
+
+/* Single column on mobile */
+@media (max-width: 768px) {
+    .active-packages-container {
+        grid-template-columns: 1fr; /* One package per row on mobile */
+    }
 }
 
 .package-card {
@@ -1277,6 +1286,8 @@ body.light-mode .package-tab.active {
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
+    max-width: 100%; /* Ensure card doesn't overflow container */
+    box-sizing: border-box;
 }
 
 body.light-mode .package-card {
@@ -1371,6 +1382,9 @@ body.light-mode .package-progress-bar {
     padding: 8px;
     background-color: rgba(50, 50, 50, 0.5);
     border-radius: 4px;
+    max-width: 100%; /* Ensure stat items don't overflow */
+    box-sizing: border-box;
+    word-wrap: break-word; /* Break long text if needed */
 }
 
 body.light-mode .stat-item {
@@ -1769,6 +1783,8 @@ body.light-mode .easymining-settings-form input[type="password"] {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
+        box-sizing: content-box; /* Match crypto-container (padding adds to width) */
+        padding: 20px; /* Same as crypto-container */
     }
 
     .easymining-balances {
@@ -1794,7 +1810,8 @@ body.light-mode .easymining-settings-form input[type="password"] {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
-        padding: 12px;
+        box-sizing: content-box; /* Match crypto-container */
+        padding: 20px; /* Match crypto-container */
     }
 
     .easymining-balances {
@@ -1846,7 +1863,8 @@ body.light-mode .easymining-settings-form input[type="password"] {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
-        padding: 10px;
+        box-sizing: content-box; /* Match crypto-container */
+        padding: 20px; /* Match crypto-container */
     }
 
     .easymining-content {
@@ -1880,7 +1898,8 @@ body.light-mode .easymining-settings-form input[type="password"] {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
-        padding: 10px;
+        box-sizing: content-box; /* Match crypto-container */
+        padding: 20px; /* Match crypto-container */
     }
 
     .easymining-balances {
@@ -1925,7 +1944,8 @@ body.light-mode .easymining-settings-form input[type="password"] {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
-        padding: 8px;
+        box-sizing: content-box; /* Match crypto-container */
+        padding: 20px; /* Match crypto-container */
     }
 
     .easymining-content {
