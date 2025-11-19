@@ -6192,6 +6192,9 @@ function checkForPackageStatusChanges() {
     const previousStatesKey = `${loggedInUser}_packageStates`;
     let previousStates = JSON.parse(getStorageItem(previousStatesKey)) || {};
 
+    // Check if this is the first initialization (no previous states exist)
+    const isFirstInitialization = Object.keys(previousStates).length === 0;
+
     const currentPackages = easyMiningData.activePackages || [];
     let newStates = {};
 
@@ -6211,13 +6214,18 @@ function checkForPackageStatusChanges() {
         if (!previousState) {
             // First time seeing this package
             console.log(`  📦 New package detected: ${pkg.name}`);
-            if (currentState.active) {
-                // Package is starting
+
+            // Only play sound if this is NOT the first initialization (page load)
+            // This prevents sound spam when loading into already-active packages
+            if (!isFirstInitialization && currentState.active) {
+                // Package is starting (and we have previous state data, so this is a real new package)
                 console.log(`  🚀 PACKAGE STARTING: ${pkg.name}`);
                 playSound('package-start-sound');
                 if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
                     navigator.vibrate(200); // Vibrate once for 200ms
                 }
+            } else if (isFirstInitialization && currentState.active) {
+                console.log(`  ℹ️ Package already active on page load: ${pkg.name} (no sound played)`);
             }
         } else {
             // Check for status changes
