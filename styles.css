@@ -1053,6 +1053,7 @@ body.light-mode .conversion-input-group input {
     border: 1px solid #333;
     border-radius: 8px;
     padding: 15px;
+    box-sizing: border-box; /* Ensure padding is included in width calculations */
 }
 
 body.light-mode .easymining-section {
@@ -1103,6 +1104,7 @@ body.light-mode .easymining-section {
     flex-direction: column;
     gap: 5px;
     min-width: 120px;
+    flex: 0 1 auto; /* Allow items to shrink but maintain natural size */
 }
 
 .balance-label {
@@ -1127,6 +1129,8 @@ body.light-mode .balance-label {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    flex: 0 1 auto; /* Allow buttons to stay side by side */
+    margin: 0 5px; /* Small gap between buttons */
 }
 
 .buy-packages-btn:hover, .clear-rockets-btn:hover {
@@ -1729,46 +1733,24 @@ body.light-mode .easymining-settings-form input[type="password"] {
    ============================================================================= */
 
 /* Desktop and Large Tablets - Default layout (above 768px) */
-/* Balances and buttons on same line, balanced groups side by side */
+/* All balances and buttons on same line when space allows */
 
-/* Tablet Landscape (768px - 992px) */
-/* Move buttons to next line */
-@media (max-width: 992px) {
-    .easymining-balances {
-        gap: 12px;
-    }
-
-    /* Force buttons to wrap to new line */
-    .buy-packages-btn,
-    .clear-rockets-btn {
-        flex-basis: 100%;
-        margin-top: 10px;
-    }
-}
-
-/* Tablet Portrait (576px - 768px) */
-/* Stack balance groups progressively */
+/* Large Mobile/Tablet (600px - 768px) */
+/* Add horizontal padding, reduce gaps slightly, keep multi-column layout */
 @media (max-width: 768px) {
     .easymining-section {
+        margin: 20px 15px; /* Add horizontal margins for breathing room */
         min-width: 280px;
     }
 
     .easymining-balances {
-        gap: 10px;
+        gap: 10px; /* Reduce gap to allow more items per row */
         padding: 12px;
     }
 
     .balance-item {
         min-width: 100px;
         flex: 1 1 calc(50% - 10px); /* Two items per row on tablet */
-    }
-
-    /* Ensure buttons take full width on their own rows */
-    .buy-packages-btn,
-    .clear-rockets-btn {
-        flex-basis: 100%;
-        width: 100%;
-        margin-top: 8px;
     }
 
     /* Reduce rocket size slightly */
@@ -1778,12 +1760,94 @@ body.light-mode .easymining-settings-form input[type="password"] {
     }
 }
 
-/* Mobile (below 576px) */
-/* Full stacking: each balance item on its own line */
-@media (max-width: 576px) {
+/* Medium Mobile (450px - 600px) */
+/* Two balance items per row, buttons still side by side */
+@media (max-width: 600px) {
     .easymining-section {
-        min-width: 260px;
+        margin: 15px 12px; /* Maintain padding from screen edges */
         padding: 12px;
+    }
+
+    .easymining-balances {
+        gap: 8px; /* Further reduce gap to maximize space */
+        padding: 10px;
+    }
+
+    .balance-item {
+        flex: 1 1 calc(50% - 8px); /* Keep 2 items per row */
+        min-width: 90px;
+    }
+
+    .balance-label {
+        font-size: 13px;
+    }
+
+    .balance-value {
+        font-size: 16px;
+    }
+
+    /* Keep buttons side by side */
+    .buy-packages-btn,
+    .clear-rockets-btn {
+        flex: 1 1 calc(50% - 10px);
+        margin: 5px;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .blocks-found-display {
+        padding: 12px;
+    }
+
+    .blocks-found-label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .blocks-found-rockets {
+        font-size: 18px;
+        gap: 5px;
+        padding: 0 5px;
+    }
+}
+
+/* Small Mobile (below 450px) */
+/* Two balance items per row still, but smaller screens may need single column for balances */
+@media (max-width: 450px) {
+    .easymining-section {
+        margin: 10px; /* Consistent padding from screen edges */
+        padding: 10px;
+        min-width: 260px;
+    }
+
+    .easymining-balances {
+        gap: 8px;
+        padding: 10px;
+    }
+
+    /* Keep trying for 2 columns on balances */
+    .balance-item {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 85px;
+    }
+
+    /* Keep buttons side by side on smaller screens */
+    .buy-packages-btn,
+    .clear-rockets-btn {
+        flex: 1 1 calc(50% - 10px);
+        margin: 5px;
+        padding: 10px;
+        font-size: 13px;
+    }
+}
+
+/* Extra Small Mobile (below 400px) */
+/* NOW we stack everything - single column for balances, buttons wrap to separate lines */
+@media (max-width: 400px) {
+    .easymining-section {
+        margin: 10px; /* Maintain padding from edges */
+        padding: 10px;
+        min-width: 240px;
     }
 
     .easymining-balances {
@@ -1807,38 +1871,27 @@ body.light-mode .easymining-settings-form input[type="password"] {
         font-size: 16px;
     }
 
-    /* Full width buttons */
+    /* Full width buttons on very small screens */
     .buy-packages-btn,
     .clear-rockets-btn {
         flex-basis: 100%;
         width: 100%;
+        margin: 5px 0;
         padding: 12px 16px;
-        margin-top: 8px;
         font-size: 14px;
-    }
-
-    /* Blocks found display adjustments */
-    .blocks-found-display {
-        padding: 12px;
-    }
-
-    .blocks-found-label {
-        font-size: 14px;
-        margin-bottom: 8px;
     }
 
     .blocks-found-rockets {
-        font-size: 18px;
-        gap: 5px;
-        padding: 0 5px;
+        font-size: 16px;
+        gap: 4px;
     }
 }
 
-/* Extra Small Mobile (below 320px) */
+/* Ultra Small Mobile (below 320px) */
 @media (max-width: 320px) {
     .easymining-section {
-        min-width: 240px;
-        padding: 10px;
+        margin: 8px; /* Still maintain some spacing */
+        padding: 8px;
     }
 
     .balance-label {
@@ -1850,7 +1903,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
     }
 
     .blocks-found-rockets {
-        font-size: 16px;
-        gap: 4px;
+        font-size: 14px;
+        gap: 3px;
     }
 }
