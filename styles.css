@@ -2034,6 +2034,13 @@ body.light-mode .easymining-settings-form input[type="password"] {
         padding: 20px; /* Same as crypto-container */
     }
 
+    .easymining-loading-bar {
+        margin: 0 auto 15px auto; /* Center the section */
+        width: 300px;
+        box-sizing: content-box; /* Match crypto-container (padding adds to width) */
+        padding: 20px; /* Same as crypto-container */
+    }
+
     .easymining-content {
         padding: 0; /* Remove padding on mobile to maximize space */
     }
@@ -2059,6 +2066,13 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Two balance items per row, buttons still side by side */
 @media (max-width: 600px) {
     .easymining-section {
+        margin: 0 auto 15px auto; /* Center the section */
+        width: 300px;
+        box-sizing: content-box; /* Match crypto-container */
+        padding: 20px; /* Match crypto-container */
+    }
+
+    .easymining-loading-bar {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
         box-sizing: content-box; /* Match crypto-container */
@@ -2118,6 +2132,13 @@ body.light-mode .easymining-settings-form input[type="password"] {
         padding: 20px; /* Match crypto-container */
     }
 
+    .easymining-loading-bar {
+        margin: 0 auto 15px auto; /* Center the section */
+        width: 300px;
+        box-sizing: content-box; /* Match crypto-container */
+        padding: 20px; /* Match crypto-container */
+    }
+
     .easymining-content {
         padding: 0 5px; /* Match crypto box margins */
     }
@@ -2147,6 +2168,13 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* NOW we stack everything - single column for balances, buttons wrap to separate lines */
 @media (max-width: 400px) {
     .easymining-section {
+        margin: 0 auto 15px auto; /* Center the section */
+        width: 300px;
+        box-sizing: content-box; /* Match crypto-container */
+        padding: 20px; /* Match crypto-container */
+    }
+
+    .easymining-loading-bar {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
         box-sizing: content-box; /* Match crypto-container */
