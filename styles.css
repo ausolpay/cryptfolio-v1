@@ -1279,39 +1279,39 @@ body.light-mode .package-tab.active {
     }
 
     .active-packages-section {
-        padding: 8px; /* Reduce padding on mobile */
+        padding: 6px; /* Reduce padding on mobile */
     }
 
     .stats-section {
-        padding: 8px; /* Reduce padding on mobile */
+        padding: 6px; /* Reduce padding on mobile */
     }
 
     .recommendations-section {
-        padding: 8px; /* Reduce padding on mobile */
+        padding: 6px; /* Reduce padding on mobile */
     }
 
     .package-card {
-        padding: 10px; /* Reduce padding on mobile */
+        padding: 8px; /* Reduce padding on mobile */
     }
 
     .stat-item {
-        padding: 3px 5px; /* Reduce padding on mobile */
-        font-size: 11px;
-        gap: 6px;
-        margin: 8px 0; /* Reduce margin */
+        padding: 2px 4px; /* Reduce padding on mobile */
+        font-size: 10px;
+        gap: 4px;
+        margin: 6px 0; /* Reduce margin */
     }
 
     /* Ensure all headings fit */
     .stats-group h3 {
-        font-size: 14px;
-        margin-bottom: 6px;
-        padding-bottom: 5px;
+        font-size: 13px;
+        margin-bottom: 5px;
+        padding-bottom: 4px;
         word-wrap: break-word;
     }
 
     .active-packages-section h3 {
-        font-size: 14px;
-        margin-bottom: 6px;
+        font-size: 13px;
+        margin-bottom: 5px;
         word-wrap: break-word;
     }
 
@@ -1329,13 +1329,15 @@ body.light-mode .package-tab.active {
 
     /* Ensure stat labels and values fit */
     .stat-label {
-        font-size: 11px;
+        font-size: 10px;
     }
 
     .stat-value {
-        font-size: 11px;
+        font-size: 10px;
         word-wrap: break-word;
         overflow-wrap: break-word;
+        max-width: 140px; /* Constrain value width */
+        text-align: right;
     }
 
     /* Reduce margins in stats groups */
@@ -1349,11 +1351,17 @@ body.light-mode .package-tab.active {
 
     /* Package card adjustments */
     .package-card-name {
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .package-card-stat {
-        font-size: 11px;
+        font-size: 10px;
+    }
+
+    /* Reduce package card stats label */
+    .package-card p {
+        font-size: 10px;
+        margin: 3px 0;
     }
 
     /* Reduce button padding on mobile */
