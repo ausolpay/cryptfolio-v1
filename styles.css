@@ -1046,13 +1046,16 @@ body.light-mode .conversion-input-group input {
 
 /* EasyMining Section Styles */
 .easymining-section {
-    margin: 20px 25px;
-    max-width: 1400px;
-    min-width: 300px; /* Match crypto box width for consistent responsive behavior */
     background-color: #1e1e1e;
     border: 1px solid #333;
     border-radius: 8px;
-    padding: 15px;
+    padding: 20px;
+    margin-bottom: 15px;
+    margin-right: 5px;
+    margin-left: 5px;
+    width: 300px;
+    display: inline-block;
+    position: relative;
     box-sizing: border-box; /* Ensure padding is included in width calculations */
 }
 
@@ -1747,8 +1750,10 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Add horizontal padding, reduce gaps slightly, keep multi-column layout */
 @media (max-width: 768px) {
     .easymining-section {
-        margin: 20px 20px; /* Add horizontal margins for breathing room */
-        min-width: 280px;
+        margin-bottom: 15px;
+        margin-right: 5px;
+        margin-left: 5px;
+        width: 300px;
     }
 
     .easymining-balances {
@@ -1772,7 +1777,10 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Two balance items per row, buttons still side by side */
 @media (max-width: 600px) {
     .easymining-section {
-        margin: 15px; /* Maintain padding from screen edges */
+        margin-bottom: 15px;
+        margin-right: 5px;
+        margin-left: 5px;
+        width: 300px;
         padding: 12px;
     }
 
@@ -1823,13 +1831,15 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Two balance items per row still, but smaller screens may need single column for balances */
 @media (max-width: 450px) {
     .easymining-section {
-        margin: 12px; /* Consistent padding from screen edges */
+        margin-bottom: 15px;
+        margin-right: 5px;
+        margin-left: 5px;
+        width: 300px;
         padding: 10px;
-        min-width: 260px;
     }
 
     .easymining-content {
-        padding: 0 13px; /* 12px margin + 13px padding = 25px total */
+        padding: 0 5px; /* Match crypto box margins */
     }
 
     .easymining-balances {
@@ -1857,9 +1867,11 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* NOW we stack everything - single column for balances, buttons wrap to separate lines */
 @media (max-width: 400px) {
     .easymining-section {
-        margin: 12px; /* Maintain padding from edges */
+        margin-bottom: 15px;
+        margin-right: 5px;
+        margin-left: 5px;
+        width: 300px;
         padding: 10px;
-        min-width: 240px;
     }
 
     .easymining-balances {
@@ -1902,12 +1914,15 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Ultra Small Mobile (below 320px) */
 @media (max-width: 320px) {
     .easymining-section {
-        margin: 10px; /* Still maintain some spacing */
+        margin-bottom: 15px;
+        margin-right: 5px;
+        margin-left: 5px;
+        width: 300px;
         padding: 8px;
     }
 
     .easymining-content {
-        padding: 0 15px; /* 10px margin + 15px padding = 25px total */
+        padding: 0 5px; /* Match crypto box margins */
     }
 
     .balance-label {
