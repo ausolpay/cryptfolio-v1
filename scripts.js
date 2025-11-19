@@ -7380,10 +7380,10 @@ function startEasyMiningPolling() {
     // Initial fetch
     fetchEasyMiningData();
     
-    // Poll every 30 seconds
+    // Poll every 5 seconds (NiceHash rate limit: 300 calls/min, we use ~48 calls/min)
     easyMiningPollingInterval = setInterval(() => {
         fetchEasyMiningData();
-    }, 30000);
+    }, 5000);
     
     console.log('EasyMining polling started');
 }
