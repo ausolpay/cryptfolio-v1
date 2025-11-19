@@ -5505,7 +5505,9 @@ function displayActivePackages() {
             console.log(`   totalShares: ${pkg.totalShares} (type: ${typeof pkg.totalShares})`);
             console.log(`   userSharePercentage: ${pkg.userSharePercentage}`);
             console.log(`   price: ${pkg.price}`);
-            console.log(`   reward: ${pkg.reward}`);
+            console.log(`   reward: ${pkg.reward} ${pkg.crypto}`);
+            console.log(`   rewardSecondary: ${pkg.rewardSecondary} ${pkg.cryptoSecondary}`);
+            console.log(`   blockFound: ${pkg.blockFound}`);
 
             // Check if shares will be displayed
             const willShowShares = pkg.ownedShares !== null && pkg.ownedShares !== undefined &&
@@ -5529,15 +5531,20 @@ function displayActivePackages() {
         // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
         // For Team Palladium dual mining, show both DOGE and LTC on separate lines
         let rewardDisplay;
-        let hasSecondaryReward = pkg.rewardSecondary > 0 && pkg.cryptoSecondary;
 
-        if (pkg.blockFound && pkg.reward > 0) {
+        // Check if there are actual secondary rewards to display
+        // For Team Palladium packages with blocks, we should show both primary and secondary
+        let hasSecondaryReward = pkg.cryptoSecondary && (pkg.rewardSecondary > 0 || pkg.blockFound);
+
+        if (pkg.blockFound) {
             // Show primary crypto reward when block found
-            rewardDisplay = `${pkg.reward.toFixed(rewardDecimals)} ${pkg.crypto}`;
+            const primaryReward = pkg.reward > 0 ? pkg.reward.toFixed(rewardDecimals) : '0';
+            rewardDisplay = `${primaryReward} ${pkg.crypto}`;
 
-            // For Team Palladium, add line break and show secondary on new line
-            if (hasSecondaryReward) {
-                rewardDisplay += `<br>${pkg.rewardSecondary.toFixed(secondaryRewardDecimals)} ${pkg.cryptoSecondary}`;
+            // For dual-mining packages (Team Palladium), always show secondary if it exists
+            if (pkg.cryptoSecondary) {
+                const secondaryReward = pkg.rewardSecondary > 0 ? pkg.rewardSecondary.toFixed(secondaryRewardDecimals) : '0';
+                rewardDisplay += `<br>${secondaryReward} ${pkg.cryptoSecondary}`;
             }
         } else {
             // No block found yet - show both cryptos for Team Palladium
