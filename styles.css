@@ -1059,8 +1059,8 @@ body.light-mode .conversion-input-group input {
     border-radius: 8px;
     padding: 20px;
     margin: 0 auto 15px auto; /* Center the section and maintain bottom margin */
-    width: auto; /* Auto width on desktop - will expand to content */
-    max-width: 1240px; /* Max width equivalent to 4 crypto boxes (4 × 310px) */
+    width: 1390px; /* Match width of 4 crypto boxes */
+    max-width: 1390px; /* Match width of 4 crypto boxes */
     display: block;
     position: relative;
     box-sizing: border-box; /* Ensure padding is included in width calculations */
@@ -1078,8 +1078,8 @@ body.light-mode .easymining-section {
     border-radius: 8px;
     padding: 20px;
     margin: 0 auto 15px auto;
-    width: auto;
-    max-width: 1240px;
+    width: 1390px; /* Match width of 4 crypto boxes */
+    max-width: 1390px; /* Match width of 4 crypto boxes */
     display: block;
     position: relative;
     box-sizing: border-box;
