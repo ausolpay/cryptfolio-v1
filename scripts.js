@@ -3928,6 +3928,12 @@ function setEasyMiningLoadingTarget(target) {
                     currentProgress = targetProgress;
                 }
                 updateEasyMiningLoadingProgress(currentProgress);
+
+                // If we've reached 100%, hide the loading bar immediately
+                if (currentProgress >= 100) {
+                    console.log('📊 Loading reached 100%, hiding loading bar');
+                    hideEasyMiningLoadingBar();
+                }
             }
         }, 50); // Update every 50ms for smooth animation
     }
@@ -4077,13 +4083,10 @@ async function fetchEasyMiningData() {
         // Update BTC holdings if toggles are enabled
         updateBTCHoldings();
 
-        // Complete loading and show section (only on first load)
+        // Complete loading (only on first load)
+        // Loading bar will automatically hide when it reaches 100%
         if (isFirstEasyMiningLoad) {
             setEasyMiningLoadingTarget(100);
-            // Wait for smooth animation to reach 100% before hiding
-            setTimeout(() => {
-                hideEasyMiningLoadingBar();
-            }, 800); // 800ms allows time to animate from 90% to 100% smoothly
         }
 
     } catch (error) {
