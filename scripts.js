@@ -3655,6 +3655,9 @@ function activateEasyMining() {
 
     console.log('EasyMining activated with credentials');
 
+    // Reset first load flag to show loading bar on next data fetch
+    isFirstEasyMiningLoad = true;
+
     // Update BTC holdings display with new settings
     updateBTCHoldingsDisplay();
 
@@ -3695,6 +3698,9 @@ function activateEasyMiningFromPage() {
 
     console.log('EasyMining activated with credentials (from page)');
 
+    // Reset first load flag to show loading bar on next data fetch
+    isFirstEasyMiningLoad = true;
+
     // Update BTC holdings display with new settings
     updateBTCHoldingsDisplay();
 
@@ -3725,11 +3731,14 @@ function clearAPICredentials() {
     
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
-    
+
+    // Reset first load flag so loading bar shows if user re-activates
+    isFirstEasyMiningLoad = true;
+
     // Stop polling and hide section
     stopEasyMiningPolling();
     document.getElementById('easymining-section').style.display = 'none';
-    
+
     console.log('API credentials cleared');
     showModal('API credentials cleared successfully.\n\nEasyMining has been disabled.');
 }
@@ -3791,6 +3800,47 @@ window.clearRockets = clearRockets;
 // EASYMINING DATA FETCHING
 // =============================================================================
 
+// =============================================================================
+// EASYMINING LOADING BAR FUNCTIONS
+// =============================================================================
+
+// Track if this is the first data load
+let isFirstEasyMiningLoad = true;
+
+function showEasyMiningLoadingBar() {
+    const loadingBar = document.getElementById('easymining-loading-bar');
+    const section = document.getElementById('easymining-section');
+
+    if (loadingBar && section) {
+        loadingBar.style.display = 'block';
+        section.style.display = 'none';
+        console.log('🔄 Showing EasyMining loading bar');
+    }
+}
+
+function hideEasyMiningLoadingBar() {
+    const loadingBar = document.getElementById('easymining-loading-bar');
+    const section = document.getElementById('easymining-section');
+
+    if (loadingBar && section) {
+        loadingBar.style.display = 'none';
+        section.style.display = 'block';
+        isFirstEasyMiningLoad = false; // Mark as no longer first load
+        console.log('✅ Hiding EasyMining loading bar, showing section');
+    }
+}
+
+function updateEasyMiningLoadingProgress(percentage) {
+    const progressBar = document.getElementById('easymining-loading-progress');
+    if (progressBar) {
+        progressBar.style.width = `${percentage}%`;
+    }
+}
+
+// =============================================================================
+// EASYMINING DATA FETCHING
+// =============================================================================
+
 async function fetchEasyMiningData() {
     console.log(`\n${'@'.repeat(80)}`);
     console.log(`⚡⚡⚡ FETCHEASYMININGDATA POLLING TRIGGERED ⚡⚡⚡`);
@@ -3804,6 +3854,12 @@ async function fetchEasyMiningData() {
         console.warn('⚠️ EasyMining not enabled or API key not set - STOPPING HERE');
         console.warn('   Please enable EasyMining and add credentials in Settings');
         return;
+    }
+
+    // Show loading bar only on first load
+    if (isFirstEasyMiningLoad) {
+        showEasyMiningLoadingBar();
+        updateEasyMiningLoadingProgress(0);
     }
 
     try {
@@ -3823,6 +3879,7 @@ async function fetchEasyMiningData() {
 
             // Sync time with NiceHash server first
             await syncNiceHashTime();
+            if (isFirstEasyMiningLoad) updateEasyMiningLoadingProgress(20);
 
             // Try to fetch real data, but use mock data as fallback if CORS fails
             let balances = { available: 0, pending: 0 };
@@ -3831,7 +3888,10 @@ async function fetchEasyMiningData() {
             try {
                 // Attempt real API calls
                 balances = await fetchNiceHashBalances();
+                if (isFirstEasyMiningLoad) updateEasyMiningLoadingProgress(50);
+
                 orders = await fetchNiceHashOrders();
+                if (isFirstEasyMiningLoad) updateEasyMiningLoadingProgress(80);
 
                 // If we got here, API calls succeeded
                 easyMiningData.availableBTC = balances.available.toFixed(8);
@@ -3916,8 +3976,23 @@ async function fetchEasyMiningData() {
         // Update BTC holdings if toggles are enabled
         updateBTCHoldings();
 
+        // Complete loading and show section (only on first load)
+        if (isFirstEasyMiningLoad) {
+            updateEasyMiningLoadingProgress(100);
+            // Small delay to show 100% before hiding
+            setTimeout(() => {
+                hideEasyMiningLoadingBar();
+            }, 300);
+        }
+
     } catch (error) {
         console.error('Error fetching EasyMining data:', error);
+
+        // Hide loading bar on error (if first load)
+        if (isFirstEasyMiningLoad) {
+            hideEasyMiningLoadingBar();
+        }
+
         // Don't alert for CORS errors as we're handling them gracefully
         if (!error.message.includes('fetch')) {
             if (error.message.includes('401')) {
