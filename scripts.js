@@ -6216,27 +6216,20 @@ function checkForPackageStatusChanges() {
             console.log(`  📦 New package detected: ${pkg.name}`);
 
             if (currentState.active) {
-                // Check if package just started by looking at elapsed time
-                const now = Date.now();
-                const startTime = pkg.startTime; // startTs from NiceHash API
-                let elapsedSeconds = 0;
+                // Check if package just started by looking at progress percentage
+                const progress = pkg.progress || 0; // Progress percentage (0-100)
+                console.log(`  📊 Package progress: ${progress}%`);
 
-                if (startTime) {
-                    // Calculate elapsed time since package started
-                    elapsedSeconds = Math.floor((now - startTime) / 1000);
-                    console.log(`  ⏱️ Package elapsed time: ${elapsedSeconds} seconds`);
-                }
-
-                // Only play sound if package just started (elapsed time < 60 seconds)
+                // Only play sound if package just started (progress <= 1%)
                 // This prevents sound on page load for already-running packages
-                if (elapsedSeconds < 60) {
-                    console.log(`  🚀 PACKAGE STARTING: ${pkg.name} (just started, playing sound)`);
+                if (progress <= 1) {
+                    console.log(`  🚀 PACKAGE STARTING: ${pkg.name} (progress ${progress}%, playing sound)`);
                     playSound('package-start-sound');
                     if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
                         navigator.vibrate(200); // Vibrate once for 200ms
                     }
                 } else {
-                    console.log(`  ℹ️ Package already running: ${pkg.name} (${Math.floor(elapsedSeconds / 60)} minutes elapsed, no sound played)`);
+                    console.log(`  ℹ️ Package already running: ${pkg.name} (progress ${progress}%, no sound played)`);
                 }
             }
         } else {
