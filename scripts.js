@@ -4595,7 +4595,7 @@ async function fetchNiceHashOrders() {
         console.log('📡 Fetching solo mining data from 2 endpoints...');
 
         // ENDPOINT 1: Packages with rewards (any that found blocks)
-        const endpoint1 = `/main/api/v2/hashpower/solo/order?rewardsOnly=true&limit=1000`;
+        const endpoint1 = `/main/api/v2/hashpower/solo/order?rewardsOnly=true&limit=5000`;
         const headers1 = generateNiceHashAuthHeaders('GET', endpoint1);
 
         console.log('📋 Endpoint 1 (with rewards):', endpoint1);
@@ -4623,7 +4623,7 @@ async function fetchNiceHashOrders() {
         console.log(`✅ Found ${packagesWithRewards.length} packages with rewards`);
 
         // ENDPOINT 2: Active packages (including ones without blocks)
-        const endpoint2 = `/main/api/v2/hashpower/solo/order?limit=100&active=true`;
+        const endpoint2 = `/main/api/v2/hashpower/solo/order?limit=5000&active=true`;
         const headers2 = generateNiceHashAuthHeaders('GET', endpoint2);
 
         console.log('📋 Endpoint 2 (active):', endpoint2);
@@ -4651,7 +4651,7 @@ async function fetchNiceHashOrders() {
         console.log(`✅ Found ${activePackages.length} active packages`);
 
         // ENDPOINT 3: Completed packages (including ones without blocks)
-        const endpoint3 = `/main/api/v2/hashpower/solo/order?limit=1000&status=COMPLETED`;
+        const endpoint3 = `/main/api/v2/hashpower/solo/order?limit=5000&status=COMPLETED`;
         const headers3 = generateNiceHashAuthHeaders('GET', endpoint3);
 
         console.log('📋 Endpoint 3 (completed):', endpoint3);
@@ -4780,6 +4780,19 @@ async function fetchNiceHashOrders() {
             totalPackageCryptoReward = rewardsByCoin[order.soloMiningCoin] || 0;
             totalPackageSecondaryCryptoReward = rewardsByCoin[order.soloMiningMergeCoin] || 0;
 
+            // DUAL-MINING DETECTION LOGIC
+            // Check which coins were actually won by inspecting soloReward array
+            const soloRewardCoins = soloRewards.map(r => r.coin);
+            const hasPrimaryReward = soloRewardCoins.includes(order.soloMiningCoin);
+            const hasSecondaryReward = order.soloMiningMergeCoin && soloRewardCoins.includes(order.soloMiningMergeCoin);
+            const isDualMining = hasPrimaryReward && hasSecondaryReward;
+
+            console.log(`   🔍 DUAL-MINING DETECTION:`);
+            console.log(`      soloReward array length: ${soloRewards.length}`);
+            console.log(`      Coins in soloReward: [${soloRewardCoins.join(', ')}]`);
+            console.log(`      Primary coin (${order.soloMiningCoin}): ${hasPrimaryReward ? '✅ WON' : '❌ NOT WON'}`);
+            console.log(`      Secondary coin (${order.soloMiningMergeCoin}): ${hasSecondaryReward ? '✅ WON' : '❌ NOT WON'}`);
+            console.log(`      isDualMining: ${isDualMining}`);
             console.log(`   💎 Rewards by coin:`, rewardsByCoin);
             console.log(`   💎 Primary (${order.soloMiningCoin}): ${totalPackageCryptoReward}`);
             console.log(`   💎 Secondary (${order.soloMiningMergeCoin}): ${totalPackageSecondaryCryptoReward}`);
@@ -4842,12 +4855,21 @@ async function fetchNiceHashOrders() {
                     if (userMember) {
                         console.log(`         ✅ Found user in members array`);
                         addedAmount = parseFloat(userMember.addedAmount || 0);
-                        userMemberReward = parseFloat(userMember.rewardAmount || 0);
-                        console.log(`         User's addedAmount: ${addedAmount.toFixed(8)} BTC`);
-                        console.log(`         User's rewardAmount: ${userMemberReward} ${userMember.rewards?.[0]?.coin || order.soloMiningCoin}`);
 
-                        // Log all member rewards for debugging
-                        console.log(`         Member reward details:`, JSON.stringify(userMember.rewards, null, 2));
+                        // Extract crypto rewards from the rewards array (not rewardAmount which is BTC)
+                        const memberRewards = userMember.rewards || [];
+                        console.log(`         User's addedAmount: ${addedAmount.toFixed(8)} BTC`);
+                        console.log(`         User's member rewards:`, JSON.stringify(memberRewards, null, 2));
+
+                        // Find primary coin reward
+                        const primaryRewardData = memberRewards.find(r => r.coin === order.soloMiningCoin);
+                        if (primaryRewardData) {
+                            userMemberReward = parseFloat(primaryRewardData.rewardAmount || 0);
+                            console.log(`         Primary (${order.soloMiningCoin}): ${userMemberReward}`);
+                        } else {
+                            userMemberReward = 0;
+                            console.log(`         ⚠️ No primary reward for ${order.soloMiningCoin}`);
+                        }
                     } else {
                         console.log(`         ⚠️ WARNING: User not found in members array!`);
                         addedAmount = parseFloat(order.addedAmount || 0);
@@ -4869,6 +4891,13 @@ async function fetchNiceHashOrders() {
                 const packagePrice = parseFloat(order.packagePrice || 0);
                 totalShares = packagePrice > 0 ? packagePrice / SHARE_COST : 1;
                 console.log(`      Total shares: ${packagePrice.toFixed(8)} / ${SHARE_COST} = ${totalShares.toFixed(2)}`);
+
+                // SHARES CALCULATION DEBUG
+                console.log(`   📊 SHARES CALCULATION DEBUG:`);
+                console.log(`      ownedShares (myShares): ${myShares} (type: ${typeof myShares})`);
+                console.log(`      totalShares: ${totalShares} (type: ${typeof totalShares})`);
+                console.log(`      Are values null? ownedShares=${myShares === null}, totalShares=${totalShares === null}`);
+                console.log(`      Are values > 0? ownedShares=${myShares > 0}, totalShares=${totalShares > 0}`);
 
                 if (totalShares > 0 && myShares > 0) {
                     userSharePercentage = myShares / totalShares;
@@ -5013,6 +5042,12 @@ async function fetchNiceHashOrders() {
             console.log(`      Blocks: ${pkg.totalBlocks}, Primary Reward: ${pkg.reward} ${pkg.crypto}, BTC: ${pkg.btcEarnings.toFixed(8)}`);
             if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
                 console.log(`      Secondary Reward: ${pkg.rewardSecondary} ${pkg.cryptoSecondary}`);
+            }
+            if (pkg.isTeam) {
+                console.log(`   👥 TEAM PACKAGE - Final values stored in pkg object:`);
+                console.log(`      ownedShares: ${pkg.ownedShares}`);
+                console.log(`      totalShares: ${pkg.totalShares}`);
+                console.log(`      userSharePercentage: ${pkg.userSharePercentage}`);
             }
 
             packages.push(pkg);
@@ -5405,11 +5440,20 @@ function displayActivePackages() {
         if (pkg.isTeam) {
             console.log(`\n🔍 TEAM PACKAGE UI DATA: ${pkg.name}`);
             console.log(`   isTeam: ${pkg.isTeam}`);
-            console.log(`   ownedShares: ${pkg.ownedShares}`);
-            console.log(`   totalShares: ${pkg.totalShares}`);
+            console.log(`   ownedShares: ${pkg.ownedShares} (type: ${typeof pkg.ownedShares})`);
+            console.log(`   totalShares: ${pkg.totalShares} (type: ${typeof pkg.totalShares})`);
             console.log(`   userSharePercentage: ${pkg.userSharePercentage}`);
             console.log(`   price: ${pkg.price}`);
             console.log(`   reward: ${pkg.reward}`);
+
+            // Check if shares will be displayed
+            const willShowShares = pkg.ownedShares !== null && pkg.ownedShares !== undefined &&
+                                   pkg.totalShares !== null && pkg.totalShares !== undefined &&
+                                   pkg.ownedShares > 0 && pkg.totalShares > 0;
+            console.log(`   📊 Shares will be displayed: ${willShowShares}`);
+            if (!willShowShares) {
+                console.log(`      ❌ Reason: ownedShares=${pkg.ownedShares}, totalShares=${pkg.totalShares}`);
+            }
         }
 
         const card = document.createElement('div');
@@ -5470,7 +5514,7 @@ function displayActivePackages() {
                 <span>Reward${pkg.isTeam ? ' (My Share)' : ''}:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
-            ${pkg.isTeam && pkg.ownedShares !== null && pkg.totalShares !== null ? `
+            ${pkg.isTeam && pkg.ownedShares !== null && pkg.ownedShares !== undefined && pkg.totalShares !== null && pkg.totalShares !== undefined && pkg.ownedShares > 0 && pkg.totalShares > 0 ? `
             <div class="package-card-stat">
                 <span>My Shares:</span>
                 <span>${pkg.ownedShares.toFixed(0)} / ${pkg.totalShares.toFixed(0)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)</span>
