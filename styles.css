@@ -1048,7 +1048,7 @@ body.light-mode .conversion-input-group input {
 .easymining-section {
     margin: 20px auto;
     max-width: 1400px;
-    min-width: 300px; /* Match crypto box min-width for consistent responsive behavior */
+    min-width: 300px; /* Match crypto box width for consistent responsive behavior */
     background-color: #1e1e1e;
     border: 1px solid #333;
     border-radius: 8px;
@@ -1088,7 +1088,7 @@ body.light-mode .easymining-section {
 
 .easymining-balances {
     display: flex;
-    gap: 20px;
+    gap: 15px;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
@@ -1102,6 +1102,7 @@ body.light-mode .easymining-section {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    min-width: 120px;
 }
 
 .balance-label {
@@ -1143,12 +1144,17 @@ body.light-mode .balance-label {
 .blocks-found-label {
     font-size: 16px;
     font-weight: bold;
-    margin-right: 10px;
+    display: block;
+    margin-bottom: 10px;
 }
 
 .blocks-found-rockets {
     font-size: 24px;
-    letter-spacing: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding: 0 10px;
 }
 
 .easymining-main-content {
@@ -1715,5 +1721,136 @@ body.light-mode .easymining-settings-form input[type="password"] {
 @media (max-width: 1024px) {
     .buy-packages-container-page {
         grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================================================
+   RESPONSIVE MEDIA QUERIES FOR EASYMINING SECTION
+   ============================================================================= */
+
+/* Desktop and Large Tablets - Default layout (above 768px) */
+/* Balances and buttons on same line, balanced groups side by side */
+
+/* Tablet Landscape (768px - 992px) */
+/* Move buttons to next line */
+@media (max-width: 992px) {
+    .easymining-balances {
+        gap: 12px;
+    }
+
+    /* Force buttons to wrap to new line */
+    .buy-packages-btn,
+    .clear-rockets-btn {
+        flex-basis: 100%;
+        margin-top: 10px;
+    }
+}
+
+/* Tablet Portrait (576px - 768px) */
+/* Stack balance groups progressively */
+@media (max-width: 768px) {
+    .easymining-section {
+        min-width: 280px;
+    }
+
+    .easymining-balances {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .balance-item {
+        min-width: 100px;
+        flex: 1 1 calc(50% - 10px); /* Two items per row on tablet */
+    }
+
+    /* Ensure buttons take full width on their own rows */
+    .buy-packages-btn,
+    .clear-rockets-btn {
+        flex-basis: 100%;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    /* Reduce rocket size slightly */
+    .blocks-found-rockets {
+        font-size: 20px;
+        gap: 6px;
+    }
+}
+
+/* Mobile (below 576px) */
+/* Full stacking: each balance item on its own line */
+@media (max-width: 576px) {
+    .easymining-section {
+        min-width: 260px;
+        padding: 12px;
+    }
+
+    .easymining-balances {
+        gap: 8px;
+        padding: 10px;
+    }
+
+    /* Stack all balance items vertically */
+    .balance-item {
+        flex-basis: 100%;
+        width: 100%;
+        min-width: unset;
+        text-align: center;
+    }
+
+    .balance-label {
+        font-size: 13px;
+    }
+
+    .balance-value {
+        font-size: 16px;
+    }
+
+    /* Full width buttons */
+    .buy-packages-btn,
+    .clear-rockets-btn {
+        flex-basis: 100%;
+        width: 100%;
+        padding: 12px 16px;
+        margin-top: 8px;
+        font-size: 14px;
+    }
+
+    /* Blocks found display adjustments */
+    .blocks-found-display {
+        padding: 12px;
+    }
+
+    .blocks-found-label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .blocks-found-rockets {
+        font-size: 18px;
+        gap: 5px;
+        padding: 0 5px;
+    }
+}
+
+/* Extra Small Mobile (below 320px) */
+@media (max-width: 320px) {
+    .easymining-section {
+        min-width: 240px;
+        padding: 10px;
+    }
+
+    .balance-label {
+        font-size: 12px;
+    }
+
+    .balance-value {
+        font-size: 14px;
+    }
+
+    .blocks-found-rockets {
+        font-size: 16px;
+        gap: 4px;
     }
 }

@@ -3770,8 +3770,11 @@ function clearRockets() {
 function restoreRockets() {
     // Restore rocket display from localStorage
     if (easyMiningData.blocksFoundSession > 0) {
-        const rocketsHtml = '🚀'.repeat(Math.min(10, easyMiningData.blocksFoundSession)) +
-                           (easyMiningData.blocksFoundSession > 10 ? '<br>' + '🚀'.repeat(easyMiningData.blocksFoundSession - 10) : '');
+        // Create individual span elements for each rocket to enable proper flex-wrap
+        const rocketsHtml = Array(easyMiningData.blocksFoundSession)
+            .fill('🚀')
+            .map(rocket => `<span>${rocket}</span>`)
+            .join('');
         const rocketsElement = document.getElementById('blocks-found-rockets');
         if (rocketsElement) {
             rocketsElement.innerHTML = rocketsHtml;
@@ -5818,9 +5821,11 @@ function checkForNewBlocks() {
 
         easyMiningData.blocksFoundSession = Math.min(20, easyMiningData.blocksFoundSession + newBlocks);
 
-        // Update display
-        const rocketsHtml = '🚀'.repeat(Math.min(10, easyMiningData.blocksFoundSession)) +
-                           (easyMiningData.blocksFoundSession > 10 ? '<br>' + '🚀'.repeat(easyMiningData.blocksFoundSession - 10) : '');
+        // Update display - create individual span elements for each rocket to enable proper flex-wrap
+        const rocketsHtml = Array(easyMiningData.blocksFoundSession)
+            .fill('🚀')
+            .map(rocket => `<span>${rocket}</span>`)
+            .join('');
         document.getElementById('blocks-found-rockets').innerHTML = rocketsHtml;
 
         // Play sound
