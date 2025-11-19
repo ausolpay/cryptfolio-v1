@@ -1588,6 +1588,64 @@ body.light-mode .package-card.block-confirmed {
     margin: 20px 0;
 }
 
+/* Package Detail Page Mobile Styles */
+@media (max-width: 768px) {
+    #package-detail-page {
+        padding: 0 15px; /* Add outer padding on mobile */
+    }
+
+    .package-detail-page-content {
+        padding: 0 10px; /* Additional inner padding */
+    }
+
+    .package-info-grid {
+        grid-template-columns: 1fr; /* Single column on mobile */
+        gap: 10px;
+        margin: 15px 0;
+    }
+
+    #package-detail-page-name {
+        font-size: 20px; /* Scale down title */
+        margin: 10px 0;
+    }
+
+    #package-detail-page-subtitle {
+        font-size: 14px;
+    }
+
+    .stat-item {
+        padding: 8px 10px; /* More compact padding */
+        font-size: 13px; /* Scale down font */
+    }
+
+    .stat-label {
+        font-size: 13px;
+    }
+
+    .stat-value {
+        font-size: 13px;
+    }
+
+    .block-animation-section {
+        padding: 15px 10px;
+        margin-top: 20px;
+    }
+
+    .block-bars-container {
+        min-height: 150px;
+        padding: 15px 5px;
+        gap: 8px;
+    }
+
+    .block-bar {
+        width: 25px; /* Narrower bars on mobile */
+    }
+
+    .block-bar-percentage {
+        font-size: 10px;
+    }
+}
+
 .block-animation-section {
     margin-top: 30px;
     padding: 20px;
