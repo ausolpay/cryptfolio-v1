@@ -4883,9 +4883,22 @@ async function fetchNiceHashOrders() {
                 priceSpent = addedAmount;
                 console.log(`      addedAmount (my price spent): ${addedAmount.toFixed(8)} BTC`);
 
-                // Calculate my shares: addedAmount / 0.0001
-                myShares = addedAmount > 0 ? addedAmount / SHARE_COST : 0;
-                console.log(`      My shares: ${addedAmount.toFixed(8)} / ${SHARE_COST} = ${myShares.toFixed(2)}`);
+                // Calculate my shares from shares object if available (more accurate than addedAmount calculation)
+                if (isCompletedTeam && userMember?.shares) {
+                    const sharesObj = userMember.shares;
+                    const small = parseInt(sharesObj.small || 0);
+                    const medium = parseInt(sharesObj.medium || 0);
+                    const large = parseInt(sharesObj.large || 0);
+
+                    // Calculate: small = 1 share each, medium = 10 shares each, large = 100 shares each
+                    myShares = small + (medium * 10) + (large * 100);
+                    console.log(`      My shares from API: small=${small}, medium=${medium}, large=${large}`);
+                    console.log(`      Calculated shares: ${small} + (${medium}×10) + (${large}×100) = ${myShares}`);
+                } else {
+                    // Fallback: Calculate my shares from addedAmount / 0.0001
+                    myShares = addedAmount > 0 ? addedAmount / SHARE_COST : 0;
+                    console.log(`      My shares (calculated): ${addedAmount.toFixed(8)} / ${SHARE_COST} = ${myShares.toFixed(2)}`);
+                }
 
                 // Calculate total shares: packagePrice / 0.0001
                 const packagePrice = parseFloat(order.packagePrice || 0);
