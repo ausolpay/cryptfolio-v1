@@ -4301,6 +4301,46 @@ function convertBTCtoAUD(btcAmount) {
     return btcAmount * btcPriceAUD;
 }
 
+// Convert any cryptocurrency amount to AUD
+function convertCryptoToAUD(cryptoAmount, cryptoSymbol) {
+    if (!cryptoAmount || cryptoAmount === 0) return 0;
+
+    // Map common crypto symbols to their CoinGecko IDs
+    const cryptoIdMap = {
+        'BTC': 'bitcoin',
+        'BCH': 'bitcoin-cash',
+        'RVN': 'ravencoin',
+        'DOGE': 'dogecoin',
+        'LTC': 'litecoin',
+        'KAS': 'kaspa',
+        'ETH': 'ethereum',
+        'ETC': 'ethereum-classic'
+    };
+
+    const cryptoId = cryptoIdMap[cryptoSymbol?.toUpperCase()] || cryptoSymbol?.toLowerCase();
+    if (!cryptoId) return 0;
+
+    // Get crypto price from the page (if it's in the user's portfolio)
+    const priceElement = document.getElementById(`${cryptoId}-price-aud`);
+    if (priceElement) {
+        const priceAUD = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+        return cryptoAmount * priceAUD;
+    }
+
+    // Fallback: Use approximate prices if not in portfolio
+    const fallbackPrices = {
+        'bitcoin': 100000,
+        'bitcoin-cash': 500,
+        'ravencoin': 0.03,
+        'dogecoin': 0.15,
+        'litecoin': 100,
+        'kaspa': 0.15
+    };
+
+    const fallbackPrice = fallbackPrices[cryptoId] || 0;
+    return cryptoAmount * fallbackPrice;
+}
+
 
 // Get block reward for a cryptocurrency
 function getBlockReward(crypto) {
@@ -5096,6 +5136,45 @@ async function fetchNiceHashOrders() {
                 isActive = true;
             }
 
+            // Calculate potential rewards for active packages (based on blockReward)
+            let potentialReward = 0; // Primary crypto potential reward
+            let potentialRewardSecondary = 0; // Secondary crypto potential reward (for dual mining)
+
+            if (isActive) {
+                console.log(`   💎 POTENTIAL REWARD CALCULATION:`);
+
+                // Extract blockReward from API structure
+                const primaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.currencyAlgo?.blockReward || 0;
+                const secondaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.mergeCurrencyAlgo?.blockReward || 0;
+
+                console.log(`      Primary coin (${order.soloMiningCoin}) blockReward: ${primaryBlockReward}`);
+                if (order.soloMiningMergeCoin) {
+                    console.log(`      Secondary coin (${order.soloMiningMergeCoin}) blockReward: ${secondaryBlockReward}`);
+                }
+
+                if (isTeamPackage && totalShares > 0 && myShares > 0) {
+                    // TEAM PACKAGE: Divide blockReward by total shares, multiply by my shares
+                    potentialReward = (primaryBlockReward / totalShares) * myShares;
+                    console.log(`      → TEAM: Primary potential = (${primaryBlockReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${potentialReward.toFixed(8)} ${order.soloMiningCoin}`);
+
+                    if (secondaryBlockReward > 0 && order.soloMiningMergeCoin) {
+                        potentialRewardSecondary = (secondaryBlockReward / totalShares) * myShares;
+                        console.log(`      → TEAM: Secondary potential = (${secondaryBlockReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${potentialRewardSecondary.toFixed(8)} ${order.soloMiningMergeCoin}`);
+                    }
+                } else {
+                    // SOLO PACKAGE: Use blockReward directly
+                    potentialReward = primaryBlockReward;
+                    console.log(`      → SOLO: Primary potential = ${potentialReward.toFixed(8)} ${order.soloMiningCoin}`);
+
+                    if (secondaryBlockReward > 0 && order.soloMiningMergeCoin) {
+                        potentialRewardSecondary = secondaryBlockReward;
+                        console.log(`      → SOLO: Secondary potential = ${potentialRewardSecondary.toFixed(8)} ${order.soloMiningMergeCoin}`);
+                    }
+                }
+            } else {
+                console.log(`   💎 POTENTIAL REWARD: N/A (package not active)`);
+            }
+
             // Create package object
             const pkg = {
                 id: order.id,
@@ -5105,6 +5184,8 @@ async function fetchNiceHashOrders() {
                 miningType: order.soloMiningMergeCoin ? `${order.soloMiningCoin}+${order.soloMiningMergeCoin}` : `${order.soloMiningCoin} Mining`,
                 reward: cryptoReward, // Primary crypto amount (user's share for team packages)
                 rewardSecondary: secondaryCryptoReward, // Secondary crypto amount for dual mining (user's share for team packages)
+                potentialReward: potentialReward, // Potential primary crypto reward (for active packages)
+                potentialRewardSecondary: potentialRewardSecondary, // Potential secondary crypto reward (for active packages)
                 btcEarnings: totalRewardBTC, // User's BTC earnings (share-adjusted for team packages)
                 btcPending: 0, // Could calculate from pending blocks if needed
                 confirmedBlocks: confirmedBlockCount,
@@ -5622,6 +5703,12 @@ function displayActivePackages() {
             <div class="package-card-stat">
                 <span>My Shares:</span>
                 <span>${Math.round(pkg.ownedShares)} / ${Math.round(pkg.totalShares)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)</span>
+            </div>
+            ` : ''}
+            ${pkg.active && pkg.potentialReward > 0 ? `
+            <div class="package-card-stat">
+                <span>Potential:</span>
+                <span style="color: #ffa500;">$${convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2)} AUD${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2)} AUD` : ''}</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
@@ -6437,6 +6524,18 @@ function showPackageDetailPage(pkg) {
             <span class="stat-value" style="color: #888;">No blocks found yet</span>
         </div>
         `}
+        ${pkg.active && pkg.potentialReward > 0 ? `
+        <div class="stat-item">
+            <span class="stat-label">Potential Reward:</span>
+            <span class="stat-value" style="color: #ffa500;">$${convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2)} AUD (${pkg.potentialReward.toFixed(8)} ${pkg.crypto})</span>
+        </div>
+        ${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `
+        <div class="stat-item">
+            <span class="stat-label">Potential Secondary:</span>
+            <span class="stat-value" style="color: #ffa500;">$${convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2)} AUD (${pkg.potentialRewardSecondary.toFixed(8)} ${pkg.cryptoSecondary})</span>
+        </div>
+        ` : ''}
+        ` : ''}
         <div class="stat-item">
             <span class="stat-label">Status:</span>
             <span class="stat-value" style="color: ${pkg.active ? '#00ff00' : '#888'};">${pkg.active ? 'Active' : 'Completed'}</span>
