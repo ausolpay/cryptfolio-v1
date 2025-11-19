@@ -3866,6 +3866,7 @@ let isFirstEasyMiningLoad = true;
 let loadingProgressInterval = null;
 let currentProgress = 0;
 let targetProgress = 0;
+let isFetchingEasyMiningData = false; // Prevent overlapping fetches
 
 function showEasyMiningLoadingBar() {
     const loadingBar = document.getElementById('easymining-loading-bar');
@@ -3959,6 +3960,15 @@ async function fetchEasyMiningData() {
         console.warn('   Please enable EasyMining and add credentials in Settings');
         return;
     }
+
+    // Prevent overlapping fetches (5-second polling vs longer API calls)
+    if (isFetchingEasyMiningData) {
+        console.log('⏭️ Skipping fetch - previous fetch still in progress');
+        return;
+    }
+
+    // Mark fetch as in progress
+    isFetchingEasyMiningData = true;
 
     // Show loading bar only on first load
     if (isFirstEasyMiningLoad) {
@@ -4120,6 +4130,10 @@ async function fetchEasyMiningData() {
                 alert(`Error fetching EasyMining data: ${error.message}\n\nPlease check your API credentials and network connection.`);
             }
         }
+    } finally {
+        // Always mark fetch as complete (allows next polling cycle to run)
+        isFetchingEasyMiningData = false;
+        console.log('✅ Fetch cycle complete - ready for next poll');
     }
 }
 
