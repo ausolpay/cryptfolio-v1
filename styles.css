@@ -1050,11 +1050,10 @@ body.light-mode .conversion-input-group input {
     border: 1px solid #333;
     border-radius: 8px;
     padding: 20px;
-    margin-bottom: 15px;
-    margin-right: 5px;
-    margin-left: 5px;
-    width: 300px;
-    display: inline-block;
+    margin: 0 auto 15px auto; /* Center the section and maintain bottom margin */
+    width: auto; /* Auto width on desktop - will expand to content */
+    max-width: 1240px; /* Max width equivalent to 4 crypto boxes (4 × 310px) */
+    display: block;
     position: relative;
     box-sizing: border-box; /* Ensure padding is included in width calculations */
 }
@@ -1090,6 +1089,8 @@ body.light-mode .easymining-section {
     margin-top: 20px;
     padding: 0 10px; /* Add horizontal padding to respect parent margins when expanded */
     box-sizing: border-box;
+    max-width: 100%; /* Ensure content doesn't overflow container */
+    width: 100%;
 }
 
 .easymining-balances {
@@ -1170,14 +1171,17 @@ body.light-mode .balance-label {
 
 .easymining-main-content {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr; /* Two columns on desktop */
     gap: 20px;
     margin: 20px 0;
+    max-width: 100%; /* Ensure content doesn't overflow container */
+    width: 100%;
 }
 
-@media (max-width: 1024px) {
+/* Single column on mobile/tablet */
+@media (max-width: 768px) {
     .easymining-main-content {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* Single column on mobile */
     }
 }
 
@@ -1186,6 +1190,8 @@ body.light-mode .balance-label {
     padding: 20px;
     border-radius: 8px;
     box-sizing: border-box; /* Ensure padding is included in width */
+    max-width: 100%; /* Ensure section doesn't overflow container */
+    width: 100%;
 }
 
 /* Package Tabs */
@@ -1344,6 +1350,8 @@ body.light-mode .package-progress-bar {
     padding: 20px;
     border-radius: 8px;
     box-sizing: border-box; /* Ensure padding is included in width */
+    max-width: 100%; /* Ensure section doesn't overflow container */
+    width: 100%;
 }
 
 .stats-group {
@@ -1389,13 +1397,22 @@ body.light-mode .stat-label {
     padding: 20px;
     border-radius: 8px;
     box-sizing: border-box; /* Ensure padding is included in width */
+    max-width: 100%; /* Ensure section doesn't overflow container */
+    width: 100%;
 }
 
 .recommendations-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Multiple columns on desktop */
     gap: 15px;
     margin-bottom: 20px;
+}
+
+/* Single column on mobile */
+@media (max-width: 768px) {
+    .recommendations-container {
+        grid-template-columns: 1fr; /* Single column on mobile */
+    }
 }
 
 .recommendation-card {
@@ -1750,9 +1767,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Add horizontal padding, reduce gaps slightly, keep multi-column layout */
 @media (max-width: 768px) {
     .easymining-section {
-        margin-bottom: 15px;
-        margin-right: 5px;
-        margin-left: 5px;
+        margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
     }
 
@@ -1777,9 +1792,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Two balance items per row, buttons still side by side */
 @media (max-width: 600px) {
     .easymining-section {
-        margin-bottom: 15px;
-        margin-right: 5px;
-        margin-left: 5px;
+        margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
         padding: 12px;
     }
@@ -1831,9 +1844,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Two balance items per row still, but smaller screens may need single column for balances */
 @media (max-width: 450px) {
     .easymining-section {
-        margin-bottom: 15px;
-        margin-right: 5px;
-        margin-left: 5px;
+        margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
         padding: 10px;
     }
@@ -1867,9 +1878,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* NOW we stack everything - single column for balances, buttons wrap to separate lines */
 @media (max-width: 400px) {
     .easymining-section {
-        margin-bottom: 15px;
-        margin-right: 5px;
-        margin-left: 5px;
+        margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
         padding: 10px;
     }
@@ -1914,9 +1923,7 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Ultra Small Mobile (below 320px) */
 @media (max-width: 320px) {
     .easymining-section {
-        margin-bottom: 15px;
-        margin-right: 5px;
-        margin-left: 5px;
+        margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
         padding: 8px;
     }
