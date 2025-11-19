@@ -3921,6 +3921,14 @@ function setEasyMiningLoadingTarget(target) {
     // Start smooth animation if not already running
     if (!loadingProgressInterval && isFirstEasyMiningLoad) {
         loadingProgressInterval = setInterval(() => {
+            // Check if we've reached 100% first (outside the progress condition)
+            if (currentProgress >= 100) {
+                console.log('📊 Loading reached 100%, hiding loading bar');
+                hideEasyMiningLoadingBar();
+                return; // Exit the interval callback
+            }
+
+            // If we haven't reached the target yet, increment progress
             if (currentProgress < targetProgress) {
                 // Gradually increase progress (1% every 50ms = smooth fill)
                 currentProgress += 1;
@@ -3928,12 +3936,6 @@ function setEasyMiningLoadingTarget(target) {
                     currentProgress = targetProgress;
                 }
                 updateEasyMiningLoadingProgress(currentProgress);
-
-                // If we've reached 100%, hide the loading bar immediately
-                if (currentProgress >= 100) {
-                    console.log('📊 Loading reached 100%, hiding loading bar');
-                    hideEasyMiningLoadingBar();
-                }
             }
         }, 50); // Update every 50ms for smooth animation
     }
