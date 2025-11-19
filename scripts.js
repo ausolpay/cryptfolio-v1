@@ -4818,9 +4818,46 @@ async function fetchNiceHashOrders() {
             if (isTeamPackage) {
                 console.log(`   👥 TEAM PACKAGE - Calculating user's share:`);
                 console.log(`      Share cost: ${SHARE_COST} BTC per share`);
+                console.log(`      Status: ${order.status?.code || 'UNKNOWN'}`);
+                console.log(`      isReward: ${order.isReward}`);
 
-                // Use addedAmount as price spent for team packages
-                const addedAmount = parseFloat(order.addedAmount || 0);
+                // Determine if this is a COMPLETED package with sharedTicket.members data
+                const isCompletedTeam = order.status?.code === 'COMPLETED' && order.sharedTicket?.members;
+                let addedAmount = 0;
+                let userMemberReward = null; // For completed packages, this is the user's crypto reward from API
+                let userMember = null; // Store user's member entry for later reference
+
+                if (isCompletedTeam) {
+                    // COMPLETED TEAM PACKAGE - Parse sharedTicket.members array
+                    console.log(`      🔍 COMPLETED TEAM PACKAGE - Parsing sharedTicket.members array:`);
+
+                    const userOrgId = order.organizationId;
+                    const members = order.sharedTicket.members || [];
+                    console.log(`         User Org ID: ${userOrgId}`);
+                    console.log(`         Total members: ${members.length}`);
+
+                    // Find user's member entry
+                    userMember = members.find(m => m.organizationId === userOrgId);
+
+                    if (userMember) {
+                        console.log(`         ✅ Found user in members array`);
+                        addedAmount = parseFloat(userMember.addedAmount || 0);
+                        userMemberReward = parseFloat(userMember.rewardAmount || 0);
+                        console.log(`         User's addedAmount: ${addedAmount.toFixed(8)} BTC`);
+                        console.log(`         User's rewardAmount: ${userMemberReward} ${userMember.rewards?.[0]?.coin || order.soloMiningCoin}`);
+
+                        // Log all member rewards for debugging
+                        console.log(`         Member reward details:`, JSON.stringify(userMember.rewards, null, 2));
+                    } else {
+                        console.log(`         ⚠️ WARNING: User not found in members array!`);
+                        addedAmount = parseFloat(order.addedAmount || 0);
+                    }
+                } else {
+                    // ACTIVE TEAM PACKAGE - Use addedAmount at root level
+                    console.log(`      📊 ACTIVE TEAM PACKAGE - Using root addedAmount`);
+                    addedAmount = parseFloat(order.addedAmount || 0);
+                }
+
                 priceSpent = addedAmount;
                 console.log(`      addedAmount (my price spent): ${addedAmount.toFixed(8)} BTC`);
 
@@ -4842,10 +4879,12 @@ async function fetchNiceHashOrders() {
                     console.log(`      → BTC reward calculation: ${totalPackageRewardBTC.toFixed(8)} × ${userSharePercentage.toFixed(4)} = ${totalRewardBTC.toFixed(8)} BTC`);
 
                     // Calculate user's share of primary crypto rewards
-                    // For team packages with payoutReward:
-                    // rewardPerShare = payoutReward / totalShares
-                    // myReward = rewardPerShare * myShares
-                    if (totalPackageCryptoReward > 0) {
+                    if (isCompletedTeam && userMemberReward !== null) {
+                        // COMPLETED: Use pre-calculated reward from members array
+                        cryptoReward = userMemberReward;
+                        console.log(`      → PRIMARY CRYPTO REWARD (from members array): ${cryptoReward.toFixed(8)} ${order.soloMiningCoin}`);
+                    } else if (totalPackageCryptoReward > 0) {
+                        // ACTIVE: Calculate from total package reward
                         const rewardPerShare = totalPackageCryptoReward / totalShares;
                         cryptoReward = rewardPerShare * myShares;
                         console.log(`      → Primary crypto reward calculation: (${totalPackageCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${cryptoReward.toFixed(8)} ${order.soloMiningCoin}`);
@@ -4855,7 +4894,15 @@ async function fetchNiceHashOrders() {
                     }
 
                     // Calculate user's share of secondary crypto rewards (for dual mining)
-                    if (totalPackageSecondaryCryptoReward > 0) {
+                    // For completed packages, check if secondary reward exists in member data
+                    if (isCompletedTeam && userMember?.rewards && userMember.rewards.length > 1) {
+                        // Multiple rewards = dual mining, get secondary reward
+                        const secondaryRewardData = userMember.rewards.find(r => r.coin !== order.soloMiningCoin);
+                        if (secondaryRewardData) {
+                            secondaryCryptoReward = parseFloat(secondaryRewardData.rewardAmount || 0);
+                            console.log(`      → SECONDARY CRYPTO REWARD (from members array): ${secondaryCryptoReward.toFixed(8)} ${secondaryRewardData.coin}`);
+                        }
+                    } else if (totalPackageSecondaryCryptoReward > 0) {
                         const secondaryRewardPerShare = totalPackageSecondaryCryptoReward / totalShares;
                         secondaryCryptoReward = secondaryRewardPerShare * myShares;
                         console.log(`      → Secondary crypto reward calculation: (${totalPackageSecondaryCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${secondaryCryptoReward.toFixed(8)} ${order.soloMiningMergeCoin}`);
