@@ -4921,16 +4921,47 @@ async function fetchNiceHashOrders() {
                         addedAmount = parseFloat(order.addedAmount || 0);
                     }
                 } else {
-                    // ACTIVE TEAM PACKAGE - Use addedAmount at root level
-                    console.log(`      📊 ACTIVE TEAM PACKAGE - Using root addedAmount`);
-                    addedAmount = parseFloat(order.addedAmount || 0);
+                    // ACTIVE TEAM PACKAGE - Check if members array exists
+                    console.log(`      📊 ACTIVE TEAM PACKAGE - Checking for members array`);
+
+                    if (order.sharedTicket?.members && Array.isArray(order.sharedTicket.members)) {
+                        console.log(`      🔍 ACTIVE TEAM PACKAGE - Parsing sharedTicket.members array:`);
+                        const members = order.sharedTicket.members;
+                        const userOrgId = easyMiningSettings.orgId; // Use logged-in user's org ID
+
+                        console.log(`         User Org ID (from settings): ${userOrgId}`);
+                        console.log(`         Order owner Org ID: ${order.organizationId}`);
+                        console.log(`         Total members: ${members.length}`);
+
+                        // Find user's member entry
+                        userMember = members.find(m => m.organizationId === userOrgId);
+
+                        if (userMember) {
+                            console.log(`         ✅ Found user in active team package members array`);
+                            addedAmount = parseFloat(userMember.addedAmount || 0);
+                            console.log(`         User's addedAmount: ${addedAmount.toFixed(8)} BTC`);
+
+                            // Log shares if available
+                            if (userMember.shares) {
+                                console.log(`         ✅ Found shares object in active package:`, userMember.shares);
+                            }
+                        } else {
+                            console.log(`         ⚠️ User not found in active package members, using root addedAmount`);
+                            addedAmount = parseFloat(order.addedAmount || 0);
+                        }
+                    } else {
+                        // Fallback if no members array
+                        console.log(`      📊 ACTIVE TEAM PACKAGE - No members array, using root addedAmount`);
+                        addedAmount = parseFloat(order.addedAmount || 0);
+                    }
                 }
 
                 priceSpent = addedAmount;
                 console.log(`      addedAmount (my price spent): ${addedAmount.toFixed(8)} BTC`);
 
                 // Calculate my shares from shares object if available (more accurate than addedAmount calculation)
-                if (isCompletedTeam && userMember?.shares) {
+                // ✅ FIXED: Use isTeamPackage instead of isCompletedTeam to work for both active and completed team packages
+                if (isTeamPackage && userMember?.shares) {
                     const sharesObj = userMember.shares;
                     const small = parseInt(sharesObj.small || 0);
                     const medium = parseInt(sharesObj.medium || 0);
