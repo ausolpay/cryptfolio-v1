@@ -4592,9 +4592,18 @@ async function fetchOrderRewards(orderId) {
  * KEY CHANGES:
  * 1. User identification: Uses easyMiningSettings.orgId (logged-in user) instead of order.organizationId
  * 2. Share calculation: Uses shares object (small, medium, large) from sharedTicket.members[] array
- * 3. Dual mining: Handles Team Palladium (DOGE/LTC) by checking rewards[] array for multiple coins
- * 4. Amount spent: Uses addedAmount from user's entry in sharedTicket.members[] array
- * 5. Display format: Shows shares as "X/Y" (integers) not decimals
+ * 3. Total shares calculation: Uses sharedTicket.addedAmount (total package cost) / 0.0001
+ * 4. User's shares calculation: Uses shares object from sharedTicket.members[].shares
+ * 5. Dual mining: Handles Team Palladium (DOGE/LTC) by checking rewards[] array for multiple coins
+ * 6. Amount spent: Uses addedAmount from user's entry in sharedTicket.members[] array
+ * 7. Display format: Shows shares as "X/Y" (integers) not decimals
+ *
+ * TEAM PACKAGE SHARES CALCULATION:
+ * - Total Package Cost: sharedTicket.addedAmount (e.g., 0.0014 BTC)
+ * - Total Shares: sharedTicket.addedAmount / 0.0001 (e.g., 14 shares)
+ * - User's Contribution: members[].addedAmount (e.g., 0.0002 BTC)
+ * - User's Shares: members[].shares (small + medium*10 + large*100)
+ * - Share Percentage: userShares / totalShares * 100
  *
  * TEAM PACKAGE DETECTION:
  * - Check if packageName starts with "team" (case-insensitive)
@@ -4934,10 +4943,11 @@ async function fetchNiceHashOrders() {
                     console.log(`      My shares (calculated): ${addedAmount.toFixed(8)} / ${SHARE_COST} = ${myShares.toFixed(2)}`);
                 }
 
-                // Calculate total shares: packagePrice / 0.0001
-                const packagePrice = parseFloat(order.packagePrice || 0);
-                totalShares = packagePrice > 0 ? packagePrice / SHARE_COST : 1;
-                console.log(`      Total shares: ${packagePrice.toFixed(8)} / ${SHARE_COST} = ${totalShares.toFixed(2)}`);
+                // Calculate total shares: sharedTicket.addedAmount / 0.0001
+                // Note: This is the TOTAL package cost, not the user's individual contribution
+                const totalPackageCost = parseFloat(order.sharedTicket?.addedAmount || order.packagePrice || 0);
+                totalShares = totalPackageCost > 0 ? totalPackageCost / SHARE_COST : 1;
+                console.log(`      Total shares: ${totalPackageCost.toFixed(8)} / ${SHARE_COST} = ${totalShares.toFixed(2)}`);
 
                 // SHARES CALCULATION DEBUG
                 console.log(`   📊 SHARES CALCULATION DEBUG:`);
@@ -6296,7 +6306,7 @@ function showPackageDetailPage(pkg) {
         </div>
         <div class="stat-item">
             <span class="stat-label">Total Package Price:</span>
-            <span class="stat-value">${pkg.fullOrderData?.packagePrice ? pkg.fullOrderData.packagePrice.toFixed(8) + ' BTC' : 'N/A'}</span>
+            <span class="stat-value">${pkg.fullOrderData?.sharedTicket?.addedAmount ? pkg.fullOrderData.sharedTicket.addedAmount.toFixed(8) + ' BTC' : (pkg.fullOrderData?.packagePrice ? pkg.fullOrderData.packagePrice.toFixed(8) + ' BTC' : 'N/A')}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Total Participants:</span>
