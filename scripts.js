@@ -6915,46 +6915,151 @@ window.closeBuyPackagesModal = closeBuyPackagesModal;
 window.showBuyTab = showBuyTab;
 window.buyPackage = buyPackage;
 
-function loadBuyPackagesData() {
-    // Package data matching NiceHash EasyMining structure
-    // Prices are in AUD and approximate based on typical hashrate costs
-    const singlePackages = [
-        { name: 'Gold S', crypto: 'BTC', probability: '1:150', price: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
-        { name: 'Gold M', crypto: 'BTC', probability: '1:75', price: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
-        { name: 'Gold L', crypto: 'BTC', probability: '1:35', price: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s' },
-        { name: 'Silver S', crypto: 'BCH', probability: '1:180', price: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
-        { name: 'Silver M', crypto: 'BCH', probability: '1:90', price: '25.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
-        { name: 'Chromium S', crypto: 'RVN', probability: '1:200', price: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '50 MH/s' },
-        { name: 'Chromium M', crypto: 'RVN', probability: '1:100', price: '20.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s' },
-        { name: 'Pal DOGE S', crypto: 'DOGE', probability: '1:220', price: '8.00', duration: '24h', algorithm: 'Scrypt', hashrate: '100 MH/s' },
-        { name: 'Pal LTC S', crypto: 'LTC', probability: '1:200', price: '10.00', duration: '24h', algorithm: 'Scrypt', hashrate: '100 MH/s' },
-        { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:170', price: '12.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '500 GH/s' }
-    ];
-    
-    const teamPackages = [
-        { name: 'Silver Team', crypto: 'BCH', probability: '1:160', price: '25.00', duration: '24h', algorithm: 'SHA256', minShares: 20 },
-        { name: 'Pal Team', crypto: 'DOGE', probability: '1:220', price: '20.00', duration: '24h', algorithm: 'Scrypt', minShares: 20 },
-        { name: 'Gold Team', crypto: 'BTC', probability: '1:100', price: '50.00', duration: '24h', algorithm: 'SHA256', minShares: 100 }
-    ];
-    
+async function loadBuyPackagesData() {
+    console.log('\n🛒 Loading available packages from NiceHash API...\n');
+
     const singleContainer = document.getElementById('buy-single-packages');
     const teamContainer = document.getElementById('buy-team-packages');
-    
-    singleContainer.innerHTML = '';
-    teamContainer.innerHTML = '';
-    
-    // Check which packages should be recommended
-    const recommendedPackages = getRecommendedPackageNames();
-    
-    singlePackages.forEach(pkg => {
-        const card = createBuyPackageCard(pkg, recommendedPackages.includes(pkg.name));
-        singleContainer.appendChild(card);
-    });
-    
-    teamPackages.forEach(pkg => {
-        const card = createBuyPackageCard(pkg, recommendedPackages.includes(pkg.name));
-        teamContainer.appendChild(card);
-    });
+
+    // Show loading state
+    singleContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ffa500;">Loading packages...</div>';
+    teamContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ffa500;">Loading packages...</div>';
+
+    try {
+        // Fetch both solo and team packages in parallel
+        const [soloPackages, teamPackages] = await Promise.all([
+            fetchAvailableSoloPackages(),
+            fetchAvailableTeamPackages()
+        ]);
+
+        console.log('📦 Solo packages loaded:', soloPackages.length);
+        console.log('👥 Team packages loaded:', teamPackages.length);
+
+        // Clear containers
+        singleContainer.innerHTML = '';
+        teamContainer.innerHTML = '';
+
+        // Display solo packages
+        if (soloPackages.length > 0) {
+            soloPackages.forEach(pkg => {
+                const card = createSoloPackageCard(pkg);
+                singleContainer.appendChild(card);
+            });
+        } else {
+            singleContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No solo packages available</div>';
+        }
+
+        // Display team packages
+        if (teamPackages.length > 0) {
+            teamPackages.forEach(pkg => {
+                const card = createTeamPackageCard(pkg);
+                teamContainer.appendChild(card);
+            });
+        } else {
+            teamContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No team packages available</div>';
+        }
+
+    } catch (error) {
+        console.error('❌ Error loading packages:', error);
+        singleContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff4444;">Error loading packages. Please check your API credentials.</div>';
+        teamContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff4444;">Error loading packages. Please check your API credentials.</div>';
+    }
+}
+
+// Fetch available solo packages from NiceHash API
+async function fetchAvailableSoloPackages() {
+    try {
+        const endpoint = '/main/api/v2/public/solo/package';
+
+        console.log('📡 Fetching solo packages from:', endpoint);
+
+        // Public endpoint - no auth headers needed
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: {},
+                    isPublic: true
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Solo packages response:', data);
+
+        // Return the packages array (adjust based on actual API response structure)
+        return data.packages || data.list || data || [];
+
+    } catch (error) {
+        console.error('❌ Error fetching solo packages:', error);
+        return [];
+    }
+}
+
+// Fetch available team packages from NiceHash API
+async function fetchAvailableTeamPackages() {
+    try {
+        const endpoint = '/main/api/v2/public/solo/shared/order';
+
+        console.log('📡 Fetching team packages from:', endpoint);
+
+        // Public endpoint - no auth headers needed
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: {},
+                    isPublic: true
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Team packages response:', data);
+
+        // Return the packages array (adjust based on actual API response structure)
+        return data.packages || data.list || data || [];
+
+    } catch (error) {
+        console.error('❌ Error fetching team packages:', error);
+        return [];
+    }
 }
 
 function getRecommendedPackageNames() {
@@ -6975,58 +7080,373 @@ function getRecommendedPackageNames() {
     return recommended;
 }
 
-function createBuyPackageCard(pkg, isRecommended) {
+// Create UI card for solo package
+function createSoloPackageCard(pkg) {
     const card = document.createElement('div');
-    card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '');
-    
-    const hashrateInfo = pkg.hashrate ? `
-        <div class="buy-package-stat">
-            <span>Hashrate:</span>
-            <span>${pkg.hashrate}</span>
-        </div>
-    ` : '';
-    
-    const minSharesInfo = pkg.minShares ? `
-        <div class="buy-package-stat">
-            <span>Min Shares:</span>
-            <span>${pkg.minShares}</span>
-        </div>
-    ` : '';
-    
-    const probabilityInfo = pkg.probability ? `
-        <div class="buy-package-stat">
-            <span>Probability:</span>
-            <span>${pkg.probability}</span>
-        </div>
-    ` : '';
+    card.className = 'buy-package-card';
+
+    // Extract package details from API response
+    const packageName = pkg.name || pkg.packageName || 'Unknown Package';
+    const crypto = pkg.coin || pkg.crypto || pkg.soloMiningCoin || 'Unknown';
+    const ticketId = pkg.ticketId || pkg.id;
+    const packagePrice = pkg.packagePrice || pkg.price || 0;
+    const totalBlocks = pkg.totalBlocks || 0;
+    const probability = pkg.winProbability || pkg.probability || 'N/A';
+    const potentialReward = pkg.blockReward || pkg.reward || 'N/A';
+
+    // Calculate price in AUD (assuming BTC price)
+    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const priceAUD = (packagePrice * btcPrice).toFixed(2);
 
     card.innerHTML = `
-        <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
-        ${pkg.crypto ? `<p style="color: #ffa500; font-weight: bold;">${pkg.crypto}</p>` : ''}
+        <h4>${packageName}</h4>
+        <p style="color: #ffa500; font-weight: bold; font-size: 18px;">${crypto}</p>
         <div class="buy-package-stats">
-            ${probabilityInfo}
             <div class="buy-package-stat">
-                <span>Algorithm:</span>
-                <span>${pkg.algorithm || 'SHA256'}</span>
-            </div>
-            ${hashrateInfo}
-            ${minSharesInfo}
-            <div class="buy-package-stat">
-                <span>Price:</span>
-                <span>$${pkg.price} AUD</span>
+                <span>Probability:</span>
+                <span>${probability}</span>
             </div>
             <div class="buy-package-stat">
-                <span>Duration:</span>
-                <span>${pkg.duration || 'Varies'}</span>
+                <span>Cost (BTC):</span>
+                <span>${packagePrice.toFixed(8)} BTC</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Cost (AUD):</span>
+                <span>$${priceAUD} AUD</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Potential Reward:</span>
+                <span>${potentialReward} ${crypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Total Blocks:</span>
+                <span>${totalBlocks}</span>
             </div>
         </div>
-        <button class="buy-package-button" onclick='buyPackage(${JSON.stringify(pkg)})'>
-            Buy Now
+        <button class="buy-package-button" onclick="buySoloPackage('${ticketId}', '${crypto}', ${packagePrice})">
+            Buy Package
         </button>
     `;
-    
+
     return card;
 }
+
+// Create UI card for team package with share selector
+function createTeamPackageCard(pkg) {
+    const card = document.createElement('div');
+    card.className = 'buy-package-card team-package-card';
+
+    // Extract package details from API response
+    const packageName = pkg.name || pkg.packageName || 'Unknown Package';
+    const crypto = pkg.coin || pkg.crypto || pkg.soloMiningCoin || 'Unknown';
+    const packageId = pkg.id;
+    const packagePrice = pkg.packagePrice || pkg.price || 0;
+    const totalShares = pkg.totalShares || 0;
+    const availableShares = pkg.availableShares || pkg.shares?.available || 0;
+    const sharePrice = totalShares > 0 ? packagePrice / totalShares : 0.0001;
+    const probability = pkg.winProbability || pkg.probability || 'N/A';
+    const potentialReward = pkg.blockReward || pkg.reward || 'N/A';
+    const participants = pkg.numberOfParticipants || pkg.participants || 0;
+
+    // Calculate price in AUD (assuming BTC price)
+    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const pricePerShareAUD = (sharePrice * btcPrice).toFixed(2);
+
+    // Generate unique ID for this card's share input
+    const cardId = `team-${packageId}`;
+
+    card.innerHTML = `
+        <h4>👥 ${packageName}</h4>
+        <p style="color: #ffa500; font-weight: bold; font-size: 18px;">${crypto}</p>
+        <div class="buy-package-stats">
+            <div class="buy-package-stat">
+                <span>Probability:</span>
+                <span>${probability}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Share Price (BTC):</span>
+                <span>${sharePrice.toFixed(8)} BTC</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Share Price (AUD):</span>
+                <span>$${pricePerShareAUD} AUD</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Potential Reward:</span>
+                <span>${potentialReward} ${crypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Total Shares:</span>
+                <span>${totalShares}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Available Shares:</span>
+                <span style="color: #4CAF50;">${availableShares}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Participants:</span>
+                <span>${participants}</span>
+            </div>
+        </div>
+        <div class="share-selector">
+            <button class="share-button" onclick="adjustShares('${cardId}', -1)">-</button>
+            <input
+                type="number"
+                id="${cardId}-shares"
+                class="share-input"
+                value="0"
+                min="0"
+                max="${availableShares}"
+                onchange="validateShares('${cardId}', ${availableShares})"
+            />
+            <button class="share-button" onclick="adjustShares('${cardId}', 1)">+</button>
+        </div>
+        <div class="total-cost" id="${cardId}-cost" style="margin: 10px 0; color: #ffa500; font-weight: bold;">
+            Total: 0 BTC ($0.00 AUD)
+        </div>
+        <button class="buy-package-button" onclick="buyTeamPackage('${packageId}', '${crypto}', ${sharePrice}, '${cardId}', ${availableShares})">
+            Buy Shares
+        </button>
+    `;
+
+    return card;
+}
+
+// Helper function to adjust share count (+ and - buttons)
+function adjustShares(cardId, delta) {
+    const input = document.getElementById(`${cardId}-shares`);
+    const currentValue = parseInt(input.value) || 0;
+    const max = parseInt(input.max) || 999999;
+    const newValue = Math.max(0, Math.min(max, currentValue + delta));
+
+    input.value = newValue;
+    updateShareCost(cardId);
+}
+
+// Helper function to validate share input
+function validateShares(cardId, maxShares) {
+    const input = document.getElementById(`${cardId}-shares`);
+    let value = parseInt(input.value) || 0;
+
+    if (value < 0) value = 0;
+    if (value > maxShares) value = maxShares;
+
+    input.value = value;
+    updateShareCost(cardId);
+}
+
+// Update the total cost display when shares change
+function updateShareCost(cardId) {
+    const input = document.getElementById(`${cardId}-shares`);
+    const costDisplay = document.getElementById(`${cardId}-cost`);
+    const shares = parseInt(input.value) || 0;
+
+    // Extract share price from the card (stored in the buy button's onclick)
+    const card = input.closest('.buy-package-card');
+    const buyButton = card.querySelector('.buy-package-button');
+    const onclickAttr = buyButton.getAttribute('onclick');
+    const sharePriceMatch = onclickAttr.match(/buyTeamPackage\('[^']+',\s*'[^']+',\s*([\d.]+)/);
+
+    if (sharePriceMatch && shares > 0) {
+        const sharePrice = parseFloat(sharePriceMatch[1]);
+        const totalBTC = (sharePrice * shares).toFixed(8);
+        const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+        const totalAUD = (sharePrice * shares * btcPrice).toFixed(2);
+
+        costDisplay.textContent = `Total: ${totalBTC} BTC ($${totalAUD} AUD)`;
+        costDisplay.style.color = '#4CAF50';
+    } else {
+        costDisplay.textContent = 'Total: 0 BTC ($0.00 AUD)';
+        costDisplay.style.color = '#ffa500';
+    }
+}
+
+// Make helper functions globally accessible
+window.adjustShares = adjustShares;
+window.validateShares = validateShares;
+window.updateShareCost = updateShareCost;
+
+// Buy solo package using POST /main/api/v2/hashpower/solo/order
+async function buySoloPackage(ticketId, crypto, packagePrice) {
+    if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+        showModal('Please configure EasyMining API settings first!');
+        closeBuyPackagesModal();
+        showEasyMiningSettingsModal();
+        return;
+    }
+
+    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const priceAUD = (packagePrice * btcPrice).toFixed(2);
+
+    if (!confirm(`Purchase Solo Package for ${crypto}?\n\nCost: ${packagePrice.toFixed(8)} BTC ($${priceAUD} AUD)\n\nThis will create an order on NiceHash.`)) {
+        return;
+    }
+
+    try {
+        console.log('🛒 Creating NiceHash solo order...');
+        console.log('   Ticket ID:', ticketId);
+        console.log('   Crypto:', crypto);
+        console.log('   Price:', packagePrice, 'BTC');
+
+        // POST /main/api/v2/hashpower/solo/order with ticketId as URL parameter
+        const endpoint = `/main/api/v2/hashpower/solo/order?ticketId=${ticketId}`;
+        const body = JSON.stringify({});
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        console.log('📡 Endpoint:', endpoint);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'POST',
+                    headers: headers,
+                    body: {}
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Solo package purchased successfully:', result);
+
+        showModal(`✅ Solo Package purchased successfully!\n\nCrypto: ${crypto}\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nOrder is now active and mining.`);
+
+        // Update stats
+        easyMiningData.allTimeStats.totalSpent += packagePrice * btcPrice;
+        easyMiningData.todayStats.totalSpent += packagePrice * btcPrice;
+
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+        // Refresh package data
+        await fetchEasyMiningData();
+
+        closeBuyPackagesModal();
+
+    } catch (error) {
+        console.error('❌ Error purchasing solo package:', error);
+        showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
+    }
+}
+
+// Buy team package using POST /main/api/v2/hashpower/shared/ticket/{id}
+async function buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares) {
+    if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+        showModal('Please configure EasyMining API settings first!');
+        closeBuyPackagesModal();
+        showEasyMiningSettingsModal();
+        return;
+    }
+
+    const input = document.getElementById(`${cardId}-shares`);
+    const shares = parseInt(input.value) || 0;
+
+    if (shares <= 0) {
+        showModal('Please select at least 1 share to purchase.');
+        return;
+    }
+
+    if (shares > maxShares) {
+        showModal(`Maximum available shares: ${maxShares}`);
+        return;
+    }
+
+    const totalBTC = sharePrice * shares;
+    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const totalAUD = (totalBTC * btcPrice).toFixed(2);
+
+    if (!confirm(`Purchase ${shares} share(s) for ${crypto}?\n\nCost per share: ${sharePrice.toFixed(8)} BTC\nTotal cost: ${totalBTC.toFixed(8)} BTC ($${totalAUD} AUD)\n\nThis will create an order on NiceHash.`)) {
+        return;
+    }
+
+    try {
+        console.log('🛒 Creating NiceHash team order...');
+        console.log('   Package ID:', packageId);
+        console.log('   Crypto:', crypto);
+        console.log('   Shares:', shares);
+        console.log('   Price per share:', sharePrice, 'BTC');
+        console.log('   Total:', totalBTC, 'BTC');
+
+        // POST /main/api/v2/hashpower/shared/ticket/{id} with shares in request body
+        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
+        const bodyData = {
+            shares: shares
+        };
+        const body = JSON.stringify(bodyData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        console.log('📡 Endpoint:', endpoint);
+        console.log('📦 Body:', bodyData);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'POST',
+                    headers: headers,
+                    body: bodyData
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Team package purchased successfully:', result);
+
+        showModal(`✅ Team Package purchased successfully!\n\nCrypto: ${crypto}\nShares: ${shares}\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nOrder is now active and mining.`);
+
+        // Update stats
+        easyMiningData.allTimeStats.totalSpent += totalBTC * btcPrice;
+        easyMiningData.todayStats.totalSpent += totalBTC * btcPrice;
+
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+        // Refresh package data
+        await fetchEasyMiningData();
+
+        closeBuyPackagesModal();
+
+    } catch (error) {
+        console.error('❌ Error purchasing team package:', error);
+        showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
+    }
+}
+
+// Make buy functions globally accessible
+window.buySoloPackage = buySoloPackage;
+window.buyTeamPackage = buyTeamPackage;
 
 async function buyPackage(pkg) {
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {

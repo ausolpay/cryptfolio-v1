@@ -1857,6 +1857,111 @@ body.light-mode .buy-package-card {
     background-color: #777777;
 }
 
+/* Share Selector Styles for Team Packages */
+.share-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px 0;
+    padding: 10px;
+    background-color: rgba(255, 165, 0, 0.1);
+    border-radius: 8px;
+}
+
+body.light-mode .share-selector {
+    background-color: rgba(255, 165, 0, 0.05);
+}
+
+.share-button {
+    width: 40px;
+    height: 40px;
+    background-color: #555555;
+    color: #ffffff;
+    border: 2px solid #ffa500;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.share-button:hover {
+    background-color: #ffa500;
+    transform: scale(1.1);
+}
+
+.share-button:active {
+    transform: scale(0.95);
+}
+
+body.light-mode .share-button {
+    background-color: #ffffff;
+    color: #ffa500;
+}
+
+body.light-mode .share-button:hover {
+    background-color: #ffa500;
+    color: #ffffff;
+}
+
+.share-input {
+    width: 80px;
+    padding: 10px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 2px solid #ffa500;
+    border-radius: 8px;
+}
+
+body.light-mode .share-input {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.share-input:focus {
+    outline: none;
+    border-color: #ffcc00;
+    box-shadow: 0 0 8px rgba(255, 165, 0, 0.5);
+}
+
+/* Remove spinner arrows from number input */
+.share-input::-webkit-inner-spin-button,
+.share-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.share-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.total-cost {
+    text-align: center;
+    font-size: 16px;
+    padding: 8px;
+    background-color: rgba(255, 165, 0, 0.1);
+    border-radius: 4px;
+}
+
+body.light-mode .total-cost {
+    background-color: rgba(255, 165, 0, 0.05);
+}
+
+.team-package-card {
+    border: 2px solid #4CAF50;
+}
+
+body.light-mode .team-package-card {
+    border: 2px solid #4CAF50;
+}
+
 /* EasyMining Settings Modal Styles */
 #easymining-settings-modal {
     z-index: 10000;
