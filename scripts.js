@@ -33,6 +33,14 @@ let socket;
 let lastWebSocketUpdate = Date.now();
 const twoMinutes = 2 * 60 * 1000;
 
+// WebSocket reconnection variables
+let pingInterval;
+let reconnectAttempts = 0;
+let reconnectDelay = 1000; // Start with 1 second
+const maxReconnectDelay = 30000; // Max 30 seconds
+const maxReconnectAttempts = 10;
+let intentionalClose = false;
+
 let candlestickChart;
 let currentCryptoId;
 
@@ -288,41 +296,14 @@ function requestNotificationPermission() {
 
 
 function setWebSocketCycle() {
-    let isWebSocketOpen = false;
-
-    const openWebSocket = () => {
-        if (!isWebSocketOpen) {
-            initializeWebSocket();  // MEXC WebSocket
-            initializeLBankWebSocket();  // LBank WebSocket
-            isWebSocketOpen = true;
-        }
-    };
-
-    const closeWebSocket = () => {
-        if (isWebSocketOpen) {
-            if (socket) {
-                socket.close();
-            }
-            if (lbankSocket) {
-                lbankSocket.close();
-            }
-            isWebSocketOpen = false;
-        }
-    };
-
-    openWebSocket();
-
-    setInterval(() => {
-        closeWebSocket();
-        setTimeout(openWebSocket, 5000);
-    }, 600000); // Reconnect every 10 minutes
+    // Initialize MEXC WebSocket (ping/pong handles keep-alive, no periodic reconnection needed)
+    initializeWebSocket();
 }
 
 
 function closeWebSocket() {
-    if (socket) {
-        socket.close();
-    }
+    // Use intentional close to prevent reconnection attempts
+    closeWebSocketIntentionally();
 }
 
 function clearCryptoContainers() {
@@ -526,6 +507,9 @@ function formatPhoneNumber(phone) {
 }
 
 function logout() {
+    // Close WebSocket connection before logging out
+    closeWebSocketIntentionally();
+
     loggedInUser = null;
     removeStorageItem('loggedInUser');
     setStorageItem('modalMessage', 'Successfully logged out!');
@@ -592,81 +576,7 @@ function updateHoldings(crypto) {
 
 
 
-let lbankSocket;
-let isLbankWebSocketOpen = false;
-let lastWebSocketUpdateForCrypto = {}; // To track WebSocket updates for each coin
-
-function initializeLBankWebSocket() {
-    const wsEndpoint = 'wss://www.lbkex.net/ws/V2/';
-    lbankSocket = new WebSocket(wsEndpoint);
-
-    lbankSocket.onopen = function() {
-        console.log('LBank WebSocket connection opened');
-        isLbankWebSocketOpen = true;
-
-        // Subscribe to each crypto you need live prices for
-        if (users[loggedInUser] && users[loggedInUser].cryptos) {
-            users[loggedInUser].cryptos.forEach(crypto => {
-                const subscriptionMessage = JSON.stringify({
-                    "action": "subscribe",
-                    "subscribe": "tick",
-                    "pair": `${crypto.symbol.toLowerCase()}_usdt` // Subscribe to the correct pair
-                });
-
-                lbankSocket.send(subscriptionMessage);
-            });
-        }
-    };
-
-// Parse and extract live price updates
-lbankSocket.onmessage = function(event) {
-    const message = JSON.parse(event.data);
-    if (message && message.tick && message.tick.latest) {
-        const price = parseFloat(message.tick.latest);  // Extract the live price
-        const symbol = message.pair.split('_')[0].toLowerCase(); // Extract the symbol (lowercase for consistency)
-        console.log(`Live price for ${symbol}: ${price} USDT`);
-
-        lastWebSocketUpdateForCrypto[symbol] = Date.now(); // Track the last WebSocket update
-
-        updatePriceFromWebSocket(symbol, price, 'LBank'); // Update UI with the live price
-    }
-};
-
-    // Handle connection close
-    lbankSocket.onclose = function() {
-        console.log('LBank WebSocket connection closed');
-        isLbankWebSocketOpen = false;
-        reconnectLBankWebSocket(); // Ensure reconnection
-    };
-
-    lbankSocket.onerror = function(error) {
-        console.error('LBank WebSocket error:', error);
-        isLbankWebSocketOpen = false;
-        reconnectLBankWebSocket();
-    };
-}
-
-// Ensure reconnection if the WebSocket closes
-function reconnectLBankWebSocket() {
-    if (!isLbankWebSocketOpen) {
-        console.log('Reconnecting LBank WebSocket...');
-        setTimeout(() => {
-            initializeLBankWebSocket();
-        }, 5000); // Attempt to reconnect after 5 seconds
-    }
-}
-
-
-
-function monitorLBankWebSocket() {
-    if (!isLbankWebSocketOpen) {
-        console.log('LBank WebSocket not open, reconnecting...');
-        initializeLBankWebSocket();
-    }
-}
-
-// Check WebSocket every 60 seconds
-setInterval(monitorLBankWebSocket, 60000); 
+// LBank WebSocket removed - using MEXC only 
 
 
 async function fetchPricesFromCoinGecko(cryptoId) {
@@ -712,37 +622,7 @@ async function fetchPricesFromUniswap(symbol) {
 
 
 
-
-function setWebSocketCycle() {
-    let isWebSocketOpen = false;
-
-    const openWebSocket = () => {
-        if (!isWebSocketOpen) {
-            initializeWebSocket();  // MEXC WebSocket
-            initializeLBankWebSocket();  // LBank WebSocket
-            isWebSocketOpen = true;
-        }
-    };
-
-    const closeWebSocket = () => {
-        if (isWebSocketOpen) {
-            if (socket) {
-                socket.close();
-            }
-            if (lbankSocket) {
-                lbankSocket.close();
-            }
-            isWebSocketOpen = false;
-        }
-    };
-
-    openWebSocket();
-
-    setInterval(() => {
-        closeWebSocket();
-        setTimeout(openWebSocket, 5000);
-    }, 600000); // Reconnect every 10 minutes
-}
+// Duplicate setWebSocketCycle removed - using the one above
 
 
 async function fetchPrices() {
@@ -2147,73 +2027,124 @@ document.getElementById('confirm-password').addEventListener('keyup', function(e
 
 
 function initializeWebSocket() {
-    const wsEndpoint = 'wss://wbs.mexc.com/ws';
+    const wsEndpoint = 'wss://wbs-api.mexc.com/ws';
+
+    console.log('Initializing MEXC WebSocket connection...');
     socket = new WebSocket(wsEndpoint);
     lastWebSocketUpdate = Date.now();
 
     socket.onopen = function(event) {
-        console.log('WebSocket connection opened');
+        console.log('✅ MEXC WebSocket connection opened');
 
+        // Reset reconnection tracking on successful connection
+        reconnectAttempts = 0;
+        reconnectDelay = 1000;
+        intentionalClose = false;
+
+        // Subscribe to price updates for all user cryptos
         if (users[loggedInUser] && users[loggedInUser].cryptos) {
             users[loggedInUser].cryptos.forEach(crypto => {
                 const subscriptionMessage = JSON.stringify({
                     "method": "SUBSCRIPTION",
-                    "params": [`spot@public.deals.v3.api@${crypto.symbol.toUpperCase()}USDT`],
-                    "id": 1
+                    "params": [`spot@public.aggre.deals.v3.api.pb@100ms@${crypto.symbol.toUpperCase()}USDT`]
                 });
-                
-                if (socket.readyState === WebSocket.OPEN) {
-                    socket.send(subscriptionMessage);
-                } else {
-                    socket.addEventListener('open', () => {
-                        socket.send(subscriptionMessage);
-                    });
-                }
+
+                console.log(`Subscribing to ${crypto.symbol.toUpperCase()}USDT price updates`);
+                socket.send(subscriptionMessage);
             });
         }
+
+        // Start ping/pong keep-alive (every 20 seconds)
+        if (pingInterval) {
+            clearInterval(pingInterval);
+        }
+
+        pingInterval = setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+                console.log('📡 Sending PING to keep connection alive');
+                socket.send(JSON.stringify({ method: "PING" }));
+            }
+        }, 20000); // 20 seconds
     };
 
     socket.onmessage = function(event) {
         try {
             const message = JSON.parse(event.data);
 
+            // Handle PONG response
             if (message.msg === 'PONG') {
+                console.log('📡 Received PONG from server');
                 return;
             }
 
-            console.log('Message received:', message);
+            // Handle price updates with new format
+            if (message.channel && message.data && message.data.price) {
+                const price = parseFloat(message.data.price);
 
-            if (message && message.d && Array.isArray(message.d.deals) && message.d.deals.length > 0) {
-                const deals = message.d.deals;
-                const firstDeal = deals[0];
+                // Extract symbol from channel (format: spot@public.aggre.deals.v3.api.pb@100ms@BTCUSDT)
+                const channelParts = message.channel.split('@');
+                const symbolPart = channelParts[channelParts.length - 1]; // Get last part (BTCUSDT)
+                const symbol = symbolPart.replace('USDT', '').toLowerCase();
 
-                if (firstDeal && firstDeal.p !== undefined && message.s) {
-                    const price = parseFloat(firstDeal.p);
-                    const symbol = message.s.split('USDT')[0].toLowerCase();
+                console.log(`💰 Price update for ${symbol}: $${price} USDT`);
 
-                    console.log(`Extracted price for ${symbol}: ${price}`);
-
-                    lastWebSocketUpdate = Date.now();
-
-                    updatePriceFromWebSocket(symbol, price);
-                } else {
-                    console.log('Deal structure is not as expected:', firstDeal);
-                }
+                lastWebSocketUpdate = Date.now();
+                updatePriceFromWebSocket(symbol, price);
             } else {
-                console.log('Unexpected message format or empty data:', message);
+                // Log unexpected message format for debugging
+                console.log('📨 Message received:', message);
             }
         } catch (error) {
-            console.error('Error processing WebSocket message:', error);
+            console.error('❌ Error processing WebSocket message:', error);
         }
     };
 
     socket.onclose = function(event) {
-        console.log('WebSocket connection closed');
+        console.log('🔌 MEXC WebSocket connection closed', event.code, event.reason);
+
+        // Clear ping interval
+        if (pingInterval) {
+            clearInterval(pingInterval);
+            pingInterval = null;
+        }
+
+        // Attempt reconnection if not intentional close
+        if (!intentionalClose && reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            console.log(`🔄 Reconnection attempt ${reconnectAttempts}/${maxReconnectAttempts} in ${reconnectDelay}ms...`);
+
+            setTimeout(() => {
+                initializeWebSocket();
+            }, reconnectDelay);
+
+            // Exponential backoff: double the delay, up to max
+            reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
+        } else if (reconnectAttempts >= maxReconnectAttempts) {
+            console.error('❌ Max reconnection attempts reached. Please refresh the page.');
+        }
     };
 
     socket.onerror = function(error) {
-        console.error('WebSocket error:', error);
+        console.error('❌ MEXC WebSocket error:', error);
+
+        // Clear ping interval on error
+        if (pingInterval) {
+            clearInterval(pingInterval);
+            pingInterval = null;
+        }
     };
+}
+
+// Function to close WebSocket intentionally (e.g., on logout)
+function closeWebSocketIntentionally() {
+    intentionalClose = true;
+    if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+    }
+    if (socket) {
+        socket.close();
+    }
 }
 
 let lastPriceForCrypto = {}; // Store last price for each symbol
@@ -2759,61 +2690,7 @@ async function updateSentimentBar(cryptoId) {
 
 
 
-// Function to initialize WebSocket with fallback for MEXC and LBank
-function initializeWebSocketWithFallback(symbol) {
-    // Initialize MEXC WebSocket first
-    initializeMexcWebSocket(symbol);
-
-    // Set a timeout to switch to LBank WebSocket if MEXC WebSocket fails
-    setTimeout(() => {
-        if (!isMexcWebSocketOpen) {
-            console.log(`MEXC WebSocket failed. Switching to LBank WebSocket for ${symbol}`);
-            initializeLBankWebSocket(symbol);
-        }
-    }, 5000); // 5 seconds delay before switching to LBank
-}
-
-// Function to initialize MEXC WebSocket for live prices
-function initializeMexcWebSocket(symbol) {
-    const wsEndpoint = 'wss://wbs.mexc.com/ws';
-    const socket = new WebSocket(wsEndpoint);
-
-    socket.onopen = function () {
-        console.log(`MEXC WebSocket connection opened for ${symbol}`);
-        isMexcWebSocketOpen = true;
-
-        // Subscribe to the specific symbol on MEXC WebSocket
-        const subscriptionMessage = JSON.stringify({
-            "method": "SUBSCRIPTION",
-            "params": [`spot@public.deals.v3.api@${symbol.toUpperCase()}USDT`],
-            "id": 1
-        });
-        socket.send(subscriptionMessage);
-    };
-
-    socket.onmessage = function (event) {
-        const message = JSON.parse(event.data);
-        if (message && message.d && Array.isArray(message.d.deals) && message.d.deals.length > 0) {
-            const deals = message.d.deals;
-            const firstDeal = deals[0];
-            if (firstDeal && firstDeal.p !== undefined) {
-                const price = parseFloat(firstDeal.p);
-                console.log(`MEXC live price for ${symbol}: ${price} USDT`);
-                updatePriceInChart(symbol, price); // Update chart with live price
-            }
-        }
-    };
-
-    socket.onclose = function () {
-        console.log(`MEXC WebSocket connection closed for ${symbol}`);
-        isMexcWebSocketOpen = false;
-    };
-
-    socket.onerror = function (error) {
-        console.error(`MEXC WebSocket error:`, error);
-        isMexcWebSocketOpen = false;
-    };
-}
+// Old fallback functions removed - using single MEXC WebSocket with ping/pong
 
 
 
