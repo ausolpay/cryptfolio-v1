@@ -1834,6 +1834,10 @@ async function addCrypto() {
         addCryptoContainer(id, symbol, name, thumb);
         updateApiUrl();
         fetchPrices();
+
+        // Subscribe to WebSocket price updates for the new crypto
+        subscribeToSymbol(symbol);
+
         document.getElementById('crypto-id-input').value = '';
         showModal('Crypto successfully added!');
         closeModal(1500);
@@ -2046,7 +2050,7 @@ function initializeWebSocket() {
             users[loggedInUser].cryptos.forEach(crypto => {
                 const subscriptionMessage = JSON.stringify({
                     "method": "SUBSCRIPTION",
-                    "params": [`spot@public.aggre.deals.v3.api.pb@100ms@${crypto.symbol.toUpperCase()}USDT`]
+                    "params": [`spot@public.deals.v3.api@${crypto.symbol.toUpperCase()}USDT`]
                 });
 
                 console.log(`Subscribing to ${crypto.symbol.toUpperCase()}USDT price updates`);
@@ -2077,13 +2081,12 @@ function initializeWebSocket() {
                 return;
             }
 
-            // Handle price updates with new format
-            if (message.channel && message.data && message.data.price) {
-                const price = parseFloat(message.data.price);
-
-                // Extract symbol from channel (format: spot@public.aggre.deals.v3.api.pb@100ms@BTCUSDT)
-                const channelParts = message.channel.split('@');
-                const symbolPart = channelParts[channelParts.length - 1]; // Get last part (BTCUSDT)
+            // Handle price updates with new JSON format
+            // Format: { "c": "spot@public.deals.v3.api", "d": { "deals": [...] }, "s": "BTCUSDT", "t": timestamp }
+            if (message.d && message.d.deals && message.d.deals.length > 0 && message.s) {
+                const latestDeal = message.d.deals[0];
+                const price = parseFloat(latestDeal.p);
+                const symbolPart = message.s; // e.g., "BTCUSDT"
                 const symbol = symbolPart.replace('USDT', '').toLowerCase();
 
                 console.log(`💰 Price update for ${symbol}: $${price} USDT`);
@@ -2091,11 +2094,15 @@ function initializeWebSocket() {
                 lastWebSocketUpdate = Date.now();
                 updatePriceFromWebSocket(symbol, price);
             } else {
-                // Log unexpected message format for debugging
-                console.log('📨 Message received:', message);
+                // Log unexpected message format for debugging (but not PONG messages)
+                if (!message.msg) {
+                    console.log('📨 Message received:', message);
+                }
             }
         } catch (error) {
             console.error('❌ Error processing WebSocket message:', error);
+            console.error('Event data type:', typeof event.data);
+            console.error('Event data:', event.data);
         }
     };
 
@@ -2144,6 +2151,21 @@ function closeWebSocketIntentionally() {
     }
     if (socket) {
         socket.close();
+    }
+}
+
+// Function to subscribe to a single crypto's price updates
+function subscribeToSymbol(symbol) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        const subscriptionMessage = JSON.stringify({
+            "method": "SUBSCRIPTION",
+            "params": [`spot@public.deals.v3.api@${symbol.toUpperCase()}USDT`]
+        });
+
+        console.log(`🔔 Subscribing to ${symbol.toUpperCase()}USDT price updates`);
+        socket.send(subscriptionMessage);
+    } else {
+        console.log(`⚠️ WebSocket not ready, subscription to ${symbol} will happen on next connection`);
     }
 }
 
@@ -6532,6 +6554,9 @@ async function addCryptoById(cryptoId) {
 
             // Update API URL
             updateApiUrl();
+
+            // Subscribe to WebSocket price updates for the new crypto
+            subscribeToSymbol(crypto.symbol);
 
             // Set the initial price from CoinGecko data (prevents 0 price issue)
             console.log(`🔍 Checking for market_data in API response for ${crypto.id}...`);
