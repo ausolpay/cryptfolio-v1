@@ -8298,19 +8298,27 @@ async function buyPackageFromPage(pkg) {
 // EASYMINING POLLING
 // =============================================================================
 
+let lastEasyMiningPollTime = 0;
+let pollingWatchdogInterval = null;
+
 function startEasyMiningPolling() {
     // Stop any existing polling
     stopEasyMiningPolling();
-    
+
     // Initial fetch
     fetchEasyMiningData();
-    
+    lastEasyMiningPollTime = Date.now();
+
     // Poll every 5 seconds (NiceHash rate limit: 300 calls/min, we use ~48 calls/min)
     easyMiningPollingInterval = setInterval(() => {
         fetchEasyMiningData();
+        lastEasyMiningPollTime = Date.now();
     }, 5000);
-    
-    console.log('EasyMining polling started');
+
+    // Start watchdog to ensure polling stays alive
+    startPollingWatchdog();
+
+    console.log('✅ EasyMining polling started with watchdog');
 }
 
 function stopEasyMiningPolling() {
@@ -8319,7 +8327,49 @@ function stopEasyMiningPolling() {
         easyMiningPollingInterval = null;
         console.log('EasyMining polling stopped');
     }
+
+    // Stop watchdog
+    if (pollingWatchdogInterval) {
+        clearInterval(pollingWatchdogInterval);
+        pollingWatchdogInterval = null;
+    }
 }
+
+// Watchdog to detect and restart polling if it stops
+function startPollingWatchdog() {
+    // Stop existing watchdog
+    if (pollingWatchdogInterval) {
+        clearInterval(pollingWatchdogInterval);
+    }
+
+    // Check every 30 seconds if polling is still running
+    pollingWatchdogInterval = setInterval(() => {
+        const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
+
+        // If more than 15 seconds since last poll, restart
+        if (timeSinceLastPoll > 15000 && easyMiningSettings.enabled) {
+            console.warn(`⚠️ Polling watchdog detected stalled polling (${Math.round(timeSinceLastPoll / 1000)}s since last poll)`);
+            console.log('🔄 Restarting EasyMining polling...');
+            startEasyMiningPolling();
+        }
+    }, 30000);
+
+    console.log('🐕 Polling watchdog started (checks every 30s)');
+}
+
+// Resume polling when page becomes visible (after being hidden/minimized)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && easyMiningSettings.enabled && easyMiningPollingInterval) {
+        const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
+
+        // If more than 10 seconds since last poll, fetch immediately
+        if (timeSinceLastPoll > 10000) {
+            console.log(`👁️ Page visible again (${Math.round(timeSinceLastPoll / 1000)}s since last poll) - fetching fresh data...`);
+            fetchEasyMiningData();
+            lastEasyMiningPollTime = Date.now();
+        }
+    }
+});
 
 // =============================================================================
 // INITIALIZE EASYMINING ON APP LOAD
