@@ -10497,27 +10497,45 @@ Do you want to continue?
     }
 
     try {
+        // Determine which crypto(s) for logging
+        const mainCryptoSymbol = isDualCrypto ? pkg.mainCrypto : pkg.crypto;
+        const mergeCryptoSymbol = isDualCrypto ? pkg.mergeCrypto : null;
+
         console.log('🛒 Creating NiceHash team order:', {
             packageId: packageId,
             packageName: pkg.name,
             shares: shares,
+            isDualCrypto: isDualCrypto,
+            mainCrypto: mainCryptoSymbol,
+            mergeCrypto: mergeCryptoSymbol,
             mainWallet: mainWalletAddress,
             mergeWallet: mergeWalletAddress
         });
 
         // Create order payload for team mining package
+        // For Silver/Gold: only soloMiningRewardAddr is used
+        // For Palladium: soloMiningRewardAddr = LTC address, mergeSoloMiningRewardAddr = DOGE address
         const orderData = {
             amount: shares,
             clear: false,
             code: '',
             shares: shares,
-            soloMiningRewardAddr: mainWalletAddress.trim(),
-            mergeSoloMiningRewardAddr: isDualCrypto ? (mergeWalletAddress?.trim() || '') : '',
+            soloMiningRewardAddr: mainWalletAddress.trim(), // Main crypto address (BCH, BTC, or LTC for Palladium)
+            mergeSoloMiningRewardAddr: isDualCrypto ? (mergeWalletAddress?.trim() || '') : '', // Merge crypto address (DOGE for Palladium)
             soloMiningRewardWithdrawalAddrId: '',
             mergeSoloMiningRewardWithdrawalAddrId: ''
         };
 
-        // Call NiceHash API to create team order
+        console.log('📦 Team order payload:', {
+            endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
+            method: 'POST',
+            shares: orderData.shares,
+            soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
+            mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr ? orderData.mergeSoloMiningRewardAddr.substring(0, 10) + '...' : '(empty)',
+            packageId: packageId
+        });
+
+        // Call NiceHash API to create team order - POST /main/api/v2/hashpower/shared/ticket/{id}
         const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -10623,23 +10641,36 @@ async function buyPackageFromPage(pkg) {
         priceAUD = (pkg.priceBTC * prices['btc'].aud).toFixed(2);
     }
 
-    // Check for saved withdrawal address
-    let walletAddress = getWithdrawalAddress(pkg.crypto);
-    const usingSavedAddress = !!walletAddress;
+    // Check for dual-crypto packages (Palladium DOGE+LTC)
+    const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCrypto && pkg.mainCrypto);
+
+    let mainWalletAddress = isDualCrypto ? getWithdrawalAddress(pkg.mainCrypto) : getWithdrawalAddress(pkg.crypto);
+    let mergeWalletAddress = isDualCrypto ? getWithdrawalAddress(pkg.mergeCrypto) : null;
+
+    const usingSavedMainAddress = !!mainWalletAddress;
+    const usingSavedMergeAddress = isDualCrypto ? !!mergeWalletAddress : null;
 
     // Show confirmation dialog with package details
     const confirmMessage = `
 🛒 Purchase Solo Mining Package?
 
 Package: ${pkg.name}
-Crypto: ${pkg.crypto}
+${isDualCrypto
+    ? `Main Crypto: ${pkg.mainCrypto}\nMerge Crypto: ${pkg.mergeCrypto}`
+    : `Crypto: ${pkg.crypto}`}
 Probability: ${pkg.probability}
 Duration: ${pkg.duration}
 Price: $${priceAUD} AUD (${pkg.priceBTC} BTC)
 
-${usingSavedAddress
-    ? `✅ Using saved ${pkg.crypto} wallet address:\n${walletAddress.substring(0, 20)}...${walletAddress.substring(walletAddress.length - 10)}`
-    : '⚠️ No saved wallet address - you will be prompted to enter one'}
+${usingSavedMainAddress
+    ? `✅ Using saved ${isDualCrypto ? pkg.mainCrypto : pkg.crypto} wallet address:\n${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`
+    : `⚠️ No saved ${isDualCrypto ? pkg.mainCrypto : pkg.crypto} wallet address - you will be prompted`}
+
+${isDualCrypto
+    ? (usingSavedMergeAddress
+        ? `✅ Using saved ${pkg.mergeCrypto} wallet address:\n${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}`
+        : `⚠️ No saved ${pkg.mergeCrypto} wallet address - you will be prompted`)
+    : ''}
 
 This will create an order on NiceHash.
 Do you want to continue?
@@ -10649,36 +10680,72 @@ Do you want to continue?
         return;
     }
 
-    // If no saved address, prompt for wallet address
-    if (!usingSavedAddress) {
-        walletAddress = prompt(
-            `Enter your ${pkg.crypto} wallet address to receive mining rewards:\n\n` +
+    // Prompt for missing wallet addresses
+    if (!usingSavedMainAddress) {
+        const cryptoName = isDualCrypto ? pkg.mainCrypto : pkg.crypto;
+        mainWalletAddress = prompt(
+            `Enter your ${cryptoName} wallet address to receive mining rewards:\n\n` +
             `(This is where block rewards will be sent if you find a block)\n\n` +
             `Tip: You can save addresses in EasyMining Settings → Manage Withdrawal Addresses`
         );
 
-        if (!walletAddress || walletAddress.trim() === '') {
-            alert('Wallet address is required to purchase a solo mining package.');
+        if (!mainWalletAddress || mainWalletAddress.trim() === '') {
+            alert(`${cryptoName} wallet address is required to purchase a solo mining package.`);
             return;
         }
 
-        walletAddress = walletAddress.trim();
+        mainWalletAddress = mainWalletAddress.trim();
+    }
+
+    if (isDualCrypto && !usingSavedMergeAddress) {
+        mergeWalletAddress = prompt(
+            `Enter your ${pkg.mergeCrypto} wallet address to receive mining rewards:\n\n` +
+            `(This is where ${pkg.mergeCrypto} block rewards will be sent)\n\n` +
+            `Tip: You can save addresses in EasyMining Settings → Manage Withdrawal Addresses`
+        );
+
+        if (!mergeWalletAddress || mergeWalletAddress.trim() === '') {
+            alert(`${pkg.mergeCrypto} wallet address is required for this dual-crypto package.`);
+            return;
+        }
+
+        mergeWalletAddress = mergeWalletAddress.trim();
     }
 
     try {
+        const mainCryptoSymbol = isDualCrypto ? pkg.mainCrypto : pkg.crypto;
+        const mergeCryptoSymbol = isDualCrypto ? pkg.mergeCrypto : null;
+
         console.log('🛒 Creating NiceHash solo order:', {
             packageId: packageId,
             packageName: pkg.name,
-            crypto: pkg.crypto,
-            walletAddress: walletAddress,
-            usingSavedAddress: usingSavedAddress
+            isDualCrypto: isDualCrypto,
+            mainCrypto: mainCryptoSymbol,
+            mergeCrypto: mergeCryptoSymbol,
+            mainWalletAddress: mainWalletAddress,
+            mergeWalletAddress: mergeWalletAddress,
+            usingSavedMainAddress: usingSavedMainAddress,
+            usingSavedMergeAddress: usingSavedMergeAddress
         });
 
         // Create order payload for solo mining package
+        // For regular packages: only soloMiningRewardAddr
+        // For Palladium: soloMiningRewardAddr = LTC address, mergeSoloMiningRewardAddr = DOGE address
         const orderData = {
             ticketId: packageId,
-            soloMiningRewardAddr: walletAddress.trim()
+            soloMiningRewardAddr: mainWalletAddress.trim()
         };
+
+        // Add merge address for dual-crypto packages
+        if (isDualCrypto && mergeWalletAddress) {
+            orderData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
+        }
+
+        console.log('📦 Solo order payload:', {
+            ticketId: orderData.ticketId,
+            soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
+            mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr ? orderData.mergeSoloMiningRewardAddr.substring(0, 10) + '...' : '(not set)'
+        });
 
         // Call NiceHash API to create solo order
         const endpoint = '/main/api/v2/hashpower/solo/order';
@@ -10730,7 +10797,7 @@ Do you want to continue?
         const result = await response.json();
         console.log('✅ Solo order created successfully:', result);
 
-        const successMessage = `✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\nCrypto: ${pkg.crypto}\nWallet: ${walletAddress.substring(0, 20)}...${walletAddress.substring(walletAddress.length - 10)}${!usingSavedAddress ? '\n\n💡 Tip: Save this address in EasyMining Settings → Manage Withdrawal Addresses for faster purchases next time!' : ''}`;
+        const successMessage = `✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Crypto: ${pkg.crypto}\nWallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}${!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress) ? '\n\n💡 Tip: Save these addresses in EasyMining Settings → Manage Withdrawal Addresses for faster purchases!' : ''}`;
 
         alert(successMessage);
 
