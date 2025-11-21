@@ -440,6 +440,7 @@
             </div>
             <div style="margin-top: 20px;">
                 <button id="easymining-settings-btn" onclick="closeSettingsModal(); showEasyMiningSettingsPage();">EasyMining</button>
+                <button id="coingecko-api-btn" onclick="showCoinGeckoApiModal()">CG API</button>
                 <button class="delete-button" onclick="closeSettingsModal()">Close</button>
             </div>
         </div>
@@ -650,6 +651,38 @@
             
             <div style="margin-top: 20px;">
                 <button class="cancel-button" onclick="closeEasyMiningSettingsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CoinGecko API Settings Modal -->
+    <div id="coingecko-api-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCoinGeckoApiModal()">&times;</span>
+            <h2 class="settings-title">COINGECKO API SETTINGS</h2>
+
+            <div class="easymining-settings-content">
+                <p style="margin-top: 0; color: #ffa500;">At least one CoinGecko API key is required to receive token data.</p>
+
+                <div class="input-group">
+                    <label for="primary-api-key">Primary API Key (Required):</label>
+                    <input type="text" id="primary-api-key" placeholder="Enter your CoinGecko API Key">
+                </div>
+
+                <div class="input-group">
+                    <label for="fallback-api-key-1">Fallback API Key 1 (Optional):</label>
+                    <input type="text" id="fallback-api-key-1" placeholder="Enter fallback API key (optional)">
+                </div>
+
+                <div class="input-group">
+                    <label for="fallback-api-key-2">Fallback API Key 2 (Optional):</label>
+                    <input type="text" id="fallback-api-key-2" placeholder="Enter fallback API key (optional)">
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button onclick="saveCoinGeckoApiKeys()" class="activate-button">Activate</button>
+                <button class="cancel-button" onclick="closeCoinGeckoApiModal()">Close</button>
             </div>
         </div>
     </div>

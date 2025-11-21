@@ -1,6 +1,7 @@
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
-const apiKeys = ['CG-gjMFaaWvegooR4G5JtgXm6tt', 'CG-acHzUtSKiG7z37pdrTadUxJc', 'CG-5LeQPVdQKzrN7LPxGMB5fKbn'];
+const defaultApiKeys = ['CG-gjMFaaWvegooR4G5JtgXm6tt', 'CG-acHzUtSKiG7z37pdrTadUxJc', 'CG-5LeQPVdQKzrN7LPxGMB5fKbn'];
+let apiKeys = [...defaultApiKeys]; // Will be replaced with user's keys if available
 let currentApiKeyIndex = 0;
 
 // =============================================================================
@@ -130,6 +131,10 @@ function initializeApp() {
         showAppPage();
         clearCryptoContainers();
         loadUserData();
+
+        // Load user's CoinGecko API keys (or use defaults)
+        apiKeys = loadUserApiKeys();
+        currentApiKeyIndex = 0;
 
         updateApiUrl();
 
@@ -4116,6 +4121,111 @@ function clearAPICredentials() {
 // Make functions globally accessible
 window.activateEasyMining = activateEasyMining;
 window.clearAPICredentials = clearAPICredentials;
+
+// =============================================================================
+// COINGECKO API SETTINGS MODAL FUNCTIONS
+// =============================================================================
+
+function showCoinGeckoApiModal() {
+    console.log('🔵 showCoinGeckoApiModal called');
+
+    // Close settings modal first
+    const settingsModal = document.getElementById('settings-modal');
+    if (settingsModal) {
+        settingsModal.style.display = 'none';
+    }
+
+    // Check if modal exists
+    const modal = document.getElementById('coingecko-api-modal');
+    console.log('CoinGecko API Modal element:', modal);
+
+    if (!modal) {
+        console.error('❌ CoinGecko API Modal not found!');
+        alert('ERROR: CoinGecko API modal not found in DOM!');
+        return;
+    }
+
+    // Load saved API keys from localStorage
+    const savedKeys = loadUserApiKeys();
+
+    // Populate form fields
+    document.getElementById('primary-api-key').value = savedKeys[0] || '';
+    document.getElementById('fallback-api-key-1').value = savedKeys[1] || '';
+    document.getElementById('fallback-api-key-2').value = savedKeys[2] || '';
+
+    // Show modal
+    console.log('Setting CoinGecko API modal display to block...');
+    modal.style.display = 'block';
+    console.log('✅ CoinGecko API Modal display set to:', modal.style.display);
+}
+
+function closeCoinGeckoApiModal() {
+    const modal = document.getElementById('coingecko-api-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function saveCoinGeckoApiKeys() {
+    // Get values from form
+    const primaryKey = document.getElementById('primary-api-key').value.trim();
+    const fallbackKey1 = document.getElementById('fallback-api-key-1').value.trim();
+    const fallbackKey2 = document.getElementById('fallback-api-key-2').value.trim();
+
+    // Validate that at least primary key is entered
+    if (!primaryKey) {
+        showModal('❌ Primary API key is required!\n\nPlease enter at least one CoinGecko API key.');
+        return;
+    }
+
+    // Build array of keys (only include non-empty keys)
+    const userKeys = [primaryKey];
+    if (fallbackKey1) userKeys.push(fallbackKey1);
+    if (fallbackKey2) userKeys.push(fallbackKey2);
+
+    // Save to localStorage
+    try {
+        localStorage.setItem(`${loggedInUser}_coinGeckoApiKeys`, JSON.stringify(userKeys));
+        console.log('✅ Saved CoinGecko API keys:', userKeys.length, 'keys');
+
+        // Update the global apiKeys array
+        apiKeys = [...userKeys];
+        currentApiKeyIndex = 0; // Reset to first key
+
+        closeCoinGeckoApiModal();
+        showModal('✅ CoinGecko API keys saved successfully!\n\n' + userKeys.length + ' key(s) configured.');
+    } catch (error) {
+        console.error('❌ Error saving CoinGecko API keys:', error);
+        showModal('❌ Error saving API keys. Please try again.');
+    }
+}
+
+function loadUserApiKeys() {
+    try {
+        // Try to load user's custom API keys
+        const savedKeys = localStorage.getItem(`${loggedInUser}_coinGeckoApiKeys`);
+
+        if (savedKeys) {
+            const userKeys = JSON.parse(savedKeys);
+            if (Array.isArray(userKeys) && userKeys.length > 0) {
+                console.log('✅ Loaded user CoinGecko API keys:', userKeys.length, 'keys');
+                return userKeys;
+            }
+        }
+
+        // If no user keys found, use default keys
+        console.log('ℹ️ Using default CoinGecko API keys');
+        return [...defaultApiKeys];
+    } catch (error) {
+        console.error('❌ Error loading CoinGecko API keys:', error);
+        return [...defaultApiKeys];
+    }
+}
+
+// Make functions globally accessible
+window.showCoinGeckoApiModal = showCoinGeckoApiModal;
+window.closeCoinGeckoApiModal = closeCoinGeckoApiModal;
+window.saveCoinGeckoApiKeys = saveCoinGeckoApiKeys;
 
 // =============================================================================
 // EASYMINING UI TOGGLE FUNCTIONS
