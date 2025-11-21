@@ -9992,22 +9992,17 @@ async function loadBuyPackagesDataOnPage() {
         : '0.00';
 
     balanceSection.innerHTML = `
-        <div style="padding: 15px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance:</div>
-                    <div style="color: #aaa; font-size: 14px;">⏳ Pending Balance:</div>
+        <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+            <div style="display: flex; justify-content: space-around; align-items: center; gap: 40px;">
+                <div style="flex: 1; text-align: center;">
+                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
+                    <div style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
+                    <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
                 </div>
-                <div style="text-align: right;">
-                    <div style="margin-bottom: 8px;">
-                        <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                        <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
-                    </div>
-                    <div>
-                        <div style="color: #FFA500; font-size: 16px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
-                        <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
-                    </div>
-                    <div style="color: #ffa500; font-size: 12px; margin-top: 8px; border-top: 1px solid #444; padding-top: 8px;">1 share = 0.0001 BTC</div>
+                <div style="flex: 1; text-align: center;">
+                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
+                    <div style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
+                    <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
                 </div>
             </div>
         </div>
