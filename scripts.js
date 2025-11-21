@@ -10364,16 +10364,20 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     let priceAUD = 0;
     if (pkg.priceBTC) {
         try {
-            if (prices['btc'] && prices['btc'].aud) {
-                priceAUD = (pkg.priceBTC * prices['btc'].aud).toFixed(2);
-                console.log(`💵 ${pkg.name} Price Calc:`, {
-                    priceBTC: pkg.priceBTC,
-                    btcPrice_AUD: prices['btc'].aud,
-                    priceAUD: priceAUD
-                });
-            } else {
-                console.log(`⚠️ ${pkg.name} - Missing BTC price data. Available prices:`, Object.keys(prices));
-            }
+            // Get BTC price with fallback to 140000 AUD
+            const btcPriceAUD = (prices['btc'] && prices['btc'].aud)
+                ? prices['btc'].aud
+                : (prices['bitcoin'] && prices['bitcoin'].aud)
+                    ? prices['bitcoin'].aud
+                    : 140000;
+
+            priceAUD = (pkg.priceBTC * btcPriceAUD).toFixed(2);
+            console.log(`💵 ${pkg.name} Price Calc:`, {
+                priceBTC: pkg.priceBTC,
+                btcPrice_AUD: btcPriceAUD,
+                priceAUD: priceAUD,
+                usingFallback: !prices['btc'] && !prices['bitcoin']
+            });
         } catch (error) {
             console.log('Could not calculate price AUD:', error);
             priceAUD = 0;
