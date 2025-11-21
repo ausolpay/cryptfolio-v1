@@ -8292,6 +8292,66 @@ async function fetchNiceHashSoloPackages() {
     }
 }
 
+// Fetch prices for package cryptocurrencies
+async function fetchPackageCryptoPrices(packages) {
+    console.log('💰 Fetching prices for package cryptocurrencies...');
+
+    // Extract unique crypto IDs from packages
+    const uniqueCryptos = [...new Set(packages.map(pkg => pkg.crypto).filter(Boolean))];
+    console.log('💰 Unique cryptos to fetch:', uniqueCryptos);
+
+    // Map crypto symbols to CoinGecko IDs
+    const cryptoIdMap = {
+        'BTC': 'bitcoin',
+        'BCH': 'bitcoin-cash',
+        'KAS': 'kaspa',
+        'RVN': 'ravencoin',
+        'DOGE': 'dogecoin',
+        'LTC': 'litecoin',
+        'DOGE/LTC': 'dogecoin' // For dual cryptos, use first
+    };
+
+    const prices = {};
+
+    // Add BTC for price calculations
+    const idsToFetch = ['bitcoin', ...uniqueCryptos.map(symbol => cryptoIdMap[symbol]).filter(Boolean)];
+    const uniqueIds = [...new Set(idsToFetch)];
+
+    console.log('💰 CoinGecko IDs to fetch:', uniqueIds);
+
+    try {
+        // Fetch all prices in one API call
+        const ids = uniqueIds.join(',');
+        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=aud&x_cg_demo_api_key=${getApiKey()}`;
+
+        const data = await fetchWithApiKeyRotation(apiUrl);
+        console.log('💰 Fetched price data:', data);
+
+        // Store prices with both symbol and ID as keys for easy lookup
+        for (const [id, priceData] of Object.entries(data)) {
+            prices[id] = priceData;
+            // Also store by symbol
+            for (const [symbol, coinGeckoId] of Object.entries(cryptoIdMap)) {
+                if (coinGeckoId === id) {
+                    prices[symbol.toLowerCase()] = priceData;
+                }
+            }
+        }
+
+        // Store BTC with 'btc' key as well
+        if (data['bitcoin']) {
+            prices['btc'] = data['bitcoin'];
+        }
+
+        console.log('✅ Package crypto prices loaded:', prices);
+        return prices;
+
+    } catch (error) {
+        console.error('❌ Error fetching package crypto prices:', error);
+        return {};
+    }
+}
+
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
@@ -8320,6 +8380,10 @@ async function loadBuyPackagesDataOnPage() {
         { name: 'Pal Team', crypto: 'DOGE/LTC', probability: '1:220', priceBTC: 0.08, priceAUD: '18.00', duration: '24h', algorithm: 'Scrypt', totalShares: 800, boughtShares: 45, blockReward: 10000, isTeam: true },
         { name: 'Gold Team', crypto: 'BTC', probability: '1:80', priceBTC: 0.1037, priceAUD: '50.00', duration: '24h', algorithm: 'SHA256', totalShares: 1037, boughtShares: 200, blockReward: 3.125, isTeam: true }
     ];
+
+    // Fetch prices for all package cryptocurrencies before displaying
+    const allPackages = [...singlePackages, ...teamPackages];
+    window.packageCryptoPrices = await fetchPackageCryptoPrices(allPackages);
 
     const recommended = getRecommendedPackages();
 
@@ -8368,21 +8432,24 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const card = document.createElement('div');
     card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '');
 
+    // Use package crypto prices (fetched specifically for buy packages page)
+    const prices = window.packageCryptoPrices || {};
+
     // Calculate reward in AUD based on crypto prices
     let rewardAUD = 0;
     if (pkg.blockReward && pkg.crypto) {
         try {
             const cryptoKey = pkg.crypto.toLowerCase().split('/')[0]; // Handle DOGE/LTC
-            if (typeof cryptoPrices !== 'undefined' && cryptoPrices[cryptoKey] && cryptoPrices[cryptoKey].aud) {
-                rewardAUD = (pkg.blockReward * cryptoPrices[cryptoKey].aud).toFixed(2);
+            if (prices[cryptoKey] && prices[cryptoKey].aud) {
+                rewardAUD = (pkg.blockReward * prices[cryptoKey].aud).toFixed(2);
                 console.log(`💰 ${pkg.name} Reward Calc:`, {
                     blockReward: pkg.blockReward,
                     crypto: pkg.crypto,
-                    cryptoPrice_AUD: cryptoPrices[cryptoKey].aud,
+                    cryptoPrice_AUD: prices[cryptoKey].aud,
                     rewardAUD: rewardAUD
                 });
             } else {
-                console.log(`⚠️ ${pkg.name} - Missing price data for ${cryptoKey}`);
+                console.log(`⚠️ ${pkg.name} - Missing price data for ${cryptoKey}. Available prices:`, Object.keys(prices));
             }
         } catch (error) {
             console.log('Could not calculate reward AUD:', error);
@@ -8394,15 +8461,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     let priceAUD = 0;
     if (pkg.priceBTC) {
         try {
-            if (typeof cryptoPrices !== 'undefined' && cryptoPrices['btc'] && cryptoPrices['btc'].aud) {
-                priceAUD = (pkg.priceBTC * cryptoPrices['btc'].aud).toFixed(2);
+            if (prices['btc'] && prices['btc'].aud) {
+                priceAUD = (pkg.priceBTC * prices['btc'].aud).toFixed(2);
                 console.log(`💵 ${pkg.name} Price Calc:`, {
                     priceBTC: pkg.priceBTC,
-                    btcPrice_AUD: cryptoPrices['btc'].aud,
+                    btcPrice_AUD: prices['btc'].aud,
                     priceAUD: priceAUD
                 });
             } else {
-                console.log(`⚠️ ${pkg.name} - Missing BTC price data`);
+                console.log(`⚠️ ${pkg.name} - Missing BTC price data. Available prices:`, Object.keys(prices));
             }
         } catch (error) {
             console.log('Could not calculate price AUD:', error);
