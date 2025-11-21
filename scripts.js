@@ -2043,11 +2043,15 @@ function initializeWebSocket() {
 
     socket.onopen = function(event) {
         console.log('✅ MEXC WebSocket connection opened');
+        console.log('   Connection readyState:', this.readyState, '(should be 1 = OPEN)');
 
         // Reset reconnection tracking on successful connection
         reconnectAttempts = 0;
         reconnectDelay = 1000;
         intentionalClose = false;
+
+        // Use 'this' to reference the actual WebSocket instance that fired this event
+        const ws = this;
 
         // Subscribe immediately - onopen fires when connection is ready
         if (users[loggedInUser] && users[loggedInUser].cryptos) {
@@ -2061,7 +2065,8 @@ function initializeWebSocket() {
                     "params": [channel]
                 });
 
-                socket.send(subscriptionMessage);
+                // Use ws (this) instead of global socket variable
+                ws.send(subscriptionMessage);
                 console.log(`   ✓ Subscribed to ${crypto.symbol.toUpperCase()}USDT`);
             });
 
@@ -3009,24 +3014,21 @@ function initializeWebSocketForCrypto(symbol) {
 
     currentWebSocket.onopen = function() {
         console.log(`✅ Chart WebSocket connection opened for ${symbol}`);
-        console.log('   ReadyState:', currentWebSocket.readyState);
+        console.log('   ReadyState:', this.readyState, '(should be 1 = OPEN)');
 
-        // Wait for WebSocket to be fully ready before subscribing
-        setTimeout(() => {
-            if (currentWebSocket && currentWebSocket.readyState === WebSocket.OPEN) {
-                // Use the new aggre.deals format for fastest updates
-                const channel = `spot@public.aggre.deals.v3.api.pb@100ms@${symbol.toUpperCase()}USDT`;
-                const subscriptionMessage = JSON.stringify({
-                    "method": "SUBSCRIPTION",
-                    "params": [channel],
-                    "id": 1
-                });
-                currentWebSocket.send(subscriptionMessage);
-                console.log(`   ✓ Chart subscribed to ${symbol.toUpperCase()}USDT (aggre.deals)`);
-            } else {
-                console.error(`   ✗ Chart WebSocket not ready for ${symbol} (state: ${currentWebSocket?.readyState})`);
-            }
-        }, 150); // 150ms delay to ensure connection is ready
+        // Use 'this' to reference the actual WebSocket instance that fired this event
+        const ws = this;
+
+        // No setTimeout needed - onopen guarantees the connection is ready
+        // Use the new aggre.deals format for fastest updates
+        const channel = `spot@public.aggre.deals.v3.api.pb@100ms@${symbol.toUpperCase()}USDT`;
+        const subscriptionMessage = JSON.stringify({
+            "method": "SUBSCRIPTION",
+            "params": [channel],
+            "id": 1
+        });
+        ws.send(subscriptionMessage);
+        console.log(`   ✓ Chart subscribed to ${symbol.toUpperCase()}USDT (aggre.deals)`);
     };
 
     currentWebSocket.onmessage = function(event) {
