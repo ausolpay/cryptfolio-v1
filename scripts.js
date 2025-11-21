@@ -7784,6 +7784,19 @@ async function updateRecommendations() {
 
     console.log('🔄 Checking for recommendation updates...');
 
+    // Fetch balance for buy button validation in EasyMining section
+    try {
+        const balanceData = await fetchNiceHashBalances();
+        window.niceHashBalance = {
+            available: balanceData.available || 0,
+            pending: balanceData.pending || 0
+        };
+        console.log('✅ Balance fetched for EasyMining recommendations:', window.niceHashBalance);
+    } catch (error) {
+        console.error('❌ Failed to fetch balance for recommendations:', error);
+        window.niceHashBalance = { available: 0, pending: 0 };
+    }
+
     // Get recommended solo packages based on alert thresholds
     const recommendations = await checkPackageRecommendations();
 
@@ -7818,7 +7831,15 @@ async function updateRecommendations() {
         bestPackagesContainer.innerHTML = '';
 
         if (recommendations.length === 0) {
-            bestPackagesContainer.innerHTML = '<p style="color: #aaa;">No solo packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure alerts</a> to get recommendations.</p>';
+            // Check if any alerts are configured
+            const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+            const hasAlerts = Object.keys(savedAlerts).length > 0;
+
+            if (!hasAlerts) {
+                bestPackagesContainer.innerHTML = '<p style="color: #aaa;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure solo alerts</a> to get package recommendations.</p>';
+            } else {
+                bestPackagesContainer.innerHTML = '<p style="color: #aaa;">No solo packages currently meet your alert thresholds.</p>';
+            }
         } else {
             // Fetch crypto prices for the recommendations
             window.packageCryptoPrices = await fetchPackageCryptoPrices(recommendations);
@@ -7840,7 +7861,15 @@ async function updateRecommendations() {
             teamAlertsContainer.innerHTML = '';
 
             if (teamRecommendations.length === 0) {
-                teamAlertsContainer.innerHTML = '<p style="color: #aaa;">No team packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure team alerts</a> to get recommendations.</p>';
+                // Check if any team alerts are configured
+                const savedTeamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+                const hasTeamAlerts = Object.keys(savedTeamAlerts).length > 0;
+
+                if (!hasTeamAlerts) {
+                    teamAlertsContainer.innerHTML = '<p style="color: #aaa;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure team alerts</a> to get package recommendations.</p>';
+                } else {
+                    teamAlertsContainer.innerHTML = '<p style="color: #aaa;">No team packages currently meet your alert thresholds.</p>';
+                }
             } else {
                 console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`);
 
