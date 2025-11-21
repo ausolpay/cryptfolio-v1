@@ -8180,7 +8180,31 @@ function showBuyTabOnPage(tab) {
     }
 }
 
+function getRecommendedPackages() {
+    // Return recommended package names based on current EasyMining data
+    const recommended = [];
+
+    // Check if we have active packages data
+    if (easyMiningData && easyMiningData.activePackages) {
+        easyMiningData.activePackages.forEach(pkg => {
+            if (pkg.active) {
+                // Recommend packages that are currently active
+                recommended.push(pkg.name);
+            }
+        });
+    }
+
+    // If no active packages, recommend based on defaults
+    if (recommended.length === 0) {
+        recommended.push('Gold M', 'Silver Team', 'Titanium KAS S');
+    }
+
+    return recommended;
+}
+
 function loadBuyPackagesDataOnPage() {
+    console.log('📦 Loading packages on buy packages page...');
+
     // Package data matching NiceHash EasyMining structure
     const singlePackages = [
         { name: 'Gold S', crypto: 'BTC', probability: '1:150', price: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
