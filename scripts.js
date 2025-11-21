@@ -8382,17 +8382,36 @@ async function fetchNiceHashSoloPackages() {
                 const mergeCrypto = hasMergeCurrency ? pkg.mergeCurrencyAlgo.currency : null;
                 const cryptoDisplay = hasMergeCurrency ? `${mergeCrypto}+${mainCrypto}` : mainCrypto;
 
+                // Get block rewards from currencyAlgo and mergeCurrencyAlgo
                 const mainBlockReward = pkg.currencyAlgo.blockRewardWithNhFee || pkg.currencyAlgo.blockReward;
                 const mergeBlockReward = hasMergeCurrency
                     ? (pkg.mergeCurrencyAlgo.blockRewardWithNhFee || pkg.mergeCurrencyAlgo.blockReward)
                     : null;
 
+                // Get probabilities for dual-crypto packages
+                let mainProbability = probabilityRatio;
+                let mergeProbability = null;
+
+                if (hasMergeCurrency) {
+                    // Main crypto probability (LTC) from probabilityPrecision
+                    mainProbability = pkg.probabilityPrecision >= 1
+                        ? `1:${Math.round(pkg.probabilityPrecision)}`
+                        : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+
+                    // Merge crypto probability (DOGE) from mergeProbabilityPrecision
+                    mergeProbability = pkg.mergeProbabilityPrecision >= 1
+                        ? `1:${Math.round(pkg.mergeProbabilityPrecision)}`
+                        : `${Math.round(1/pkg.mergeProbabilityPrecision)}:1`;
+                }
+
                 console.log(`📦 Mapping package ${pkg.name}:`, {
                     price_from_api: pkg.price,
                     mainCurrency: mainCrypto,
-                    mergeCurrency: mergeCrypto,
                     mainBlockReward: mainBlockReward,
-                    mergeBlockReward: mergeBlockReward
+                    mainProbability: mainProbability,
+                    mergeCurrency: mergeCrypto,
+                    mergeBlockReward: mergeBlockReward,
+                    mergeProbability: mergeProbability
                 });
 
                 return {
@@ -8400,7 +8419,9 @@ async function fetchNiceHashSoloPackages() {
                     crypto: cryptoDisplay,
                     mainCrypto: mainCrypto,
                     mergeCrypto: mergeCrypto,
-                    probability: probabilityRatio,
+                    probability: hasMergeCurrency ? mainProbability : probabilityRatio,
+                    mainProbability: mainProbability,
+                    mergeProbability: mergeProbability,
                     priceBTC: pkg.price,
                     priceAUD: '0.00', // Will be calculated dynamically from BTC price
                     duration: `${durationHours}h`,
@@ -8680,12 +8701,29 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
     ` : '';
 
-    const probabilityInfo = pkg.probability ? `
-        <div class="buy-package-stat">
-            <span>Probability:</span>
-            <span>${pkg.probability}</span>
-        </div>
-    ` : '';
+    // Probability section - handle dual-crypto packages
+    let probabilityInfo = '';
+    if (pkg.isDualCrypto) {
+        // Show both probabilities for dual-crypto packages
+        probabilityInfo = `
+            <div class="buy-package-stat">
+                <span>Probability ${pkg.mergeCrypto}:</span>
+                <span>${pkg.mergeProbability}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Probability ${pkg.mainCrypto}:</span>
+                <span>${pkg.mainProbability}</span>
+            </div>
+        `;
+    } else if (pkg.probability) {
+        // Single crypto package
+        probabilityInfo = `
+            <div class="buy-package-stat">
+                <span>Probability:</span>
+                <span>${pkg.probability}</span>
+            </div>
+        `;
+    }
 
     // Potential reward section - handle dual-crypto packages
     let rewardInfo = '';
