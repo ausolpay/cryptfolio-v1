@@ -600,34 +600,104 @@ async function loadPackageAlerts() {
         const alertDiv = document.createElement('div');
         alertDiv.style.cssText = 'margin-bottom: 15px; padding: 15px; background-color: #3a3a3a; border-radius: 8px; border: 1px solid #444;';
 
-        // Extract probability value from ratio (e.g., "1:150" → 150)
-        let currentProbability = '';
-        if (pkg.probability) {
-            const match = pkg.probability.match(/1:(\d+)/);
-            if (match) {
-                currentProbability = match[1];
+        // Check if this is a dual-crypto package (Palladium)
+        const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCurrencyAlgo && pkg.mergeCurrencyAlgo.title);
+
+        if (isDualCrypto) {
+            // For dual-crypto packages (DOGE+LTC), show two separate inputs
+            const mainCrypto = pkg.mainCrypto || pkg.currencyAlgo?.title || 'LTC';
+            const mergeCrypto = pkg.mergeCrypto || pkg.mergeCurrencyAlgo?.title || 'DOGE';
+
+            // Extract both probabilities
+            let mainProbability = '';
+            let mergeProbability = '';
+
+            if (pkg.probability) {
+                const match = pkg.probability.match(/1:(\d+)/);
+                if (match) mainProbability = match[1];
             }
+            if (pkg.mergeProbability) {
+                const match = pkg.mergeProbability.match(/1:(\d+)/);
+                if (match) mergeProbability = match[1];
+            }
+
+            const savedMainThreshold = savedAlerts[`${pkg.name}_${mainCrypto}`] || '';
+            const savedMergeThreshold = savedAlerts[`${pkg.name}_${mergeCrypto}`] || '';
+            const isMainActive = savedMainThreshold !== '';
+            const isMergeActive = savedMergeThreshold !== '';
+
+            alertDiv.innerHTML = `
+                <div style="margin-bottom: 12px;">
+                    <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
+                    <span style="color: #888; font-size: 13px; margin-left: 8px;">(Dual-Crypto Package)</span>
+                </div>
+
+                <!-- LTC Alert -->
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #F7931A; font-weight: bold;">${mainCrypto}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mainProbability}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="color: #aaa; font-size: 14px;">Alert when ≤ 1:</label>
+                        <input type="number"
+                               id="alert-${pkg.name.replace(/\s+/g, '-')}-${mainCrypto}"
+                               value="${savedMainThreshold}"
+                               placeholder="e.g., 130"
+                               min="1"
+                               style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                        ${isMainActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
+                    </div>
+                </div>
+
+                <!-- DOGE Alert -->
+                <div style="padding-left: 10px; border-left: 3px solid #C3A634;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #C3A634; font-weight: bold;">${mergeCrypto}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mergeProbability}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="color: #aaa; font-size: 14px;">Alert when ≤ 1:</label>
+                        <input type="number"
+                               id="alert-${pkg.name.replace(/\s+/g, '-')}-${mergeCrypto}"
+                               value="${savedMergeThreshold}"
+                               placeholder="e.g., 150"
+                               min="1"
+                               style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                        ${isMergeActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
+                    </div>
+                </div>
+            `;
+        } else {
+            // Single crypto package - original logic
+            let currentProbability = '';
+            if (pkg.probability) {
+                const match = pkg.probability.match(/1:(\d+)/);
+                if (match) {
+                    currentProbability = match[1];
+                }
+            }
+
+            const savedThreshold = savedAlerts[pkg.name] || '';
+            const isActive = savedThreshold !== '';
+
+            alertDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
+                    <span style="color: #4CAF50; font-size: 13px;">Current: 1:${currentProbability}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="color: #aaa; font-size: 14px;">Alert when probability ≤ 1:</label>
+                    <input type="number"
+                           id="alert-${pkg.name.replace(/\s+/g, '-')}"
+                           value="${savedThreshold}"
+                           placeholder="e.g., 130"
+                           min="1"
+                           style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                    ${isActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
+                </div>
+            `;
         }
-
-        const savedThreshold = savedAlerts[pkg.name] || '';
-        const isActive = savedThreshold !== '';
-
-        alertDiv.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
-                <span style="color: #4CAF50; font-size: 13px;">Current: 1:${currentProbability}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <label style="color: #aaa; font-size: 14px;">Alert when probability ≤ 1:</label>
-                <input type="number"
-                       id="alert-${pkg.name.replace(/\s+/g, '-')}"
-                       value="${savedThreshold}"
-                       placeholder="e.g., 130"
-                       min="1"
-                       style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
-                ${isActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
-            </div>
-        `;
 
         alertsList.appendChild(alertDiv);
     });
@@ -642,11 +712,29 @@ function savePackageAlerts() {
     const inputs = document.querySelectorAll('[id^="alert-"]');
 
     inputs.forEach(input => {
-        const packageName = input.id.replace('alert-', '').replace(/-/g, ' ');
+        // Extract package name and crypto from ID
+        // Format: "alert-Palladium-DOGE-LTC" or "alert-Silver-S"
+        const idParts = input.id.replace('alert-', '').split('-');
+
+        // Check if this is a dual-crypto input (last part is a crypto symbol like LTC/DOGE)
+        const cryptoSymbols = ['LTC', 'DOGE', 'BTC', 'BCH', 'KAS', 'RVN'];
+        const lastPart = idParts[idParts.length - 1];
+
+        let alertKey;
+        if (cryptoSymbols.includes(lastPart)) {
+            // Dual-crypto: "Palladium DOGE_LTC" format
+            const crypto = lastPart;
+            const packageName = idParts.slice(0, -1).join(' ');
+            alertKey = `${packageName}_${crypto}`;
+        } else {
+            // Single crypto: "Silver S" format
+            alertKey = idParts.join(' ');
+        }
+
         const threshold = input.value.trim();
 
         if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-            alerts[packageName] = parseInt(threshold);
+            alerts[alertKey] = parseInt(threshold);
         }
     });
 
@@ -696,27 +784,82 @@ async function checkPackageRecommendations() {
 
     // Check each package against alert thresholds
     packages.forEach(pkg => {
-        const threshold = savedAlerts[pkg.name];
+        // Check if this is a dual-crypto package
+        const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCurrencyAlgo && pkg.mergeCurrencyAlgo.title);
 
-        if (!threshold) {
-            return; // No alert set for this package
-        }
+        if (isDualCrypto) {
+            // For dual-crypto packages, check both LTC and DOGE thresholds
+            const mainCrypto = pkg.mainCrypto || pkg.currencyAlgo?.title || 'LTC';
+            const mergeCrypto = pkg.mergeCrypto || pkg.mergeCurrencyAlgo?.title || 'DOGE';
 
-        // Extract probability value from ratio (e.g., "1:150" → 150)
-        let probabilityValue = null;
-        if (pkg.probability) {
-            const match = pkg.probability.match(/1:(\d+)/);
-            if (match) {
-                probabilityValue = parseInt(match[1]);
+            const mainThreshold = savedAlerts[`${pkg.name}_${mainCrypto}`];
+            const mergeThreshold = savedAlerts[`${pkg.name}_${mergeCrypto}`];
+
+            // If neither threshold is set, skip this package
+            if (!mainThreshold && !mergeThreshold) {
+                return;
             }
-        }
 
-        // Check if probability meets threshold (lower is better)
-        if (probabilityValue !== null && probabilityValue <= threshold) {
-            console.log(`✅ ${pkg.name}: Current 1:${probabilityValue} ≤ Threshold 1:${threshold} - RECOMMENDED`);
-            recommendations.push(pkg);
+            // Extract probabilities
+            let mainProbabilityValue = null;
+            let mergeProbabilityValue = null;
+
+            if (pkg.probability) {
+                const match = pkg.probability.match(/1:(\d+)/);
+                if (match) mainProbabilityValue = parseInt(match[1]);
+            }
+            if (pkg.mergeProbability) {
+                const match = pkg.mergeProbability.match(/1:(\d+)/);
+                if (match) mergeProbabilityValue = parseInt(match[1]);
+            }
+
+            // Check if either crypto meets its threshold (OR logic)
+            let mainMeetsThreshold = false;
+            let mergeMeetsThreshold = false;
+
+            if (mainThreshold && mainProbabilityValue !== null && mainProbabilityValue <= mainThreshold) {
+                mainMeetsThreshold = true;
+                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue} ≤ Threshold 1:${mainThreshold}`);
+            } else if (mainThreshold) {
+                console.log(`❌ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue} > Threshold 1:${mainThreshold}`);
+            }
+
+            if (mergeThreshold && mergeProbabilityValue !== null && mergeProbabilityValue <= mergeThreshold) {
+                mergeMeetsThreshold = true;
+                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue} ≤ Threshold 1:${mergeThreshold}`);
+            } else if (mergeThreshold) {
+                console.log(`❌ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue} > Threshold 1:${mergeThreshold}`);
+            }
+
+            // Recommend if EITHER threshold is met
+            if (mainMeetsThreshold || mergeMeetsThreshold) {
+                console.log(`✅ ${pkg.name}: RECOMMENDED (one or both cryptos meet threshold)`);
+                recommendations.push(pkg);
+            }
         } else {
-            console.log(`❌ ${pkg.name}: Current 1:${probabilityValue} > Threshold 1:${threshold} - Not recommended`);
+            // Single crypto package - original logic
+            const threshold = savedAlerts[pkg.name];
+
+            if (!threshold) {
+                return; // No alert set for this package
+            }
+
+            // Extract probability value from ratio (e.g., "1:150" → 150)
+            let probabilityValue = null;
+            if (pkg.probability) {
+                const match = pkg.probability.match(/1:(\d+)/);
+                if (match) {
+                    probabilityValue = parseInt(match[1]);
+                }
+            }
+
+            // Check if probability meets threshold (lower is better)
+            if (probabilityValue !== null && probabilityValue <= threshold) {
+                console.log(`✅ ${pkg.name}: Current 1:${probabilityValue} ≤ Threshold 1:${threshold} - RECOMMENDED`);
+                recommendations.push(pkg);
+            } else {
+                console.log(`❌ ${pkg.name}: Current 1:${probabilityValue} > Threshold 1:${threshold} - Not recommended`);
+            }
         }
     });
 
