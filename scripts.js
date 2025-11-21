@@ -9959,7 +9959,25 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     console.log(`📦 Populating ${singlePackages.length} single packages...`);
-    singleContainer.innerHTML = '';
+
+    // Add balance display
+    const availableBalance = easyMiningData?.balanceBTC || 0;
+    const balanceAUD = window.packageCryptoPrices?.['btc']?.aud
+        ? (availableBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
+        : '0.00';
+
+    singleContainer.innerHTML = `
+        <div style="padding: 15px; margin-bottom: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #aaa; font-size: 14px;">💰 Available Balance:</span>
+                <div style="text-align: right;">
+                    <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
+                    <div style="color: #888; font-size: 13px;">≈ $${balanceAUD} AUD</div>
+                </div>
+            </div>
+        </div>
+    `;
+
     singlePackages.forEach(pkg => {
         try {
             const isRecommended = soloRecommendedNames.includes(pkg.name);
@@ -9979,7 +9997,21 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     console.log(`👥 Populating ${teamPackages.length} team packages...`);
-    teamContainer.innerHTML = '';
+
+    // Add balance display
+    teamContainer.innerHTML = `
+        <div style="padding: 15px; margin-bottom: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #aaa; font-size: 14px;">💰 Available Balance:</span>
+                <div style="text-align: right;">
+                    <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
+                    <div style="color: #888; font-size: 13px;">≈ $${balanceAUD} AUD</div>
+                    <div style="color: #ffa500; font-size: 12px; margin-top: 5px;">1 share = 0.0001 BTC</div>
+                </div>
+            </div>
+        </div>
+    `;
+
     teamPackages.forEach(pkg => {
         try {
             const isRecommended = teamRecommendedNames.includes(pkg.name);
@@ -10176,19 +10208,50 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         `;
     }
 
+    // Get available balance
+    const availableBalance = easyMiningData?.balanceBTC || 0;
+
+    // Calculate affordability
+    let canAfford = false;
+    let sharePrice = 0.0001; // Team packages: 0.0001 BTC per share
+    let buyButtonDisabled = '';
+    let buyButtonStyle = '';
+
+    if (pkg.isTeam) {
+        // Team package: check if user can afford at least 1 share
+        canAfford = availableBalance >= sharePrice;
+        buyButtonDisabled = canAfford ? '' : 'disabled';
+        buyButtonStyle = canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    } else {
+        // Solo package: check if user can afford full package price
+        canAfford = availableBalance >= (pkg.priceBTC || 0);
+        buyButtonDisabled = canAfford ? '' : 'disabled';
+        buyButtonStyle = canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    }
+
+    // For team packages: calculate initial + button state
+    let plusButtonDisabled = '';
+    let plusButtonStyle = '';
+    if (pkg.isTeam) {
+        // Check if user can afford first share for initial + button state
+        const canAffordFirstShare = availableBalance >= sharePrice;
+        plusButtonDisabled = canAffordFirstShare ? '' : 'disabled';
+        plusButtonStyle = canAffordFirstShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    }
+
     // For team packages: add share selector with buy button on same row
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1)" class="share-adjuster-btn">-</button>
             <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="9999" class="share-adjuster-input" readonly>
-            <button onclick="adjustShares('${pkg.name}', 1)" class="share-adjuster-btn">+</button>
-            <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})' style="margin-left: 10px;">Buy</button>
+            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
+            <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
     ` : '';
 
     // For solo packages: separate buy button
     const soloBuyButton = !pkg.isTeam ? `
-        <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
+        <button class="buy-now-btn" ${buyButtonDisabled} style="${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
             Buy
         </button>
     ` : '';
@@ -10220,6 +10283,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 function adjustShares(packageName, delta) {
     const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
     const input = document.getElementById(inputId);
+    const plusButtonId = `plus-${packageName.replace(/\s+/g, '-')}`;
+    const plusButton = document.getElementById(plusButtonId);
 
     if (!input) return;
 
@@ -10228,6 +10293,25 @@ function adjustShares(packageName, delta) {
     const newValue = Math.max(0, Math.min(max, currentValue + delta));
 
     input.value = newValue;
+
+    // Check balance and update + button state for team packages
+    const availableBalance = easyMiningData?.balanceBTC || 0;
+    const sharePrice = 0.0001; // Team packages: 0.0001 BTC per share
+    const nextShareCost = (newValue + 1) * sharePrice;
+
+    if (plusButton) {
+        if (availableBalance < nextShareCost) {
+            // Disable + button if can't afford next share
+            plusButton.disabled = true;
+            plusButton.style.opacity = '0.5';
+            plusButton.style.cursor = 'not-allowed';
+        } else {
+            // Enable + button if can afford next share
+            plusButton.disabled = false;
+            plusButton.style.opacity = '1';
+            plusButton.style.cursor = 'pointer';
+        }
+    }
 }
 
 // Make adjustShares globally accessible
