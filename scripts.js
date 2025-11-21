@@ -9714,7 +9714,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="${pkg.totalShares - pkg.boughtShares}" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="9999" class="share-adjuster-input" readonly>
             <button onclick="adjustShares('${pkg.name}', 1)" class="share-adjuster-btn">+</button>
             <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})' style="margin-left: 10px;">Buy</button>
         </div>
