@@ -8383,10 +8383,22 @@ async function fetchNiceHashSoloPackages() {
                 const cryptoDisplay = hasMergeCurrency ? `${mergeCrypto}+${mainCrypto}` : mainCrypto;
 
                 // Get block rewards from currencyAlgo and mergeCurrencyAlgo
-                const mainBlockReward = pkg.currencyAlgo.blockRewardWithNhFee || pkg.currencyAlgo.blockReward;
+                // For Palladium (DOGE+LTC): LTC is in currencyAlgo, DOGE is in mergeCurrencyAlgo
+                // Use blockReward (not blockRewardWithNhFee) as per user requirement
+                const mainBlockReward = pkg.currencyAlgo.blockReward;
                 const mergeBlockReward = hasMergeCurrency
-                    ? (pkg.mergeCurrencyAlgo.blockRewardWithNhFee || pkg.mergeCurrencyAlgo.blockReward)
+                    ? pkg.mergeCurrencyAlgo.blockReward
                     : null;
+
+                // Log raw API data for Palladium packages to verify extraction
+                if (pkg.name.includes('Palladium')) {
+                    console.log(`🔍 PALLADIUM PACKAGE RAW DATA for ${pkg.name}:`, {
+                        currencyAlgo: pkg.currencyAlgo,
+                        mergeCurrencyAlgo: pkg.mergeCurrencyAlgo,
+                        extracted_mainBlockReward: mainBlockReward,
+                        extracted_mergeBlockReward: mergeBlockReward
+                    });
+                }
 
                 // Get probabilities for dual-crypto packages
                 let mainProbability = probabilityRatio;
@@ -8728,15 +8740,26 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Potential reward section - handle dual-crypto packages
     let rewardInfo = '';
     if (pkg.isDualCrypto) {
+        // Log values being displayed for Palladium packages
+        if (pkg.name.includes('Palladium')) {
+            console.log(`🎨 DISPLAYING Palladium ${pkg.name}:`, {
+                mergeCrypto: pkg.mergeCrypto,
+                mergeBlockReward: pkg.mergeBlockReward,
+                mainCrypto: pkg.mainCrypto,
+                blockReward: pkg.blockReward,
+                rewardAUD: rewardAUD
+            });
+        }
+
         // Show both rewards for dual-crypto packages (DOGE+LTC)
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Potential Reward ${pkg.mergeCrypto}:</span>
-                <span style="color: #4CAF50;">${pkg.mergeBlockReward.toFixed(0)} ${pkg.mergeCrypto}</span>
+                <span style="color: #4CAF50;">${pkg.mergeBlockReward ? pkg.mergeBlockReward.toFixed(0) : '0'} ${pkg.mergeCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Potential Reward ${pkg.mainCrypto}:</span>
-                <span style="color: #4CAF50;">${pkg.blockReward.toFixed(4)} ${pkg.mainCrypto}</span>
+                <span style="color: #4CAF50;">${pkg.blockReward ? pkg.blockReward.toFixed(4) : '0'} ${pkg.mainCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
