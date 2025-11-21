@@ -2033,30 +2033,64 @@ document.getElementById('confirm-password').addEventListener('keyup', function(e
 function initializeWebSocket() {
     const wsEndpoint = 'wss://wbs-api.mexc.com/ws';
 
-    console.log('Initializing MEXC WebSocket connection...');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🚀 Initializing MEXC WebSocket connection...');
+    console.log('   Endpoint:', wsEndpoint);
+    console.log('   Protocol: aggre.deals (trade-by-trade, ~100ms updates)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     socket = new WebSocket(wsEndpoint);
     lastWebSocketUpdate = Date.now();
 
     socket.onopen = function(event) {
         console.log('✅ MEXC WebSocket connection opened');
+        console.log('   WebSocket readyState:', socket.readyState, '(0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)');
 
         // Reset reconnection tracking on successful connection
         reconnectAttempts = 0;
         reconnectDelay = 1000;
         intentionalClose = false;
 
-        // Subscribe to price updates for all user cryptos
-        if (users[loggedInUser] && users[loggedInUser].cryptos) {
-            users[loggedInUser].cryptos.forEach(crypto => {
-                const subscriptionMessage = JSON.stringify({
-                    "method": "SUBSCRIPTION",
-                    "params": [`spot@public.deals.v3.api@${crypto.symbol.toUpperCase()}USDT`]
+        // Wait for WebSocket to be fully ready before subscribing
+        // This prevents "Still in CONNECTING state" errors
+        setTimeout(() => {
+            console.log('   WebSocket readyState after delay:', socket.readyState);
+
+            if (socket.readyState === WebSocket.OPEN && users[loggedInUser] && users[loggedInUser].cryptos) {
+                console.log(`📬 Starting subscriptions for ${users[loggedInUser].cryptos.length} cryptocurrencies...`);
+
+                users[loggedInUser].cryptos.forEach(crypto => {
+                    // Double-check state before each send
+                    if (socket.readyState === WebSocket.OPEN) {
+                        // Use the JSON deals format (NOT .pb to avoid Blob data)
+                        const channel = `spot@public.deals.v3.api@${crypto.symbol.toUpperCase()}USDT`;
+                        const subscriptionMessage = JSON.stringify({
+                            "method": "SUBSCRIPTION",
+                            "params": [channel]
+                        });
+
+                        socket.send(subscriptionMessage);
+                        console.log(`   ✓ Subscribed to ${crypto.symbol.toUpperCase()}USDT (deals trade stream)`);
+                    } else {
+                        console.error(`   ✗ Cannot subscribe to ${crypto.symbol.toUpperCase()}USDT - WebSocket not OPEN (state: ${socket.readyState})`);
+                    }
                 });
 
-                console.log(`Subscribing to ${crypto.symbol.toUpperCase()}USDT price updates`);
-                socket.send(subscriptionMessage);
-            });
-        }
+                console.log('✅ All subscriptions sent');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🎯 Waiting for price updates...');
+                console.log('   If no updates appear within 10 seconds, check:');
+                console.log('   • Symbol exists on MEXC (must be traded vs USDT)');
+                console.log('   • Symbol spelling matches MEXC exactly');
+                console.log('   • Network tab for WebSocket frames');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            } else {
+                console.error('❌ WebSocket not ready for subscriptions:', {
+                    readyState: socket.readyState,
+                    hasUser: !!loggedInUser,
+                    hasCryptos: !!(users[loggedInUser] && users[loggedInUser].cryptos)
+                });
+            }
+        }, 150); // 150ms delay to ensure connection is fully established
 
         // Start ping/pong keep-alive (every 20 seconds)
         if (pingInterval) {
@@ -2081,28 +2115,52 @@ function initializeWebSocket() {
                 return;
             }
 
-            // Handle price updates with new JSON format
+            // Log all incoming messages for debugging (first 5 only to avoid spam)
+            if (!message.msg) {
+                if (!socket.debugMessageCount) socket.debugMessageCount = 0;
+                if (socket.debugMessageCount < 5) {
+                    console.log('📨 Raw message received:', JSON.stringify(message, null, 2));
+                    socket.debugMessageCount++;
+                    if (socket.debugMessageCount === 5) {
+                        console.log('   (Suppressing further raw message logs to avoid spam)');
+                    }
+                }
+            }
+
+            // Handle price updates with JSON deals format
             // Format: { "c": "spot@public.deals.v3.api", "d": { "deals": [...] }, "s": "BTCUSDT", "t": timestamp }
             if (message.d && message.d.deals && message.d.deals.length > 0 && message.s) {
                 const latestDeal = message.d.deals[0];
                 const price = parseFloat(latestDeal.p);
                 const symbolPart = message.s; // e.g., "BTCUSDT"
                 const symbol = symbolPart.replace('USDT', '').toLowerCase();
+                const side = latestDeal.S === 1 ? 'BUY' : 'SELL';
+                const volume = latestDeal.v || 'N/A';
 
-                console.log(`💰 Price update for ${symbol}: $${price} USDT`);
+                console.log(`💰 Price update for ${symbol.toUpperCase()}: $${price} USDT (${side} trade, vol: ${volume})`);
 
                 lastWebSocketUpdate = Date.now();
                 updatePriceFromWebSocket(symbol, price);
-            } else {
-                // Log unexpected message format for debugging (but not PONG messages)
-                if (!message.msg) {
-                    console.log('📨 Message received:', message);
+            } else if (message.c && message.c.includes('spot@public')) {
+                // This might be a subscription confirmation or different message format
+                console.log('📨 Received message on channel:', message.c);
+                if (message.d) {
+                    console.log('   Message data:', JSON.stringify(message.d, null, 2));
                 }
+            } else if (!message.msg) {
+                // Log unexpected message format for debugging (but not PONG messages)
+                console.log('⚠️ Unexpected message format:', {
+                    hasDeals: !!(message.d && message.d.deals),
+                    hasSymbol: !!message.s,
+                    hasChannel: !!message.c,
+                    keys: Object.keys(message)
+                });
             }
         } catch (error) {
             console.error('❌ Error processing WebSocket message:', error);
-            console.error('Event data type:', typeof event.data);
-            console.error('Event data:', event.data);
+            console.error('   Event data type:', typeof event.data);
+            console.error('   Event data:', event.data);
+            console.error('   Stack:', error.stack);
         }
     };
 
@@ -2157,15 +2215,17 @@ function closeWebSocketIntentionally() {
 // Function to subscribe to a single crypto's price updates
 function subscribeToSymbol(symbol) {
     if (socket && socket.readyState === WebSocket.OPEN) {
+        // Use the JSON deals format (NOT .pb to avoid Blob data)
+        const channel = `spot@public.deals.v3.api@${symbol.toUpperCase()}USDT`;
         const subscriptionMessage = JSON.stringify({
             "method": "SUBSCRIPTION",
-            "params": [`spot@public.deals.v3.api@${symbol.toUpperCase()}USDT`]
+            "params": [channel]
         });
 
-        console.log(`🔔 Subscribing to ${symbol.toUpperCase()}USDT price updates`);
+        console.log(`🔔 Subscribing to ${symbol.toUpperCase()}USDT price updates (deals stream)`);
         socket.send(subscriptionMessage);
     } else {
-        console.log(`⚠️ WebSocket not ready, subscription to ${symbol} will happen on next connection`);
+        console.log(`⚠️ WebSocket not ready (state: ${socket?.readyState}), subscription to ${symbol} will happen on next connection`);
     }
 }
 
@@ -2966,44 +3026,70 @@ async function fetchHistoricalData(cryptoId) {
 }
 
 function initializeWebSocketForCrypto(symbol) {
-    const wsEndpoint = 'wss://wbs.mexc.com/ws'; // Example MEXC WebSocket
+    const wsEndpoint = 'wss://wbs-api.mexc.com/ws'; // Updated to new MEXC endpoint
     currentWebSocket = new WebSocket(wsEndpoint); // Track the WebSocket for the current modal
 
     currentWebSocket.onopen = function() {
-        console.log(`WebSocket connection opened for ${symbol}`);
+        console.log(`✅ Chart WebSocket connection opened for ${symbol}`);
+        console.log('   ReadyState:', currentWebSocket.readyState);
 
-        // Subscribe to the specific symbol
-        const subscriptionMessage = JSON.stringify({
-            "method": "SUBSCRIPTION",
-            "params": [`spot@public.deals.v3.api@${symbol.toUpperCase()}USDT`],
-            "id": 1
-        });
-        currentWebSocket.send(subscriptionMessage);
+        // Wait for WebSocket to be fully ready before subscribing
+        setTimeout(() => {
+            if (currentWebSocket && currentWebSocket.readyState === WebSocket.OPEN) {
+                // Use the new aggre.deals format for fastest updates
+                const channel = `spot@public.aggre.deals.v3.api.pb@100ms@${symbol.toUpperCase()}USDT`;
+                const subscriptionMessage = JSON.stringify({
+                    "method": "SUBSCRIPTION",
+                    "params": [channel],
+                    "id": 1
+                });
+                currentWebSocket.send(subscriptionMessage);
+                console.log(`   ✓ Chart subscribed to ${symbol.toUpperCase()}USDT (aggre.deals)`);
+            } else {
+                console.error(`   ✗ Chart WebSocket not ready for ${symbol} (state: ${currentWebSocket?.readyState})`);
+            }
+        }, 150); // 150ms delay to ensure connection is ready
     };
 
     currentWebSocket.onmessage = function(event) {
-        const message = JSON.parse(event.data);
-        if (message && message.d && Array.isArray(message.d.deals) && message.d.deals.length > 0) {
-            const deals = message.d.deals;
-            const firstDeal = deals[0];
-            if (firstDeal && firstDeal.p !== undefined) {
-                const price = parseFloat(firstDeal.p);
-                console.log(`Live price for ${symbol}: ${price} USDT`);
-                
+        try {
+            const message = JSON.parse(event.data);
+
+            // Handle NEW aggre.deals format
+            if (message.channel && message.channel.includes('aggre.deals') && message.data && message.data.price) {
+                const price = parseFloat(message.data.price);
+                console.log(`📊 Chart price update for ${symbol}: $${price} USDT`);
+
                 // Update the price only if the current modal is open and matches the symbol
                 if (isModalOpen && currentModalCryptoSymbol === symbol) {
                     updatePriceInChart(price); // Update the candlestick chart with live price
                 }
             }
+            // Handle OLD format (fallback)
+            else if (message && message.d && Array.isArray(message.d.deals) && message.d.deals.length > 0) {
+                const deals = message.d.deals;
+                const firstDeal = deals[0];
+                if (firstDeal && firstDeal.p !== undefined) {
+                    const price = parseFloat(firstDeal.p);
+                    console.log(`📊 Chart price update for ${symbol}: $${price} USDT [OLD FORMAT]`);
+
+                    // Update the price only if the current modal is open and matches the symbol
+                    if (isModalOpen && currentModalCryptoSymbol === symbol) {
+                        updatePriceInChart(price); // Update the candlestick chart with live price
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`❌ Chart WebSocket message error for ${symbol}:`, error);
         }
     };
 
     currentWebSocket.onclose = function() {
-        console.log(`WebSocket connection closed for ${symbol}`);
+        console.log(`🔌 Chart WebSocket connection closed for ${symbol}`);
     };
 
     currentWebSocket.onerror = function(error) {
-        console.error(`WebSocket error for ${symbol}:`, error);
+        console.error(`❌ Chart WebSocket error for ${symbol}:`, error);
     };
 }
 
