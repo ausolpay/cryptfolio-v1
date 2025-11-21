@@ -1834,12 +1834,12 @@ body.light-mode .tab-button {
     background-color: #2a2a2a;
     border: 1px solid #444;
     border-radius: 8px;
-    padding: 30px; /* Bigger padding */
-    min-height: 450px; /* Bigger minimum height */
+    padding: 25px; /* Good padding for square cards */
+    aspect-ratio: 1; /* Fixed square cards */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    overflow: auto; /* Allow scroll if needed */
+    overflow: auto; /* Allow scroll if content overflows */
     box-sizing: border-box;
 }
 
@@ -2175,13 +2175,12 @@ body.light-mode .easymining-toggles .setting-item {
 }
 
 .buy-packages-form {
-    max-width: 90%; /* Much wider for buy packages */
-    width: 100%;
     margin: 20px auto;
     padding: 40px;
     background-color: #1e1e1e;
     border: 1px solid #333;
     border-radius: 8px;
+    /* Width will be set by responsive media queries to match crypto boxes layout */
 }
 
 body.light-mode .easymining-settings-form,
@@ -2247,6 +2246,38 @@ body.light-mode .easymining-settings-form input[type="password"] {
 @media (max-width: 700px) {
     .buy-packages-container-page {
         grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================================================
+   RESPONSIVE MEDIA QUERIES FOR BUY PACKAGES FORM (Match EasyMining)
+   ============================================================================= */
+
+/* Wide Tablet - 3 packages wide */
+@media (max-width: 1390px) {
+    .buy-packages-form {
+        margin: 0 auto 15px auto;
+        width: 1040px; /* Match 3 crypto boxes width with gaps */
+        max-width: 1040px;
+    }
+}
+
+/* Narrow Tablet - 2 packages wide */
+@media (max-width: 1040px) {
+    .buy-packages-form {
+        margin: 0 auto 15px auto;
+        width: 700px; /* Match 2 crypto boxes width with gaps */
+        max-width: 700px;
+    }
+}
+
+/* Mobile - 1 package wide */
+@media (max-width: 700px) {
+    .buy-packages-form {
+        margin: 0 auto 15px auto;
+        width: 300px; /* Match 1 crypto box width */
+        box-sizing: content-box;
+        padding: 20px;
     }
 }
 

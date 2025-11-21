@@ -8198,13 +8198,16 @@ async function fetchNiceHashSoloPackages() {
 
     try {
         const endpoint = '/main/api/v2/public/solo/package';
-        const url = `https://api2.nicehash.com${endpoint}`;
+        // Use Vercel proxy in production, direct call in dev
+        const url = USE_VERCEL_PROXY
+            ? `${VERCEL_PROXY_ENDPOINT}?endpoint=${encodeURIComponent(endpoint)}`
+            : `https://api2.nicehash.com${endpoint}`;
 
         console.log('📡 Making request to:', url);
+        console.log('📡 Using Vercel Proxy:', USE_VERCEL_PROXY);
 
         const response = await fetch(url, {
             method: 'GET',
-            mode: 'cors', // Enable CORS
             headers: {
                 'Accept': 'application/json'
             }
