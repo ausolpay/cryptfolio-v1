@@ -2152,9 +2152,38 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Desktop and Large Tablets - Default layout (above 768px) */
 /* All balances and buttons on same line when space allows */
 
-/* Large Mobile/Tablet (600px - 768px) */
-/* Add horizontal padding, reduce gaps slightly, keep multi-column layout */
+/* Wide Tablet (769px - 1100px) - 3 crypto boxes wide */
+@media (max-width: 1100px) {
+    .easymining-section {
+        margin: 0 auto 15px auto;
+        width: 930px; /* 3 boxes: (300px × 3) + (10px × 2 gaps) */
+        max-width: 930px;
+    }
+
+    .easymining-loading-bar {
+        margin: 0 auto 15px auto;
+        width: 930px; /* 3 boxes: (300px × 3) + (10px × 2 gaps) */
+        max-width: 930px;
+    }
+}
+
+/* Narrow Tablet (621px - 768px) - 2 crypto boxes wide */
 @media (max-width: 768px) {
+    .easymining-section {
+        margin: 0 auto 15px auto;
+        width: 620px; /* 2 boxes: (300px × 2) + (10px × 1 gap) */
+        max-width: 620px;
+    }
+
+    .easymining-loading-bar {
+        margin: 0 auto 15px auto;
+        width: 620px; /* 2 boxes: (300px × 2) + (10px × 1 gap) */
+        max-width: 620px;
+    }
+}
+
+/* Mobile (below 620px) - 1 crypto box wide */
+@media (max-width: 620px) {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
@@ -2193,20 +2222,6 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Medium Mobile (450px - 600px) */
 /* Two balance items per row, buttons still side by side */
 @media (max-width: 600px) {
-    .easymining-section {
-        margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container */
-        padding: 20px; /* Match crypto-container */
-    }
-
-    .easymining-loading-bar {
-        margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container */
-        padding: 20px; /* Match crypto-container */
-    }
-
     .easymining-balances {
         gap: 8px; /* Further reduce gap to maximize space */
         padding: 10px;
@@ -2253,20 +2268,6 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Small Mobile (below 450px) */
 /* Two balance items per row still, but smaller screens may need single column for balances */
 @media (max-width: 450px) {
-    .easymining-section {
-        margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container */
-        padding: 20px; /* Match crypto-container */
-    }
-
-    .easymining-loading-bar {
-        margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container */
-        padding: 20px; /* Match crypto-container */
-    }
-
     .easymining-content {
         padding: 0 5px; /* Match crypto box margins */
     }
@@ -2295,20 +2296,6 @@ body.light-mode .easymining-settings-form input[type="password"] {
 /* Extra Small Mobile (below 400px) */
 /* NOW we stack everything - single column for balances, buttons wrap to separate lines */
 @media (max-width: 400px) {
-    .easymining-section {
-        margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container */
-        padding: 20px; /* Match crypto-container */
-    }
-
-    .easymining-loading-bar {
-        margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container */
-        padding: 20px; /* Match crypto-container */
-    }
-
     .easymining-balances {
         gap: 8px;
         padding: 10px;
