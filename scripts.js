@@ -7935,6 +7935,9 @@ async function updateRecommendations() {
                     teamAlertsContainer.innerHTML = '<p style="color: #aaa;">No team packages currently meet your alert thresholds.</p>';
                 }
             } else {
+                // Fetch crypto prices for team recommendations
+                window.packageCryptoPrices = await fetchPackageCryptoPrices(teamRecommendations);
+
                 console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`);
 
                 // Display each recommended team package with reasons
@@ -7983,6 +7986,12 @@ function createTeamPackageRecommendationCard(pkg) {
     const totalShares = pkg.fullAmount ? Math.round(pkg.fullAmount / sharePrice) : 0;
     const shareCount = (sharesBought > 0 || totalShares > 0) ? ` (${sharesBought}/${totalShares})` : '';
 
+    // Calculate price in AUD (using global packageCryptoPrices)
+    const btcPrice = (window.packageCryptoPrices && window.packageCryptoPrices['bitcoin'])
+        ? window.packageCryptoPrices['bitcoin'].aud
+        : 140000;
+    const pricePerShareAUD = (sharePrice * btcPrice).toFixed(2);
+
     const teamInfo = `
         <div class="buy-package-stat">
             <span>Participants:</span>
@@ -7991,6 +8000,10 @@ function createTeamPackageRecommendationCard(pkg) {
         <div class="buy-package-stat">
             <span>Share %:</span>
             <span style="color: #ffa500;">${pkg.shares || '0'}%${shareCount}</span>
+        </div>
+        <div class="buy-package-stat">
+            <span>Share Price (AUD):</span>
+            <span>$${pricePerShareAUD} AUD</span>
         </div>
     `;
 
