@@ -8567,62 +8567,73 @@ function adjustShares(packageName, delta) {
 window.adjustShares = adjustShares;
 
 async function buyPackageFromPage(pkg) {
+    // Check if EasyMining API is configured
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
         alert('Please configure EasyMining API settings first!');
         showEasyMiningSettingsPage();
         return;
     }
 
-    if (!confirm(`Purchase ${pkg.name} for $${pkg.price} AUD?\n\nThis will create an order on NiceHash.`)) {
+    // Get package ID from API data
+    const packageId = pkg.apiData?.id || pkg.id;
+    if (!packageId) {
+        alert('Error: Package ID not found. Cannot create order.');
+        console.error('Missing package ID:', pkg);
+        return;
+    }
+
+    // Calculate price in AUD for confirmation
+    const prices = window.packageCryptoPrices || {};
+    let priceAUD = 0;
+    if (pkg.priceBTC && prices['btc']?.aud) {
+        priceAUD = (pkg.priceBTC * prices['btc'].aud).toFixed(2);
+    }
+
+    // Show confirmation dialog with package details
+    const confirmMessage = `
+🛒 Purchase Solo Mining Package?
+
+Package: ${pkg.name}
+Crypto: ${pkg.crypto}
+Probability: ${pkg.probability}
+Duration: ${pkg.duration}
+Price: $${priceAUD} AUD (${pkg.priceBTC} BTC)
+
+This will create an order on NiceHash.
+Do you want to continue?
+    `.trim();
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    // Ask for wallet address for mining rewards
+    const walletAddress = prompt(
+        `Enter your ${pkg.crypto} wallet address to receive mining rewards:\n\n` +
+        `(This is where block rewards will be sent if you find a block)`
+    );
+
+    if (!walletAddress || walletAddress.trim() === '') {
+        alert('Wallet address is required to purchase a solo mining package.');
         return;
     }
 
     try {
-        console.log('Creating NiceHash order for:', pkg.name);
+        console.log('🛒 Creating NiceHash solo order:', {
+            packageId: packageId,
+            packageName: pkg.name,
+            crypto: pkg.crypto,
+            walletAddress: walletAddress
+        });
 
-        // Map algorithm name to NiceHash algorithm ID
-        const algorithmMap = {
-            'SHA256': '20',
-            'KawPow': '23',
-            'Scrypt': '7',
-            'kHeavyHash': '25'
-        };
-
-        const algorithmId = algorithmMap[pkg.algorithm] || '20';
-
-        // Parse hashrate to amount (convert to basic units)
-        let hashrateAmount = 0;
-        if (pkg.hashrate) {
-            const hashrateMatch = pkg.hashrate.match(/([\d.]+)\s*([A-Za-z]+)/);
-            if (hashrateMatch) {
-                const value = parseFloat(hashrateMatch[1]);
-                const unit = hashrateMatch[2].toUpperCase();
-
-                // Convert to H/s (base unit)
-                const multipliers = {
-                    'H/S': 1,
-                    'KH/S': 1000,
-                    'MH/S': 1000000,
-                    'GH/S': 1000000000,
-                    'TH/S': 1000000000000
-                };
-
-                hashrateAmount = value * (multipliers[unit] || 1);
-            }
-        }
-
-        // Create order payload
+        // Create order payload for solo mining package
         const orderData = {
-            algorithm: algorithmId,
-            amount: hashrateAmount.toString(),
-            price: (parseFloat(pkg.price) * 0.01).toFixed(8), // Convert AUD to BTC price (estimate)
-            limit: '0', // Standard order
-            poolId: '', // User's pool
-            market: 'USA' // Default market
+            ticketId: packageId,
+            soloMiningRewardAddr: walletAddress.trim()
         };
 
-        // Call NiceHash API to create order
-        const endpoint = '/main/api/v2/hashpower/order';
+        // Call NiceHash API to create solo order
+        const endpoint = '/main/api/v2/hashpower/solo/order';
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
@@ -8630,7 +8641,7 @@ async function buyPackageFromPage(pkg) {
 
         if (USE_VERCEL_PROXY) {
             // Use Vercel serverless function as proxy
-            console.log('✅ Using Vercel proxy to create order');
+            console.log('✅ Using Vercel proxy to create solo order');
             response = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
@@ -8645,6 +8656,7 @@ async function buyPackageFromPage(pkg) {
             });
         } else {
             // Direct call to NiceHash
+            console.log('📡 Direct call to NiceHash API');
             response = await fetch(`https://api2.nicehash.com${endpoint}`, {
                 method: 'POST',
                 headers: headers,
@@ -8652,23 +8664,34 @@ async function buyPackageFromPage(pkg) {
             });
         }
 
+        console.log('📡 Response status:', response.status);
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `API Error: ${response.status}`);
+            const errorText = await response.text();
+            console.error('❌ API Error Response:', errorText);
+            let errorMessage = `API Error: ${response.status}`;
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorData.error_message || errorMessage;
+            } catch (e) {
+                errorMessage = errorText || errorMessage;
+            }
+            throw new Error(errorMessage);
         }
 
         const result = await response.json();
-        console.log('Order created successfully:', result);
+        console.log('✅ Solo order created successfully:', result);
 
-        alert(`✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}`);
+        alert(`✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\nCrypto: ${pkg.crypto}\nWallet: ${walletAddress}`);
 
         // Update stats
-        easyMiningData.allTimeStats.totalSpent += parseFloat(pkg.price);
-        easyMiningData.todayStats.totalSpent += parseFloat(pkg.price);
+        const pricePaid = parseFloat(priceAUD) || 0;
+        easyMiningData.allTimeStats.totalSpent += pricePaid;
+        easyMiningData.todayStats.totalSpent += pricePaid;
 
         // Calculate P&L
         easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
-        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - parseFloat(pkg.price);
+        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - pricePaid;
 
         localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
@@ -8679,8 +8702,8 @@ async function buyPackageFromPage(pkg) {
         showAppPage();
 
     } catch (error) {
-        console.error('Error purchasing package:', error);
-        alert(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance. You may need to configure your mining pool in NiceHash first.`);
+        console.error('❌ Error purchasing package:', error);
+        alert(`Failed to purchase package: ${error.message}\n\nPlease check:\n- Your API credentials are correct\n- You have sufficient BTC balance\n- The wallet address is valid for ${pkg.crypto}`);
     }
 }
 
