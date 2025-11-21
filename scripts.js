@@ -771,7 +771,7 @@ async function loadSoloAlerts() {
 
                 if (this.checked) {
                     // Simple confirmation dialog
-                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nWhen an alert triggers, this package will be purchased automatically.\n\nCooldown: 1 hour 15 minutes between purchases.`)) {
+                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nWhen an alert triggers, this package will be purchased automatically.\n\nCooldown: 1 hour per package (other packages can auto-buy independently).`)) {
                         this.checked = false;
                         return;
                     }
@@ -1046,7 +1046,7 @@ async function loadTeamAlerts() {
                     const shares = sharesInput ? parseInt(sharesInput.value) || 1 : 1;
 
                     // Simple confirmation dialog
-                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nShares: ${shares}\n\nWhen an alert triggers, this package will be purchased automatically with ${shares} share(s).\n\nCooldown: 1 hour 15 minutes between purchases.`)) {
+                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nShares: ${shares}\n\nWhen an alert triggers, this package will be purchased automatically with ${shares} share(s).\n\nCooldown: 1 hour per package (other packages can auto-buy independently).`)) {
                         this.checked = false;
                         return;
                     }
@@ -7629,7 +7629,7 @@ async function executeAutoBuySolo(recommendations) {
     console.log('🤖 Checking for solo auto-buy opportunities...');
 
     const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-    const cooldownMs = 75 * 60 * 1000; // 1 hour 15 minutes in milliseconds
+    const cooldownMs = 60 * 60 * 1000; // 1 hour in milliseconds
 
     for (const pkg of recommendations) {
         const autoBuy = autoBuySettings[pkg.name];
@@ -7694,7 +7694,7 @@ async function executeAutoBuySolo(recommendations) {
             localStorage.setItem(`${loggedInUser}_soloAutoBuy`, JSON.stringify(autoBuySettings));
 
             console.log(`✅ Auto-buy completed for ${pkg.name}`, result);
-            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically.\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy available in 1 hour 15 minutes.`);
+            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically.\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy for this package available in 1 hour.`);
 
             // Refresh package data
             await fetchEasyMiningData();
@@ -7709,7 +7709,7 @@ async function executeAutoBuyTeam(recommendations) {
     console.log('🤖 Checking for team auto-buy opportunities...');
 
     const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-    const cooldownMs = 75 * 60 * 1000; // 1 hour 15 minutes in milliseconds
+    const cooldownMs = 60 * 60 * 1000; // 1 hour in milliseconds
 
     for (const pkg of recommendations) {
         const autoBuy = autoBuySettings[pkg.name];
@@ -7777,7 +7777,7 @@ async function executeAutoBuyTeam(recommendations) {
             localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
 
             console.log(`✅ Auto-buy completed for ${pkg.name}`, result);
-            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically with ${autoBuy.shares} share(s).\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy available in 1 hour 15 minutes.`);
+            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically with ${autoBuy.shares} share(s).\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy for this package available in 1 hour.`);
 
             // Refresh package data
             await fetchEasyMiningData();
