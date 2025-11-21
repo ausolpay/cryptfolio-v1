@@ -10072,6 +10072,8 @@ async function loadBuyPackagesDataOnPage() {
                     const packageId = packageName.replace(/\s+/g, '-');
                     const rewardValueElement = document.getElementById(`reward-value-${packageId}`);
                     const priceElement = document.getElementById(`price-${packageId}`);
+                    const mainRewardElement = document.getElementById(`main-reward-${packageId}`);
+                    const mergeRewardElement = document.getElementById(`merge-reward-${packageId}`);
 
                     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
                         const baseValues = window.packageBaseValues[packageName];
@@ -10083,6 +10085,18 @@ async function loadBuyPackagesDataOnPage() {
                         }
                         if (priceElement) {
                             priceElement.textContent = `$${newPriceAUD} AUD`;
+                        }
+
+                        // Update crypto reward amounts
+                        if (mainRewardElement && baseValues.mainReward) {
+                            const newMainReward = baseValues.mainReward * value;
+                            const decimals = baseValues.mainCrypto === 'BTC' || baseValues.mainCrypto === 'BCH' ? 4 : 0;
+                            mainRewardElement.textContent = `${newMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
+                        }
+
+                        if (mergeRewardElement && baseValues.mergeReward && baseValues.isDualCrypto) {
+                            const newMergeReward = baseValues.mergeReward * value;
+                            mergeRewardElement.textContent = `${newMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
                         }
                     }
 
@@ -10330,14 +10344,24 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const packageId = pkg.name.replace(/\s+/g, '-');
 
     if (pkg.isDualCrypto) {
-        // Log values being displayed for Palladium packages
-        if (pkg.name.includes('Palladium')) {
-            console.log(`🎨 DISPLAYING Palladium ${pkg.name}:`, {
+        // Calculate per-share rewards for dual-crypto packages
+        let mergeRewardPerShare = pkg.mergeBlockReward || 0;
+        let mainRewardPerShare = pkg.blockReward || 0;
+
+        if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
+            const sharePrice = 0.0001;
+            const totalSharesInPackage = pkg.addedAmount / sharePrice;
+            mergeRewardPerShare = (pkg.mergeBlockReward || 0) / totalSharesInPackage;
+            mainRewardPerShare = (pkg.blockReward || 0) / totalSharesInPackage;
+
+            console.log(`🎨 DISPLAYING Palladium ${pkg.name} per-share:`, {
                 mergeCrypto: pkg.mergeCrypto,
-                mergeBlockReward: pkg.mergeBlockReward,
+                totalMergeReward: pkg.mergeBlockReward,
+                mergeRewardPerShare: mergeRewardPerShare,
                 mainCrypto: pkg.mainCrypto,
-                blockReward: pkg.blockReward,
-                rewardAUD: rewardAUD
+                totalMainReward: pkg.blockReward,
+                mainRewardPerShare: mainRewardPerShare,
+                totalSharesInPackage: totalSharesInPackage
             });
         }
 
@@ -10345,11 +10369,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mergeCrypto}:</span>
-                <span style="color: #4CAF50;">${pkg.mergeBlockReward ? pkg.mergeBlockReward.toFixed(0) : '0'} ${pkg.mergeCrypto}</span>
+                <span id="merge-reward-${packageId}" style="color: #4CAF50;">${mergeRewardPerShare.toFixed(0)} ${pkg.mergeCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mainCrypto}:</span>
-                <span style="color: #4CAF50;">${pkg.blockReward ? pkg.blockReward.toFixed(4) : '0'} ${pkg.mainCrypto}</span>
+                <span id="main-reward-${packageId}" style="color: #4CAF50;">${mainRewardPerShare.toFixed(4)} ${pkg.mainCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
@@ -10357,11 +10381,19 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
         `;
     } else if (pkg.blockReward) {
-        // Single crypto package
+        // Single crypto package - calculate per-share reward
+        let rewardPerShare = pkg.blockReward;
+
+        if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
+            const sharePrice = 0.0001;
+            const totalSharesInPackage = pkg.addedAmount / sharePrice;
+            rewardPerShare = pkg.blockReward / totalSharesInPackage;
+        }
+
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Reward:</span>
-                <span style="color: #4CAF50;">${pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
+                <span id="main-reward-${packageId}" style="color: #4CAF50;">${rewardPerShare.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
@@ -10452,26 +10484,47 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
         // Reward: Calculate total shares in package from addedAmount
         let rewardPerShareAUD = 0;
+        let mainRewardPerShare = 0;
+        let mergeRewardPerShare = 0;
+
         if (pkg.addedAmount && pkg.addedAmount > 0) {
             const totalSharesInPackage = pkg.addedAmount / sharePrice;
             rewardPerShareAUD = parseFloat(rewardAUD) / totalSharesInPackage;
+
+            // Calculate crypto-specific rewards per share
+            if (pkg.isDualCrypto) {
+                mergeRewardPerShare = (pkg.mergeBlockReward || 0) / totalSharesInPackage;
+                mainRewardPerShare = (pkg.blockReward || 0) / totalSharesInPackage;
+            } else {
+                mainRewardPerShare = (pkg.blockReward || 0) / totalSharesInPackage;
+            }
+
             console.log(`📊 ${pkg.name} per-share calculation:`, {
                 addedAmount: pkg.addedAmount,
                 sharePrice: sharePrice,
                 totalSharesInPackage: totalSharesInPackage,
                 totalRewardAUD: rewardAUD,
                 rewardPerShareAUD: rewardPerShareAUD.toFixed(2),
-                pricePerShareAUD: pricePerShareAUD.toFixed(2)
+                pricePerShareAUD: pricePerShareAUD.toFixed(2),
+                mainRewardPerShare: mainRewardPerShare,
+                mergeRewardPerShare: mergeRewardPerShare
             });
         } else {
             // Fallback: if no addedAmount, assume reward is already per-share
             rewardPerShareAUD = parseFloat(rewardAUD);
+            mainRewardPerShare = pkg.blockReward || 0;
+            mergeRewardPerShare = pkg.mergeBlockReward || 0;
             console.log(`⚠️ ${pkg.name} - No addedAmount, using reward as-is:`, rewardPerShareAUD);
         }
 
         window.packageBaseValues[pkg.name] = {
             rewardAUD: rewardPerShareAUD,
-            priceAUD: pricePerShareAUD
+            priceAUD: pricePerShareAUD,
+            mainReward: mainRewardPerShare,
+            mergeReward: mergeRewardPerShare,
+            mainCrypto: pkg.mainCrypto || pkg.crypto,
+            mergeCrypto: pkg.mergeCrypto,
+            isDualCrypto: pkg.isDualCrypto
         };
 
         // Initialize share value to 1
@@ -10510,6 +10563,8 @@ function adjustShares(packageName, delta) {
     const packageId = packageName.replace(/\s+/g, '-');
     const rewardValueElement = document.getElementById(`reward-value-${packageId}`);
     const priceElement = document.getElementById(`price-${packageId}`);
+    const mainRewardElement = document.getElementById(`main-reward-${packageId}`);
+    const mergeRewardElement = document.getElementById(`merge-reward-${packageId}`);
 
     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
         const baseValues = window.packageBaseValues[packageName];
@@ -10518,7 +10573,7 @@ function adjustShares(packageName, delta) {
         const newRewardAUD = (baseValues.rewardAUD * newValue).toFixed(2);
         const newPriceAUD = (baseValues.priceAUD * newValue).toFixed(2);
 
-        // Update display
+        // Update AUD displays
         if (rewardValueElement) {
             rewardValueElement.textContent = `$${newRewardAUD} AUD`;
         }
@@ -10526,10 +10581,24 @@ function adjustShares(packageName, delta) {
             priceElement.textContent = `$${newPriceAUD} AUD`;
         }
 
+        // Update crypto reward amounts
+        if (mainRewardElement && baseValues.mainReward) {
+            const newMainReward = baseValues.mainReward * newValue;
+            const decimals = baseValues.mainCrypto === 'BTC' || baseValues.mainCrypto === 'BCH' ? 4 : 0;
+            mainRewardElement.textContent = `${newMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
+        }
+
+        if (mergeRewardElement && baseValues.mergeReward && baseValues.isDualCrypto) {
+            const newMergeReward = baseValues.mergeReward * newValue;
+            mergeRewardElement.textContent = `${newMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
+        }
+
         console.log(`📊 Updated ${packageName}:`, {
             shares: newValue,
             rewardAUD: newRewardAUD,
-            priceAUD: newPriceAUD
+            priceAUD: newPriceAUD,
+            mainReward: baseValues.mainReward ? (baseValues.mainReward * newValue).toFixed(4) : 'N/A',
+            mergeReward: baseValues.mergeReward ? (baseValues.mergeReward * newValue).toFixed(0) : 'N/A'
         });
     }
 
