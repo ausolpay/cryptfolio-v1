@@ -8192,22 +8192,88 @@ function getRecommendedPackages() {
     return recommended;
 }
 
-function loadBuyPackagesDataOnPage() {
+// Fetch solo packages from NiceHash public API
+async function fetchNiceHashSoloPackages() {
+    console.log('🔄 Fetching solo packages from NiceHash API...');
+
+    try {
+        const endpoint = '/main/api/v2/public/solo/package';
+        const url = `https://api2.nicehash.com${endpoint}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const packages = await response.json();
+        console.log(`✅ Fetched ${packages.length} solo packages from API`);
+
+        // Transform API data to our package format
+        const transformedPackages = packages
+            .filter(pkg => pkg.available && pkg.status === 'A') // Only available packages
+            .map(pkg => {
+                // Calculate probability display (e.g., "1:150" from probability: 150)
+                const probabilityRatio = pkg.probabilityPrecision >= 1
+                    ? `1:${Math.round(pkg.probabilityPrecision)}`
+                    : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+
+                // Convert duration from seconds to hours for display
+                const durationHours = (pkg.duration / 3600).toFixed(0);
+
+                return {
+                    name: pkg.name,
+                    crypto: pkg.currencyAlgo.currency,
+                    probability: probabilityRatio,
+                    priceBTC: pkg.price,
+                    priceAUD: '0.00', // Will be calculated dynamically from BTC price
+                    duration: `${durationHours}h`,
+                    algorithm: pkg.currencyAlgo.miningAlgorithm,
+                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // Approximate
+                    blockReward: pkg.currencyAlgo.blockRewardWithNhFee || pkg.currencyAlgo.blockReward,
+                    apiData: pkg // Store original API data for reference
+                };
+            });
+
+        console.log('✅ Transformed packages:', transformedPackages);
+        return transformedPackages;
+
+    } catch (error) {
+        console.error('❌ Error fetching solo packages from API:', error);
+        console.log('📦 Falling back to mock data');
+        return null; // Return null to signal fallback to mock data
+    }
+}
+
+async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
-    // Package data matching NiceHash EasyMining structure (with block rewards)
-    const singlePackages = [
-        { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-        { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-        { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
-        { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-        { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-        { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
-        { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
-        { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
-        { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
-    ];
+    // Try to fetch from API, fall back to mock data
+    let singlePackages = await fetchNiceHashSoloPackages();
 
+    // If API fails, use mock data
+    if (!singlePackages || singlePackages.length === 0) {
+        console.log('📦 Using mock solo package data');
+        singlePackages = [
+            { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+            { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+            { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
+            { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+            { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+            { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
+            { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
+            { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
+            { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
+        ];
+    }
+
+    // TODO: Team packages API integration - for now using mock data
     const teamPackages = [
         { name: 'Silver Team', crypto: 'BCH', probability: '1:160', priceBTC: 0.0914, priceAUD: '20.00', duration: '24h', algorithm: 'SHA256', totalShares: 914, boughtShares: 71, blockReward: 3.125, isTeam: true },
         { name: 'Pal Team', crypto: 'DOGE/LTC', probability: '1:220', priceBTC: 0.08, priceAUD: '18.00', duration: '24h', algorithm: 'Scrypt', totalShares: 800, boughtShares: 45, blockReward: 10000, isTeam: true },
@@ -8311,11 +8377,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // For team packages: add share selector
     const teamShareSelector = pkg.isTeam ? `
-        <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
-            <button onclick="adjustShares('${pkg.name}', -1)" style="width: 30px; height: 30px; font-size: 18px; padding: 0;">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="${pkg.totalShares - pkg.boughtShares}" style="width: 60px; text-align: center; padding: 5px;" readonly>
-            <button onclick="adjustShares('${pkg.name}', 1)" style="width: 30px; height: 30px; font-size: 18px; padding: 0;">+</button>
-            <span style="font-size: 12px; color: #999;">shares</span>
+        <div class="share-adjuster">
+            <button onclick="adjustShares('${pkg.name}', -1)" class="share-adjuster-btn">-</button>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="${pkg.totalShares - pkg.boughtShares}" class="share-adjuster-input" readonly>
+            <button onclick="adjustShares('${pkg.name}', 1)" class="share-adjuster-btn">+</button>
+            <span class="share-adjuster-label">shares</span>
         </div>
     ` : '';
 
