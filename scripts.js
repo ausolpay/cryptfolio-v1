@@ -7914,6 +7914,11 @@ function createTeamPackageRecommendationCard(pkg) {
     }
 
     // Team-specific info
+    const sharePrice = 0.0001;
+    const sharesBought = pkg.addedAmount ? Math.round(pkg.addedAmount / sharePrice) : 0;
+    const totalShares = pkg.fullAmount ? Math.round(pkg.fullAmount / sharePrice) : 0;
+    const shareCount = (sharesBought > 0 || totalShares > 0) ? ` (${sharesBought}/${totalShares})` : '';
+
     const teamInfo = `
         <div class="buy-package-stat">
             <span>Participants:</span>
@@ -7921,7 +7926,7 @@ function createTeamPackageRecommendationCard(pkg) {
         </div>
         <div class="buy-package-stat">
             <span>Share %:</span>
-            <span style="color: #ffa500;">${pkg.shares || '0'}%</span>
+            <span style="color: #ffa500;">${pkg.shares || '0'}%${shareCount}</span>
         </div>
     `;
 
@@ -10337,7 +10342,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
         <div class="buy-package-stat">
             <span>Share %:</span>
-            <span style="color: #ffa500;">${pkg.shares || '0'}%</span>
+            <span style="color: #ffa500;">${pkg.shares || '0'}% ${(() => {
+                const sharePrice = 0.0001;
+                const sharesBought = pkg.addedAmount ? Math.round(pkg.addedAmount / sharePrice) : 0;
+                const totalShares = pkg.fullAmount ? Math.round(pkg.fullAmount / sharePrice) : 0;
+                return sharesBought > 0 || totalShares > 0 ? `(${sharesBought}/${totalShares})` : '';
+            })()}</span>
         </div>
         ${countdownInfo}
     ` : '';
