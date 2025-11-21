@@ -2043,54 +2043,32 @@ function initializeWebSocket() {
 
     socket.onopen = function(event) {
         console.log('✅ MEXC WebSocket connection opened');
-        console.log('   WebSocket readyState:', socket.readyState, '(0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)');
 
         // Reset reconnection tracking on successful connection
         reconnectAttempts = 0;
         reconnectDelay = 1000;
         intentionalClose = false;
 
-        // Wait for WebSocket to be fully ready before subscribing
-        // This prevents "Still in CONNECTING state" errors
-        setTimeout(() => {
-            console.log('   WebSocket readyState after delay:', socket.readyState);
+        // Subscribe immediately - onopen fires when connection is ready
+        if (users[loggedInUser] && users[loggedInUser].cryptos) {
+            console.log(`📬 Subscribing to ${users[loggedInUser].cryptos.length} cryptocurrencies...`);
 
-            if (socket.readyState === WebSocket.OPEN && users[loggedInUser] && users[loggedInUser].cryptos) {
-                console.log(`📬 Starting subscriptions for ${users[loggedInUser].cryptos.length} cryptocurrencies...`);
-
-                users[loggedInUser].cryptos.forEach(crypto => {
-                    // Double-check state before each send
-                    if (socket.readyState === WebSocket.OPEN) {
-                        // Use the JSON deals format (NOT .pb to avoid Blob data)
-                        const channel = `spot@public.deals.v3.api@${crypto.symbol.toUpperCase()}USDT`;
-                        const subscriptionMessage = JSON.stringify({
-                            "method": "SUBSCRIPTION",
-                            "params": [channel]
-                        });
-
-                        socket.send(subscriptionMessage);
-                        console.log(`   ✓ Subscribed to ${crypto.symbol.toUpperCase()}USDT (deals trade stream)`);
-                    } else {
-                        console.error(`   ✗ Cannot subscribe to ${crypto.symbol.toUpperCase()}USDT - WebSocket not OPEN (state: ${socket.readyState})`);
-                    }
+            users[loggedInUser].cryptos.forEach(crypto => {
+                // Use the JSON deals format (NOT .pb to avoid Blob data)
+                const channel = `spot@public.deals.v3.api@${crypto.symbol.toUpperCase()}USDT`;
+                const subscriptionMessage = JSON.stringify({
+                    "method": "SUBSCRIPTION",
+                    "params": [channel]
                 });
 
-                console.log('✅ All subscriptions sent');
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                console.log('🎯 Waiting for price updates...');
-                console.log('   If no updates appear within 10 seconds, check:');
-                console.log('   • Symbol exists on MEXC (must be traded vs USDT)');
-                console.log('   • Symbol spelling matches MEXC exactly');
-                console.log('   • Network tab for WebSocket frames');
-                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            } else {
-                console.error('❌ WebSocket not ready for subscriptions:', {
-                    readyState: socket.readyState,
-                    hasUser: !!loggedInUser,
-                    hasCryptos: !!(users[loggedInUser] && users[loggedInUser].cryptos)
-                });
-            }
-        }, 150); // 150ms delay to ensure connection is fully established
+                socket.send(subscriptionMessage);
+                console.log(`   ✓ Subscribed to ${crypto.symbol.toUpperCase()}USDT`);
+            });
+
+            console.log('✅ All subscriptions sent successfully');
+        } else {
+            console.warn('⚠️ No cryptocurrencies to subscribe to');
+        }
 
         // Start ping/pong keep-alive (every 20 seconds)
         if (pingInterval) {
