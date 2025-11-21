@@ -3974,6 +3974,24 @@ let easyMiningData = {
 let easyMiningPollingInterval = null;
 let showAllPackages = false;
 
+// Error alert throttling (prevent spam during reconnection)
+let lastEasyMiningErrorAlert = 0;
+const EASYMINING_ERROR_ALERT_COOLDOWN = 60000; // 60 seconds between error alerts
+
+// Helper function to check if we should show an error alert
+function shouldShowEasyMiningErrorAlert() {
+    const now = Date.now();
+    const timeSinceLastAlert = now - lastEasyMiningErrorAlert;
+
+    if (timeSinceLastAlert < EASYMINING_ERROR_ALERT_COOLDOWN) {
+        console.log(`⏳ Suppressing EasyMining error alert (cooldown: ${Math.ceil((EASYMINING_ERROR_ALERT_COOLDOWN - timeSinceLastAlert) / 1000)}s remaining)`);
+        return false;
+    }
+
+    lastEasyMiningErrorAlert = now;
+    return true;
+}
+
 // =============================================================================
 // EASYMINING SETTINGS MODAL FUNCTIONS
 // =============================================================================
@@ -4558,7 +4576,8 @@ async function fetchEasyMiningData() {
         }
 
         // Don't alert for CORS errors as we're handling them gracefully
-        if (!error.message.includes('fetch')) {
+        // Also apply cooldown to prevent alert spam during reconnection
+        if (!error.message.includes('fetch') && shouldShowEasyMiningErrorAlert()) {
             if (error.message.includes('401')) {
                 // Specific message for authentication errors
                 alert('❌ API Error 401 - Authentication Failed\n\n' +
