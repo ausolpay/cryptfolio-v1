@@ -41,6 +41,11 @@ const maxReconnectDelay = 30000; // Max 30 seconds
 const maxReconnectAttempts = 10;
 let intentionalClose = false;
 
+// Polling intervals (store IDs for proper cleanup)
+let mexcPricePollingInterval = null;
+let autoResetInterval = null;
+let conversionRateInterval = null;
+
 let candlestickChart;
 let currentCryptoId;
 
@@ -1499,16 +1504,16 @@ async function autoResetPercentage() {
 
 // Call autoResetPercentage on app load to handle missed resets with a 3-second delay
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM fully loaded, waiting 3 seconds before checking for missed 24hr Auto Reset Percentage");
     setTimeout(() => {
-        console.log("Checking for missed 24hr Auto Reset Percentage after 3-second delay");
         autoResetPercentage();
-    }, 1000); 
+    }, 1000);
 });
 
 
-// Set an interval to check every minute
-setInterval(autoResetPercentage, 60000); // Check every 60 seconds (1 minute)
+// Set an interval to check every minute (only once)
+if (!autoResetInterval) {
+    autoResetInterval = setInterval(autoResetPercentage, 60000);
+}
 
 
 
@@ -2049,7 +2054,12 @@ document.getElementById('confirm-password').addEventListener('keyup', function(e
 // MEXC REST API polling for live prices (simple, reliable, JSON)
 function startMEXCPricePolling() {
     console.log('🚀 Starting MEXC REST API price polling...');
-    console.log(`   Using ${USE_VERCEL_PROXY ? 'Vercel proxy' : 'direct API calls'}`);
+
+    // Clear existing interval to prevent duplicates
+    if (mexcPricePollingInterval) {
+        clearInterval(mexcPricePollingInterval);
+        mexcPricePollingInterval = null;
+    }
 
     const updatePrices = async () => {
         if (!users[loggedInUser] || !users[loggedInUser].cryptos) return;
@@ -2068,18 +2078,29 @@ function startMEXCPricePolling() {
 
                 if (data.price) {
                     const price = parseFloat(data.price);
-                    console.log(`💰 MEXC price for ${crypto.symbol.toUpperCase()}: $${price}`);
+                    // Only log price updates every 10th fetch to reduce console spam
+                    if (Math.random() < 0.1) {
+                        console.log(`💰 MEXC: ${crypto.symbol.toUpperCase()} $${price}`);
+                    }
                     updatePriceFromWebSocket(crypto.symbol.toLowerCase(), price);
                 }
             } catch (error) {
-                console.error(`Failed to fetch ${crypto.symbol} price:`, error.message);
+                console.error(`MEXC ${crypto.symbol}:`, error.message);
             }
         }
     };
 
     // Update immediately, then every 2 seconds
     updatePrices();
-    setInterval(updatePrices, 2000);
+    mexcPricePollingInterval = setInterval(updatePrices, 2000);
+}
+
+function stopMEXCPricePolling() {
+    if (mexcPricePollingInterval) {
+        clearInterval(mexcPricePollingInterval);
+        mexcPricePollingInterval = null;
+        console.log('⏹️ MEXC polling stopped');
+    }
 }
 
 function initializeWebSocket() {
@@ -2137,7 +2158,6 @@ function initializeWebSocket() {
 
         pingInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
-                console.log('📡 Sending PING to keep connection alive');
                 ws.send(JSON.stringify({ method: "PING" }));
             }
         }, 20000); // 20 seconds
@@ -2145,19 +2165,11 @@ function initializeWebSocket() {
 
     socket.onmessage = function(event) {
         try {
-            console.log('📨 WebSocket message received');
-            console.log('   Data type:', typeof event.data);
-            console.log('   Is Blob:', event.data instanceof Blob);
-
             // MEXC sends Protocol Buffer data as Blob (binary)
             if (event.data instanceof Blob) {
-                console.log('📦 Binary Protocol Buffer message detected');
-                console.log('   Blob size:', event.data.size, 'bytes');
-
                 // Convert Blob to ArrayBuffer, then decode
                 event.data.arrayBuffer().then(arrayBuffer => {
                     const uint8Array = new Uint8Array(arrayBuffer);
-                    console.log('🔢 Converted to Uint8Array:', uint8Array.length, 'bytes');
 
                     // Try UTF-8 decode first (some messages might be JSON in disguise)
                     const decoder = new TextDecoder('utf-8', { fatal: false });
@@ -2165,43 +2177,32 @@ function initializeWebSocket() {
 
                     // Check if it's actually JSON
                     if (text.startsWith('{') || text.startsWith('[')) {
-                        console.log('✅ Binary data is actually JSON:', text);
                         try {
                             const message = JSON.parse(text);
                             handlePortfolioMessage(message);
                         } catch (e) {
-                            console.error('❌ Failed to parse JSON from binary:', e);
+                            console.error('WS parse error:', e);
                         }
                     } else {
                         // It's real protobuf data
-                        console.log('🔍 Processing as Protocol Buffer...');
                         decodePortfolioProtobuf(uint8Array);
                     }
                 }).catch(error => {
-                    console.error('❌ Error converting Blob to ArrayBuffer:', error);
+                    console.error('WS Blob error:', error);
                 });
             }
             // Handle JSON string messages (subscription confirmations, PONG, etc.)
             else if (typeof event.data === 'string') {
-                console.log('📄 JSON string message:', event.data);
-
                 try {
                     const message = JSON.parse(event.data);
-                    console.log('📨 Parsed JSON message:', message);
                     handlePortfolioMessage(message);
                 } catch (error) {
-                    console.error('❌ Failed to parse JSON:', error);
-                    console.error('   Raw data:', event.data);
+                    console.error('WS JSON error:', error);
                 }
-            }
-            else {
-                console.warn('⚠️ Unexpected message type:', typeof event.data);
             }
 
         } catch (error) {
-            console.error('❌ Error processing WebSocket message:', error);
-            console.error('   Event data type:', typeof event.data);
-            console.error('   Stack:', error.stack);
+            console.error('WS message error:', error);
         }
     };
 
@@ -2243,15 +2244,13 @@ function initializeWebSocket() {
 
 // Helper function to handle parsed JSON messages from MEXC
 function handlePortfolioMessage(message) {
-    // Handle PONG
+    // Handle PONG (silent)
     if (message.msg === 'PONG') {
-        console.log('📡 Received PONG from MEXC');
         return;
     }
 
-    // Handle subscription confirmations
+    // Handle subscription confirmations (only log on first subscription)
     if (message.id || message.code !== undefined) {
-        console.log('✅ Subscription response:', message);
         return;
     }
 
@@ -2261,7 +2260,6 @@ function handlePortfolioMessage(message) {
         const symbol = message.s.replace('USDT', '').toLowerCase();
         const price = parseFloat(deal.p);
 
-        console.log(`💰 Price update for ${symbol.toUpperCase()}: $${price} USDT`);
         lastWebSocketUpdate = Date.now();
         updatePriceFromWebSocket(symbol, price);
     }
@@ -2269,9 +2267,6 @@ function handlePortfolioMessage(message) {
 
 // Decode Protocol Buffer data from MEXC
 function decodePortfolioProtobuf(uint8Array) {
-    console.log('🔍 Decoding Protocol Buffer data...');
-    console.log('   Data length:', uint8Array.length, 'bytes');
-
     try {
         // Protocol Buffer wire format parser
         let pos = 0;
@@ -2284,19 +2279,15 @@ function decodePortfolioProtobuf(uint8Array) {
             const tag = tagAndType.value >> 3;
             const wireType = tagAndType.value & 0x07;
 
-            console.log(`   Field ${tag}, wire type ${wireType}`);
-
             // Parse based on wire type
             if (wireType === 0) { // Varint
                 const varint = readVarint(uint8Array, pos);
                 pos = varint.pos;
                 fields[tag] = varint.value;
-                console.log(`     -> Varint: ${varint.value}`);
             } else if (wireType === 1) { // 64-bit (double)
                 const double = readDouble(uint8Array, pos);
                 pos += 8;
                 fields[tag] = double;
-                console.log(`     -> Double: ${double}`);
             } else if (wireType === 2) { // Length-delimited (string/bytes)
                 const length = readVarint(uint8Array, pos);
                 pos = length.pos;
@@ -2310,23 +2301,17 @@ function decodePortfolioProtobuf(uint8Array) {
                 if (/^[A-Z]+USDT$/.test(str)) {
                     // This is likely the symbol
                     fields[tag] = str;
-                    console.log(`     -> String (symbol): ${str}`);
                 } else {
                     fields[tag] = data;
-                    console.log(`     -> Bytes (${length.value} bytes)`);
                 }
             } else if (wireType === 5) { // 32-bit (float)
                 const float = readFloat(uint8Array, pos);
                 pos += 4;
                 fields[tag] = float;
-                console.log(`     -> Float: ${float}`);
             } else {
-                console.warn(`     -> Unknown wire type ${wireType}, skipping`);
                 break;
             }
         }
-
-        console.log('📊 Decoded fields:', fields);
 
         // Extract symbol and price from decoded fields
         let symbol = null;
@@ -2336,27 +2321,22 @@ function decodePortfolioProtobuf(uint8Array) {
         for (const [tag, value] of Object.entries(fields)) {
             if (typeof value === 'string' && /^[A-Z]+USDT$/.test(value)) {
                 symbol = value.replace('USDT', '').toLowerCase();
-                console.log(`✅ Found symbol: ${symbol.toUpperCase()}`);
             }
 
             // Find price (double or float field with reasonable value)
             if (typeof value === 'number' && value > 0 && value < 1000000) {
                 price = value;
-                console.log(`✅ Found price: $${price}`);
             }
         }
 
         // Update price if both symbol and price found
         if (symbol && price) {
-            console.log(`💰 Protobuf price update for ${symbol.toUpperCase()}: $${price} USDT`);
             lastWebSocketUpdate = Date.now();
             updatePriceFromWebSocket(symbol, price);
-        } else {
-            console.warn('⚠️ Could not extract symbol and price from protobuf data');
         }
 
     } catch (error) {
-        console.error('❌ Protobuf decode error:', error);
+        console.error('Protobuf error:', error);
     }
 }
 
@@ -2472,14 +2452,24 @@ async function fetchUsdtToAudConversionRate() {
 
 // Function to start the live check for the conversion rate every 15 minutes
 function startConversionRateUpdate() {
-    setInterval(async () => {
+    // Prevent duplicate intervals
+    if (conversionRateInterval) {
+        clearInterval(conversionRateInterval);
+    }
+
+    conversionRateInterval = setInterval(async () => {
         const conversionRate = await fetchUsdtToAudConversionRate();
-        console.log(`Updated USDT to AUD Conversion Rate: ${conversionRate}`);
+        // Only log occasionally to reduce spam
+        if (Math.random() < 0.2) {
+            console.log(`Updated USDT/AUD: ${conversionRate}`);
+        }
     }, rateUpdateInterval);  // 15 minutes in milliseconds
 }
 
-// Start the live check for the conversion rate
-startConversionRateUpdate();
+// Start the live check for the conversion rate (only once)
+if (!conversionRateInterval) {
+    startConversionRateUpdate();
+}
 
 
 
@@ -4402,17 +4392,12 @@ function setEasyMiningLoadingTarget(target) {
 // =============================================================================
 
 async function fetchEasyMiningData() {
-    console.log(`\n${'@'.repeat(80)}`);
-    console.log(`⚡⚡⚡ FETCHEASYMININGDATA POLLING TRIGGERED ⚡⚡⚡`);
-    console.log(`   Enabled: ${easyMiningSettings.enabled}`);
-    console.log(`   Has API Key: ${!!easyMiningSettings.apiKey}`);
-    console.log(`   Has API Secret: ${!!easyMiningSettings.apiSecret}`);
-    console.log(`   Has Org ID: ${!!easyMiningSettings.orgId}`);
-    console.log(`${'@'.repeat(80)}\n`);
+    // Only log every 12th poll (once per minute at 5s intervals) to reduce console spam
+    if (Math.random() < 0.08) {
+        console.log(`⚡ EasyMining poll - Enabled: ${easyMiningSettings.enabled}`);
+    }
 
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
-        console.warn('⚠️ EasyMining not enabled or API key not set - STOPPING HERE');
-        console.warn('   Please enable EasyMining and add credentials in Settings');
         return;
     }
 
@@ -8300,6 +8285,7 @@ async function buyPackageFromPage(pkg) {
 
 let lastEasyMiningPollTime = 0;
 let pollingWatchdogInterval = null;
+let visibilityChangeListenerAdded = false;
 
 function startEasyMiningPolling() {
     // Stop any existing polling
@@ -8358,18 +8344,22 @@ function startPollingWatchdog() {
 }
 
 // Resume polling when page becomes visible (after being hidden/minimized)
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && easyMiningSettings.enabled && easyMiningPollingInterval) {
-        const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
+// Add listener only once to prevent duplicates
+if (!visibilityChangeListenerAdded) {
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && easyMiningSettings.enabled && easyMiningPollingInterval) {
+            const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
 
-        // If more than 10 seconds since last poll, fetch immediately
-        if (timeSinceLastPoll > 10000) {
-            console.log(`👁️ Page visible again (${Math.round(timeSinceLastPoll / 1000)}s since last poll) - fetching fresh data...`);
-            fetchEasyMiningData();
-            lastEasyMiningPollTime = Date.now();
+            // If more than 10 seconds since last poll, fetch immediately
+            if (timeSinceLastPoll > 10000) {
+                console.log(`👁️ Page visible again - fetching fresh data...`);
+                fetchEasyMiningData();
+                lastEasyMiningPollTime = Date.now();
+            }
         }
-    }
-});
+    });
+    visibilityChangeListenerAdded = true;
+}
 
 // =============================================================================
 // INITIALIZE EASYMINING ON APP LOAD
@@ -8441,6 +8431,57 @@ if (typeof originalInitializeApp === 'function') {
     };
 }
  
+
+// =============================================================================
+// CLEANUP ON PAGE UNLOAD
+// =============================================================================
+
+// Cleanup function to prevent memory leaks
+function cleanupResources() {
+    console.log('🧹 Cleaning up resources...');
+
+    // Stop all polling intervals
+    if (mexcPricePollingInterval) {
+        clearInterval(mexcPricePollingInterval);
+        mexcPricePollingInterval = null;
+    }
+
+    if (autoResetInterval) {
+        clearInterval(autoResetInterval);
+        autoResetInterval = null;
+    }
+
+    if (conversionRateInterval) {
+        clearInterval(conversionRateInterval);
+        conversionRateInterval = null;
+    }
+
+    // Stop EasyMining polling
+    stopEasyMiningPolling();
+
+    // Close WebSocket connections
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        intentionalClose = true;
+        socket.close();
+    }
+
+    // Clear ping interval
+    if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+    }
+
+    // Clear crypto info interval
+    if (cryptoInfoInterval) {
+        clearInterval(cryptoInfoInterval);
+        cryptoInfoInterval = null;
+    }
+
+    console.log('✅ Resources cleaned up');
+}
+
+// Add cleanup on page unload/close
+window.addEventListener('beforeunload', cleanupResources);
 
 // Initialize the app
 initializeApp();
