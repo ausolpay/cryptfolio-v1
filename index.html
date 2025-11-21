@@ -375,20 +375,47 @@
             </div>
 
             <div class="easymining-settings-form">
-                <h3 style="margin-top: 0; color: #ffa500;">🔔 Probability Alert Thresholds</h3>
-                <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
-                    Set probability thresholds for each package. When a package's probability falls to or below your set value, it will appear in recommendations.
-                </p>
-                <p style="color: #4CAF50; font-size: 13px; margin-bottom: 15px;">
-                    💡 Example: Set "130" for Silver S means it will be recommended when probability is 1:130 or better (like 1:120, 1:100, etc.)
-                </p>
+                <h3 style="margin-top: 0; color: #ffa500;">🔔 Package Alert Settings</h3>
 
-                <div id="package-alerts-list" style="max-height: 600px; overflow-y: auto;">
-                    <!-- Alert settings populated by JavaScript -->
+                <!-- Tabs for Solo and Team alerts -->
+                <div class="buy-packages-tabs" style="margin-bottom: 20px;">
+                    <button class="tab-button active" onclick="showAlertTab('solo')">Solo Alerts</button>
+                    <button class="tab-button" onclick="showAlertTab('team')">Team Alerts</button>
                 </div>
 
-                <button onclick="savePackageAlerts()" style="background-color: #4CAF50; margin-top: 20px;">💾 Save Alert Settings</button>
-                <button onclick="clearPackageAlerts()" class="delete-button" style="margin-top: 10px;">Clear All Alerts</button>
+                <!-- Solo Alerts Tab -->
+                <div id="solo-alerts-tab" class="alert-tab-content">
+                    <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
+                        Set probability thresholds for solo packages. When a package's probability falls to or below your set value, it will appear in recommendations.
+                    </p>
+                    <p style="color: #4CAF50; font-size: 13px; margin-bottom: 15px;">
+                        💡 Example: Set "130" for Silver S means it will be recommended when probability is 1:130 or better (like 1:120, 1:100, etc.)
+                    </p>
+
+                    <div id="solo-alerts-list" style="max-height: 500px; overflow-y: auto;">
+                        <!-- Solo alert settings populated by JavaScript -->
+                    </div>
+
+                    <button onclick="saveSoloAlerts()" style="background-color: #4CAF50; margin-top: 20px;">💾 Save Solo Alerts</button>
+                    <button onclick="clearSoloAlerts()" class="delete-button" style="margin-top: 10px;">Clear Solo Alerts</button>
+                </div>
+
+                <!-- Team Alerts Tab -->
+                <div id="team-alerts-tab" class="alert-tab-content" style="display: none;">
+                    <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
+                        Set thresholds for team packages. Packages meeting ANY threshold will appear in recommendations.
+                    </p>
+                    <p style="color: #4CAF50; font-size: 13px; margin-bottom: 15px;">
+                        💡 Set probability, minimum shares, or minimum participants. Leave blank to ignore that criterion.
+                    </p>
+
+                    <div id="team-alerts-list" style="max-height: 500px; overflow-y: auto;">
+                        <!-- Team alert settings populated by JavaScript -->
+                    </div>
+
+                    <button onclick="saveTeamAlerts()" style="background-color: #4CAF50; margin-top: 20px;">💾 Save Team Alerts</button>
+                    <button onclick="clearTeamAlerts()" class="delete-button" style="margin-top: 10px;">Clear Team Alerts</button>
+                </div>
             </div>
         </div>
 

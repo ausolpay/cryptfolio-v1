@@ -573,26 +573,46 @@ async function showPackageAlertsPage() {
     // Show Package Alerts page
     document.getElementById('package-alerts-page').style.display = 'block';
 
-    // Load package alerts
-    await loadPackageAlerts();
+    // Load both solo and team alerts
+    await loadSoloAlerts();
+    await loadTeamAlerts();
 }
 
-async function loadPackageAlerts() {
-    console.log('Loading package alerts...');
+function showAlertTab(tabName) {
+    console.log('Switching to alert tab:', tabName);
+
+    // Update tab buttons
+    const tabs = document.querySelectorAll('.buy-packages-tabs .tab-button');
+    tabs.forEach(tab => tab.classList.remove('active'));
+
+    // Show selected tab content
+    if (tabName === 'solo') {
+        tabs[0].classList.add('active');
+        document.getElementById('solo-alerts-tab').style.display = 'block';
+        document.getElementById('team-alerts-tab').style.display = 'none';
+    } else if (tabName === 'team') {
+        tabs[1].classList.add('active');
+        document.getElementById('solo-alerts-tab').style.display = 'none';
+        document.getElementById('team-alerts-tab').style.display = 'block';
+    }
+}
+
+async function loadSoloAlerts() {
+    console.log('Loading solo package alerts...');
 
     // Fetch packages from API
     const packages = await fetchNiceHashSoloPackages();
 
     if (!packages || packages.length === 0) {
-        console.error('No packages available to set alerts for');
-        document.getElementById('package-alerts-list').innerHTML = '<p style="color: #ff6b6b;">Could not load packages. Please try again.</p>';
+        console.error('No solo packages available to set alerts for');
+        document.getElementById('solo-alerts-list').innerHTML = '<p style="color: #ff6b6b;">Could not load solo packages. Please try again.</p>';
         return;
     }
 
     // Get saved alerts
-    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_packageAlerts`)) || {};
+    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
 
-    const alertsList = document.getElementById('package-alerts-list');
+    const alertsList = document.getElementById('solo-alerts-list');
     alertsList.innerHTML = '';
 
     // Create input for each package
@@ -702,7 +722,143 @@ async function loadPackageAlerts() {
         alertsList.appendChild(alertDiv);
     });
 
-    console.log(`✅ Loaded ${packages.length} package alert settings`);
+    console.log(`✅ Loaded ${packages.length} solo package alert settings`);
+}
+
+async function loadTeamAlerts() {
+    console.log('Loading team package alerts...');
+
+    // Fetch team packages from API
+    const packages = await fetchNiceHashTeamPackages();
+
+    if (!packages || packages.length === 0) {
+        console.error('No team packages available to set alerts for');
+        document.getElementById('team-alerts-list').innerHTML = '<p style="color: #ff6b6b;">Could not load team packages. Please try again.</p>';
+        return;
+    }
+
+    // Get saved team alerts
+    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+
+    const alertsList = document.getElementById('team-alerts-list');
+    alertsList.innerHTML = '';
+
+    // Create input for each package with 3 thresholds: probability, shares%, participants
+    packages.forEach(pkg => {
+        const alertDiv = document.createElement('div');
+        alertDiv.style.cssText = 'margin-bottom: 15px; padding: 15px; background-color: #3a3a3a; border-radius: 8px; border: 1px solid #444;';
+
+        // Check if this is a dual-crypto package (Palladium)
+        const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCrypto);
+
+        // Get saved thresholds for this package
+        const savedSettings = savedAlerts[pkg.name] || {};
+        const savedProbability = savedSettings.probability || '';
+        const savedShares = savedSettings.shares || '';
+        const savedParticipants = savedSettings.participants || '';
+
+        // For dual-crypto, get separate thresholds
+        const savedMainProb = savedSettings[`probability_${pkg.mainCrypto}`] || '';
+        const savedMergeProb = savedSettings[`probability_${pkg.mergeCrypto}`] || '';
+
+        const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb;
+
+        let probabilityInputs = '';
+
+        if (isDualCrypto) {
+            // Show both probability inputs for dual-crypto packages
+            const mainProbMatch = pkg.mainProbability?.match(/1:(\d+)/);
+            const mergeProbMatch = pkg.mergeProbability?.match(/1:(\d+)/);
+            const mainProbValue = mainProbMatch ? mainProbMatch[1] : '';
+            const mergeProbValue = mergeProbMatch ? mergeProbMatch[1] : '';
+
+            probabilityInputs = `
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #F7931A; font-weight: bold;">${pkg.mainCrypto} Probability</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mainProbValue}</span>
+                    </div>
+                    <input type="number"
+                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-prob-${pkg.mainCrypto}"
+                           value="${savedMainProb}"
+                           placeholder="e.g., 130"
+                           min="1"
+                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                </div>
+
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #C3A634; font-weight: bold;">${pkg.mergeCrypto} Probability</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mergeProbValue}</span>
+                    </div>
+                    <input type="number"
+                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-prob-${pkg.mergeCrypto}"
+                           value="${savedMergeProb}"
+                           placeholder="e.g., 150"
+                           min="1"
+                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                </div>
+            `;
+        } else {
+            // Single crypto package
+            const probMatch = pkg.probability?.match(/1:(\d+)/);
+            const probValue = probMatch ? probMatch[1] : '';
+
+            probabilityInputs = `
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #aaa;">Probability Threshold</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${probValue}</span>
+                    </div>
+                    <input type="number"
+                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-probability"
+                           value="${savedProbability}"
+                           placeholder="e.g., 130"
+                           min="1"
+                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                </div>
+            `;
+        }
+
+        alertDiv.innerHTML = `
+            <div style="margin-bottom: 12px;">
+                <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
+                ${isDualCrypto ? '<span style="color: #888; font-size: 13px; margin-left: 8px;">(Dual-Crypto)</span>' : ''}
+                ${isAnyActive ? '<span style="color: #4CAF50; font-size: 12px; margin-left: 8px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px; margin-left: 8px;">Not set</span>'}
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="color: #888; font-size: 13px;">Current: ${pkg.numberOfParticipants || 0} participants | ${pkg.shares || '0'}% share</span>
+            </div>
+
+            ${probabilityInputs}
+
+            <div style="margin-bottom: 10px;">
+                <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 5px;">Minimum Share % Threshold</label>
+                <input type="number"
+                       id="team-alert-${pkg.name.replace(/\s+/g, '-')}-shares"
+                       value="${savedShares}"
+                       placeholder="e.g., 5 (means ≥5%)"
+                       min="0"
+                       max="100"
+                       step="0.01"
+                       style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 5px;">Minimum Participants Threshold</label>
+                <input type="number"
+                       id="team-alert-${pkg.name.replace(/\s+/g, '-')}-participants"
+                       value="${savedParticipants}"
+                       placeholder="e.g., 10 (means ≥10)"
+                       min="1"
+                       style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+            </div>
+        `;
+
+        alertsList.appendChild(alertDiv);
+    });
+
+    console.log(`✅ Loaded ${packages.length} team package alert settings`);
 }
 
 function savePackageAlerts() {
@@ -8761,6 +8917,155 @@ async function fetchNiceHashSoloPackages() {
     }
 }
 
+// Fetch team packages from NiceHash API
+async function fetchNiceHashTeamPackages() {
+    console.log('🔄 Fetching team packages from NiceHash API...');
+
+    try {
+        const endpoint = '/main/api/v2/public/solo/shared/order?onlyGold=false';
+
+        console.log('📡 Using Vercel Proxy:', USE_VERCEL_PROXY);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel proxy with POST method
+            console.log('📡 Making POST request to Vercel proxy:', VERCEL_PROXY_ENDPOINT);
+            console.log('📡 Endpoint:', endpoint);
+
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    body: null
+                })
+            });
+        } else {
+            // Direct call to NiceHash API in development
+            const url = `https://api2.nicehash.com${endpoint}`;
+            console.log('📡 Making direct GET request to:', url);
+
+            response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+        }
+
+        console.log('📡 Response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API Error Response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        const packages = data.list || []; // Team packages are in 'list' array
+        console.log(`✅ Fetched ${packages.length} team packages from API`);
+        console.log('📦 Raw team API data (first 2):', packages.slice(0, 2));
+
+        // Transform API data to our package format
+        const transformedPackages = packages
+            .filter(pkg => pkg.currencyAlgoTicket && pkg.currencyAlgoTicket.available && pkg.currencyAlgoTicket.status === 'A') // Only available packages
+            .map(pkg => {
+                const ticket = pkg.currencyAlgoTicket;
+
+                // Calculate probability display from the outer probability (user's current share probability)
+                const probabilityRatio = pkg.probabilityPrecision >= 1
+                    ? `1:${Math.round(pkg.probabilityPrecision)}`
+                    : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+
+                // Convert duration from seconds to hours
+                const durationHours = pkg.duration ? (pkg.duration / 3600).toFixed(0) : '0';
+
+                // Check for dual-crypto packages (merge mining like DOGE+LTC)
+                const hasMergeCurrency = !!ticket.mergeCurrencyAlgo;
+                const mainCrypto = ticket.currencyAlgo.currency;
+                const mergeCrypto = hasMergeCurrency ? ticket.mergeCurrencyAlgo.currency : null;
+                const cryptoDisplay = hasMergeCurrency ? `${mergeCrypto}+${mainCrypto}` : mainCrypto;
+
+                // Get block rewards
+                const mainBlockReward = ticket.currencyAlgo.blockReward;
+                const mergeBlockReward = hasMergeCurrency
+                    ? ticket.mergeCurrencyAlgo.blockReward
+                    : null;
+
+                // Get probabilities for dual-crypto packages
+                let mainProbability = probabilityRatio;
+                let mergeProbability = null;
+
+                if (hasMergeCurrency) {
+                    // Main crypto probability (LTC) from probabilityPrecision
+                    mainProbability = pkg.probabilityPrecision >= 1
+                        ? `1:${Math.round(pkg.probabilityPrecision)}`
+                        : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+
+                    // Merge crypto probability (DOGE) from mergeProbabilityPrecision
+                    mergeProbability = pkg.mergeProbabilityPrecision >= 1
+                        ? `1:${Math.round(pkg.mergeProbabilityPrecision)}`
+                        : `${Math.round(1/pkg.mergeProbabilityPrecision)}:1`;
+                }
+
+                console.log(`📦 Mapping team package ${ticket.name}:`, {
+                    participants: pkg.numberOfParticipants,
+                    fullAmount: pkg.fullAmount,
+                    addedAmount: pkg.addedAmount,
+                    price_from_ticket: ticket.price,
+                    duration_in_hours: durationHours,
+                    mainCurrency: mainCrypto,
+                    mainBlockReward: mainBlockReward,
+                    mainProbability: mainProbability,
+                    mergeCurrency: mergeCrypto,
+                    mergeBlockReward: mergeBlockReward,
+                    mergeProbability: mergeProbability
+                });
+
+                return {
+                    id: pkg.id,
+                    name: ticket.name,
+                    crypto: cryptoDisplay,
+                    mainCrypto: mainCrypto,
+                    mergeCrypto: mergeCrypto,
+                    probability: hasMergeCurrency ? mainProbability : probabilityRatio,
+                    mainProbability: mainProbability,
+                    mergeProbability: mergeProbability,
+                    priceBTC: ticket.price,
+                    priceAUD: '0.00', // Will be calculated dynamically
+                    duration: `${durationHours}h`,
+                    algorithm: ticket.currencyAlgo.miningAlgorithm,
+                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`,
+                    blockReward: mainBlockReward,
+                    mergeBlockReward: mergeBlockReward,
+                    isDualCrypto: hasMergeCurrency,
+                    numberOfParticipants: pkg.numberOfParticipants, // TEAM SPECIFIC
+                    fullAmount: pkg.fullAmount, // TEAM SPECIFIC - Total BTC in pool
+                    addedAmount: pkg.addedAmount, // TEAM SPECIFIC - User's contribution
+                    shares: pkg.addedAmount && pkg.fullAmount ? ((pkg.addedAmount / pkg.fullAmount) * 100).toFixed(2) : '0', // Calculate user's share percentage
+                    isTeam: true, // Mark as team package
+                    apiData: pkg // Store original API data
+                };
+            });
+
+        console.log(`✅ Transformed ${transformedPackages.length} team packages`);
+        return transformedPackages;
+
+    } catch (error) {
+        console.error('❌ Error fetching team packages from API:', error);
+        console.error('❌ Error details:', error.message);
+        return [];
+    }
+}
+
 // Fetch prices for package cryptocurrencies
 async function fetchPackageCryptoPrices(packages) {
     console.log('💰 Fetching prices for package cryptocurrencies...');
@@ -8855,28 +9160,9 @@ async function loadBuyPackagesDataOnPage() {
         ];
     }
 
-    // TODO: Team packages API integration - for now using mock data
-    const teamPackages = [
-        { name: 'Silver Team', crypto: 'BCH', probability: '1:160', priceBTC: 0.0914, priceAUD: '20.00', duration: '24h', algorithm: 'SHA256', totalShares: 914, boughtShares: 71, blockReward: 3.125, isTeam: true },
-        {
-            name: 'Pal Team',
-            crypto: 'DOGE+LTC',
-            mainCrypto: 'LTC',
-            mergeCrypto: 'DOGE',
-            probability: '1:220',
-            priceBTC: 0.08,
-            priceAUD: '18.00',
-            duration: '24h',
-            algorithm: 'Scrypt',
-            totalShares: 800,
-            boughtShares: 45,
-            blockReward: 6.25,
-            mergeBlockReward: 10000,
-            isDualCrypto: true,
-            isTeam: true
-        },
-        { name: 'Gold Team', crypto: 'BTC', probability: '1:80', priceBTC: 0.1037, priceAUD: '50.00', duration: '24h', algorithm: 'SHA256', totalShares: 1037, boughtShares: 200, blockReward: 3.125, isTeam: true }
-    ];
+    // Fetch team packages from API
+    let teamPackages = await fetchNiceHashTeamPackages();
+    console.log(`✅ Fetched ${teamPackages.length} team packages from API`);
 
     // Fetch prices for all package cryptocurrencies before displaying
     const allPackages = [...singlePackages, ...teamPackages];
@@ -9027,11 +9313,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
     ` : '';
 
-    // For team packages: show shares as X/Y instead of min shares
+    // For team packages: show shares and participants
     const sharesInfo = pkg.isTeam ? `
         <div class="buy-package-stat">
-            <span>Shares Filled:</span>
-            <span style="color: #ffa500;">${pkg.boughtShares}/${pkg.totalShares}</span>
+            <span>Participants:</span>
+            <span style="color: #4CAF50;">${pkg.numberOfParticipants || 0}</span>
+        </div>
+        <div class="buy-package-stat">
+            <span>Share %:</span>
+            <span style="color: #ffa500;">${pkg.shares || '0'}%</span>
         </div>
     ` : '';
 
