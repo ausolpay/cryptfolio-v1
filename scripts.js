@@ -618,8 +618,9 @@ async function loadSoloAlerts() {
         return;
     }
 
-    // Get saved alerts
+    // Get saved alerts and auto-buy settings
     const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+    const savedAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
     const alertsList = document.getElementById('solo-alerts-list');
     alertsList.innerHTML = '';
@@ -654,6 +655,7 @@ async function loadSoloAlerts() {
             const savedMergeThreshold = savedAlerts[`${pkg.name}_${mergeCrypto}`] || '';
             const isMainActive = savedMainThreshold !== '';
             const isMergeActive = savedMergeThreshold !== '';
+            const autoBuyEnabled = savedAutoBuy[pkg.name]?.enabled || false;
 
             alertDiv.innerHTML = `
                 <div style="margin-bottom: 12px;">
@@ -680,7 +682,7 @@ async function loadSoloAlerts() {
                 </div>
 
                 <!-- DOGE Alert -->
-                <div style="padding-left: 10px; border-left: 3px solid #C3A634;">
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #C3A634; font-weight: bold;">${mergeCrypto}</span>
                         <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mergeProbability}</span>
@@ -696,6 +698,21 @@ async function loadSoloAlerts() {
                         ${isMergeActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
                     </div>
                 </div>
+
+                <!-- Auto-Buy Toggle -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #2a2a2a; border-radius: 4px; margin-top: 10px;">
+                    <label style="color: #aaa; font-size: 14px; flex: 1;">🤖 Auto-Buy on Alert:</label>
+                    <input type="checkbox"
+                           id="autobuy-${pkg.name.replace(/\s+/g, '-')}"
+                           data-package-name="${pkg.name}"
+                           data-crypto="${mainCrypto}"
+                           data-merge-crypto="${mergeCrypto}"
+                           ${autoBuyEnabled ? 'checked' : ''}
+                           style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="color: ${autoBuyEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
+                        ${autoBuyEnabled ? '✓ Enabled' : 'Disabled'}
+                    </span>
+                </div>
             `;
         } else {
             // Single crypto package - original logic
@@ -709,13 +726,14 @@ async function loadSoloAlerts() {
 
             const savedThreshold = savedAlerts[pkg.name] || '';
             const isActive = savedThreshold !== '';
+            const autoBuyEnabled = savedAutoBuy[pkg.name]?.enabled || false;
 
             alertDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
                     <span style="color: #4CAF50; font-size: 13px;">Current: 1:${currentProbability}</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                     <label style="color: #aaa; font-size: 14px;">Alert when probability ≤ 1:</label>
                     <input type="number"
                            id="alert-${pkg.name.replace(/\s+/g, '-')}"
@@ -725,10 +743,55 @@ async function loadSoloAlerts() {
                            style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                     ${isActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
                 </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #2a2a2a; border-radius: 4px;">
+                    <label style="color: #aaa; font-size: 14px; flex: 1;">🤖 Auto-Buy on Alert:</label>
+                    <input type="checkbox"
+                           id="autobuy-${pkg.name.replace(/\s+/g, '-')}"
+                           data-package-name="${pkg.name}"
+                           data-crypto="${pkg.crypto}"
+                           ${autoBuyEnabled ? 'checked' : ''}
+                           style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="color: ${autoBuyEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
+                        ${autoBuyEnabled ? '✓ Enabled' : 'Disabled'}
+                    </span>
+                </div>
             `;
         }
 
         alertsList.appendChild(alertDiv);
+    });
+
+    // Add event listeners to auto-buy checkboxes
+    document.querySelectorAll('[id^="autobuy-"]').forEach(checkbox => {
+        if (!checkbox.id.includes('shares')) { // Exclude share input fields
+            checkbox.addEventListener('change', function() {
+                const packageName = this.dataset.packageName;
+                const crypto = this.dataset.crypto;
+                const mergeCrypto = this.dataset.mergeCrypto || null;
+
+                if (this.checked) {
+                    // Open confirmation modal
+                    showAutoBuyConfirmationModal(packageName, crypto, mergeCrypto, 1, false);
+                } else {
+                    // Disable auto-buy
+                    const storageKey = `${loggedInUser}_soloAutoBuy`;
+                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+                    if (autoBuySettings[packageName]) {
+                        autoBuySettings[packageName].enabled = false;
+                        localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                        console.log(`❌ Auto-buy disabled for ${packageName}`);
+
+                        // Update status text
+                        const statusSpan = this.nextElementSibling;
+                        if (statusSpan) {
+                            statusSpan.textContent = 'Disabled';
+                            statusSpan.style.color = '#888';
+                        }
+                    }
+                }
+            });
+        }
     });
 
     console.log(`✅ Loaded ${packages.length} solo package alert settings`);
@@ -748,6 +811,7 @@ async function loadTeamAlerts() {
 
     // Get saved team alerts
     const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+    const savedAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
 
     const alertsList = document.getElementById('team-alerts-list');
     alertsList.innerHTML = '';
@@ -771,6 +835,11 @@ async function loadTeamAlerts() {
         const savedMergeProb = savedSettings[`probability_${pkg.mergeCrypto}`] || '';
 
         const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb;
+
+        // Get auto-buy settings
+        const autoBuySettings = savedAutoBuy[pkg.name] || {};
+        const autoBuyEnabled = autoBuySettings.enabled || false;
+        const autoBuyShares = autoBuySettings.shares || 1;
 
         let probabilityInputs = '';
 
@@ -862,12 +931,102 @@ async function loadTeamAlerts() {
                        min="1"
                        style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
             </div>
+
+            <!-- Auto-Buy Section -->
+            <div style="margin-top: 15px; padding: 15px; background-color: #2a2a2a; border-radius: 8px; border: 1px solid #444;">
+                <div style="margin-bottom: 10px;">
+                    <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 8px;">🤖 Auto-Buy Shares (when alert triggers):</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button onclick="adjustTeamAutoBuyShares('${pkg.name}', -1)"
+                                style="width: 35px; height: 35px; background-color: #444; color: white; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold;">-</button>
+                        <input type="number"
+                               id="team-autobuy-shares-${pkg.name.replace(/\s+/g, '-')}"
+                               value="${autoBuyShares}"
+                               min="1"
+                               max="9999"
+                               style="width: 80px; padding: 8px; background-color: #1a1a1a; border: 1px solid #555; color: white; border-radius: 4px; text-align: center; font-size: 16px;">
+                        <button onclick="adjustTeamAutoBuyShares('${pkg.name}', 1)"
+                                style="width: 35px; height: 35px; background-color: #444; color: white; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold;">+</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #1a1a1a; border-radius: 4px;">
+                    <label style="color: #aaa; font-size: 14px; flex: 1;">🤖 Auto-Buy on Alert:</label>
+                    <input type="checkbox"
+                           id="team-autobuy-${pkg.name.replace(/\s+/g, '-')}"
+                           data-package-name="${pkg.name}"
+                           data-crypto="${isDualCrypto ? pkg.mainCrypto : pkg.crypto}"
+                           ${isDualCrypto ? `data-merge-crypto="${pkg.mergeCrypto}"` : ''}
+                           data-is-dual-crypto="${isDualCrypto}"
+                           ${autoBuyEnabled ? 'checked' : ''}
+                           style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="color: ${autoBuyEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
+                        ${autoBuyEnabled ? '✓ Enabled' : 'Disabled'}
+                    </span>
+                </div>
+            </div>
         `;
 
         alertsList.appendChild(alertDiv);
     });
 
+    // Add event listeners to team auto-buy checkboxes
+    document.querySelectorAll('[id^="team-autobuy-"]').forEach(checkbox => {
+        if (!checkbox.id.includes('shares')) { // Exclude share input fields
+            checkbox.addEventListener('change', function() {
+                const packageName = this.dataset.packageName;
+                const crypto = this.dataset.crypto;
+                const mergeCrypto = this.dataset.mergeCrypto || null;
+                const isDualCrypto = this.dataset.isDualCrypto === 'true';
+
+                if (this.checked) {
+                    // Get current shares value from input
+                    const sharesInputId = `team-autobuy-shares-${packageName.replace(/\s+/g, '-')}`;
+                    const sharesInput = document.getElementById(sharesInputId);
+                    const shares = sharesInput ? parseInt(sharesInput.value) || 1 : 1;
+
+                    // Open confirmation modal
+                    showAutoBuyConfirmationModal(packageName, crypto, mergeCrypto, shares, true);
+                } else {
+                    // Disable auto-buy
+                    const storageKey = `${loggedInUser}_teamAutoBuy`;
+                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+                    if (autoBuySettings[packageName]) {
+                        autoBuySettings[packageName].enabled = false;
+                        localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                        console.log(`❌ Auto-buy disabled for ${packageName}`);
+
+                        // Update status text
+                        const statusSpan = this.nextElementSibling;
+                        if (statusSpan) {
+                            statusSpan.textContent = 'Disabled';
+                            statusSpan.style.color = '#888';
+                        }
+                    }
+                }
+            });
+        }
+    });
+
     console.log(`✅ Loaded ${packages.length} team package alert settings`);
+}
+
+function adjustTeamAutoBuyShares(packageName, delta) {
+    const inputId = `team-autobuy-shares-${packageName.replace(/\s+/g, '-')}`;
+    const input = document.getElementById(inputId);
+
+    if (input) {
+        let currentValue = parseInt(input.value) || 1;
+        currentValue += delta;
+
+        // Ensure value stays within bounds
+        if (currentValue < 1) currentValue = 1;
+        if (currentValue > 9999) currentValue = 9999;
+
+        input.value = currentValue;
+        console.log(`Adjusted ${packageName} auto-buy shares to ${currentValue}`);
+    }
 }
 
 function saveSoloAlerts() {
@@ -7344,6 +7503,169 @@ function updateStats() {
 let currentRecommendations = [];
 let currentTeamRecommendations = [];
 
+async function executeAutoBuySolo(recommendations) {
+    console.log('🤖 Checking for solo auto-buy opportunities...');
+
+    const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+    const cooldownMs = 75 * 60 * 1000; // 1 hour 15 minutes in milliseconds
+
+    for (const pkg of recommendations) {
+        const autoBuy = autoBuySettings[pkg.name];
+
+        if (!autoBuy || !autoBuy.enabled) {
+            continue; // Auto-buy not enabled for this package
+        }
+
+        // Check cooldown
+        if (autoBuy.lastBuyTime) {
+            const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
+            if (timeSinceLastBuy < cooldownMs) {
+                const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
+                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining)`);
+                continue;
+            }
+        }
+
+        // Execute auto-buy
+        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name}`);
+
+        try {
+            // Auto-buy: skip confirmation, call the purchase API directly
+            if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+                console.error('❌ EasyMining not configured');
+                continue;
+            }
+
+            const endpoint = `/main/api/v2/hashpower/solo/order?ticketId=${pkg.ticketId || pkg.id}`;
+            const body = JSON.stringify({});
+            const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+            let response;
+            if (USE_VERCEL_PROXY) {
+                response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        headers: headers,
+                        body: {}
+                    })
+                });
+            } else {
+                response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: body
+                });
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `API Error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Update lastBuyTime
+            autoBuy.lastBuyTime = Date.now();
+            localStorage.setItem(`${loggedInUser}_soloAutoBuy`, JSON.stringify(autoBuySettings));
+
+            console.log(`✅ Auto-buy completed for ${pkg.name}`, result);
+            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically.\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy available in 1 hour 15 minutes.`);
+
+            // Refresh package data
+            await fetchEasyMiningData();
+        } catch (error) {
+            console.error(`❌ Auto-buy failed for ${pkg.name}:`, error);
+            alert(`❌ Auto-Buy Failed\n\n${pkg.name} purchase failed: ${error.message}\n\nPlease check your settings and try again.`);
+        }
+    }
+}
+
+async function executeAutoBuyTeam(recommendations) {
+    console.log('🤖 Checking for team auto-buy opportunities...');
+
+    const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const cooldownMs = 75 * 60 * 1000; // 1 hour 15 minutes in milliseconds
+
+    for (const pkg of recommendations) {
+        const autoBuy = autoBuySettings[pkg.name];
+
+        if (!autoBuy || !autoBuy.enabled) {
+            continue; // Auto-buy not enabled for this package
+        }
+
+        // Check cooldown
+        if (autoBuy.lastBuyTime) {
+            const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
+            if (timeSinceLastBuy < cooldownMs) {
+                const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
+                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining)`);
+                continue;
+            }
+        }
+
+        // Execute auto-buy
+        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (${autoBuy.shares} shares)`);
+
+        try {
+            // Auto-buy: skip confirmation, call the purchase API directly
+            if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+                console.error('❌ EasyMining not configured');
+                continue;
+            }
+
+            const endpoint = `/main/api/v2/hashpower/shared/ticket/${pkg.id}`;
+            const bodyData = {
+                shares: autoBuy.shares || 1
+            };
+            const body = JSON.stringify(bodyData);
+            const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+            let response;
+            if (USE_VERCEL_PROXY) {
+                response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        headers: headers,
+                        body: bodyData
+                    })
+                });
+            } else {
+                response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: body
+                });
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `API Error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Update lastBuyTime
+            autoBuy.lastBuyTime = Date.now();
+            localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
+
+            console.log(`✅ Auto-buy completed for ${pkg.name}`, result);
+            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically with ${autoBuy.shares} share(s).\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy available in 1 hour 15 minutes.`);
+
+            // Refresh package data
+            await fetchEasyMiningData();
+        } catch (error) {
+            console.error(`❌ Auto-buy failed for ${pkg.name}:`, error);
+            alert(`❌ Auto-Buy Failed\n\n${pkg.name} purchase failed: ${error.message}\n\nPlease check your settings and try again.`);
+        }
+    }
+}
+
 async function updateRecommendations() {
     const bestPackagesContainer = document.getElementById('best-packages-container');
     const teamAlertsContainer = document.getElementById('team-alerts-container');
@@ -7355,6 +7677,10 @@ async function updateRecommendations() {
 
     // Get recommended team packages based on alert thresholds
     const teamRecommendations = await checkTeamRecommendations();
+
+    // Execute auto-buy for any new recommendations (with cooldown check)
+    await executeAutoBuySolo(recommendations);
+    await executeAutoBuyTeam(teamRecommendations);
 
     // Check if solo recommendations actually changed
     const recommendationNames = recommendations.map(pkg => pkg.name).sort().join(',');
@@ -8276,7 +8602,7 @@ function showBuyTab(tab) {
     const buttons = document.querySelectorAll('.tab-button');
     buttons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     if (tab === 'single') {
         document.getElementById('buy-single-packages').style.display = 'grid';
         document.getElementById('buy-team-packages').style.display = 'none';
@@ -8286,6 +8612,183 @@ function showBuyTab(tab) {
     }
 }
 
+// Auto-Buy Modal Functions
+let pendingAutoBuy = null;
+
+function showAutoBuyConfirmationModal(packageName, crypto, mergeCrypto, shares, isTeam) {
+    console.log(`Opening auto-buy confirmation for ${packageName}`);
+
+    // Store pending auto-buy data
+    pendingAutoBuy = {
+        packageName,
+        crypto,
+        mergeCrypto,
+        shares: shares || 1,
+        isTeam: isTeam || false
+    };
+
+    const modal = document.getElementById('autobuy-confirmation-modal');
+
+    // Update package name
+    document.getElementById('autobuy-package-name').textContent = packageName;
+
+    // Update shares display (only for team packages)
+    if (isTeam) {
+        document.getElementById('autobuy-shares-display').textContent = shares || 1;
+    } else {
+        // For solo packages, show "N/A" or hide the shares line
+        document.getElementById('autobuy-shares-display').textContent = 'N/A';
+    }
+
+    // Load saved addresses
+    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+    // Setup main crypto address
+    document.getElementById('autobuy-main-crypto-label').textContent = crypto;
+    const mainAddress = savedAddresses[crypto];
+
+    if (mainAddress) {
+        document.getElementById('autobuy-main-address-value').textContent = mainAddress;
+        document.getElementById('autobuy-main-address-saved').style.display = 'block';
+        document.getElementById('autobuy-main-address-input').style.display = 'none';
+    } else {
+        document.getElementById('autobuy-main-address-saved').style.display = 'none';
+        document.getElementById('autobuy-main-address-input').style.display = 'block';
+        document.getElementById('autobuy-main-address').value = '';
+    }
+
+    // Setup merge crypto address (for dual-crypto packages)
+    if (mergeCrypto) {
+        document.getElementById('autobuy-merge-section').style.display = 'block';
+        document.getElementById('autobuy-merge-crypto-label').textContent = mergeCrypto;
+        const mergeAddress = savedAddresses[mergeCrypto];
+
+        if (mergeAddress) {
+            document.getElementById('autobuy-merge-address-value').textContent = mergeAddress;
+            document.getElementById('autobuy-merge-address-saved').style.display = 'block';
+            document.getElementById('autobuy-merge-address-input').style.display = 'none';
+        } else {
+            document.getElementById('autobuy-merge-address-saved').style.display = 'none';
+            document.getElementById('autobuy-merge-address-input').style.display = 'block';
+            document.getElementById('autobuy-merge-address').value = '';
+        }
+    } else {
+        document.getElementById('autobuy-merge-section').style.display = 'none';
+    }
+
+    modal.style.display = 'block';
+}
+
+function closeAutoBuyConfirmationModal() {
+    document.getElementById('autobuy-confirmation-modal').style.display = 'none';
+
+    // If modal was closed without confirming, uncheck the toggle
+    if (pendingAutoBuy) {
+        const checkboxId = pendingAutoBuy.isTeam
+            ? `team-autobuy-${pendingAutoBuy.packageName.replace(/\s+/g, '-')}`
+            : `autobuy-${pendingAutoBuy.packageName.replace(/\s+/g, '-')}`;
+        const checkbox = document.getElementById(checkboxId);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+    }
+
+    pendingAutoBuy = null;
+}
+
+function editAutoBuyAddress(type) {
+    if (type === 'main') {
+        document.getElementById('autobuy-main-address-saved').style.display = 'none';
+        document.getElementById('autobuy-main-address-input').style.display = 'block';
+    } else {
+        document.getElementById('autobuy-merge-address-saved').style.display = 'none';
+        document.getElementById('autobuy-merge-address-input').style.display = 'block';
+    }
+}
+
+function confirmAutoBuy() {
+    if (!pendingAutoBuy) {
+        console.error('No pending auto-buy to confirm');
+        return;
+    }
+
+    const { packageName, crypto, mergeCrypto, shares, isTeam } = pendingAutoBuy;
+
+    // Load saved addresses
+    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+    // Validate main address
+    let mainAddress = savedAddresses[crypto];
+    const mainInput = document.getElementById('autobuy-main-address');
+
+    if (!mainAddress && mainInput.style.display !== 'none') {
+        mainAddress = mainInput.value.trim();
+        if (!mainAddress) {
+            alert(`Please enter a ${crypto} withdrawal address`);
+            return;
+        }
+        // Save the new address
+        savedAddresses[crypto] = mainAddress;
+    }
+
+    // Validate merge address if dual-crypto
+    let mergeAddress = null;
+    if (mergeCrypto) {
+        mergeAddress = savedAddresses[mergeCrypto];
+        const mergeInput = document.getElementById('autobuy-merge-address');
+
+        if (!mergeAddress && mergeInput.style.display !== 'none') {
+            mergeAddress = mergeInput.value.trim();
+            if (!mergeAddress) {
+                alert(`Please enter a ${mergeCrypto} withdrawal address`);
+                return;
+            }
+            // Save the new address
+            savedAddresses[mergeCrypto] = mergeAddress;
+        }
+    }
+
+    // Save all addresses
+    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+
+    // Save auto-buy settings
+    const storageKey = isTeam ? `${loggedInUser}_teamAutoBuy` : `${loggedInUser}_soloAutoBuy`;
+    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+    autoBuySettings[packageName] = {
+        enabled: true,
+        crypto: crypto,
+        mergeCrypto: mergeCrypto || null,
+        mainAddress: mainAddress,
+        mergeAddress: mergeAddress,
+        shares: shares || 1,
+        lastBuyTime: null // Will be set when first purchase happens
+    };
+
+    localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+
+    console.log(`✅ Auto-buy enabled for ${packageName}`, autoBuySettings[packageName]);
+
+    // Close modal
+    document.getElementById('autobuy-confirmation-modal').style.display = 'none';
+    pendingAutoBuy = null;
+
+    // Update UI status text next to checkbox
+    const checkboxId = isTeam
+        ? `team-autobuy-${packageName.replace(/\s+/g, '-')}`
+        : `autobuy-${packageName.replace(/\s+/g, '-')}`;
+    const checkbox = document.getElementById(checkboxId);
+    if (checkbox) {
+        const statusSpan = checkbox.nextElementSibling;
+        if (statusSpan) {
+            statusSpan.textContent = '✓ Enabled';
+            statusSpan.style.color = '#4CAF50';
+        }
+    }
+
+    alert(`Auto-buy enabled for ${packageName}!\n\nThe package will be automatically purchased when an alert triggers.\n\nCooldown: 1 hour 15 minutes between purchases.`);
+}
+
 // Make modal functions globally accessible
 window.showPackageDetailModal = showPackageDetailModal;
 window.closePackageDetailModal = closePackageDetailModal;
@@ -8293,6 +8796,10 @@ window.showBuyPackagesModal = showBuyPackagesModal;
 window.closeBuyPackagesModal = closeBuyPackagesModal;
 window.showBuyTab = showBuyTab;
 window.buyPackage = buyPackage;
+window.showAutoBuyConfirmationModal = showAutoBuyConfirmationModal;
+window.closeAutoBuyConfirmationModal = closeAutoBuyConfirmationModal;
+window.editAutoBuyAddress = editAutoBuyAddress;
+window.confirmAutoBuy = confirmAutoBuy;
 
 async function loadBuyPackagesData() {
     console.log('\n🛒 Loading available packages from NiceHash API...\n');

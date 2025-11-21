@@ -845,6 +845,90 @@
         </div>
     </div>
 
+    <!-- Auto-Buy Confirmation Modal -->
+    <div id="autobuy-confirmation-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close" onclick="closeAutoBuyConfirmationModal()">&times;</span>
+            <h2 class="settings-title">🤖 Auto-Buy Confirmation</h2>
+
+            <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; margin-bottom: 20px;">
+                <p style="color: #aaa; margin-bottom: 15px;">
+                    You are enabling auto-buy for <strong id="autobuy-package-name" style="color: #ffa500;"></strong>
+                </p>
+                <p style="color: #aaa; margin-bottom: 15px;">
+                    When an alert triggers, the package will be purchased automatically with <strong style="color: #4CAF50;"><span id="autobuy-shares-display">1</span> share(s)</strong>.
+                </p>
+                <p style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;">
+                    ⚠️ Important: Withdrawal addresses are required for auto-buy
+                </p>
+            </div>
+
+            <!-- Main Crypto Address -->
+            <div style="margin-bottom: 20px; padding: 15px; background-color: #1a1a1a; border-radius: 8px;">
+                <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 8px;">
+                    <span id="autobuy-main-crypto-label">BTC</span> Withdrawal Address:
+                </label>
+                <div id="autobuy-main-address-saved" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="color: #4CAF50;">✓</span>
+                        <span id="autobuy-main-address-value" style="color: #4CAF50; word-break: break-all;"></span>
+                        <button onclick="editAutoBuyAddress('main')"
+                                style="padding: 5px 10px; background-color: #444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            Change
+                        </button>
+                    </div>
+                </div>
+                <div id="autobuy-main-address-input" style="display: none;">
+                    <input type="text"
+                           id="autobuy-main-address"
+                           placeholder="Enter withdrawal address"
+                           style="width: 100%; padding: 10px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px; margin-bottom: 10px;">
+                    <p style="color: #888; font-size: 12px; margin: 0;">
+                        This address will be saved for future use
+                    </p>
+                </div>
+            </div>
+
+            <!-- Merge Crypto Address (for dual-crypto packages) -->
+            <div id="autobuy-merge-section" style="display: none; margin-bottom: 20px; padding: 15px; background-color: #1a1a1a; border-radius: 8px;">
+                <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 8px;">
+                    <span id="autobuy-merge-crypto-label">DOGE</span> Withdrawal Address:
+                </label>
+                <div id="autobuy-merge-address-saved" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="color: #4CAF50;">✓</span>
+                        <span id="autobuy-merge-address-value" style="color: #4CAF50; word-break: break-all;"></span>
+                        <button onclick="editAutoBuyAddress('merge')"
+                                style="padding: 5px 10px; background-color: #444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            Change
+                        </button>
+                    </div>
+                </div>
+                <div id="autobuy-merge-address-input" style="display: none;">
+                    <input type="text"
+                           id="autobuy-merge-address"
+                           placeholder="Enter withdrawal address"
+                           style="width: 100%; padding: 10px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px; margin-bottom: 10px;">
+                    <p style="color: #888; font-size: 12px; margin: 0;">
+                        This address will be saved for future use
+                    </p>
+                </div>
+            </div>
+
+            <!-- Cooldown Notice -->
+            <div style="padding: 15px; background-color: #2a2a2a; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffa500;">
+                <p style="color: #aaa; margin: 0; font-size: 13px;">
+                    ⏱️ Auto-buy has a <strong style="color: #ffa500;">1 hour 15 minute cooldown</strong>. After a purchase, the next auto-buy will only trigger after this period.
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="delete-button" onclick="closeAutoBuyConfirmationModal()">Cancel</button>
+                <button class="add-crypto-button" onclick="confirmAutoBuy()">Enable Auto-Buy</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Audio elements for notifications -->
     <!-- Holdings Sounds -->
     <audio id="good-sound" src="sounds/good-sound.mp3" preload="auto" muted></audio>
