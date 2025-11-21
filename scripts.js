@@ -10077,26 +10077,39 @@ async function loadBuyPackagesDataOnPage() {
 
                     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
                         const baseValues = window.packageBaseValues[packageName];
-                        const newRewardAUD = (baseValues.rewardAUD * value).toFixed(2);
+
+                        // Price increases linearly
                         const newPriceAUD = (baseValues.priceAUD * value).toFixed(2);
 
+                        // Reward is based on percentage of total pool
+                        const existingShares = baseValues.existingShares || 0;
+                        const myShares = value;
+                        const totalShares = existingShares + myShares;
+                        const myPercentage = totalShares > 0 ? myShares / totalShares : 0;
+
+                        const totalRewardAUD = baseValues.totalRewardAUD || 0;
+                        const totalMainReward = baseValues.totalMainReward || 0;
+                        const totalMergeReward = baseValues.totalMergeReward || 0;
+
+                        const myRewardAUD = (totalRewardAUD * myPercentage).toFixed(2);
+
                         if (rewardValueElement) {
-                            rewardValueElement.textContent = `$${newRewardAUD} AUD`;
+                            rewardValueElement.textContent = `$${myRewardAUD} AUD`;
                         }
                         if (priceElement) {
                             priceElement.textContent = `$${newPriceAUD} AUD`;
                         }
 
                         // Update crypto reward amounts
-                        if (mainRewardElement && baseValues.mainReward) {
-                            const newMainReward = baseValues.mainReward * value;
+                        if (mainRewardElement && totalMainReward) {
+                            const myMainReward = totalMainReward * myPercentage;
                             const decimals = baseValues.mainCrypto === 'BTC' || baseValues.mainCrypto === 'BCH' ? 4 : 0;
-                            mainRewardElement.textContent = `${newMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
+                            mainRewardElement.textContent = `${myMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
                         }
 
-                        if (mergeRewardElement && baseValues.mergeReward && baseValues.isDualCrypto) {
-                            const newMergeReward = baseValues.mergeReward * value;
-                            mergeRewardElement.textContent = `${newMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
+                        if (mergeRewardElement && totalMergeReward && baseValues.isDualCrypto) {
+                            const myMergeReward = totalMergeReward * myPercentage;
+                            mergeRewardElement.textContent = `${myMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
                         }
                     }
 
@@ -10344,28 +10357,33 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const packageId = pkg.name.replace(/\s+/g, '-');
 
     if (pkg.isDualCrypto) {
-        // Calculate per-share rewards for dual-crypto packages
-        let mergeRewardPerShare = pkg.mergeBlockReward || 0;
-        let mainRewardPerShare = pkg.blockReward || 0;
-        let rewardValuePerShare = parseFloat(rewardAUD);
+        // Calculate rewards for 1 share based on percentage of total pool
+        let myMergeReward = pkg.mergeBlockReward || 0;
+        let myMainReward = pkg.blockReward || 0;
+        let myRewardValueAUD = parseFloat(rewardAUD);
 
         if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
             const sharePrice = 0.0001;
-            const totalSharesInPackage = pkg.addedAmount / sharePrice;
-            mergeRewardPerShare = (pkg.mergeBlockReward || 0) / totalSharesInPackage;
-            mainRewardPerShare = (pkg.blockReward || 0) / totalSharesInPackage;
-            rewardValuePerShare = parseFloat(rewardAUD) / totalSharesInPackage;
+            const existingShares = pkg.addedAmount / sharePrice;
+            const myShares = 1; // Initial display for 1 share
+            const totalShares = existingShares + myShares;
+            const myPercentage = myShares / totalShares;
 
-            console.log(`🎨 DISPLAYING Palladium ${pkg.name} per-share:`, {
+            myMergeReward = (pkg.mergeBlockReward || 0) * myPercentage;
+            myMainReward = (pkg.blockReward || 0) * myPercentage;
+            myRewardValueAUD = parseFloat(rewardAUD) * myPercentage;
+
+            console.log(`🎨 DISPLAYING Palladium ${pkg.name} for 1 share:`, {
                 mergeCrypto: pkg.mergeCrypto,
                 totalMergeReward: pkg.mergeBlockReward,
-                mergeRewardPerShare: mergeRewardPerShare,
+                myMergeReward: myMergeReward,
                 mainCrypto: pkg.mainCrypto,
                 totalMainReward: pkg.blockReward,
-                mainRewardPerShare: mainRewardPerShare,
+                myMainReward: myMainReward,
                 totalRewardValueAUD: rewardAUD,
-                rewardValuePerShare: rewardValuePerShare.toFixed(2),
-                totalSharesInPackage: totalSharesInPackage
+                myRewardValueAUD: myRewardValueAUD.toFixed(2),
+                existingShares: existingShares,
+                myPercentage: (myPercentage * 100).toFixed(2) + '%'
             });
         }
 
@@ -10373,37 +10391,41 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mergeCrypto}:</span>
-                <span id="merge-reward-${packageId}" style="color: #4CAF50;">${mergeRewardPerShare.toFixed(0)} ${pkg.mergeCrypto}</span>
+                <span id="merge-reward-${packageId}" style="color: #4CAF50;">${myMergeReward.toFixed(0)} ${pkg.mergeCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mainCrypto}:</span>
-                <span id="main-reward-${packageId}" style="color: #4CAF50;">${mainRewardPerShare.toFixed(4)} ${pkg.mainCrypto}</span>
+                <span id="main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(4)} ${pkg.mainCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardValuePerShare.toFixed(2)} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
             </div>
         `;
     } else if (pkg.blockReward) {
-        // Single crypto package - calculate per-share reward
-        let rewardPerShare = pkg.blockReward;
-        let rewardValuePerShare = parseFloat(rewardAUD);
+        // Single crypto package - calculate reward for 1 share
+        let myMainReward = pkg.blockReward;
+        let myRewardValueAUD = parseFloat(rewardAUD);
 
         if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
             const sharePrice = 0.0001;
-            const totalSharesInPackage = pkg.addedAmount / sharePrice;
-            rewardPerShare = pkg.blockReward / totalSharesInPackage;
-            rewardValuePerShare = parseFloat(rewardAUD) / totalSharesInPackage;
+            const existingShares = pkg.addedAmount / sharePrice;
+            const myShares = 1; // Initial display for 1 share
+            const totalShares = existingShares + myShares;
+            const myPercentage = myShares / totalShares;
+
+            myMainReward = pkg.blockReward * myPercentage;
+            myRewardValueAUD = parseFloat(rewardAUD) * myPercentage;
         }
 
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Reward:</span>
-                <span id="main-reward-${packageId}" style="color: #4CAF50;">${rewardPerShare.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
+                <span id="main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardValuePerShare.toFixed(2)} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
             </div>
         `;
     }
@@ -10482,52 +10504,35 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             window.packageBaseValues = {};
         }
 
-        // Calculate per-share values
+        // Store total package rewards and existing shares for percentage calculation
         // Price: 1 share = 0.0001 BTC
         const sharePrice = 0.0001;
         const btcPriceAUD = prices['btc']?.aud || 0;
         const pricePerShareAUD = sharePrice * btcPriceAUD;
 
-        // Reward: Calculate total shares in package from addedAmount
-        let rewardPerShareAUD = 0;
-        let mainRewardPerShare = 0;
-        let mergeRewardPerShare = 0;
+        // Calculate existing shares from addedAmount
+        const existingShares = pkg.addedAmount && pkg.addedAmount > 0 ? pkg.addedAmount / sharePrice : 0;
 
-        if (pkg.addedAmount && pkg.addedAmount > 0) {
-            const totalSharesInPackage = pkg.addedAmount / sharePrice;
-            rewardPerShareAUD = parseFloat(rewardAUD) / totalSharesInPackage;
+        // Store total rewards (not per-share)
+        const totalRewardAUD = parseFloat(rewardAUD) || 0;
+        const totalMainReward = pkg.blockReward || 0;
+        const totalMergeReward = pkg.mergeBlockReward || 0;
 
-            // Calculate crypto-specific rewards per share
-            if (pkg.isDualCrypto) {
-                mergeRewardPerShare = (pkg.mergeBlockReward || 0) / totalSharesInPackage;
-                mainRewardPerShare = (pkg.blockReward || 0) / totalSharesInPackage;
-            } else {
-                mainRewardPerShare = (pkg.blockReward || 0) / totalSharesInPackage;
-            }
-
-            console.log(`📊 ${pkg.name} per-share calculation:`, {
-                addedAmount: pkg.addedAmount,
-                sharePrice: sharePrice,
-                totalSharesInPackage: totalSharesInPackage,
-                totalRewardAUD: rewardAUD,
-                rewardPerShareAUD: rewardPerShareAUD.toFixed(2),
-                pricePerShareAUD: pricePerShareAUD.toFixed(2),
-                mainRewardPerShare: mainRewardPerShare,
-                mergeRewardPerShare: mergeRewardPerShare
-            });
-        } else {
-            // Fallback: if no addedAmount, assume reward is already per-share
-            rewardPerShareAUD = parseFloat(rewardAUD);
-            mainRewardPerShare = pkg.blockReward || 0;
-            mergeRewardPerShare = pkg.mergeBlockReward || 0;
-            console.log(`⚠️ ${pkg.name} - No addedAmount, using reward as-is:`, rewardPerShareAUD);
-        }
+        console.log(`📊 ${pkg.name} package values:`, {
+            addedAmount: pkg.addedAmount,
+            existingShares: existingShares,
+            totalRewardAUD: totalRewardAUD,
+            totalMainReward: totalMainReward,
+            totalMergeReward: totalMergeReward,
+            pricePerShareAUD: pricePerShareAUD.toFixed(2)
+        });
 
         window.packageBaseValues[pkg.name] = {
-            rewardAUD: rewardPerShareAUD,
             priceAUD: pricePerShareAUD,
-            mainReward: mainRewardPerShare,
-            mergeReward: mergeRewardPerShare,
+            totalRewardAUD: totalRewardAUD,
+            totalMainReward: totalMainReward,
+            totalMergeReward: totalMergeReward,
+            existingShares: existingShares,
             mainCrypto: pkg.mainCrypto || pkg.crypto,
             mergeCrypto: pkg.mergeCrypto,
             isDualCrypto: pkg.isDualCrypto
@@ -10575,36 +10580,52 @@ function adjustShares(packageName, delta) {
     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
         const baseValues = window.packageBaseValues[packageName];
 
-        // Calculate new values based on shares
-        const newRewardAUD = (baseValues.rewardAUD * newValue).toFixed(2);
+        // Price increases linearly with shares (you pay for each share)
         const newPriceAUD = (baseValues.priceAUD * newValue).toFixed(2);
+
+        // Reward is based on your percentage of total pool
+        // Your share = my_shares / (existing_shares + my_shares)
+        const existingShares = baseValues.existingShares || 0;
+        const myShares = newValue;
+        const totalShares = existingShares + myShares;
+        const myPercentage = totalShares > 0 ? myShares / totalShares : 0;
+
+        // Calculate my portion of total rewards
+        const totalRewardAUD = baseValues.totalRewardAUD || 0;
+        const totalMainReward = baseValues.totalMainReward || 0;
+        const totalMergeReward = baseValues.totalMergeReward || 0;
+
+        const myRewardAUD = (totalRewardAUD * myPercentage).toFixed(2);
 
         // Update AUD displays
         if (rewardValueElement) {
-            rewardValueElement.textContent = `$${newRewardAUD} AUD`;
+            rewardValueElement.textContent = `$${myRewardAUD} AUD`;
         }
         if (priceElement) {
             priceElement.textContent = `$${newPriceAUD} AUD`;
         }
 
         // Update crypto reward amounts
-        if (mainRewardElement && baseValues.mainReward) {
-            const newMainReward = baseValues.mainReward * newValue;
+        if (mainRewardElement && totalMainReward) {
+            const myMainReward = totalMainReward * myPercentage;
             const decimals = baseValues.mainCrypto === 'BTC' || baseValues.mainCrypto === 'BCH' ? 4 : 0;
-            mainRewardElement.textContent = `${newMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
+            mainRewardElement.textContent = `${myMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
         }
 
-        if (mergeRewardElement && baseValues.mergeReward && baseValues.isDualCrypto) {
-            const newMergeReward = baseValues.mergeReward * newValue;
-            mergeRewardElement.textContent = `${newMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
+        if (mergeRewardElement && totalMergeReward && baseValues.isDualCrypto) {
+            const myMergeReward = totalMergeReward * myPercentage;
+            mergeRewardElement.textContent = `${myMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
         }
 
         console.log(`📊 Updated ${packageName}:`, {
-            shares: newValue,
-            rewardAUD: newRewardAUD,
+            myShares: myShares,
+            existingShares: existingShares,
+            totalShares: totalShares,
+            myPercentage: (myPercentage * 100).toFixed(2) + '%',
+            myRewardAUD: myRewardAUD,
             priceAUD: newPriceAUD,
-            mainReward: baseValues.mainReward ? (baseValues.mainReward * newValue).toFixed(4) : 'N/A',
-            mergeReward: baseValues.mergeReward ? (baseValues.mergeReward * newValue).toFixed(0) : 'N/A'
+            myMainReward: totalMainReward ? (totalMainReward * myPercentage).toFixed(4) : 'N/A',
+            myMergeReward: totalMergeReward ? (totalMergeReward * myPercentage).toFixed(0) : 'N/A'
         });
     }
 
