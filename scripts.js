@@ -9480,11 +9480,17 @@ async function loadBuyPackagesDataOnPage() {
     const allPackages = [...singlePackages, ...teamPackages];
     window.packageCryptoPrices = await fetchPackageCryptoPrices(allPackages);
 
-    // Load recommendations to highlight packages (section itself is hidden in HTML)
-    console.log('🔔 Loading recommendations for package highlighting...');
-    const recommendations = await checkPackageRecommendations();
-    const recommendedNames = recommendations.map(pkg => pkg.name);
-    console.log(`✅ Found ${recommendedNames.length} recommended package(s) for highlighting`);
+    // Load solo recommendations to highlight packages
+    console.log('🔔 Loading solo recommendations for package highlighting...');
+    const soloRecommendations = await checkPackageRecommendations();
+    const soloRecommendedNames = soloRecommendations.map(pkg => pkg.name);
+    console.log(`✅ Found ${soloRecommendedNames.length} recommended solo package(s) for highlighting`);
+
+    // Load team recommendations to highlight packages
+    console.log('🔔 Loading team recommendations for package highlighting...');
+    const teamRecommendations = await checkTeamRecommendations();
+    const teamRecommendedNames = teamRecommendations.map(pkg => pkg.name);
+    console.log(`✅ Found ${teamRecommendedNames.length} recommended team package(s) for highlighting`);
 
     // Recommendations section container is hidden in HTML - we only use recommendedNames for highlighting
     // Recommendations display only shows in EasyMining section
@@ -9500,7 +9506,7 @@ async function loadBuyPackagesDataOnPage() {
     singleContainer.innerHTML = '';
     singlePackages.forEach(pkg => {
         try {
-            const isRecommended = recommendedNames.includes(pkg.name);
+            const isRecommended = soloRecommendedNames.includes(pkg.name);
             const card = createBuyPackageCardForPage(pkg, isRecommended);
             singleContainer.appendChild(card);
         } catch (error) {
@@ -9520,7 +9526,7 @@ async function loadBuyPackagesDataOnPage() {
     teamContainer.innerHTML = '';
     teamPackages.forEach(pkg => {
         try {
-            const isRecommended = recommendedNames.includes(pkg.name);
+            const isRecommended = teamRecommendedNames.includes(pkg.name);
             const card = createBuyPackageCardForPage(pkg, isRecommended);
             teamContainer.appendChild(card);
         } catch (error) {
