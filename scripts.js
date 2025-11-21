@@ -2033,6 +2033,7 @@ document.getElementById('confirm-password').addEventListener('keyup', function(e
 // MEXC REST API polling for live prices (simple, reliable, JSON)
 function startMEXCPricePolling() {
     console.log('🚀 Starting MEXC REST API price polling...');
+    console.log(`   Using ${USE_VERCEL_PROXY ? 'Vercel proxy' : 'direct API calls'}`);
 
     const updatePrices = async () => {
         if (!users[loggedInUser] || !users[loggedInUser].cryptos) return;
@@ -2040,7 +2041,13 @@ function startMEXCPricePolling() {
         for (const crypto of users[loggedInUser].cryptos) {
             try {
                 const symbol = `${crypto.symbol.toUpperCase()}USDT`;
-                const response = await fetch(`https://api.mexc.com/api/v3/ticker/price?symbol=${symbol}`);
+
+                // Use Vercel proxy in production, direct call in dev
+                const url = USE_VERCEL_PROXY
+                    ? `/api/mexc?endpoint=ticker/price&symbol=${symbol}`
+                    : `https://api.mexc.com/api/v3/ticker/price?symbol=${symbol}`;
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.price) {
