@@ -5050,6 +5050,8 @@ let easyMiningData = {
 
 let easyMiningPollingInterval = null;
 let buyPackagesPollingInterval = null;
+let buyPackagesPollingPaused = false;
+let buyPackagesPauseTimer = null;
 let showAllPackages = false;
 
 // Error alert throttling (prevent spam during reconnection)
@@ -10111,7 +10113,8 @@ async function loadBuyPackagesDataOnPage() {
                         if (mergeRewardElement && totalMergeReward && baseValues.isDualCrypto) {
                             const rewardPerShare = totalShares > 0 ? totalMergeReward / totalShares : 0;
                             const myMergeReward = rewardPerShare * myShares;
-                            mergeRewardElement.textContent = `${myMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
+                            const mergeDecimals = baseValues.mergeCrypto === 'LTC' ? 2 : 0;
+                            mergeRewardElement.textContent = `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`;
                         }
                     }
 
@@ -10395,10 +10398,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
 
         // Show both rewards for dual-crypto packages (DOGE+LTC)
+        const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mergeCrypto}:</span>
-                <span id="merge-reward-${packageId}" style="color: #4CAF50;">${myMergeReward.toFixed(0)} ${pkg.mergeCrypto}</span>
+                <span id="merge-reward-${packageId}" style="color: #4CAF50;">${myMergeReward.toFixed(mergeDecimals)} ${pkg.mergeCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mainCrypto}:</span>
@@ -10581,6 +10585,9 @@ function adjustShares(packageName, delta) {
     window.packageShareValues[packageName] = newValue;
     console.log(`💾 Saved ${packageName} = ${newValue}`);
 
+    // Pause polling for 10 seconds when adjusting shares
+    pauseBuyPackagesPolling();
+
     // Update reward value and price based on shares
     const packageId = packageName.replace(/\s+/g, '-');
     const rewardValueElement = document.getElementById(`reward-value-${packageId}`);
@@ -10628,7 +10635,8 @@ function adjustShares(packageName, delta) {
         if (mergeRewardElement && totalMergeReward && baseValues.isDualCrypto) {
             const rewardPerShare = totalShares > 0 ? totalMergeReward / totalShares : 0;
             const myMergeReward = rewardPerShare * myShares;
-            mergeRewardElement.textContent = `${myMergeReward.toFixed(0)} ${baseValues.mergeCrypto}`;
+            const mergeDecimals = baseValues.mergeCrypto === 'LTC' ? 2 : 0;
+            mergeRewardElement.textContent = `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`;
         }
 
         console.log(`📊 Updated ${packageName}:`, {
@@ -11142,8 +11150,12 @@ function startBuyPackagesPolling() {
 
     // Poll every 5 seconds
     buyPackagesPollingInterval = setInterval(() => {
-        console.log('🔄 Refreshing buy packages data...');
-        loadBuyPackagesDataOnPage();
+        if (!buyPackagesPollingPaused) {
+            console.log('🔄 Refreshing buy packages data...');
+            loadBuyPackagesDataOnPage();
+        } else {
+            console.log('⏸️ Polling paused - skipping refresh');
+        }
     }, 5000);
 
     console.log('✅ Buy packages polling started (5s interval)');
@@ -11155,6 +11167,24 @@ function stopBuyPackagesPolling() {
         buyPackagesPollingInterval = null;
         console.log('⏹️ Buy packages polling stopped');
     }
+}
+
+function pauseBuyPackagesPolling() {
+    // Clear any existing pause timer
+    if (buyPackagesPauseTimer) {
+        clearTimeout(buyPackagesPauseTimer);
+    }
+
+    // Set paused flag
+    buyPackagesPollingPaused = true;
+    console.log('⏸️ Pausing buy packages polling for 10 seconds...');
+
+    // Resume after 10 seconds
+    buyPackagesPauseTimer = setTimeout(() => {
+        buyPackagesPollingPaused = false;
+        buyPackagesPauseTimer = null;
+        console.log('▶️ Resuming buy packages polling');
+    }, 10000);
 }
 
 // =============================================================================
