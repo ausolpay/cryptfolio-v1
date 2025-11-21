@@ -2149,11 +2149,12 @@ body.light-mode .easymining-settings-form input[type="password"] {
    RESPONSIVE MEDIA QUERIES FOR EASYMINING SECTION
    ============================================================================= */
 
-/* Desktop and Large Tablets - Default layout (above 768px) */
+/* Desktop and Large Tablets - Default layout (above 1390px) */
 /* All balances and buttons on same line when space allows */
 
-/* Wide Tablet (769px - 1100px) - 3 crypto boxes wide */
-@media (max-width: 1100px) {
+/* Wide Tablet - 3 crypto boxes wide */
+/* Trigger when viewport can't fit 4 boxes (1390px) */
+@media (max-width: 1390px) {
     .easymining-section {
         margin: 0 auto 15px auto;
         width: 1040px; /* Match 3 crypto boxes width with gaps */
@@ -2167,8 +2168,9 @@ body.light-mode .easymining-settings-form input[type="password"] {
     }
 }
 
-/* Narrow Tablet (621px - 768px) - 2 crypto boxes wide */
-@media (max-width: 768px) {
+/* Narrow Tablet - 2 crypto boxes wide */
+/* Trigger when viewport can't fit 3 boxes (1040px) */
+@media (max-width: 1040px) {
     .easymining-section {
         margin: 0 auto 15px auto;
         width: 700px; /* Match 2 crypto boxes width with gaps */
@@ -2182,8 +2184,9 @@ body.light-mode .easymining-settings-form input[type="password"] {
     }
 }
 
-/* Mobile (below 620px) - 1 crypto box wide */
-@media (max-width: 620px) {
+/* Mobile - 1 crypto box wide */
+/* Trigger when viewport can't fit 2 boxes (700px) */
+@media (max-width: 700px) {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
         width: 300px;
