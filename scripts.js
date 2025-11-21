@@ -770,11 +770,8 @@ async function loadSoloAlerts() {
                 const mergeCrypto = this.dataset.mergeCrypto || null;
 
                 if (this.checked) {
-                    // Simple confirmation dialog
-                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nWhen an alert triggers, this package will be purchased automatically.\n\nCooldown: 1 hour per package (other packages can auto-buy independently).`)) {
-                        this.checked = false;
-                        return;
-                    }
+                    // Auto-buy enabled (no confirmation needed)
+                    console.log(`✅ Auto-Buy enabled for ${packageName} (solo package)`);
 
                     // Check/prompt for withdrawal addresses
                     const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
@@ -1045,11 +1042,8 @@ async function loadTeamAlerts() {
                     const sharesInput = document.getElementById(sharesInputId);
                     const shares = sharesInput ? parseInt(sharesInput.value) || 1 : 1;
 
-                    // Simple confirmation dialog
-                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nShares: ${shares}\n\nWhen an alert triggers, this package will be purchased automatically with ${shares} share(s).\n\nCooldown: 1 hour per package (other packages can auto-buy independently).`)) {
-                        this.checked = false;
-                        return;
-                    }
+                    // Auto-buy enabled (no confirmation needed)
+                    console.log(`✅ Auto-Buy enabled for ${packageName} (team package, ${shares} shares)`);
 
                     // Check/prompt for withdrawal addresses
                     const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
@@ -7693,14 +7687,12 @@ async function executeAutoBuySolo(recommendations) {
             autoBuy.lastBuyTime = Date.now();
             localStorage.setItem(`${loggedInUser}_soloAutoBuy`, JSON.stringify(autoBuySettings));
 
-            console.log(`✅ Auto-buy completed for ${pkg.name}`, result);
-            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically.\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy for this package available in 1 hour.`);
+            console.log(`✅ Auto-buy completed for ${pkg.name}. Order ID: ${result.id || result.orderId || 'N/A'}. Next auto-buy available in 1 hour.`, result);
 
             // Refresh package data
             await fetchEasyMiningData();
         } catch (error) {
-            console.error(`❌ Auto-buy failed for ${pkg.name}:`, error);
-            alert(`❌ Auto-Buy Failed\n\n${pkg.name} purchase failed: ${error.message}\n\nPlease check your settings and try again.`);
+            console.error(`❌ Auto-buy failed for ${pkg.name}:`, error.message, error);
         }
     }
 }
@@ -7776,14 +7768,12 @@ async function executeAutoBuyTeam(recommendations) {
             autoBuy.lastBuyTime = Date.now();
             localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
 
-            console.log(`✅ Auto-buy completed for ${pkg.name}`, result);
-            alert(`🤖 Auto-Buy Executed!\n\n${pkg.name} has been purchased automatically with ${autoBuy.shares} share(s).\n\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nNext auto-buy for this package available in 1 hour.`);
+            console.log(`✅ Auto-buy completed for ${pkg.name} with ${autoBuy.shares} share(s). Order ID: ${result.id || result.orderId || 'N/A'}. Next auto-buy available in 1 hour.`, result);
 
             // Refresh package data
             await fetchEasyMiningData();
         } catch (error) {
-            console.error(`❌ Auto-buy failed for ${pkg.name}:`, error);
-            alert(`❌ Auto-Buy Failed\n\n${pkg.name} purchase failed: ${error.message}\n\nPlease check your settings and try again.`);
+            console.error(`❌ Auto-buy failed for ${pkg.name}:`, error.message, error);
         }
     }
 }
