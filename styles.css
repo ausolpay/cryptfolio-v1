@@ -921,8 +921,9 @@ body.fullscreen-mode {
     height: 100%; /* Match fullscreen height */
     width: 100%; /* Match fullscreen width */
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column; /* Maintain column layout */
+    justify-content: flex-start; /* Allow scrolling from top */
+    align-items: center; /* Keep horizontally centered */
 }
 
 body.fullscreen-mode::-webkit-scrollbar {
