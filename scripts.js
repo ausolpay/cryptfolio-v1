@@ -8260,6 +8260,12 @@ async function fetchNiceHashSoloPackages() {
                 // Convert duration from seconds to hours for display
                 const durationHours = (pkg.duration / 3600).toFixed(0);
 
+                console.log(`📦 Mapping package ${pkg.name}:`, {
+                    price_from_api: pkg.price,
+                    currency: pkg.currencyAlgo.currency,
+                    blockReward: pkg.currencyAlgo.blockRewardWithNhFee || pkg.currencyAlgo.blockReward
+                });
+
                 return {
                     name: pkg.name,
                     crypto: pkg.currencyAlgo.currency,
@@ -8369,6 +8375,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             const cryptoKey = pkg.crypto.toLowerCase().split('/')[0]; // Handle DOGE/LTC
             if (typeof cryptoPrices !== 'undefined' && cryptoPrices[cryptoKey] && cryptoPrices[cryptoKey].aud) {
                 rewardAUD = (pkg.blockReward * cryptoPrices[cryptoKey].aud).toFixed(2);
+                console.log(`💰 ${pkg.name} Reward Calc:`, {
+                    blockReward: pkg.blockReward,
+                    crypto: pkg.crypto,
+                    cryptoPrice_AUD: cryptoPrices[cryptoKey].aud,
+                    rewardAUD: rewardAUD
+                });
+            } else {
+                console.log(`⚠️ ${pkg.name} - Missing price data for ${cryptoKey}`);
             }
         } catch (error) {
             console.log('Could not calculate reward AUD:', error);
@@ -8382,11 +8396,20 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         try {
             if (typeof cryptoPrices !== 'undefined' && cryptoPrices['btc'] && cryptoPrices['btc'].aud) {
                 priceAUD = (pkg.priceBTC * cryptoPrices['btc'].aud).toFixed(2);
+                console.log(`💵 ${pkg.name} Price Calc:`, {
+                    priceBTC: pkg.priceBTC,
+                    btcPrice_AUD: cryptoPrices['btc'].aud,
+                    priceAUD: priceAUD
+                });
+            } else {
+                console.log(`⚠️ ${pkg.name} - Missing BTC price data`);
             }
         } catch (error) {
             console.log('Could not calculate price AUD:', error);
             priceAUD = 0;
         }
+    } else {
+        console.log(`⚠️ ${pkg.name} - No priceBTC field`);
     }
 
     const hashrateInfo = pkg.hashrate ? `
