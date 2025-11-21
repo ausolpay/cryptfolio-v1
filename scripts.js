@@ -407,6 +407,7 @@ function showAppPage() {
     document.getElementById('register-page').style.display = 'none';
     document.getElementById('app-page').style.display = 'block';
     document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
 }
@@ -4191,13 +4192,12 @@ function activateCoinGeckoApi() {
         localStorage.setItem(`${loggedInUser}_coinGeckoApiKeys`, JSON.stringify(userKeys));
         console.log('✅ Saved CoinGecko API keys:', userKeys.length, 'keys');
 
-        // Update the global apiKeys array
-        apiKeys = [...userKeys];
-        currentApiKeyIndex = 0; // Reset to first key
+        // Set success message to show after reload
+        setStorageItem('modalMessage', '✅ CoinGecko API keys activated successfully!\n\n' + userKeys.length + ' key(s) configured.');
 
-        // Go back to app page
-        showAppPage();
-        alert('✅ CoinGecko API keys activated successfully!\n\n' + userKeys.length + ' key(s) configured.');
+        // Reload page to properly initialize app with new keys
+        console.log('🔄 Reloading page to initialize app with new API keys...');
+        location.reload();
     } catch (error) {
         console.error('❌ Error saving CoinGecko API keys:', error);
         alert('❌ Error saving API keys. Please try again.');
