@@ -8376,22 +8376,39 @@ async function fetchNiceHashSoloPackages() {
                 // Convert duration from seconds to hours for display
                 const durationHours = (pkg.duration / 3600).toFixed(0);
 
+                // Check for dual-crypto packages (merge mining like DOGE+LTC)
+                const hasMergeCurrency = !!pkg.mergeCurrencyAlgo;
+                const mainCrypto = pkg.currencyAlgo.currency;
+                const mergeCrypto = hasMergeCurrency ? pkg.mergeCurrencyAlgo.currency : null;
+                const cryptoDisplay = hasMergeCurrency ? `${mergeCrypto}+${mainCrypto}` : mainCrypto;
+
+                const mainBlockReward = pkg.currencyAlgo.blockRewardWithNhFee || pkg.currencyAlgo.blockReward;
+                const mergeBlockReward = hasMergeCurrency
+                    ? (pkg.mergeCurrencyAlgo.blockRewardWithNhFee || pkg.mergeCurrencyAlgo.blockReward)
+                    : null;
+
                 console.log(`📦 Mapping package ${pkg.name}:`, {
                     price_from_api: pkg.price,
-                    currency: pkg.currencyAlgo.currency,
-                    blockReward: pkg.currencyAlgo.blockRewardWithNhFee || pkg.currencyAlgo.blockReward
+                    mainCurrency: mainCrypto,
+                    mergeCurrency: mergeCrypto,
+                    mainBlockReward: mainBlockReward,
+                    mergeBlockReward: mergeBlockReward
                 });
 
                 return {
                     name: pkg.name,
-                    crypto: pkg.currencyAlgo.currency,
+                    crypto: cryptoDisplay,
+                    mainCrypto: mainCrypto,
+                    mergeCrypto: mergeCrypto,
                     probability: probabilityRatio,
                     priceBTC: pkg.price,
                     priceAUD: '0.00', // Will be calculated dynamically from BTC price
                     duration: `${durationHours}h`,
                     algorithm: pkg.currencyAlgo.miningAlgorithm,
                     hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // Approximate
-                    blockReward: pkg.currencyAlgo.blockRewardWithNhFee || pkg.currencyAlgo.blockReward,
+                    blockReward: mainBlockReward,
+                    mergeBlockReward: mergeBlockReward,
+                    isDualCrypto: hasMergeCurrency,
                     apiData: pkg // Store original API data for reference
                 };
             });
@@ -8493,7 +8510,23 @@ async function loadBuyPackagesDataOnPage() {
     // TODO: Team packages API integration - for now using mock data
     const teamPackages = [
         { name: 'Silver Team', crypto: 'BCH', probability: '1:160', priceBTC: 0.0914, priceAUD: '20.00', duration: '24h', algorithm: 'SHA256', totalShares: 914, boughtShares: 71, blockReward: 3.125, isTeam: true },
-        { name: 'Pal Team', crypto: 'DOGE/LTC', probability: '1:220', priceBTC: 0.08, priceAUD: '18.00', duration: '24h', algorithm: 'Scrypt', totalShares: 800, boughtShares: 45, blockReward: 10000, isTeam: true },
+        {
+            name: 'Pal Team',
+            crypto: 'DOGE+LTC',
+            mainCrypto: 'LTC',
+            mergeCrypto: 'DOGE',
+            probability: '1:220',
+            priceBTC: 0.08,
+            priceAUD: '18.00',
+            duration: '24h',
+            algorithm: 'Scrypt',
+            totalShares: 800,
+            boughtShares: 45,
+            blockReward: 6.25,
+            mergeBlockReward: 10000,
+            isDualCrypto: true,
+            isTeam: true
+        },
         { name: 'Gold Team', crypto: 'BTC', probability: '1:80', priceBTC: 0.1037, priceAUD: '50.00', duration: '24h', algorithm: 'SHA256', totalShares: 1037, boughtShares: 200, blockReward: 3.125, isTeam: true }
     ];
 
@@ -8553,23 +8586,60 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // Calculate reward in AUD based on crypto prices
     let rewardAUD = 0;
-    if (pkg.blockReward && pkg.crypto) {
+    let mainRewardAUD = 0;
+    let mergeRewardAUD = 0;
+
+    if (pkg.isDualCrypto) {
+        // Dual-crypto package (e.g., DOGE+LTC)
         try {
-            const cryptoKey = pkg.crypto.toLowerCase().split('/')[0]; // Handle DOGE/LTC
-            if (prices[cryptoKey] && prices[cryptoKey].aud) {
-                rewardAUD = (pkg.blockReward * prices[cryptoKey].aud).toFixed(2);
-                console.log(`💰 ${pkg.name} Reward Calc:`, {
-                    blockReward: pkg.blockReward,
-                    crypto: pkg.crypto,
-                    cryptoPrice_AUD: prices[cryptoKey].aud,
-                    rewardAUD: rewardAUD
-                });
-            } else {
-                console.log(`⚠️ ${pkg.name} - Missing price data for ${cryptoKey}. Available prices:`, Object.keys(prices));
+            // Calculate main crypto reward (LTC)
+            const mainCryptoKey = pkg.mainCrypto.toLowerCase();
+            if (prices[mainCryptoKey] && prices[mainCryptoKey].aud) {
+                mainRewardAUD = parseFloat((pkg.blockReward * prices[mainCryptoKey].aud).toFixed(2));
             }
+
+            // Calculate merge crypto reward (DOGE)
+            const mergeCryptoKey = pkg.mergeCrypto.toLowerCase();
+            if (prices[mergeCryptoKey] && prices[mergeCryptoKey].aud) {
+                mergeRewardAUD = parseFloat((pkg.mergeBlockReward * prices[mergeCryptoKey].aud).toFixed(2));
+            }
+
+            // Total reward in AUD
+            rewardAUD = (mainRewardAUD + mergeRewardAUD).toFixed(2);
+
+            console.log(`💰 ${pkg.name} Dual Reward Calc:`, {
+                mainCrypto: pkg.mainCrypto,
+                mainBlockReward: pkg.blockReward,
+                mainRewardAUD: mainRewardAUD,
+                mergeCrypto: pkg.mergeCrypto,
+                mergeBlockReward: pkg.mergeBlockReward,
+                mergeRewardAUD: mergeRewardAUD,
+                totalRewardAUD: rewardAUD
+            });
         } catch (error) {
-            console.log('Could not calculate reward AUD:', error);
+            console.log('Could not calculate dual crypto reward AUD:', error);
             rewardAUD = 0;
+        }
+    } else {
+        // Single crypto package
+        if (pkg.blockReward && pkg.crypto) {
+            try {
+                const cryptoKey = pkg.crypto.toLowerCase();
+                if (prices[cryptoKey] && prices[cryptoKey].aud) {
+                    rewardAUD = (pkg.blockReward * prices[cryptoKey].aud).toFixed(2);
+                    console.log(`💰 ${pkg.name} Reward Calc:`, {
+                        blockReward: pkg.blockReward,
+                        crypto: pkg.crypto,
+                        cryptoPrice_AUD: prices[cryptoKey].aud,
+                        rewardAUD: rewardAUD
+                    });
+                } else {
+                    console.log(`⚠️ ${pkg.name} - Missing price data for ${cryptoKey}. Available prices:`, Object.keys(prices));
+                }
+            } catch (error) {
+                console.log('Could not calculate reward AUD:', error);
+                rewardAUD = 0;
+            }
         }
     }
 
@@ -8617,17 +8687,37 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
     ` : '';
 
-    // Potential reward section
-    const rewardInfo = pkg.blockReward ? `
-        <div class="buy-package-stat">
-            <span>Potential Reward:</span>
-            <span style="color: #4CAF50;">${pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
-        </div>
-        <div class="buy-package-stat">
-            <span>Reward Value:</span>
-            <span style="color: #4CAF50;">$${rewardAUD} AUD</span>
-        </div>
-    ` : '';
+    // Potential reward section - handle dual-crypto packages
+    let rewardInfo = '';
+    if (pkg.isDualCrypto) {
+        // Show both rewards for dual-crypto packages (DOGE+LTC)
+        rewardInfo = `
+            <div class="buy-package-stat">
+                <span>Potential Reward ${pkg.mergeCrypto}:</span>
+                <span style="color: #4CAF50;">${pkg.mergeBlockReward.toFixed(0)} ${pkg.mergeCrypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Potential Reward ${pkg.mainCrypto}:</span>
+                <span style="color: #4CAF50;">${pkg.blockReward.toFixed(4)} ${pkg.mainCrypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Reward Value:</span>
+                <span style="color: #4CAF50;">$${rewardAUD} AUD</span>
+            </div>
+        `;
+    } else if (pkg.blockReward) {
+        // Single crypto package
+        rewardInfo = `
+            <div class="buy-package-stat">
+                <span>Potential Reward:</span>
+                <span style="color: #4CAF50;">${pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Reward Value:</span>
+                <span style="color: #4CAF50;">$${rewardAUD} AUD</span>
+            </div>
+        `;
+    }
 
     // For team packages: add share selector
     const teamShareSelector = pkg.isTeam ? `
