@@ -2030,7 +2030,40 @@ document.getElementById('confirm-password').addEventListener('keyup', function(e
 
 
 
+// MEXC REST API polling for live prices (simple, reliable, JSON)
+function startMEXCPricePolling() {
+    console.log('🚀 Starting MEXC REST API price polling...');
+
+    const updatePrices = async () => {
+        if (!users[loggedInUser] || !users[loggedInUser].cryptos) return;
+
+        for (const crypto of users[loggedInUser].cryptos) {
+            try {
+                const symbol = `${crypto.symbol.toUpperCase()}USDT`;
+                const response = await fetch(`https://api.mexc.com/api/v3/ticker/price?symbol=${symbol}`);
+                const data = await response.json();
+
+                if (data.price) {
+                    const price = parseFloat(data.price);
+                    console.log(`💰 MEXC price for ${crypto.symbol.toUpperCase()}: $${price}`);
+                    updatePriceFromWebSocket(crypto.symbol.toLowerCase(), price);
+                }
+            } catch (error) {
+                console.error(`Failed to fetch ${crypto.symbol} price:`, error.message);
+            }
+        }
+    };
+
+    // Update immediately, then every 2 seconds
+    updatePrices();
+    setInterval(updatePrices, 2000);
+}
+
 function initializeWebSocket() {
+    // Use REST API polling instead of WebSocket for now
+    startMEXCPricePolling();
+    return;
+
     const wsEndpoint = 'wss://wbs-api.mexc.com/ws';
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
