@@ -8198,20 +8198,43 @@ async function fetchNiceHashSoloPackages() {
 
     try {
         const endpoint = '/main/api/v2/public/solo/package';
-        // Use Vercel proxy in production, direct call in dev
-        const url = USE_VERCEL_PROXY
-            ? `${VERCEL_PROXY_ENDPOINT}?endpoint=${encodeURIComponent(endpoint)}`
-            : `https://api2.nicehash.com${endpoint}`;
 
-        console.log('📡 Making request to:', url);
         console.log('📡 Using Vercel Proxy:', USE_VERCEL_PROXY);
 
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel proxy with POST method
+            console.log('📡 Making POST request to Vercel proxy:', VERCEL_PROXY_ENDPOINT);
+            console.log('📡 Endpoint:', endpoint);
+
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    body: null
+                })
+            });
+        } else {
+            // Direct call to NiceHash API in development
+            const url = `https://api2.nicehash.com${endpoint}`;
+            console.log('📡 Making direct GET request to:', url);
+
+            response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+        }
 
         console.log('📡 Response status:', response.status);
 
