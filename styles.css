@@ -2138,12 +2138,27 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 .buy-packages-container-page {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(4, 1fr); /* 4 columns on desktop */
     gap: 20px;
     margin-top: 20px;
 }
 
-@media (max-width: 1024px) {
+/* Wide Tablet - 3 columns */
+@media (max-width: 1390px) {
+    .buy-packages-container-page {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Narrow Tablet - 2 columns */
+@media (max-width: 1040px) {
+    .buy-packages-container-page {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Mobile - 1 column */
+@media (max-width: 700px) {
     .buy-packages-container-page {
         grid-template-columns: 1fr;
     }

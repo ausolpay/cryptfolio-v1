@@ -8181,23 +8181,13 @@ function showBuyTabOnPage(tab) {
 }
 
 function getRecommendedPackages() {
-    // Return recommended package names based on current EasyMining data
-    const recommended = [];
-
-    // Check if we have active packages data
-    if (easyMiningData && easyMiningData.activePackages) {
-        easyMiningData.activePackages.forEach(pkg => {
-            if (pkg.active) {
-                // Recommend packages that are currently active
-                recommended.push(pkg.name);
-            }
-        });
-    }
-
-    // If no active packages, recommend based on defaults
-    if (recommended.length === 0) {
-        recommended.push('Gold M', 'Silver Team', 'Titanium KAS S');
-    }
+    // Return recommended package names from the buy packages page
+    // These are the best value packages based on probability, reward, and price
+    const recommended = [
+        'Gold M',          // Best BTC solo package - good probability and price
+        'Silver Team',     // Best BCH team package - low entry, good shares
+        'Titanium KAS S'   // Best KAS solo package - fastest block times
+    ];
 
     return recommended;
 }
@@ -8205,23 +8195,23 @@ function getRecommendedPackages() {
 function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
-    // Package data matching NiceHash EasyMining structure
+    // Package data matching NiceHash EasyMining structure (with block rewards)
     const singlePackages = [
-        { name: 'Gold S', crypto: 'BTC', probability: '1:150', price: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
-        { name: 'Gold M', crypto: 'BTC', probability: '1:75', price: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
-        { name: 'Gold L', crypto: 'BTC', probability: '1:35', price: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s' },
-        { name: 'Silver S', crypto: 'BCH', probability: '1:180', price: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s' },
-        { name: 'Silver M', crypto: 'BCH', probability: '1:90', price: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s' },
-        { name: 'Chromium S', crypto: 'RVN', probability: '1:200', price: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s' },
-        { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', price: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s' },
-        { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', price: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s' },
-        { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', price: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s' }
+        { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+        { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+        { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
+        { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+        { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+        { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
+        { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
+        { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
+        { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
     ];
 
     const teamPackages = [
-        { name: 'Silver Team', crypto: 'BCH', probability: '1:160', price: '20.00', duration: '24h', algorithm: 'SHA256', minShares: 10 },
-        { name: 'Pal Team', crypto: 'DOGE/LTC', probability: '1:220', price: '18.00', duration: '24h', algorithm: 'Scrypt', minShares: 10 },
-        { name: 'Gold Team', crypto: 'BTC', probability: '1:80', price: '50.00', duration: '24h', algorithm: 'SHA256', minShares: 5 }
+        { name: 'Silver Team', crypto: 'BCH', probability: '1:160', priceBTC: 0.0914, priceAUD: '20.00', duration: '24h', algorithm: 'SHA256', totalShares: 914, boughtShares: 71, blockReward: 3.125, isTeam: true },
+        { name: 'Pal Team', crypto: 'DOGE/LTC', probability: '1:220', priceBTC: 0.08, priceAUD: '18.00', duration: '24h', algorithm: 'Scrypt', totalShares: 800, boughtShares: 45, blockReward: 10000, isTeam: true },
+        { name: 'Gold Team', crypto: 'BTC', probability: '1:80', priceBTC: 0.1037, priceAUD: '50.00', duration: '24h', algorithm: 'SHA256', totalShares: 1037, boughtShares: 200, blockReward: 3.125, isTeam: true }
     ];
 
     const recommended = getRecommendedPackages();
@@ -8249,6 +8239,16 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const card = document.createElement('div');
     card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '');
 
+    // Calculate reward in AUD based on crypto prices
+    let rewardAUD = 0;
+    if (pkg.blockReward && pkg.crypto) {
+        const cryptoKey = pkg.crypto.toLowerCase().split('/')[0]; // Handle DOGE/LTC
+        const cryptoData = cryptoPrices[cryptoKey];
+        if (cryptoData && cryptoData.aud) {
+            rewardAUD = (pkg.blockReward * cryptoData.aud).toFixed(2);
+        }
+    }
+
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
             <span>Hashrate:</span>
@@ -8256,10 +8256,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
     ` : '';
 
-    const minSharesInfo = pkg.minShares ? `
+    // For team packages: show shares as X/Y instead of min shares
+    const sharesInfo = pkg.isTeam ? `
         <div class="buy-package-stat">
-            <span>Min Shares:</span>
-            <span>${pkg.minShares}</span>
+            <span>Shares Filled:</span>
+            <span style="color: #ffa500;">${pkg.boughtShares}/${pkg.totalShares}</span>
         </div>
     ` : '';
 
@@ -8267,6 +8268,28 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         <div class="buy-package-stat">
             <span>Probability:</span>
             <span>${pkg.probability}</span>
+        </div>
+    ` : '';
+
+    // Potential reward section
+    const rewardInfo = pkg.blockReward ? `
+        <div class="buy-package-stat">
+            <span>Potential Reward:</span>
+            <span style="color: #4CAF50;">${pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
+        </div>
+        <div class="buy-package-stat">
+            <span>Reward Value:</span>
+            <span style="color: #4CAF50;">$${rewardAUD} AUD</span>
+        </div>
+    ` : '';
+
+    // For team packages: add share selector
+    const teamShareSelector = pkg.isTeam ? `
+        <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+            <button onclick="adjustShares('${pkg.name}', -1)" style="width: 30px; height: 30px; font-size: 18px; padding: 0;">-</button>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="${pkg.totalShares - pkg.boughtShares}" style="width: 60px; text-align: center; padding: 5px;" readonly>
+            <button onclick="adjustShares('${pkg.name}', 1)" style="width: 30px; height: 30px; font-size: 18px; padding: 0;">+</button>
+            <span style="font-size: 12px; color: #999;">shares</span>
         </div>
     ` : '';
 
@@ -8280,12 +8303,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 <span>${pkg.algorithm || 'SHA256'}</span>
             </div>
             ${hashrateInfo}
-            ${minSharesInfo}
+            ${sharesInfo}
+            ${rewardInfo}
             <div class="buy-package-stat">
                 <span>Price:</span>
-                <span>$${pkg.price} AUD</span>
+                <span>$${pkg.priceAUD} AUD</span>
             </div>
         </div>
+        ${teamShareSelector}
         <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
             Buy Now
         </button>
@@ -8293,6 +8318,23 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     return card;
 }
+
+// Function to adjust shares for team packages
+function adjustShares(packageName, delta) {
+    const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
+    const input = document.getElementById(inputId);
+
+    if (!input) return;
+
+    const currentValue = parseInt(input.value) || 0;
+    const max = parseInt(input.max) || 0;
+    const newValue = Math.max(0, Math.min(max, currentValue + delta));
+
+    input.value = newValue;
+}
+
+// Make adjustShares globally accessible
+window.adjustShares = adjustShares;
 
 async function buyPackageFromPage(pkg) {
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
