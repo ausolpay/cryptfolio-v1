@@ -8731,27 +8731,14 @@ async function loadBuyPackagesDataOnPage() {
     const allPackages = [...singlePackages, ...teamPackages];
     window.packageCryptoPrices = await fetchPackageCryptoPrices(allPackages);
 
-    // Recommendations section hidden on buy packages page - recommendations only show in EasyMining section
-    // Load recommendations based on alert thresholds
-    // console.log('🔔 Loading recommendations for buy packages page...');
-    // const recommendations = await checkPackageRecommendations();
-    const recommendedNames = []; // Empty array since we're not showing recommendations here
+    // Load recommendations to highlight packages (section itself is hidden in HTML)
+    console.log('🔔 Loading recommendations for package highlighting...');
+    const recommendations = await checkPackageRecommendations();
+    const recommendedNames = recommendations.map(pkg => pkg.name);
+    console.log(`✅ Found ${recommendedNames.length} recommended package(s) for highlighting`);
 
-    // Populate recommendations section (DISABLED - recommendations show in EasyMining only)
-    // const recommendationsContainer = document.getElementById('buy-packages-recommendations');
-    // if (recommendationsContainer) {
-    //     recommendationsContainer.innerHTML = '';
-    //
-    //     if (recommendations.length === 0) {
-    //         recommendationsContainer.innerHTML = '<p style="color: #aaa;">No packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure alerts</a> to get recommendations.</p>';
-    //     } else {
-    //         recommendations.forEach(pkg => {
-    //             const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
-    //             recommendationsContainer.appendChild(card);
-    //         });
-    //         console.log(`✅ Displayed ${recommendations.length} recommended package(s) on buy page`);
-    //     }
-    // }
+    // Recommendations section container is hidden in HTML - we only use recommendedNames for highlighting
+    // Recommendations display only shows in EasyMining section
 
     // Populate single packages
     const singleContainer = document.getElementById('buy-single-packages-page');
