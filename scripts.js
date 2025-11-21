@@ -861,8 +861,8 @@ async function loadTeamAlerts() {
     console.log(`✅ Loaded ${packages.length} team package alert settings`);
 }
 
-function savePackageAlerts() {
-    console.log('Saving package alerts...');
+function saveSoloAlerts() {
+    console.log('Saving solo package alerts...');
 
     const alerts = {};
     const inputs = document.querySelectorAll('[id^="alert-"]');
@@ -895,33 +895,121 @@ function savePackageAlerts() {
     });
 
     // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_packageAlerts`, JSON.stringify(alerts));
+    localStorage.setItem(`${loggedInUser}_soloPackageAlerts`, JSON.stringify(alerts));
 
-    console.log('✅ Saved package alerts:', alerts);
-    alert(`Saved ${Object.keys(alerts).length} package alert(s)`);
+    console.log('✅ Saved solo package alerts:', alerts);
+    alert(`Saved ${Object.keys(alerts).length} solo package alert(s)`);
 
     // Reload to show updated status
-    loadPackageAlerts();
+    loadSoloAlerts();
 }
 
-function clearPackageAlerts() {
-    if (!confirm('Are you sure you want to clear all package alerts?')) {
+function saveTeamAlerts() {
+    console.log('Saving team package alerts...');
+
+    const alerts = {};
+    const teamInputs = document.querySelectorAll('[id^="team-alert-"]');
+
+    // Group inputs by package name
+    const packageData = {};
+
+    teamInputs.forEach(input => {
+        const id = input.id.replace('team-alert-', '');
+        const parts = id.split('-');
+
+        // Determine what type of input this is
+        if (id.includes('-prob-')) {
+            // Probability input with crypto (e.g., "Team-Palladium-prob-LTC")
+            const crypto = parts[parts.length - 1]; // LTC or DOGE
+            const packageName = parts.slice(0, -2).join(' '); // Everything before "-prob-CRYPTO"
+
+            if (!packageData[packageName]) packageData[packageName] = {};
+
+            const threshold = input.value.trim();
+            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
+                packageData[packageName][`probability_${crypto}`] = parseInt(threshold);
+            }
+        } else if (id.endsWith('-probability')) {
+            // Single crypto probability (e.g., "Team-Gold-probability")
+            const packageName = parts.slice(0, -1).join(' ');
+
+            if (!packageData[packageName]) packageData[packageName] = {};
+
+            const threshold = input.value.trim();
+            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
+                packageData[packageName].probability = parseInt(threshold);
+            }
+        } else if (id.endsWith('-shares')) {
+            // Shares threshold
+            const packageName = parts.slice(0, -1).join(' ');
+
+            if (!packageData[packageName]) packageData[packageName] = {};
+
+            const threshold = input.value.trim();
+            if (threshold !== '' && !isNaN(threshold) && parseFloat(threshold) > 0) {
+                packageData[packageName].shares = parseFloat(threshold);
+            }
+        } else if (id.endsWith('-participants')) {
+            // Participants threshold
+            const packageName = parts.slice(0, -1).join(' ');
+
+            if (!packageData[packageName]) packageData[packageName] = {};
+
+            const threshold = input.value.trim();
+            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
+                packageData[packageName].participants = parseInt(threshold);
+            }
+        }
+    });
+
+    // Only save packages that have at least one threshold set
+    Object.keys(packageData).forEach(packageName => {
+        if (Object.keys(packageData[packageName]).length > 0) {
+            alerts[packageName] = packageData[packageName];
+        }
+    });
+
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_teamPackageAlerts`, JSON.stringify(alerts));
+
+    console.log('✅ Saved team package alerts:', alerts);
+    alert(`Saved alerts for ${Object.keys(alerts).length} team package(s)`);
+
+    // Reload to show updated status
+    loadTeamAlerts();
+}
+
+function clearSoloAlerts() {
+    if (!confirm('Are you sure you want to clear all solo package alerts?')) {
         return;
     }
 
-    localStorage.removeItem(`${loggedInUser}_packageAlerts`);
-    console.log('Cleared all package alerts');
-    alert('All package alerts have been cleared.');
+    localStorage.removeItem(`${loggedInUser}_soloPackageAlerts`);
+    console.log('Cleared all solo package alerts');
+    alert('All solo package alerts have been cleared.');
 
     // Reload to show empty fields
-    loadPackageAlerts();
+    loadSoloAlerts();
+}
+
+function clearTeamAlerts() {
+    if (!confirm('Are you sure you want to clear all team package alerts?')) {
+        return;
+    }
+
+    localStorage.removeItem(`${loggedInUser}_teamPackageAlerts`);
+    console.log('Cleared all team package alerts');
+    alert('All team package alerts have been cleared.');
+
+    // Reload to show empty fields
+    loadTeamAlerts();
 }
 
 async function checkPackageRecommendations() {
-    console.log('🔔 Checking package recommendations based on probability alerts...');
+    console.log('🔔 Checking solo package recommendations based on probability alerts...');
 
     // Get saved alerts
-    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_packageAlerts`)) || {};
+    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
 
     if (Object.keys(savedAlerts).length === 0) {
         console.log('No package alerts configured');
@@ -1020,6 +1108,132 @@ async function checkPackageRecommendations() {
     });
 
     console.log(`Found ${recommendations.length} recommended package(s)`);
+    return recommendations;
+}
+
+async function checkTeamRecommendations() {
+    console.log('🔔 Checking team package recommendations based on alert thresholds...');
+
+    // Get saved team alerts
+    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+
+    if (Object.keys(savedAlerts).length === 0) {
+        console.log('No team package alerts configured');
+        return [];
+    }
+
+    // Fetch current team packages from API
+    const packages = await fetchNiceHashTeamPackages();
+
+    if (!packages || packages.length === 0) {
+        console.log('No team packages available');
+        return [];
+    }
+
+    const recommendations = [];
+
+    // Check each package against alert thresholds
+    packages.forEach(pkg => {
+        const alert = savedAlerts[pkg.name];
+
+        if (!alert) {
+            return; // No alert set for this package
+        }
+
+        console.log(`Checking ${pkg.name} against thresholds:`, alert);
+
+        // Track if any threshold is met (OR logic)
+        let meetsAnyThreshold = false;
+        const reasons = [];
+
+        // Check if this is a dual-crypto package
+        const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCurrencyAlgo && pkg.mergeCurrencyAlgo.title);
+
+        // 1. Check PROBABILITY thresholds
+        if (isDualCrypto) {
+            // For dual-crypto packages, check both LTC and DOGE probabilities
+            const mainCrypto = pkg.mainCrypto || 'LTC';
+            const mergeCrypto = pkg.mergeCrypto || 'DOGE';
+
+            const mainThreshold = alert[`probability_${mainCrypto}`];
+            const mergeThreshold = alert[`probability_${mergeCrypto}`];
+
+            // Extract probabilities
+            let mainProbabilityValue = null;
+            let mergeProbabilityValue = null;
+
+            if (pkg.probability) {
+                const match = pkg.probability.match(/1:(\d+)/);
+                if (match) mainProbabilityValue = parseInt(match[1]);
+            }
+            if (pkg.mergeProbability) {
+                const match = pkg.mergeProbability.match(/1:(\d+)/);
+                if (match) mergeProbabilityValue = parseInt(match[1]);
+            }
+
+            // Check main crypto probability
+            if (mainThreshold && mainProbabilityValue !== null && mainProbabilityValue <= mainThreshold) {
+                meetsAnyThreshold = true;
+                reasons.push(`${mainCrypto} probability 1:${mainProbabilityValue} ≤ 1:${mainThreshold}`);
+                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue} ≤ Threshold 1:${mainThreshold}`);
+            }
+
+            // Check merge crypto probability
+            if (mergeThreshold && mergeProbabilityValue !== null && mergeProbabilityValue <= mergeThreshold) {
+                meetsAnyThreshold = true;
+                reasons.push(`${mergeCrypto} probability 1:${mergeProbabilityValue} ≤ 1:${mergeThreshold}`);
+                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue} ≤ Threshold 1:${mergeThreshold}`);
+            }
+        } else {
+            // Single crypto package - check single probability
+            const threshold = alert.probability;
+
+            if (threshold) {
+                let probabilityValue = null;
+                if (pkg.probability) {
+                    const match = pkg.probability.match(/1:(\d+)/);
+                    if (match) probabilityValue = parseInt(match[1]);
+                }
+
+                if (probabilityValue !== null && probabilityValue <= threshold) {
+                    meetsAnyThreshold = true;
+                    reasons.push(`Probability 1:${probabilityValue} ≤ 1:${threshold}`);
+                    console.log(`✅ ${pkg.name}: Current 1:${probabilityValue} ≤ Threshold 1:${threshold}`);
+                }
+            }
+        }
+
+        // 2. Check SHARES threshold
+        if (alert.shares) {
+            const currentShares = parseFloat(pkg.shares || 0);
+            if (currentShares >= alert.shares) {
+                meetsAnyThreshold = true;
+                reasons.push(`Share ${currentShares.toFixed(2)}% ≥ ${alert.shares}%`);
+                console.log(`✅ ${pkg.name}: Share ${currentShares.toFixed(2)}% ≥ Threshold ${alert.shares}%`);
+            }
+        }
+
+        // 3. Check PARTICIPANTS threshold
+        if (alert.participants) {
+            const currentParticipants = pkg.numberOfParticipants || 0;
+            if (currentParticipants >= alert.participants) {
+                meetsAnyThreshold = true;
+                reasons.push(`Participants ${currentParticipants} ≥ ${alert.participants}`);
+                console.log(`✅ ${pkg.name}: Participants ${currentParticipants} ≥ Threshold ${alert.participants}`);
+            }
+        }
+
+        // Add to recommendations if ANY threshold is met
+        if (meetsAnyThreshold) {
+            console.log(`✅ ${pkg.name}: RECOMMENDED (${reasons.join(', ')})`);
+            pkg.recommendationReasons = reasons;
+            recommendations.push(pkg);
+        } else {
+            console.log(`❌ ${pkg.name}: Does not meet any threshold`);
+        }
+    });
+
+    console.log(`Found ${recommendations.length} recommended team package(s)`);
     return recommendations;
 }
 
@@ -7118,6 +7332,7 @@ function updateStats() {
 
 // Track current recommendations to prevent unnecessary re-renders
 let currentRecommendations = [];
+let currentTeamRecommendations = [];
 
 async function updateRecommendations() {
     const bestPackagesContainer = document.getElementById('best-packages-container');
@@ -7125,42 +7340,139 @@ async function updateRecommendations() {
 
     console.log('🔄 Checking for recommendation updates...');
 
-    // Get recommended packages based on alert thresholds
+    // Get recommended solo packages based on alert thresholds
     const recommendations = await checkPackageRecommendations();
 
-    // Check if recommendations actually changed
+    // Get recommended team packages based on alert thresholds
+    const teamRecommendations = await checkTeamRecommendations();
+
+    // Check if solo recommendations actually changed
     const recommendationNames = recommendations.map(pkg => pkg.name).sort().join(',');
     const currentNames = currentRecommendations.map(pkg => pkg.name).sort().join(',');
 
-    if (recommendationNames === currentNames) {
-        console.log('✅ Recommendations unchanged, skipping re-render');
+    // Check if team recommendations actually changed
+    const teamRecommendationNames = teamRecommendations.map(pkg => pkg.name).sort().join(',');
+    const currentTeamNames = currentTeamRecommendations.map(pkg => pkg.name).sort().join(',');
+
+    const soloChanged = recommendationNames !== currentNames;
+    const teamChanged = teamRecommendationNames !== currentTeamNames;
+
+    if (!soloChanged && !teamChanged) {
+        console.log('✅ All recommendations unchanged, skipping re-render');
         return;
     }
 
     console.log('🔄 Recommendations changed, updating display...');
-    currentRecommendations = recommendations;
 
-    // Clear containers
-    bestPackagesContainer.innerHTML = '';
-    if (teamAlertsContainer) teamAlertsContainer.innerHTML = '';
+    // Update solo recommendations if changed
+    if (soloChanged) {
+        currentRecommendations = recommendations;
+        bestPackagesContainer.innerHTML = '';
 
-    if (recommendations.length === 0) {
-        bestPackagesContainer.innerHTML = '<p style="color: #aaa;">No packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure alerts</a> to get recommendations.</p>';
-        return;
+        if (recommendations.length === 0) {
+            bestPackagesContainer.innerHTML = '<p style="color: #aaa;">No solo packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure alerts</a> to get recommendations.</p>';
+        } else {
+            // Fetch crypto prices for the recommendations
+            window.packageCryptoPrices = await fetchPackageCryptoPrices(recommendations);
+
+            console.log(`✅ Displaying ${recommendations.length} recommended solo package(s)`);
+
+            // Display each recommended package using the same card format as buy packages
+            recommendations.forEach(pkg => {
+                const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
+                bestPackagesContainer.appendChild(card);
+            });
+        }
     }
 
-    // Fetch crypto prices for the recommendations
-    window.packageCryptoPrices = await fetchPackageCryptoPrices(recommendations);
+    // Update team recommendations if changed
+    if (teamChanged) {
+        currentTeamRecommendations = teamRecommendations;
+        if (teamAlertsContainer) {
+            teamAlertsContainer.innerHTML = '';
 
-    console.log(`✅ Displaying ${recommendations.length} recommended package(s)`);
+            if (teamRecommendations.length === 0) {
+                teamAlertsContainer.innerHTML = '<p style="color: #aaa;">No team packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure team alerts</a> to get recommendations.</p>';
+            } else {
+                console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`);
 
-    // Display each recommended package using the same card format as buy packages
-    recommendations.forEach(pkg => {
-        const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
-        bestPackagesContainer.appendChild(card);
-    });
+                // Display each recommended team package with reasons
+                teamRecommendations.forEach(pkg => {
+                    const card = createTeamPackageRecommendationCard(pkg);
+                    teamAlertsContainer.appendChild(card);
+                });
+            }
+        }
+    }
 
     console.log('✅ Recommendations updated successfully');
+}
+
+function createTeamPackageRecommendationCard(pkg) {
+    const card = document.createElement('div');
+    card.className = 'buy-package-card recommended';
+
+    // Probability section - handle dual-crypto packages
+    let probabilityInfo = '';
+    if (pkg.isDualCrypto) {
+        // Show both probabilities for dual-crypto packages
+        probabilityInfo = `
+            <div class="buy-package-stat">
+                <span>Probability ${pkg.mergeCrypto}:</span>
+                <span>${pkg.mergeProbability}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Probability ${pkg.mainCrypto}:</span>
+                <span>${pkg.mainProbability}</span>
+            </div>
+        `;
+    } else if (pkg.probability) {
+        // Single crypto package
+        probabilityInfo = `
+            <div class="buy-package-stat">
+                <span>Probability:</span>
+                <span>${pkg.probability}</span>
+            </div>
+        `;
+    }
+
+    // Team-specific info
+    const teamInfo = `
+        <div class="buy-package-stat">
+            <span>Participants:</span>
+            <span style="color: #4CAF50;">${pkg.numberOfParticipants || 0}</span>
+        </div>
+        <div class="buy-package-stat">
+            <span>Share %:</span>
+            <span style="color: #ffa500;">${pkg.shares || '0'}%</span>
+        </div>
+    `;
+
+    // Recommendation reasons (why this package was recommended)
+    const reasonsList = pkg.recommendationReasons && pkg.recommendationReasons.length > 0
+        ? `<div class="recommendation-reasons">
+            <strong>✅ Alert Thresholds Met:</strong>
+            <ul>${pkg.recommendationReasons.map(reason => `<li>${reason}</li>`).join('')}</ul>
+        </div>`
+        : '';
+
+    card.innerHTML = `
+        <h4>${pkg.name} ⭐</h4>
+        <div class="buy-package-stats">
+            ${probabilityInfo}
+            <div class="buy-package-stat">
+                <span>Duration:</span>
+                <span>${pkg.duration}</span>
+            </div>
+            ${teamInfo}
+        </div>
+        ${reasonsList}
+        <button class="buy-now-btn" onclick='showBuyPackagesPage()'>
+            View on Buy Team Packages
+        </button>
+    `;
+
+    return card;
 }
 
 function checkForNewBlocks() {
@@ -9444,6 +9756,197 @@ function adjustShares(packageName, delta) {
 // Make adjustShares globally accessible
 window.adjustShares = adjustShares;
 
+async function buyTeamPackage(pkg, packageId) {
+    console.log('🛒 Purchasing team package:', pkg.name);
+
+    // Get shares from input field
+    const inputId = `shares-${pkg.name.replace(/\s+/g, '-')}`;
+    const sharesInput = document.getElementById(inputId);
+    const shares = sharesInput ? parseInt(sharesInput.value) || 0 : 0;
+
+    if (shares <= 0) {
+        alert('Please select number of shares to purchase (use +/- buttons)');
+        return;
+    }
+
+    // Calculate total price
+    const prices = window.packageCryptoPrices || {};
+    let priceAUD = 0;
+    if (pkg.priceBTC && prices['btc']?.aud) {
+        priceAUD = (pkg.priceBTC * prices['btc'].aud).toFixed(2);
+    }
+
+    // Check for saved withdrawal addresses
+    const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCurrencyAlgo && pkg.mergeCurrencyAlgo.title);
+
+    let mainWalletAddress = isDualCrypto ? getWithdrawalAddress(pkg.mainCrypto) : getWithdrawalAddress(pkg.crypto);
+    let mergeWalletAddress = isDualCrypto ? getWithdrawalAddress(pkg.mergeCrypto) : null;
+
+    const usingSavedMainAddress = !!mainWalletAddress;
+    const usingSavedMergeAddress = isDualCrypto ? !!mergeWalletAddress : null;
+
+    // Build confirmation message
+    let confirmMessage = `
+🛒 Purchase Team Mining Package?
+
+Package: ${pkg.name}
+Shares: ${shares}
+${isDualCrypto
+    ? `Main Crypto: ${pkg.mainCrypto}\nMerge Crypto: ${pkg.mergeCrypto}`
+    : `Crypto: ${pkg.crypto}`}
+Probability: ${pkg.probability}
+Duration: ${pkg.duration}
+Price: $${priceAUD} AUD (${pkg.priceBTC} BTC)
+Participants: ${pkg.numberOfParticipants || 0}
+
+${usingSavedMainAddress
+    ? `✅ Using saved ${isDualCrypto ? pkg.mainCrypto : pkg.crypto} wallet address:\n${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`
+    : `⚠️ No saved ${isDualCrypto ? pkg.mainCrypto : pkg.crypto} wallet address - you will be prompted`}
+
+${isDualCrypto
+    ? (usingSavedMergeAddress
+        ? `✅ Using saved ${pkg.mergeCrypto} wallet address:\n${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}`
+        : `⚠️ No saved ${pkg.mergeCrypto} wallet address - you will be prompted`)
+    : ''}
+
+This will create a team order on NiceHash.
+Do you want to continue?
+    `.trim();
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    // Prompt for missing wallet addresses
+    if (!usingSavedMainAddress) {
+        const cryptoName = isDualCrypto ? pkg.mainCrypto : pkg.crypto;
+        mainWalletAddress = prompt(
+            `Enter your ${cryptoName} wallet address to receive mining rewards:\n\n` +
+            `(This is where block rewards will be sent if you find a block)\n\n` +
+            `Tip: You can save addresses in EasyMining Settings → Manage Withdrawal Addresses`
+        );
+
+        if (!mainWalletAddress || mainWalletAddress.trim() === '') {
+            alert(`${cryptoName} wallet address is required to purchase a team mining package.`);
+            return;
+        }
+
+        mainWalletAddress = mainWalletAddress.trim();
+    }
+
+    if (isDualCrypto && !usingSavedMergeAddress) {
+        mergeWalletAddress = prompt(
+            `Enter your ${pkg.mergeCrypto} wallet address to receive mining rewards:\n\n` +
+            `(This is where ${pkg.mergeCrypto} block rewards will be sent)\n\n` +
+            `Tip: You can save addresses in EasyMining Settings → Manage Withdrawal Addresses`
+        );
+
+        if (!mergeWalletAddress || mergeWalletAddress.trim() === '') {
+            alert(`${pkg.mergeCrypto} wallet address is required for this dual-crypto package.`);
+            return;
+        }
+
+        mergeWalletAddress = mergeWalletAddress.trim();
+    }
+
+    try {
+        console.log('🛒 Creating NiceHash team order:', {
+            packageId: packageId,
+            packageName: pkg.name,
+            shares: shares,
+            mainWallet: mainWalletAddress,
+            mergeWallet: mergeWalletAddress
+        });
+
+        // Create order payload for team mining package
+        const orderData = {
+            amount: shares,
+            clear: false,
+            code: '',
+            shares: shares,
+            soloMiningRewardAddr: mainWalletAddress.trim(),
+            mergeSoloMiningRewardAddr: isDualCrypto ? (mergeWalletAddress?.trim() || '') : '',
+            soloMiningRewardWithdrawalAddrId: '',
+            mergeSoloMiningRewardWithdrawalAddrId: ''
+        };
+
+        // Call NiceHash API to create team order
+        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
+        const body = JSON.stringify(orderData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel serverless function as proxy
+            console.log('✅ Using Vercel proxy to create team order');
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'POST',
+                    headers: headers,
+                    body: orderData
+                })
+            });
+        } else {
+            // Direct call to NiceHash
+            console.log('📡 Direct call to NiceHash API');
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
+
+        console.log('📡 Response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API Error Response:', errorText);
+            let errorMessage = `API Error: ${response.status}`;
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorData.error_message || errorMessage;
+            } catch (e) {
+                errorMessage = errorText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        console.log('✅ Team order created successfully:', result);
+
+        const successMessage = `✅ Team package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\nShares: ${shares}\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}${!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress) ? '\n\n💡 Tip: Save these addresses in EasyMining Settings → Manage Withdrawal Addresses for faster purchases!' : ''}`;
+
+        alert(successMessage);
+
+        // Update stats
+        const pricePaid = parseFloat(priceAUD) || 0;
+        easyMiningData.allTimeStats.totalSpent += pricePaid;
+        easyMiningData.todayStats.totalSpent += pricePaid;
+
+        // Calculate P&L
+        easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
+        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - pricePaid;
+
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+        // Refresh package data immediately to show the new order
+        await fetchEasyMiningData();
+
+        // Go back to app page
+        showAppPage();
+
+    } catch (error) {
+        console.error('❌ Error purchasing team package:', error);
+        alert(`Failed to purchase team package: ${error.message}\n\nPlease check:\n- Your API credentials are correct\n- You have sufficient BTC balance\n- The wallet addresses are valid`);
+    }
+}
+
 async function buyPackageFromPage(pkg) {
     // Check if EasyMining API is configured
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
@@ -9460,6 +9963,12 @@ async function buyPackageFromPage(pkg) {
         return;
     }
 
+    // Handle team packages differently
+    if (pkg.isTeam) {
+        return buyTeamPackage(pkg, packageId);
+    }
+
+    // Solo package logic (existing code)
     // Calculate price in AUD for confirmation
     const prices = window.packageCryptoPrices || {};
     let priceAUD = 0;
