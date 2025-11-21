@@ -10068,6 +10068,24 @@ async function loadBuyPackagesDataOnPage() {
                     input.value = value;
                     console.log(`✅ Restored ${packageName} = ${value}`);
 
+                    // Update reward and price displays based on restored value
+                    const packageId = packageName.replace(/\s+/g, '-');
+                    const rewardValueElement = document.getElementById(`reward-value-${packageId}`);
+                    const priceElement = document.getElementById(`price-${packageId}`);
+
+                    if (window.packageBaseValues && window.packageBaseValues[packageName]) {
+                        const baseValues = window.packageBaseValues[packageName];
+                        const newRewardAUD = (baseValues.rewardAUD * value).toFixed(2);
+                        const newPriceAUD = (baseValues.priceAUD * value).toFixed(2);
+
+                        if (rewardValueElement) {
+                            rewardValueElement.textContent = `$${newRewardAUD} AUD`;
+                        }
+                        if (priceElement) {
+                            priceElement.textContent = `$${newPriceAUD} AUD`;
+                        }
+                    }
+
                     // Update + button state based on restored value
                     const availableBalance = window.niceHashBalance?.available || 0;
                     const sharePrice = 0.0001;
@@ -10309,6 +10327,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // Potential reward section - handle dual-crypto packages
     let rewardInfo = '';
+    const packageId = pkg.name.replace(/\s+/g, '-');
+
     if (pkg.isDualCrypto) {
         // Log values being displayed for Palladium packages
         if (pkg.name.includes('Palladium')) {
@@ -10333,7 +10353,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span style="color: #4CAF50;">$${rewardAUD} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardAUD} AUD</span>
             </div>
         `;
     } else if (pkg.blockReward) {
@@ -10345,7 +10365,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span style="color: #4CAF50;">$${rewardAUD} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardAUD} AUD</span>
             </div>
         `;
     }
@@ -10385,7 +10405,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="9999" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="9999" class="share-adjuster-input" readonly>
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
@@ -10411,12 +10431,29 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             ${rewardInfo}
             <div class="buy-package-stat">
                 <span>Price:</span>
-                <span>$${priceAUD} AUD</span>
+                <span id="price-${packageId}">$${priceAUD} AUD</span>
             </div>
         </div>
         ${teamShareSelector}
         ${soloBuyButton}
     `;
+
+    // Store base values for team packages to enable dynamic updates
+    if (pkg.isTeam) {
+        if (!window.packageBaseValues) {
+            window.packageBaseValues = {};
+        }
+        window.packageBaseValues[pkg.name] = {
+            rewardAUD: parseFloat(rewardAUD),
+            priceAUD: parseFloat(priceAUD)
+        };
+
+        // Initialize share value to 1
+        if (!window.packageShareValues) {
+            window.packageShareValues = {};
+        }
+        window.packageShareValues[pkg.name] = 1;
+    }
 
     return card;
 }
@@ -10430,9 +10467,9 @@ function adjustShares(packageName, delta) {
 
     if (!input) return;
 
-    const currentValue = parseInt(input.value) || 0;
-    const max = parseInt(input.max) || 0;
-    const newValue = Math.max(0, Math.min(max, currentValue + delta));
+    const currentValue = parseInt(input.value) || 1;
+    const max = parseInt(input.max) || 9999;
+    const newValue = Math.max(1, Math.min(max, currentValue + delta)); // Minimum is 1, not 0
 
     input.value = newValue;
 
@@ -10442,6 +10479,33 @@ function adjustShares(packageName, delta) {
     }
     window.packageShareValues[packageName] = newValue;
     console.log(`💾 Saved ${packageName} = ${newValue}`);
+
+    // Update reward value and price based on shares
+    const packageId = packageName.replace(/\s+/g, '-');
+    const rewardValueElement = document.getElementById(`reward-value-${packageId}`);
+    const priceElement = document.getElementById(`price-${packageId}`);
+
+    if (window.packageBaseValues && window.packageBaseValues[packageName]) {
+        const baseValues = window.packageBaseValues[packageName];
+
+        // Calculate new values based on shares
+        const newRewardAUD = (baseValues.rewardAUD * newValue).toFixed(2);
+        const newPriceAUD = (baseValues.priceAUD * newValue).toFixed(2);
+
+        // Update display
+        if (rewardValueElement) {
+            rewardValueElement.textContent = `$${newRewardAUD} AUD`;
+        }
+        if (priceElement) {
+            priceElement.textContent = `$${newPriceAUD} AUD`;
+        }
+
+        console.log(`📊 Updated ${packageName}:`, {
+            shares: newValue,
+            rewardAUD: newRewardAUD,
+            priceAUD: newPriceAUD
+        });
+    }
 
     // Check balance and update + button state for team packages
     const availableBalance = window.niceHashBalance?.available || 0;
