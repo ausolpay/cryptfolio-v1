@@ -2036,7 +2036,7 @@ function initializeWebSocket() {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🚀 Initializing MEXC WebSocket connection...');
     console.log('   Endpoint:', wsEndpoint);
-    console.log('   Protocol: aggre.deals (trade-by-trade, ~100ms updates)');
+    console.log('   Protocol: Protocol Buffers (binary data)');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     socket = new WebSocket(wsEndpoint);
     lastWebSocketUpdate = Date.now();
@@ -2058,14 +2058,13 @@ function initializeWebSocket() {
             console.log(`📬 Subscribing to ${users[loggedInUser].cryptos.length} cryptocurrencies...`);
 
             users[loggedInUser].cryptos.forEach(crypto => {
-                // Use the JSON deals format (NOT .pb to avoid Blob data)
+                // MEXC deals format (returns Protocol Buffer data)
                 const channel = `spot@public.deals.v3.api@${crypto.symbol.toUpperCase()}USDT`;
                 const subscriptionMessage = JSON.stringify({
                     "method": "SUBSCRIPTION",
                     "params": [channel]
                 });
 
-                // Use ws (this) instead of global socket variable
                 ws.send(subscriptionMessage);
                 console.log(`   ✓ Subscribed to ${crypto.symbol.toUpperCase()}USDT`);
             });
@@ -2075,66 +2074,77 @@ function initializeWebSocket() {
             console.warn('⚠️ No cryptocurrencies to subscribe to');
         }
 
-        // Start ping/pong keep-alive (every 20 seconds)
+        // MEXC requires ping/pong to keep connection alive
         if (pingInterval) {
             clearInterval(pingInterval);
         }
 
         pingInterval = setInterval(() => {
-            if (socket.readyState === WebSocket.OPEN) {
+            if (ws.readyState === WebSocket.OPEN) {
                 console.log('📡 Sending PING to keep connection alive');
-                socket.send(JSON.stringify({ method: "PING" }));
+                ws.send(JSON.stringify({ method: "PING" }));
             }
         }, 20000); // 20 seconds
     };
 
     socket.onmessage = function(event) {
         try {
-            // Log EVERY message for debugging
-            console.log('📨 WebSocket message received (raw):', event.data);
+            console.log('📨 WebSocket message received');
+            console.log('   Data type:', typeof event.data);
+            console.log('   Is Blob:', event.data instanceof Blob);
 
-            const message = JSON.parse(event.data);
-            console.log('📨 Parsed message:', message);
+            // MEXC sends Protocol Buffer data as Blob (binary)
+            if (event.data instanceof Blob) {
+                console.log('📦 Binary Protocol Buffer message detected');
+                console.log('   Blob size:', event.data.size, 'bytes');
 
-            // Handle PONG response
-            if (message.msg === 'PONG') {
-                console.log('📡 Received PONG from server');
-                return;
-            }
+                // Convert Blob to ArrayBuffer, then decode
+                event.data.arrayBuffer().then(arrayBuffer => {
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    console.log('🔢 Converted to Uint8Array:', uint8Array.length, 'bytes');
 
-            // Handle price updates with JSON deals format
-            // Format: { "c": "spot@public.deals.v3.api", "d": { "deals": [...] }, "s": "BTCUSDT", "t": timestamp }
-            if (message.d && message.d.deals && message.d.deals.length > 0 && message.s) {
-                const latestDeal = message.d.deals[0];
-                const price = parseFloat(latestDeal.p);
-                const symbolPart = message.s; // e.g., "BTCUSDT"
-                const symbol = symbolPart.replace('USDT', '').toLowerCase();
-                const side = latestDeal.S === 1 ? 'BUY' : 'SELL';
-                const volume = latestDeal.v || 'N/A';
+                    // Try UTF-8 decode first (some messages might be JSON in disguise)
+                    const decoder = new TextDecoder('utf-8', { fatal: false });
+                    const text = decoder.decode(uint8Array);
 
-                console.log(`💰 Price update for ${symbol.toUpperCase()}: $${price} USDT (${side} trade, vol: ${volume})`);
-
-                lastWebSocketUpdate = Date.now();
-                updatePriceFromWebSocket(symbol, price);
-            } else if (message.c && message.c.includes('spot@public')) {
-                // This might be a subscription confirmation or different message format
-                console.log('📨 Received message on channel:', message.c);
-                if (message.d) {
-                    console.log('   Message data:', JSON.stringify(message.d, null, 2));
-                }
-            } else if (!message.msg) {
-                // Log unexpected message format for debugging (but not PONG messages)
-                console.log('⚠️ Unexpected message format:', {
-                    hasDeals: !!(message.d && message.d.deals),
-                    hasSymbol: !!message.s,
-                    hasChannel: !!message.c,
-                    keys: Object.keys(message)
+                    // Check if it's actually JSON
+                    if (text.startsWith('{') || text.startsWith('[')) {
+                        console.log('✅ Binary data is actually JSON:', text);
+                        try {
+                            const message = JSON.parse(text);
+                            handlePortfolioMessage(message);
+                        } catch (e) {
+                            console.error('❌ Failed to parse JSON from binary:', e);
+                        }
+                    } else {
+                        // It's real protobuf data
+                        console.log('🔍 Processing as Protocol Buffer...');
+                        decodePortfolioProtobuf(uint8Array);
+                    }
+                }).catch(error => {
+                    console.error('❌ Error converting Blob to ArrayBuffer:', error);
                 });
             }
+            // Handle JSON string messages (subscription confirmations, PONG, etc.)
+            else if (typeof event.data === 'string') {
+                console.log('📄 JSON string message:', event.data);
+
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('📨 Parsed JSON message:', message);
+                    handlePortfolioMessage(message);
+                } catch (error) {
+                    console.error('❌ Failed to parse JSON:', error);
+                    console.error('   Raw data:', event.data);
+                }
+            }
+            else {
+                console.warn('⚠️ Unexpected message type:', typeof event.data);
+            }
+
         } catch (error) {
             console.error('❌ Error processing WebSocket message:', error);
             console.error('   Event data type:', typeof event.data);
-            console.error('   Event data:', event.data);
             console.error('   Stack:', error.stack);
         }
     };
@@ -2142,7 +2152,7 @@ function initializeWebSocket() {
     socket.onclose = function(event) {
         console.log('🔌 MEXC WebSocket connection closed', event.code, event.reason);
 
-        // Clear ping interval
+        // Clear ping interval (if any was set)
         if (pingInterval) {
             clearInterval(pingInterval);
             pingInterval = null;
@@ -2167,12 +2177,158 @@ function initializeWebSocket() {
     socket.onerror = function(error) {
         console.error('❌ MEXC WebSocket error:', error);
 
-        // Clear ping interval on error
+        // Clear ping interval on error (if any was set)
         if (pingInterval) {
             clearInterval(pingInterval);
             pingInterval = null;
         }
     };
+}
+
+// Helper function to handle parsed JSON messages from MEXC
+function handlePortfolioMessage(message) {
+    // Handle PONG
+    if (message.msg === 'PONG') {
+        console.log('📡 Received PONG from MEXC');
+        return;
+    }
+
+    // Handle subscription confirmations
+    if (message.id || message.code !== undefined) {
+        console.log('✅ Subscription response:', message);
+        return;
+    }
+
+    // Handle JSON price updates (if MEXC sends them)
+    if (message.d && message.d.deals && message.d.deals.length > 0 && message.s) {
+        const deal = message.d.deals[0];
+        const symbol = message.s.replace('USDT', '').toLowerCase();
+        const price = parseFloat(deal.p);
+
+        console.log(`💰 Price update for ${symbol.toUpperCase()}: $${price} USDT`);
+        lastWebSocketUpdate = Date.now();
+        updatePriceFromWebSocket(symbol, price);
+    }
+}
+
+// Decode Protocol Buffer data from MEXC
+function decodePortfolioProtobuf(uint8Array) {
+    console.log('🔍 Decoding Protocol Buffer data...');
+    console.log('   Data length:', uint8Array.length, 'bytes');
+
+    try {
+        // Protocol Buffer wire format parser
+        let pos = 0;
+        const fields = {};
+
+        while (pos < uint8Array.length) {
+            // Read field tag (varint)
+            const tagAndType = readVarint(uint8Array, pos);
+            pos = tagAndType.pos;
+            const tag = tagAndType.value >> 3;
+            const wireType = tagAndType.value & 0x07;
+
+            console.log(`   Field ${tag}, wire type ${wireType}`);
+
+            // Parse based on wire type
+            if (wireType === 0) { // Varint
+                const varint = readVarint(uint8Array, pos);
+                pos = varint.pos;
+                fields[tag] = varint.value;
+                console.log(`     -> Varint: ${varint.value}`);
+            } else if (wireType === 1) { // 64-bit (double)
+                const double = readDouble(uint8Array, pos);
+                pos += 8;
+                fields[tag] = double;
+                console.log(`     -> Double: ${double}`);
+            } else if (wireType === 2) { // Length-delimited (string/bytes)
+                const length = readVarint(uint8Array, pos);
+                pos = length.pos;
+                const data = uint8Array.slice(pos, pos + length.value);
+                pos += length.value;
+
+                // Try to decode as UTF-8 string
+                const decoder = new TextDecoder('utf-8', { fatal: false });
+                const str = decoder.decode(data);
+
+                if (/^[A-Z]+USDT$/.test(str)) {
+                    // This is likely the symbol
+                    fields[tag] = str;
+                    console.log(`     -> String (symbol): ${str}`);
+                } else {
+                    fields[tag] = data;
+                    console.log(`     -> Bytes (${length.value} bytes)`);
+                }
+            } else if (wireType === 5) { // 32-bit (float)
+                const float = readFloat(uint8Array, pos);
+                pos += 4;
+                fields[tag] = float;
+                console.log(`     -> Float: ${float}`);
+            } else {
+                console.warn(`     -> Unknown wire type ${wireType}, skipping`);
+                break;
+            }
+        }
+
+        console.log('📊 Decoded fields:', fields);
+
+        // Extract symbol and price from decoded fields
+        let symbol = null;
+        let price = null;
+
+        // Find symbol (string field matching pattern)
+        for (const [tag, value] of Object.entries(fields)) {
+            if (typeof value === 'string' && /^[A-Z]+USDT$/.test(value)) {
+                symbol = value.replace('USDT', '').toLowerCase();
+                console.log(`✅ Found symbol: ${symbol.toUpperCase()}`);
+            }
+
+            // Find price (double or float field with reasonable value)
+            if (typeof value === 'number' && value > 0 && value < 1000000) {
+                price = value;
+                console.log(`✅ Found price: $${price}`);
+            }
+        }
+
+        // Update price if both symbol and price found
+        if (symbol && price) {
+            console.log(`💰 Protobuf price update for ${symbol.toUpperCase()}: $${price} USDT`);
+            lastWebSocketUpdate = Date.now();
+            updatePriceFromWebSocket(symbol, price);
+        } else {
+            console.warn('⚠️ Could not extract symbol and price from protobuf data');
+        }
+
+    } catch (error) {
+        console.error('❌ Protobuf decode error:', error);
+    }
+}
+
+// Read varint from buffer
+function readVarint(buffer, pos) {
+    let value = 0;
+    let shift = 0;
+    let byte;
+
+    do {
+        byte = buffer[pos++];
+        value |= (byte & 0x7F) << shift;
+        shift += 7;
+    } while (byte & 0x80);
+
+    return { value, pos };
+}
+
+// Read double (64-bit float)
+function readDouble(buffer, pos) {
+    const view = new DataView(buffer.buffer, buffer.byteOffset + pos, 8);
+    return view.getFloat64(0, true); // true = little-endian
+}
+
+// Read float (32-bit float)
+function readFloat(buffer, pos) {
+    const view = new DataView(buffer.buffer, buffer.byteOffset + pos, 4);
+    return view.getFloat32(0, true); // true = little-endian
 }
 
 // Function to close WebSocket intentionally (e.g., on logout)
@@ -2190,14 +2346,15 @@ function closeWebSocketIntentionally() {
 // Function to subscribe to a single crypto's price updates
 function subscribeToSymbol(symbol) {
     if (socket && socket.readyState === WebSocket.OPEN) {
-        // Use the JSON deals format (NOT .pb to avoid Blob data)
-        const channel = `spot@public.deals.v3.api@${symbol.toUpperCase()}USDT`;
+        // Binance trade stream format: symbol in lowercase + "usdt@trade"
+        const channel = `${symbol.toLowerCase()}usdt@trade`;
         const subscriptionMessage = JSON.stringify({
-            "method": "SUBSCRIPTION",
-            "params": [channel]
+            "method": "SUBSCRIBE",
+            "params": [channel],
+            "id": Date.now()
         });
 
-        console.log(`🔔 Subscribing to ${symbol.toUpperCase()}USDT price updates (deals stream)`);
+        console.log(`🔔 Subscribing to ${symbol.toUpperCase()}USDT price updates (trade stream)`);
         socket.send(subscriptionMessage);
     } else {
         console.log(`⚠️ WebSocket not ready (state: ${socket?.readyState}), subscription to ${symbol} will happen on next connection`);
@@ -2295,7 +2452,7 @@ function restoreFocusDetails() {
     }
 }
 
-async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'MEXC') {
+async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') {
     const conversionRate = await fetchUsdtToAudConversionRate(); // Fetch the real-time USD to AUD rate
     const priceInAud = priceInUsd * conversionRate; // Convert USD to AUD
 
@@ -3025,34 +3182,44 @@ function initializeWebSocketForCrypto(symbol) {
 
     currentWebSocket.onmessage = function(event) {
         try {
-            const message = JSON.parse(event.data);
+            // MEXC sends binary Protocol Buffer data for .pb channels
+            if (event.data instanceof Blob) {
+                console.log(`📦 Received Blob data for ${symbol}, converting...`);
 
-            // Handle NEW aggre.deals format
-            if (message.channel && message.channel.includes('aggre.deals') && message.data && message.data.price) {
-                const price = parseFloat(message.data.price);
-                console.log(`📊 Chart price update for ${symbol}: $${price} USDT`);
+                // Convert Blob to ArrayBuffer
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const arrayBuffer = reader.result;
+                    const uint8Array = new Uint8Array(arrayBuffer);
 
-                // Update the price only if the current modal is open and matches the symbol
-                if (isModalOpen && currentModalCryptoSymbol === symbol) {
-                    updatePriceInChart(price); // Update the candlestick chart with live price
-                }
-            }
-            // Handle OLD format (fallback)
-            else if (message && message.d && Array.isArray(message.d.deals) && message.d.deals.length > 0) {
-                const deals = message.d.deals;
-                const firstDeal = deals[0];
-                if (firstDeal && firstDeal.p !== undefined) {
-                    const price = parseFloat(firstDeal.p);
-                    console.log(`📊 Chart price update for ${symbol}: $${price} USDT [OLD FORMAT]`);
+                    console.log(`📨 Binary data length: ${uint8Array.length} bytes (first 50):`, Array.from(uint8Array.slice(0, 50)));
 
-                    // Update the price only if the current modal is open and matches the symbol
-                    if (isModalOpen && currentModalCryptoSymbol === symbol) {
-                        updatePriceInChart(price); // Update the candlestick chart with live price
+                    // Try to decode as UTF-8 string first (some messages might be JSON)
+                    const decoder = new TextDecoder('utf-8');
+                    const text = decoder.decode(uint8Array);
+
+                    // Try parsing as JSON first
+                    try {
+                        const message = JSON.parse(text);
+                        console.log(`✅ Successfully parsed as JSON:`, message);
+                        handleChartMessage(message, symbol);
+                    } catch (jsonError) {
+                        console.log(`⚠️ Not JSON, attempting protobuf decode...`);
+                        // This is actual protobuf data - decode it
+                        decodeChartProtobuf(uint8Array, symbol);
                     }
-                }
+                };
+                reader.readAsArrayBuffer(event.data);
+            } else if (typeof event.data === 'string') {
+                // Text message (subscription confirmations, etc.)
+                console.log(`📨 Text message for ${symbol}:`, event.data);
+                const message = JSON.parse(event.data);
+                handleChartMessage(message, symbol);
             }
         } catch (error) {
             console.error(`❌ Chart WebSocket message error for ${symbol}:`, error);
+            console.error('   Data type:', typeof event.data);
+            console.error('   Data:', event.data);
         }
     };
 
@@ -3063,6 +3230,157 @@ function initializeWebSocketForCrypto(symbol) {
     currentWebSocket.onerror = function(error) {
         console.error(`❌ Chart WebSocket error for ${symbol}:`, error);
     };
+}
+
+// Helper function to handle parsed chart messages
+function handleChartMessage(message, symbol) {
+    // Handle subscription responses
+    if (message.id || message.code !== undefined) {
+        console.log(`📋 Chart subscription response:`, message);
+        return;
+    }
+
+    // Handle NEW aggre.deals format
+    if (message.channel && message.channel.includes('aggre.deals') && message.data && message.data.price) {
+        const price = parseFloat(message.data.price);
+        console.log(`📊 Chart price update for ${symbol}: $${price} USDT`);
+
+        // Update the price only if the current modal is open and matches the symbol
+        if (isModalOpen && currentModalCryptoSymbol === symbol) {
+            updatePriceInChart(price); // Update the candlestick chart with live price
+        }
+    }
+    // Handle OLD format (fallback)
+    else if (message && message.d && Array.isArray(message.d.deals) && message.d.deals.length > 0) {
+        const deals = message.d.deals;
+        const firstDeal = deals[0];
+        if (firstDeal && firstDeal.p !== undefined) {
+            const price = parseFloat(firstDeal.p);
+            console.log(`📊 Chart price update for ${symbol}: $${price} USDT [OLD FORMAT]`);
+
+            // Update the price only if the current modal is open and matches the symbol
+            if (isModalOpen && currentModalCryptoSymbol === symbol) {
+                updatePriceInChart(price); // Update the candlestick chart with live price
+            }
+        }
+    }
+}
+
+// Protobuf decoder for MEXC binary data
+function decodeChartProtobuf(uint8Array, symbol) {
+    console.log(`🔍 Protobuf data analysis for ${symbol}:`);
+    console.log(`   Length: ${uint8Array.length} bytes`);
+    console.log(`   First 100 bytes:`, Array.from(uint8Array.slice(0, 100)));
+
+    // Try to find readable strings in the binary data
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const partialDecode = decoder.decode(uint8Array);
+    const readableChars = partialDecode.match(/[\x20-\x7E]+/g);
+    if (readableChars) {
+        console.log(`   Readable strings found:`, readableChars);
+    }
+
+    // Manual protobuf parsing - MEXC uses a simple structure
+    // Protocol Buffer wire format: field_number << 3 | wire_type
+    // wire_type: 0=varint, 1=64-bit, 2=length-delimited, 5=32-bit
+
+    try {
+        let offset = 0;
+        let priceFound = null;
+
+        while (offset < uint8Array.length) {
+            // Read field tag
+            if (offset >= uint8Array.length) break;
+
+            const tag = uint8Array[offset];
+            const fieldNumber = tag >> 3;
+            const wireType = tag & 0x07;
+
+            offset++;
+
+            // Wire type 2 = length-delimited (strings, bytes)
+            // Wire type 1 = 64-bit (doubles)
+            // Wire type 5 = 32-bit (floats)
+
+            if (wireType === 2) {
+                // Read length
+                let length = 0;
+                let shift = 0;
+                while (offset < uint8Array.length) {
+                    const byte = uint8Array[offset++];
+                    length |= (byte & 0x7F) << shift;
+                    if ((byte & 0x80) === 0) break;
+                    shift += 7;
+                }
+
+                // Skip the value bytes
+                const value = uint8Array.slice(offset, offset + length);
+                offset += length;
+
+                // Try to decode as string
+                const str = new TextDecoder('utf-8', { fatal: false }).decode(value);
+                if (/^[\x20-\x7E]+$/.test(str)) {
+                    console.log(`   Field ${fieldNumber} (string): "${str}"`);
+                }
+            } else if (wireType === 1) {
+                // 64-bit double
+                if (offset + 8 <= uint8Array.length) {
+                    const view = new DataView(uint8Array.buffer, offset, 8);
+                    const doubleValue = view.getFloat64(0, true); // little-endian
+                    console.log(`   Field ${fieldNumber} (double): ${doubleValue}`);
+
+                    // Price is likely a double value
+                    if (doubleValue > 0 && doubleValue < 1000000 && !priceFound) {
+                        priceFound = doubleValue;
+                    }
+
+                    offset += 8;
+                }
+            } else if (wireType === 5) {
+                // 32-bit float
+                if (offset + 4 <= uint8Array.length) {
+                    const view = new DataView(uint8Array.buffer, offset, 4);
+                    const floatValue = view.getFloat32(0, true); // little-endian
+                    console.log(`   Field ${fieldNumber} (float): ${floatValue}`);
+
+                    // Price might be a float
+                    if (floatValue > 0 && floatValue < 1000000 && !priceFound) {
+                        priceFound = floatValue;
+                    }
+
+                    offset += 4;
+                }
+            } else if (wireType === 0) {
+                // Varint
+                let value = 0;
+                let shift = 0;
+                while (offset < uint8Array.length) {
+                    const byte = uint8Array[offset++];
+                    value |= (byte & 0x7F) << shift;
+                    if ((byte & 0x80) === 0) break;
+                    shift += 7;
+                }
+                console.log(`   Field ${fieldNumber} (varint): ${value}`);
+            } else {
+                // Unknown wire type, try to skip
+                break;
+            }
+        }
+
+        // If we found a likely price, use it
+        if (priceFound) {
+            console.log(`💰 Extracted price from protobuf: $${priceFound} USDT`);
+
+            if (isModalOpen && currentModalCryptoSymbol === symbol) {
+                updatePriceInChart(priceFound);
+            }
+        } else {
+            console.log(`⚠️ Could not extract price from protobuf data`);
+        }
+
+    } catch (error) {
+        console.error(`❌ Error decoding protobuf:`, error);
+    }
 }
 
 let isSpacebarPressed = false;
