@@ -10443,9 +10443,35 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         if (!window.packageBaseValues) {
             window.packageBaseValues = {};
         }
+
+        // Calculate per-share values
+        // Price: 1 share = 0.0001 BTC
+        const sharePrice = 0.0001;
+        const btcPriceAUD = prices['btc']?.aud || 0;
+        const pricePerShareAUD = sharePrice * btcPriceAUD;
+
+        // Reward: Calculate total shares in package from addedAmount
+        let rewardPerShareAUD = 0;
+        if (pkg.addedAmount && pkg.addedAmount > 0) {
+            const totalSharesInPackage = pkg.addedAmount / sharePrice;
+            rewardPerShareAUD = parseFloat(rewardAUD) / totalSharesInPackage;
+            console.log(`📊 ${pkg.name} per-share calculation:`, {
+                addedAmount: pkg.addedAmount,
+                sharePrice: sharePrice,
+                totalSharesInPackage: totalSharesInPackage,
+                totalRewardAUD: rewardAUD,
+                rewardPerShareAUD: rewardPerShareAUD.toFixed(2),
+                pricePerShareAUD: pricePerShareAUD.toFixed(2)
+            });
+        } else {
+            // Fallback: if no addedAmount, assume reward is already per-share
+            rewardPerShareAUD = parseFloat(rewardAUD);
+            console.log(`⚠️ ${pkg.name} - No addedAmount, using reward as-is:`, rewardPerShareAUD);
+        }
+
         window.packageBaseValues[pkg.name] = {
-            rewardAUD: parseFloat(rewardAUD),
-            priceAUD: parseFloat(priceAUD)
+            rewardAUD: rewardPerShareAUD,
+            priceAUD: pricePerShareAUD
         };
 
         // Initialize share value to 1
