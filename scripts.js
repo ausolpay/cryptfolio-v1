@@ -7619,6 +7619,10 @@ function updateStats() {
 let currentRecommendations = [];
 let currentTeamRecommendations = [];
 
+// Track which alerts have played sounds (to play once per new alert)
+let alertedSoloPackages = new Set();
+let alertedTeamPackages = new Set();
+
 async function executeAutoBuySolo(recommendations) {
     console.log('🤖 Checking for solo auto-buy opportunities...');
 
@@ -7824,6 +7828,52 @@ async function updateRecommendations() {
     }
 
     console.log('🔄 Recommendations changed, updating display...');
+
+    // Play alert sounds for NEW package alerts (once per new alert)
+    if (soloChanged && recommendations.length > 0) {
+        // Check for new solo package alerts
+        const newSoloAlerts = recommendations.filter(pkg => !alertedSoloPackages.has(pkg.name));
+        if (newSoloAlerts.length > 0) {
+            console.log(`🔔 New solo package alert(s): ${newSoloAlerts.map(p => p.name).join(', ')}`);
+            playSound('solo-pkg-alert-sound');
+            // Mark these packages as alerted
+            newSoloAlerts.forEach(pkg => alertedSoloPackages.add(pkg.name));
+        }
+    }
+
+    if (teamChanged && teamRecommendations.length > 0) {
+        // Check for new team package alerts
+        const newTeamAlerts = teamRecommendations.filter(pkg => !alertedTeamPackages.has(pkg.name));
+        if (newTeamAlerts.length > 0) {
+            console.log(`🔔 New team package alert(s): ${newTeamAlerts.map(p => p.name).join(', ')}`);
+            playSound('team-pkg-alert-sound');
+            // Mark these packages as alerted
+            newTeamAlerts.forEach(pkg => alertedTeamPackages.add(pkg.name));
+        }
+    }
+
+    // Clean up alerted packages that are no longer in recommendations
+    if (recommendations.length === 0) {
+        alertedSoloPackages.clear();
+    } else {
+        const currentSoloNames = new Set(recommendations.map(pkg => pkg.name));
+        alertedSoloPackages.forEach(name => {
+            if (!currentSoloNames.has(name)) {
+                alertedSoloPackages.delete(name);
+            }
+        });
+    }
+
+    if (teamRecommendations.length === 0) {
+        alertedTeamPackages.clear();
+    } else {
+        const currentTeamNames = new Set(teamRecommendations.map(pkg => pkg.name));
+        alertedTeamPackages.forEach(name => {
+            if (!currentTeamNames.has(name)) {
+                alertedTeamPackages.delete(name);
+            }
+        });
+    }
 
     // Update solo recommendations if changed
     if (soloChanged) {
