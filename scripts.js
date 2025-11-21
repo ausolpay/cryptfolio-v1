@@ -5056,22 +5056,68 @@ let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 let showAllPackages = false;
 
-// Error alert throttling (prevent spam during reconnection)
+// Error alert throttling with delayed alerts (prevent spam during reconnection)
 let lastEasyMiningErrorAlert = 0;
+let firstEasyMiningErrorTime = 0;
+let easyMiningErrorPending = false;
+let easyMiningErrorTimer = null;
 const EASYMINING_ERROR_ALERT_COOLDOWN = 60000; // 60 seconds between error alerts
+const EASYMINING_ERROR_DELAY = 20000; // 20 seconds delay before first alert
 
-// Helper function to check if we should show an error alert
-function shouldShowEasyMiningErrorAlert() {
+// Helper function to schedule a delayed error alert
+function scheduleEasyMiningErrorAlert(errorMessage) {
     const now = Date.now();
-    const timeSinceLastAlert = now - lastEasyMiningErrorAlert;
 
+    // If already in cooldown from a previous alert, don't schedule new one
+    const timeSinceLastAlert = now - lastEasyMiningErrorAlert;
     if (timeSinceLastAlert < EASYMINING_ERROR_ALERT_COOLDOWN) {
         console.log(`⏳ Suppressing EasyMining error alert (cooldown: ${Math.ceil((EASYMINING_ERROR_ALERT_COOLDOWN - timeSinceLastAlert) / 1000)}s remaining)`);
-        return false;
+        return;
     }
 
-    lastEasyMiningErrorAlert = now;
-    return true;
+    // If this is the first error, start the delay timer
+    if (!easyMiningErrorPending) {
+        firstEasyMiningErrorTime = now;
+        easyMiningErrorPending = true;
+
+        console.log(`⏰ Error detected - waiting 20 seconds to see if connection recovers...`);
+
+        // Clear any existing timer
+        if (easyMiningErrorTimer) {
+            clearTimeout(easyMiningErrorTimer);
+        }
+
+        // Schedule alert to show after 20 seconds if errors persist
+        easyMiningErrorTimer = setTimeout(() => {
+            // Check if we're still having errors (no successful fetch in last 20 seconds)
+            const timeSinceFirstError = Date.now() - firstEasyMiningErrorTime;
+
+            if (timeSinceFirstError >= EASYMINING_ERROR_DELAY) {
+                console.log(`❌ Errors persisted for 20+ seconds - showing alert`);
+                alert(errorMessage);
+                lastEasyMiningErrorAlert = Date.now();
+            }
+
+            // Reset pending state
+            easyMiningErrorPending = false;
+            easyMiningErrorTimer = null;
+        }, EASYMINING_ERROR_DELAY);
+    } else {
+        console.log(`⏰ Error still pending - waiting for recovery (${Math.ceil((EASYMINING_ERROR_DELAY - (now - firstEasyMiningErrorTime)) / 1000)}s remaining)`);
+    }
+}
+
+// Helper function to clear error alert if connection recovers
+function clearEasyMiningErrorAlert() {
+    if (easyMiningErrorPending) {
+        console.log(`✅ Connection recovered - cancelling pending error alert`);
+        if (easyMiningErrorTimer) {
+            clearTimeout(easyMiningErrorTimer);
+            easyMiningErrorTimer = null;
+        }
+        easyMiningErrorPending = false;
+        firstEasyMiningErrorTime = 0;
+    }
 }
 
 // =============================================================================
@@ -5654,6 +5700,9 @@ async function fetchEasyMiningData() {
             setEasyMiningLoadingTarget(100);
         }
 
+        // Clear any pending error alerts since fetch succeeded
+        clearEasyMiningErrorAlert();
+
     } catch (error) {
         console.error('Error fetching EasyMining data:', error);
 
@@ -5663,11 +5712,13 @@ async function fetchEasyMiningData() {
         }
 
         // Don't alert for CORS errors as we're handling them gracefully
-        // Also apply cooldown to prevent alert spam during reconnection
-        if (!error.message.includes('fetch') && shouldShowEasyMiningErrorAlert()) {
+        // Schedule delayed error alert instead of immediate alert
+        if (!error.message.includes('fetch')) {
+            let errorMessage;
+
             if (error.message.includes('401')) {
                 // Specific message for authentication errors
-                alert('❌ API Error 401 - Authentication Failed\n\n' +
+                errorMessage = '❌ API Error 401 - Authentication Failed\n\n' +
                       'NiceHash rejected your API credentials.\n\n' +
                       '✅ Quick Fixes:\n' +
                       '1. Check credentials have dashes (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)\n' +
@@ -5675,13 +5726,19 @@ async function fetchEasyMiningData() {
                       '3. Check API key has Read/Write permissions\n' +
                       '4. Create fresh API key if expired\n\n' +
                       '📝 Check browser console (F12) for detailed troubleshooting info.\n' +
-                      '📖 See NICEHASH_401_FIX.md for full guide.');
+                      '📖 See NICEHASH_401_FIX.md for full guide.';
             } else if (error.message.includes('Missing credentials')) {
                 // This is already handled by the validation function alert
-                // Don't show duplicate alert
+                // Don't schedule delayed alert
+                errorMessage = null;
             } else {
                 // Generic error message for other issues
-                alert(`Error fetching EasyMining data: ${error.message}\n\nPlease check your API credentials and network connection.`);
+                errorMessage = `Error fetching EasyMining data: ${error.message}\n\nPlease check your API credentials and network connection.`;
+            }
+
+            // Schedule delayed alert (waits 20s to see if connection recovers)
+            if (errorMessage) {
+                scheduleEasyMiningErrorAlert(errorMessage);
             }
         }
     } finally {
