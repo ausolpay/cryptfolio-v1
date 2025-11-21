@@ -8769,11 +8769,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Show both rewards for dual-crypto packages (DOGE+LTC)
         rewardInfo = `
             <div class="buy-package-stat">
-                <span>Potential Reward ${pkg.mergeCrypto}:</span>
+                <span>Reward ${pkg.mergeCrypto}:</span>
                 <span style="color: #4CAF50;">${pkg.mergeBlockReward ? pkg.mergeBlockReward.toFixed(0) : '0'} ${pkg.mergeCrypto}</span>
             </div>
             <div class="buy-package-stat">
-                <span>Potential Reward ${pkg.mainCrypto}:</span>
+                <span>Reward ${pkg.mainCrypto}:</span>
                 <span style="color: #4CAF50;">${pkg.blockReward ? pkg.blockReward.toFixed(4) : '0'} ${pkg.mainCrypto}</span>
             </div>
             <div class="buy-package-stat">
@@ -8785,7 +8785,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Single crypto package
         rewardInfo = `
             <div class="buy-package-stat">
-                <span>Potential Reward:</span>
+                <span>Reward:</span>
                 <span style="color: #4CAF50;">${pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
             </div>
             <div class="buy-package-stat">
@@ -8807,13 +8807,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     card.innerHTML = `
         <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
-        ${pkg.crypto ? `<p style="color: #ffa500; font-weight: bold;">${pkg.crypto}</p>` : ''}
         <div class="buy-package-stats">
             ${probabilityInfo}
-            <div class="buy-package-stat">
-                <span>Algorithm:</span>
-                <span>${pkg.algorithm || 'SHA256'}</span>
-            </div>
             <div class="buy-package-stat">
                 <span>Duration:</span>
                 <span>${pkg.duration}</span>
