@@ -8373,9 +8373,9 @@ async function fetchNiceHashSoloPackages() {
                     ? `1:${Math.round(pkg.probabilityPrecision)}`
                     : `${Math.round(1/pkg.probabilityPrecision)}:1`;
 
-                // Convert countdownDuration from seconds to hours for display
+                // Convert duration from seconds to hours for display
                 // e.g., 7200 seconds = 2 hours
-                const durationHours = (pkg.countdownDuration / 3600).toFixed(0);
+                const durationHours = pkg.duration ? (pkg.duration / 3600).toFixed(0) : '0';
 
                 // Check for dual-crypto packages (merge mining like DOGE+LTC)
                 const hasMergeCurrency = !!pkg.mergeCurrencyAlgo;
@@ -8419,6 +8419,8 @@ async function fetchNiceHashSoloPackages() {
 
                 console.log(`📦 Mapping package ${pkg.name}:`, {
                     price_from_api: pkg.price,
+                    duration_from_api: pkg.duration,
+                    duration_in_hours: durationHours,
                     mainCurrency: mainCrypto,
                     mainBlockReward: mainBlockReward,
                     mainProbability: mainProbability,
