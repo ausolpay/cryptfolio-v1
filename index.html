@@ -310,6 +310,7 @@
 
                 <div style="margin-top: 30px;">
                     <button onclick="showWithdrawalAddressesPage()" style="background-color: #4CAF50; margin-bottom: 10px;">📍 Manage Withdrawal Addresses</button>
+                    <button onclick="showPackageAlertsPage()" style="background-color: #FF9800; margin-bottom: 10px;">🔔 Package Alerts</button>
                     <button onclick="clearAPICredentials()" class="delete-button">Clear API Credentials</button>
                 </div>
             </div>
@@ -356,6 +357,43 @@
         <div class="buttons">
             <button onclick="showEasyMiningSettingsPage()">← Back to EasyMining Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
+    <!-- Package Alerts Page -->
+    <div id="package-alerts-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
+                <p>Package Alert Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">🔔 Probability Alert Thresholds</h3>
+                <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
+                    Set probability thresholds for each package. When a package's probability falls to or below your set value, it will appear in recommendations.
+                </p>
+                <p style="color: #4CAF50; font-size: 13px; margin-bottom: 15px;">
+                    💡 Example: Set "130" for Silver S means it will be recommended when probability is 1:130 or better (like 1:120, 1:100, etc.)
+                </p>
+
+                <div id="package-alerts-list" style="max-height: 600px; overflow-y: auto;">
+                    <!-- Alert settings populated by JavaScript -->
+                </div>
+
+                <button onclick="savePackageAlerts()" style="background-color: #4CAF50; margin-top: 20px;">💾 Save Alert Settings</button>
+                <button onclick="clearPackageAlerts()" class="delete-button" style="margin-top: 10px;">Clear All Alerts</button>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showEasyMiningSettingsPage()">← Back to EasyMining Settings</button>
         </div>
 
         <div>

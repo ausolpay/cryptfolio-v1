@@ -1626,15 +1626,27 @@ body.light-mode .stat-label {
 
 .recommendations-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Multiple columns on desktop */
+    grid-template-columns: repeat(3, 336px); /* Same as buy packages - 3 columns */
     gap: 15px;
-    margin-bottom: 20px;
+    margin: 20px auto;
+    padding: 0 20px;
+    width: fit-content; /* Section fits the boxes exactly */
+    justify-content: center;
 }
 
-/* Single column on mobile */
-@media (max-width: 768px) {
+/* Tablet - 2 columns */
+@media (max-width: 1040px) {
     .recommendations-container {
-        grid-template-columns: 1fr; /* Single column on mobile */
+        grid-template-columns: repeat(2, 300px);
+    }
+}
+
+/* Mobile - 1 column */
+@media (max-width: 700px) {
+    .recommendations-container {
+        grid-template-columns: 280px;
+        padding: 0 10px;
+        gap: 10px;
     }
 }
 

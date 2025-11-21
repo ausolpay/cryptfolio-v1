@@ -550,6 +550,175 @@ function getWithdrawalAddress(crypto) {
     return savedAddresses[crypto] || null;
 }
 
+// ========================================
+// PACKAGE ALERTS FUNCTIONS
+// ========================================
+
+async function showPackageAlertsPage() {
+    console.log('Showing Package Alerts Page');
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('withdrawal-addresses-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+
+    // Show Package Alerts page
+    document.getElementById('package-alerts-page').style.display = 'block';
+
+    // Load package alerts
+    await loadPackageAlerts();
+}
+
+async function loadPackageAlerts() {
+    console.log('Loading package alerts...');
+
+    // Fetch packages from API
+    const packages = await fetchNiceHashSoloPackages();
+
+    if (!packages || packages.length === 0) {
+        console.error('No packages available to set alerts for');
+        document.getElementById('package-alerts-list').innerHTML = '<p style="color: #ff6b6b;">Could not load packages. Please try again.</p>';
+        return;
+    }
+
+    // Get saved alerts
+    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_packageAlerts`)) || {};
+
+    const alertsList = document.getElementById('package-alerts-list');
+    alertsList.innerHTML = '';
+
+    // Create input for each package
+    packages.forEach(pkg => {
+        const alertDiv = document.createElement('div');
+        alertDiv.style.cssText = 'margin-bottom: 15px; padding: 15px; background-color: #3a3a3a; border-radius: 8px; border: 1px solid #444;';
+
+        // Extract probability value from ratio (e.g., "1:150" → 150)
+        let currentProbability = '';
+        if (pkg.probability) {
+            const match = pkg.probability.match(/1:(\d+)/);
+            if (match) {
+                currentProbability = match[1];
+            }
+        }
+
+        const savedThreshold = savedAlerts[pkg.name] || '';
+        const isActive = savedThreshold !== '';
+
+        alertDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
+                <span style="color: #4CAF50; font-size: 13px;">Current: 1:${currentProbability}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label style="color: #aaa; font-size: 14px;">Alert when probability ≤ 1:</label>
+                <input type="number"
+                       id="alert-${pkg.name.replace(/\s+/g, '-')}"
+                       value="${savedThreshold}"
+                       placeholder="e.g., 130"
+                       min="1"
+                       style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                ${isActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
+            </div>
+        `;
+
+        alertsList.appendChild(alertDiv);
+    });
+
+    console.log(`✅ Loaded ${packages.length} package alert settings`);
+}
+
+function savePackageAlerts() {
+    console.log('Saving package alerts...');
+
+    const alerts = {};
+    const inputs = document.querySelectorAll('[id^="alert-"]');
+
+    inputs.forEach(input => {
+        const packageName = input.id.replace('alert-', '').replace(/-/g, ' ');
+        const threshold = input.value.trim();
+
+        if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
+            alerts[packageName] = parseInt(threshold);
+        }
+    });
+
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_packageAlerts`, JSON.stringify(alerts));
+
+    console.log('✅ Saved package alerts:', alerts);
+    alert(`Saved ${Object.keys(alerts).length} package alert(s)`);
+
+    // Reload to show updated status
+    loadPackageAlerts();
+}
+
+function clearPackageAlerts() {
+    if (!confirm('Are you sure you want to clear all package alerts?')) {
+        return;
+    }
+
+    localStorage.removeItem(`${loggedInUser}_packageAlerts`);
+    console.log('Cleared all package alerts');
+    alert('All package alerts have been cleared.');
+
+    // Reload to show empty fields
+    loadPackageAlerts();
+}
+
+async function checkPackageRecommendations() {
+    console.log('🔔 Checking package recommendations based on probability alerts...');
+
+    // Get saved alerts
+    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_packageAlerts`)) || {};
+
+    if (Object.keys(savedAlerts).length === 0) {
+        console.log('No package alerts configured');
+        return [];
+    }
+
+    // Fetch current packages from API
+    const packages = await fetchNiceHashSoloPackages();
+
+    if (!packages || packages.length === 0) {
+        console.log('No packages available');
+        return [];
+    }
+
+    const recommendations = [];
+
+    // Check each package against alert thresholds
+    packages.forEach(pkg => {
+        const threshold = savedAlerts[pkg.name];
+
+        if (!threshold) {
+            return; // No alert set for this package
+        }
+
+        // Extract probability value from ratio (e.g., "1:150" → 150)
+        let probabilityValue = null;
+        if (pkg.probability) {
+            const match = pkg.probability.match(/1:(\d+)/);
+            if (match) {
+                probabilityValue = parseInt(match[1]);
+            }
+        }
+
+        // Check if probability meets threshold (lower is better)
+        if (probabilityValue !== null && probabilityValue <= threshold) {
+            console.log(`✅ ${pkg.name}: Current 1:${probabilityValue} ≤ Threshold 1:${threshold} - RECOMMENDED`);
+            recommendations.push(pkg);
+        } else {
+            console.log(`❌ ${pkg.name}: Current 1:${probabilityValue} > Threshold 1:${threshold} - Not recommended`);
+        }
+    });
+
+    console.log(`Found ${recommendations.length} recommended package(s)`);
+    return recommendations;
+}
+
 function showBuyPackagesPage() {
     console.log('Showing Buy Packages Page');
 
@@ -6641,37 +6810,35 @@ function updateStats() {
     };
 }
 
-function updateRecommendations() {
+async function updateRecommendations() {
     const bestPackagesContainer = document.getElementById('best-packages-container');
     const teamAlertsContainer = document.getElementById('team-alerts-container');
-    
+
     bestPackagesContainer.innerHTML = '';
     teamAlertsContainer.innerHTML = '';
-    
-    // Find best single packages (sort by price/reward ratio)
-    const singlePackages = easyMiningData.activePackages.filter(pkg => !pkg.isTeam && pkg.active);
-    const bestSingle = singlePackages.sort((a, b) => {
-        // Sort by best reward/price ratio (higher is better)
-        const ratioA = (a.reward || 0) / (a.price || 1);
-        const ratioB = (b.reward || 0) / (b.price || 1);
-        return ratioB - ratioA;
-    }).slice(0, 2);
 
-    bestSingle.forEach(pkg => {
-        const card = document.createElement('div');
-        card.className = 'recommendation-card';
-        card.innerHTML = `
-            <h4>🌟 ${pkg.name}</h4>
-            <p><strong>Reward:</strong> ${pkg.reward} ${pkg.crypto}</p>
-            <p><strong>Price:</strong> $${(pkg.price || 0).toFixed(4)}</p>
-            <p><strong>Time Remaining:</strong> ${pkg.timeRemaining}</p>
-        `;
+    console.log('🔄 Updating package recommendations...');
+
+    // Get recommended packages based on alert thresholds
+    const recommendations = await checkPackageRecommendations();
+
+    if (recommendations.length === 0) {
+        bestPackagesContainer.innerHTML = '<p style="color: #aaa;">No packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure alerts</a> to get recommendations.</p>';
+        return;
+    }
+
+    // Fetch crypto prices for the recommendations
+    window.packageCryptoPrices = await fetchPackageCryptoPrices(recommendations);
+
+    console.log(`✅ Displaying ${recommendations.length} recommended package(s)`);
+
+    // Display each recommended package using the same card format as buy packages
+    recommendations.forEach(pkg => {
+        const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
         bestPackagesContainer.appendChild(card);
     });
 
-    if (bestSingle.length === 0) {
-        bestPackagesContainer.innerHTML = '<p>No active packages at this time.</p>';
-    }
+    console.log('✅ Recommendations updated successfully');
     
     // Check team package criteria
     const teamPackages = easyMiningData.activePackages.filter(pkg => pkg.isTeam && pkg.active);
