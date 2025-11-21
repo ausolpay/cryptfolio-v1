@@ -8376,6 +8376,19 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
     }
 
+    // Calculate package price in AUD from BTC price
+    let priceAUD = 0;
+    if (pkg.priceBTC) {
+        try {
+            if (typeof cryptoPrices !== 'undefined' && cryptoPrices['btc'] && cryptoPrices['btc'].aud) {
+                priceAUD = (pkg.priceBTC * cryptoPrices['btc'].aud).toFixed(2);
+            }
+        } catch (error) {
+            console.log('Could not calculate price AUD:', error);
+            priceAUD = 0;
+        }
+    }
+
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
             <span>Hashrate:</span>
@@ -8434,7 +8447,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             ${rewardInfo}
             <div class="buy-package-stat">
                 <span>Price:</span>
-                <span>$${pkg.priceAUD} AUD</span>
+                <span>$${priceAUD} AUD</span>
             </div>
         </div>
         ${teamShareSelector}
