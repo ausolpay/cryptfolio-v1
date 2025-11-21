@@ -2090,24 +2090,16 @@ function initializeWebSocket() {
 
     socket.onmessage = function(event) {
         try {
+            // Log EVERY message for debugging
+            console.log('📨 WebSocket message received (raw):', event.data);
+
             const message = JSON.parse(event.data);
+            console.log('📨 Parsed message:', message);
 
             // Handle PONG response
             if (message.msg === 'PONG') {
                 console.log('📡 Received PONG from server');
                 return;
-            }
-
-            // Log all incoming messages for debugging (first 5 only to avoid spam)
-            if (!message.msg) {
-                if (!socket.debugMessageCount) socket.debugMessageCount = 0;
-                if (socket.debugMessageCount < 5) {
-                    console.log('📨 Raw message received:', JSON.stringify(message, null, 2));
-                    socket.debugMessageCount++;
-                    if (socket.debugMessageCount === 5) {
-                        console.log('   (Suppressing further raw message logs to avoid spam)');
-                    }
-                }
             }
 
             // Handle price updates with JSON deals format
