@@ -9909,6 +9909,17 @@ async function fetchPackageCryptoPrices(packages) {
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
+    // Save current share values before refresh
+    const savedShareValues = {};
+    document.querySelectorAll('[id^="shares-"]').forEach(input => {
+        if (input.value && parseInt(input.value) > 0) {
+            savedShareValues[input.id] = parseInt(input.value);
+        }
+    });
+    if (Object.keys(savedShareValues).length > 0) {
+        console.log('💾 Saved share values:', savedShareValues);
+    }
+
     // Fetch balance from NiceHash API
     try {
         console.log('💰 Fetching balance from NiceHash API...');
@@ -9926,6 +9937,9 @@ async function loadBuyPackagesDataOnPage() {
             pending: easyMiningData?.pendingBTC || 0
         };
     }
+
+    // Store saved values globally so we can restore them after packages are populated
+    window.savedShareValues = savedShareValues;
 
     // Try to fetch from API, fall back to mock data
     let singlePackages = await fetchNiceHashSoloPackages();
@@ -10062,6 +10076,22 @@ async function loadBuyPackagesDataOnPage() {
         }
     });
     console.log('✅ Team packages populated');
+
+    // Restore saved share values after packages are populated
+    if (window.savedShareValues && Object.keys(window.savedShareValues).length > 0) {
+        console.log('🔄 Restoring share values:', window.savedShareValues);
+        for (const [inputId, value] of Object.entries(window.savedShareValues)) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = value;
+                console.log(`✅ Restored ${inputId} = ${value}`);
+
+                // Trigger adjustShares to update + button state after restore
+                const packageName = inputId.replace('shares-', '').replace(/-/g, ' ');
+                adjustShares(packageName, 0); // Call with delta 0 to just update button states
+            }
+        }
+    }
 }
 
 function createBuyPackageCardForPage(pkg, isRecommended) {
