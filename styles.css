@@ -1372,10 +1372,14 @@ body.light-mode .package-tab.active {
     .active-packages-container {
         grid-template-columns: 1fr; /* One package per row on mobile */
         gap: 10px; /* Reduce gap on mobile */
+        width: auto;
+        max-width: 100%;
     }
 
     .active-packages-section {
         padding: 4px; /* Reduce padding on mobile */
+        width: auto;
+        height: auto;
     }
 
     .stats-section {
@@ -1644,9 +1648,17 @@ body.light-mode .stat-label {
 /* Mobile - 1 column */
 @media (max-width: 700px) {
     .recommendations-container {
-        grid-template-columns: 280px;
+        grid-template-columns: 1fr;
         padding: 0 10px;
         gap: 10px;
+        width: auto;
+        max-width: 100%;
+    }
+
+    .recommendations-section {
+        width: auto;
+        height: auto;
+        padding: 10px;
     }
 }
 
@@ -1656,6 +1668,8 @@ body.light-mode .stat-label {
     border-radius: 8px;
     padding: 15px;
     animation: glow 2s infinite;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 body.light-mode .recommendation-card {
