@@ -8373,8 +8373,9 @@ async function fetchNiceHashSoloPackages() {
                     ? `1:${Math.round(pkg.probabilityPrecision)}`
                     : `${Math.round(1/pkg.probabilityPrecision)}:1`;
 
-                // Convert duration from seconds to hours for display
-                const durationHours = (pkg.duration / 3600).toFixed(0);
+                // Convert countdownDuration from seconds to hours for display
+                // e.g., 7200 seconds = 2 hours
+                const durationHours = (pkg.countdownDuration / 3600).toFixed(0);
 
                 // Check for dual-crypto packages (merge mining like DOGE+LTC)
                 const hasMergeCurrency = !!pkg.mergeCurrencyAlgo;
@@ -8810,6 +8811,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             <div class="buy-package-stat">
                 <span>Algorithm:</span>
                 <span>${pkg.algorithm || 'SHA256'}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Duration:</span>
+                <span>${pkg.duration}</span>
             </div>
             ${hashrateInfo}
             ${sharesInfo}
