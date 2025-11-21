@@ -9819,6 +9819,7 @@ async function fetchNiceHashTeamPackages() {
                     fullAmount: pkg.fullAmount, // TEAM SPECIFIC - Total BTC in pool
                     addedAmount: pkg.addedAmount, // TEAM SPECIFIC - User's contribution
                     shares: pkg.addedAmount && pkg.fullAmount ? ((pkg.addedAmount / pkg.fullAmount) * 100).toFixed(2) : '0', // Calculate user's share percentage
+                    lifeTimeTill: pkg.lifeTimeTill, // TEAM SPECIFIC - Timestamp when package starts
                     isTeam: true, // Mark as team package
                     apiData: pkg // Store original API data
                 };
@@ -10068,6 +10069,12 @@ async function loadBuyPackagesDataOnPage() {
     });
     console.log('✅ Team packages populated');
 
+    // Store team packages for countdown updates
+    window.currentTeamPackages = teamPackages;
+
+    // Start countdown updates for team packages
+    startCountdownUpdates();
+
     // Restore saved share values after packages are populated
     if (window.packageShareValues && Object.keys(window.packageShareValues).length > 0) {
         console.log('🔄 Restoring share values:', window.packageShareValues);
@@ -10100,6 +10107,57 @@ async function loadBuyPackagesDataOnPage() {
                 }
             }
         }
+    }
+}
+
+// Update countdown timers for team packages
+function updateTeamPackageCountdowns() {
+    // Get all team packages from the current display
+    if (!window.currentTeamPackages || window.currentTeamPackages.length === 0) {
+        return;
+    }
+
+    window.currentTeamPackages.forEach(pkg => {
+        if (pkg.lifeTimeTill) {
+            const countdownElement = document.getElementById(`countdown-${pkg.id}`);
+            if (countdownElement) {
+                const startTime = new Date(pkg.lifeTimeTill);
+                const now = new Date();
+                const timeUntilStart = startTime - now;
+
+                if (timeUntilStart > 0) {
+                    const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+
+                    countdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+                    countdownElement.style.color = '#FFA500';
+                } else {
+                    // Package has started
+                    countdownElement.textContent = 'Started!';
+                    countdownElement.style.color = '#4CAF50';
+                }
+            }
+        }
+    });
+}
+
+// Start countdown update interval
+let countdownInterval = null;
+function startCountdownUpdates() {
+    // Clear existing interval if any
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+
+    // Update every second
+    countdownInterval = setInterval(updateTeamPackageCountdowns, 1000);
+}
+
+function stopCountdownUpdates() {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
     }
 }
 
@@ -10198,7 +10256,29 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
     ` : '';
 
-    // For team packages: show shares and participants
+    // For team packages: show shares, participants, and countdown
+    let countdownInfo = '';
+    if (pkg.isTeam && pkg.lifeTimeTill) {
+        // Calculate time until start
+        const startTime = new Date(pkg.lifeTimeTill);
+        const now = new Date();
+        const timeUntilStart = startTime - now;
+
+        if (timeUntilStart > 0) {
+            // Package hasn't started yet - show countdown
+            const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+            const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+
+            countdownInfo = `
+                <div class="buy-package-stat">
+                    <span>Starting:</span>
+                    <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                </div>
+            `;
+        }
+    }
+
     const sharesInfo = pkg.isTeam ? `
         <div class="buy-package-stat">
             <span>Participants:</span>
@@ -10208,6 +10288,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             <span>Share %:</span>
             <span style="color: #ffa500;">${pkg.shares || '0'}%</span>
         </div>
+        ${countdownInfo}
     ` : '';
 
     // Probability section - handle dual-crypto packages
