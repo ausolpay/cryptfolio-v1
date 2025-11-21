@@ -9909,15 +9909,9 @@ async function fetchPackageCryptoPrices(packages) {
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
-    // Save current share values before refresh
-    const savedShareValues = {};
-    document.querySelectorAll('[id^="shares-"]').forEach(input => {
-        if (input.value && parseInt(input.value) > 0) {
-            savedShareValues[input.id] = parseInt(input.value);
-        }
-    });
-    if (Object.keys(savedShareValues).length > 0) {
-        console.log('💾 Saved share values:', savedShareValues);
+    // Initialize share values storage if not exists
+    if (!window.packageShareValues) {
+        window.packageShareValues = {};
     }
 
     // Fetch balance from NiceHash API
@@ -9937,9 +9931,6 @@ async function loadBuyPackagesDataOnPage() {
             pending: easyMiningData?.pendingBTC || 0
         };
     }
-
-    // Store saved values globally so we can restore them after packages are populated
-    window.savedShareValues = savedShareValues;
 
     // Try to fetch from API, fall back to mock data
     let singlePackages = await fetchNiceHashSoloPackages();
@@ -10078,17 +10069,35 @@ async function loadBuyPackagesDataOnPage() {
     console.log('✅ Team packages populated');
 
     // Restore saved share values after packages are populated
-    if (window.savedShareValues && Object.keys(window.savedShareValues).length > 0) {
-        console.log('🔄 Restoring share values:', window.savedShareValues);
-        for (const [inputId, value] of Object.entries(window.savedShareValues)) {
-            const input = document.getElementById(inputId);
-            if (input) {
-                input.value = value;
-                console.log(`✅ Restored ${inputId} = ${value}`);
+    if (window.packageShareValues && Object.keys(window.packageShareValues).length > 0) {
+        console.log('🔄 Restoring share values:', window.packageShareValues);
+        for (const [packageName, value] of Object.entries(window.packageShareValues)) {
+            if (value > 0) {
+                const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.value = value;
+                    console.log(`✅ Restored ${packageName} = ${value}`);
 
-                // Trigger adjustShares to update + button state after restore
-                const packageName = inputId.replace('shares-', '').replace(/-/g, ' ');
-                adjustShares(packageName, 0); // Call with delta 0 to just update button states
+                    // Update + button state based on restored value
+                    const availableBalance = window.niceHashBalance?.available || 0;
+                    const sharePrice = 0.0001;
+                    const nextShareCost = (value + 1) * sharePrice;
+                    const plusButtonId = `plus-${packageName.replace(/\s+/g, '-')}`;
+                    const plusButton = document.getElementById(plusButtonId);
+
+                    if (plusButton) {
+                        if (availableBalance < nextShareCost) {
+                            plusButton.disabled = true;
+                            plusButton.style.opacity = '0.5';
+                            plusButton.style.cursor = 'not-allowed';
+                        } else {
+                            plusButton.disabled = false;
+                            plusButton.style.opacity = '1';
+                            plusButton.style.cursor = 'pointer';
+                        }
+                    }
+                }
             }
         }
     }
@@ -10363,6 +10372,13 @@ function adjustShares(packageName, delta) {
     const newValue = Math.max(0, Math.min(max, currentValue + delta));
 
     input.value = newValue;
+
+    // Immediately save to persistent storage
+    if (!window.packageShareValues) {
+        window.packageShareValues = {};
+    }
+    window.packageShareValues[packageName] = newValue;
+    console.log(`💾 Saved ${packageName} = ${newValue}`);
 
     // Check balance and update + button state for team packages
     const availableBalance = window.niceHashBalance?.available || 0;
