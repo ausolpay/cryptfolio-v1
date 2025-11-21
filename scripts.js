@@ -10359,21 +10359,26 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const packageId = pkg.name.replace(/\s+/g, '-');
 
     if (pkg.isDualCrypto) {
-        // Calculate rewards for 1 share based on percentage of total pool
+        // Calculate rewards for 1 share using division formula
         let myMergeReward = pkg.mergeBlockReward || 0;
         let myMainReward = pkg.blockReward || 0;
         let myRewardValueAUD = parseFloat(rewardAUD);
 
-        if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
+        if (pkg.isTeam && pkg.fullAmount && pkg.fullAmount > 0) {
             const sharePrice = 0.0001;
-            const existingShares = pkg.addedAmount / sharePrice;
+            const existingShares = pkg.fullAmount / sharePrice;
             const myShares = 1; // Initial display for 1 share
             const totalShares = existingShares + myShares;
-            const myPercentage = myShares / totalShares;
 
-            myMergeReward = (pkg.mergeBlockReward || 0) * myPercentage;
-            myMainReward = (pkg.blockReward || 0) * myPercentage;
-            myRewardValueAUD = parseFloat(rewardAUD) * myPercentage;
+            // Formula: reward_per_share = blockReward / totalShares
+            //          my_reward = reward_per_share × myShares
+            const mergeRewardPerShare = totalShares > 0 ? (pkg.mergeBlockReward || 0) / totalShares : 0;
+            const mainRewardPerShare = totalShares > 0 ? (pkg.blockReward || 0) / totalShares : 0;
+            const rewardValuePerShareAUD = totalShares > 0 ? parseFloat(rewardAUD) / totalShares : 0;
+
+            myMergeReward = mergeRewardPerShare * myShares;
+            myMainReward = mainRewardPerShare * myShares;
+            myRewardValueAUD = rewardValuePerShareAUD * myShares;
 
             console.log(`🎨 DISPLAYING Palladium ${pkg.name} for 1 share:`, {
                 mergeCrypto: pkg.mergeCrypto,
@@ -10385,7 +10390,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 totalRewardValueAUD: rewardAUD,
                 myRewardValueAUD: myRewardValueAUD.toFixed(2),
                 existingShares: existingShares,
-                myPercentage: (myPercentage * 100).toFixed(2) + '%'
+                totalShares: totalShares
             });
         }
 
@@ -10405,19 +10410,23 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
         `;
     } else if (pkg.blockReward) {
-        // Single crypto package - calculate reward for 1 share
+        // Single crypto package - calculate reward for 1 share using division formula
         let myMainReward = pkg.blockReward;
         let myRewardValueAUD = parseFloat(rewardAUD);
 
-        if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
+        if (pkg.isTeam && pkg.fullAmount && pkg.fullAmount > 0) {
             const sharePrice = 0.0001;
-            const existingShares = pkg.addedAmount / sharePrice;
+            const existingShares = pkg.fullAmount / sharePrice;
             const myShares = 1; // Initial display for 1 share
             const totalShares = existingShares + myShares;
-            const myPercentage = myShares / totalShares;
 
-            myMainReward = pkg.blockReward * myPercentage;
-            myRewardValueAUD = parseFloat(rewardAUD) * myPercentage;
+            // Formula: reward_per_share = blockReward / totalShares
+            //          my_reward = reward_per_share × myShares
+            const mainRewardPerShare = totalShares > 0 ? pkg.blockReward / totalShares : 0;
+            const rewardValuePerShareAUD = totalShares > 0 ? parseFloat(rewardAUD) / totalShares : 0;
+
+            myMainReward = mainRewardPerShare * myShares;
+            myRewardValueAUD = rewardValuePerShareAUD * myShares;
         }
 
         rewardInfo = `
