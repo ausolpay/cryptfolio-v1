@@ -386,6 +386,7 @@ function showLoginPage() {
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 }
 
 function showRegisterPage() {
@@ -395,6 +396,7 @@ function showRegisterPage() {
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 }
 
 function showAppPage() {
@@ -406,6 +408,7 @@ function showAppPage() {
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 }
 
 function showEasyMiningSettingsPage() {
@@ -418,6 +421,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 
     // Show EasyMining settings page
     document.getElementById('easymining-settings-page').style.display = 'block';
@@ -450,6 +454,7 @@ function showWithdrawalAddressesPage() {
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 
     // Show withdrawal addresses page
     document.getElementById('withdrawal-addresses-page').style.display = 'block';
@@ -728,6 +733,7 @@ function showBuyPackagesPage() {
     document.getElementById('app-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 
     // Show Buy Packages page
     document.getElementById('buy-packages-page').style.display = 'block';
@@ -4445,6 +4451,7 @@ function showCoinGeckoApiSettingsPage() {
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 
     // Show CoinGecko API settings page
     document.getElementById('coingecko-settings-page').style.display = 'block';
@@ -7430,6 +7437,7 @@ function showPackageDetailPage(pkg) {
     document.getElementById('app-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
 
     // Show package detail page
     document.getElementById('package-detail-page').style.display = 'block';
