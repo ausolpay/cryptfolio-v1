@@ -400,6 +400,9 @@ function showRegisterPage() {
 }
 
 function showAppPage() {
+    // Stop buy packages polling when leaving the page
+    stopBuyPackagesPolling();
+
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
     document.getElementById('app-page').style.display = 'block';
@@ -413,6 +416,9 @@ function showAppPage() {
 
 function showEasyMiningSettingsPage() {
     console.log('Showing EasyMining Settings Page');
+
+    // Stop buy packages polling when leaving the page
+    stopBuyPackagesPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -561,6 +567,9 @@ function getWithdrawalAddress(crypto) {
 
 async function showPackageAlertsPage() {
     console.log('Showing Package Alerts Page');
+
+    // Stop buy packages polling when leaving the page
+    stopBuyPackagesPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -1251,8 +1260,8 @@ function showBuyPackagesPage() {
     // Show Buy Packages page
     document.getElementById('buy-packages-page').style.display = 'block';
 
-    // Load packages data
-    loadBuyPackagesDataOnPage();
+    // Start polling for package data (loads initially + refreshes every 5s)
+    startBuyPackagesPolling();
 }
 
 function login() {
@@ -4761,6 +4770,7 @@ let easyMiningData = {
 };
 
 let easyMiningPollingInterval = null;
+let buyPackagesPollingInterval = null;
 let showAllPackages = false;
 
 // Error alert throttling (prevent spam during reconnection)
@@ -10162,6 +10172,40 @@ function stopEasyMiningPolling() {
         pollingWatchdogInterval = null;
     }
 }
+
+// =============================================================================
+// BUY PACKAGES POLLING
+// =============================================================================
+
+function startBuyPackagesPolling() {
+    console.log('🔄 Starting buy packages polling...');
+
+    // Stop any existing polling
+    stopBuyPackagesPolling();
+
+    // Initial load
+    loadBuyPackagesDataOnPage();
+
+    // Poll every 5 seconds
+    buyPackagesPollingInterval = setInterval(() => {
+        console.log('🔄 Refreshing buy packages data...');
+        loadBuyPackagesDataOnPage();
+    }, 5000);
+
+    console.log('✅ Buy packages polling started (5s interval)');
+}
+
+function stopBuyPackagesPolling() {
+    if (buyPackagesPollingInterval) {
+        clearInterval(buyPackagesPollingInterval);
+        buyPackagesPollingInterval = null;
+        console.log('⏹️ Buy packages polling stopped');
+    }
+}
+
+// =============================================================================
+// EASYMINING POLLING WATCHDOG
+// =============================================================================
 
 // Watchdog to detect and restart polling if it stops
 function startPollingWatchdog() {
