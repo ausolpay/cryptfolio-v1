@@ -309,6 +309,7 @@
                 </div>
 
                 <div style="margin-top: 30px;">
+                    <button onclick="showWithdrawalAddressesPage()" style="background-color: #4CAF50; margin-bottom: 10px;">📍 Manage Withdrawal Addresses</button>
                     <button onclick="clearAPICredentials()" class="delete-button">Clear API Credentials</button>
                 </div>
             </div>
@@ -317,6 +318,43 @@
         <div class="buttons">
             <button onclick="showAppPage()">← Back</button>
             <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
+    <!-- Withdrawal Addresses Page -->
+    <div id="withdrawal-addresses-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
+                <p>Withdrawal Addresses</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">📍 Manage Crypto Withdrawal Addresses</h3>
+                <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
+                    Set your wallet addresses for each cryptocurrency. These addresses will be used automatically when purchasing mining packages.
+                </p>
+
+                <div id="withdrawal-addresses-list">
+                    <!-- Addresses will be populated here by JavaScript -->
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="saveWithdrawalAddresses()" style="background-color: #4CAF50;">💾 Save Addresses</button>
+                    <button onclick="clearWithdrawalAddresses()" class="delete-button" style="margin-left: 10px;">Clear All Addresses</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showEasyMiningSettingsPage()">← Back to EasyMining Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 

@@ -405,6 +405,7 @@ function showAppPage() {
     document.getElementById('coingecko-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('withdrawal-addresses-page').style.display = 'none';
 }
 
 function showEasyMiningSettingsPage() {
@@ -416,6 +417,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('app-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('withdrawal-addresses-page').style.display = 'none';
 
     // Show EasyMining settings page
     document.getElementById('easymining-settings-page').style.display = 'block';
@@ -432,6 +434,120 @@ function showEasyMiningSettingsPage() {
     document.getElementById('auto-update-holdings-toggle-page').checked = savedSettings.autoUpdateHoldings || false;
     document.getElementById('include-available-btc-toggle-page').checked = savedSettings.includeAvailableBTC || false;
     document.getElementById('include-pending-btc-toggle-page').checked = savedSettings.includePendingBTC || false;
+}
+
+// =============================================================================
+// WITHDRAWAL ADDRESSES MANAGEMENT
+// =============================================================================
+
+function showWithdrawalAddressesPage() {
+    console.log('Showing Withdrawal Addresses Page');
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+
+    // Show withdrawal addresses page
+    document.getElementById('withdrawal-addresses-page').style.display = 'block';
+
+    // Load and populate addresses
+    loadWithdrawalAddresses();
+}
+
+function loadWithdrawalAddresses() {
+    console.log('Loading withdrawal addresses...');
+
+    // Get saved addresses from localStorage
+    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+    // List of all cryptos used in EasyMining
+    const cryptos = [
+        { symbol: 'BTC', name: 'Bitcoin', color: '#F7931A' },
+        { symbol: 'BCH', name: 'Bitcoin Cash', color: '#8DC351' },
+        { symbol: 'KAS', name: 'Kaspa', color: '#49C39E' },
+        { symbol: 'RVN', name: 'Ravencoin', color: '#384182' },
+        { symbol: 'DOGE', name: 'Dogecoin', color: '#C3A634' },
+        { symbol: 'LTC', name: 'Litecoin', color: '#345D9D' }
+    ];
+
+    // Create input fields for each crypto
+    const container = document.getElementById('withdrawal-addresses-list');
+    container.innerHTML = '';
+
+    cryptos.forEach(crypto => {
+        const addressDiv = document.createElement('div');
+        addressDiv.className = 'input-group';
+        addressDiv.style.marginBottom = '20px';
+
+        addressDiv.innerHTML = `
+            <label for="wallet-${crypto.symbol}" style="color: ${crypto.color}; font-weight: bold;">
+                ${crypto.symbol} - ${crypto.name}:
+            </label>
+            <input
+                type="text"
+                id="wallet-${crypto.symbol}"
+                placeholder="Enter your ${crypto.symbol} wallet address"
+                value="${savedAddresses[crypto.symbol] || ''}"
+                style="font-family: monospace; font-size: 13px;"
+            >
+            <small style="color: #aaa; display: block; margin-top: 5px;">
+                ${savedAddresses[crypto.symbol] ? '✅ Address saved' : '⚠️ No address set'}
+            </small>
+        `;
+
+        container.appendChild(addressDiv);
+    });
+
+    console.log('Loaded withdrawal addresses:', savedAddresses);
+}
+
+function saveWithdrawalAddresses() {
+    console.log('Saving withdrawal addresses...');
+
+    const cryptos = ['BTC', 'BCH', 'KAS', 'RVN', 'DOGE', 'LTC'];
+    const addresses = {};
+
+    // Collect addresses from input fields
+    cryptos.forEach(symbol => {
+        const input = document.getElementById(`wallet-${symbol}`);
+        if (input && input.value.trim() !== '') {
+            addresses[symbol] = input.value.trim();
+        }
+    });
+
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(addresses));
+
+    console.log('Saved withdrawal addresses:', addresses);
+    alert(`✅ Withdrawal addresses saved successfully!\n\n${Object.keys(addresses).length} addresses saved.`);
+
+    // Reload to update status messages
+    loadWithdrawalAddresses();
+}
+
+function clearWithdrawalAddresses() {
+    if (!confirm('Are you sure you want to clear all withdrawal addresses?\n\nThis cannot be undone.')) {
+        return;
+    }
+
+    // Clear from localStorage
+    localStorage.removeItem(`${loggedInUser}_withdrawalAddresses`);
+
+    console.log('Cleared all withdrawal addresses');
+    alert('All withdrawal addresses have been cleared.');
+
+    // Reload to show empty fields
+    loadWithdrawalAddresses();
+}
+
+function getWithdrawalAddress(crypto) {
+    // Get saved addresses
+    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+    return savedAddresses[crypto] || null;
 }
 
 function showBuyPackagesPage() {
@@ -8589,6 +8705,10 @@ async function buyPackageFromPage(pkg) {
         priceAUD = (pkg.priceBTC * prices['btc'].aud).toFixed(2);
     }
 
+    // Check for saved withdrawal address
+    let walletAddress = getWithdrawalAddress(pkg.crypto);
+    const usingSavedAddress = !!walletAddress;
+
     // Show confirmation dialog with package details
     const confirmMessage = `
 🛒 Purchase Solo Mining Package?
@@ -8599,6 +8719,10 @@ Probability: ${pkg.probability}
 Duration: ${pkg.duration}
 Price: $${priceAUD} AUD (${pkg.priceBTC} BTC)
 
+${usingSavedAddress
+    ? `✅ Using saved ${pkg.crypto} wallet address:\n${walletAddress.substring(0, 20)}...${walletAddress.substring(walletAddress.length - 10)}`
+    : '⚠️ No saved wallet address - you will be prompted to enter one'}
+
 This will create an order on NiceHash.
 Do you want to continue?
     `.trim();
@@ -8607,15 +8731,20 @@ Do you want to continue?
         return;
     }
 
-    // Ask for wallet address for mining rewards
-    const walletAddress = prompt(
-        `Enter your ${pkg.crypto} wallet address to receive mining rewards:\n\n` +
-        `(This is where block rewards will be sent if you find a block)`
-    );
+    // If no saved address, prompt for wallet address
+    if (!usingSavedAddress) {
+        walletAddress = prompt(
+            `Enter your ${pkg.crypto} wallet address to receive mining rewards:\n\n` +
+            `(This is where block rewards will be sent if you find a block)\n\n` +
+            `Tip: You can save addresses in EasyMining Settings → Manage Withdrawal Addresses`
+        );
 
-    if (!walletAddress || walletAddress.trim() === '') {
-        alert('Wallet address is required to purchase a solo mining package.');
-        return;
+        if (!walletAddress || walletAddress.trim() === '') {
+            alert('Wallet address is required to purchase a solo mining package.');
+            return;
+        }
+
+        walletAddress = walletAddress.trim();
     }
 
     try {
@@ -8623,7 +8752,8 @@ Do you want to continue?
             packageId: packageId,
             packageName: pkg.name,
             crypto: pkg.crypto,
-            walletAddress: walletAddress
+            walletAddress: walletAddress,
+            usingSavedAddress: usingSavedAddress
         });
 
         // Create order payload for solo mining package
@@ -8682,7 +8812,9 @@ Do you want to continue?
         const result = await response.json();
         console.log('✅ Solo order created successfully:', result);
 
-        alert(`✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\nCrypto: ${pkg.crypto}\nWallet: ${walletAddress}`);
+        const successMessage = `✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\nCrypto: ${pkg.crypto}\nWallet: ${walletAddress.substring(0, 20)}...${walletAddress.substring(walletAddress.length - 10)}${!usingSavedAddress ? '\n\n💡 Tip: Save this address in EasyMining Settings → Manage Withdrawal Addresses for faster purchases next time!' : ''}`;
+
+        alert(successMessage);
 
         // Update stats
         const pricePaid = parseFloat(priceAUD) || 0;
