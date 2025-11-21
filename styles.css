@@ -2126,6 +2126,7 @@ body.light-mode .buy-packages-form .input-group label {
     border-radius: 4px;
     color: #ffffff;
     box-sizing: border-box;
+    min-height: 44px; /* Match button height */
 }
 
 body.light-mode .easymining-settings-form input[type="text"],

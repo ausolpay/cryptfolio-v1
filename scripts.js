@@ -1146,6 +1146,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Send the unique visitor event only once per user
     sendUniqueVisitorEvent();
+
+    // Set current year in footer automatically
+    const currentYear = new Date().getFullYear();
+    document.querySelectorAll('.current-year').forEach(element => {
+        element.textContent = currentYear;
+    });
 });
 
 
