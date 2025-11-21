@@ -9214,6 +9214,51 @@ function createSoloPackageCard(pkg) {
     return card;
 }
 
+// Helper function to get user's bought shares for a team package
+function getMyTeamShares(packageId) {
+    const storageKey = `${loggedInUser}_teamPackageShares`;
+    const sharesData = getStorageItem(storageKey);
+    if (!sharesData) return 0;
+
+    try {
+        const shares = JSON.parse(sharesData);
+        return shares[packageId] || 0;
+    } catch (e) {
+        console.error('Error parsing team shares data:', e);
+        return 0;
+    }
+}
+
+// Helper function to save user's bought shares for a team package
+function saveMyTeamShares(packageId, shares) {
+    const storageKey = `${loggedInUser}_teamPackageShares`;
+    let sharesData = getStorageItem(storageKey);
+
+    let sharesObj = {};
+    if (sharesData) {
+        try {
+            sharesObj = JSON.parse(sharesData);
+        } catch (e) {
+            console.error('Error parsing existing shares data:', e);
+        }
+    }
+
+    sharesObj[packageId] = shares;
+    setStorageItem(storageKey, JSON.stringify(sharesObj));
+}
+
+// Helper function to calculate team reward based on participation
+function calculateTeamReward(blockReward, totalBoughtShares, myShares) {
+    if (myShares === 0) return 0;
+
+    // Formula: blockReward ÷ (totalBoughtShares + myShares) × myShares
+    // Note: totalBoughtShares can be 0 if no one has bought yet
+    const totalShares = totalBoughtShares + myShares;
+    const reward = (blockReward / totalShares) * myShares;
+
+    return reward;
+}
+
 // Create UI card for team package with share selector
 function createTeamPackageCard(pkg) {
     const card = document.createElement('div');
@@ -9230,11 +9275,15 @@ function createTeamPackageCard(pkg) {
     const addedAmount = pkg.addedAmount || 0;
     const availableAmount = fullAmount - addedAmount;
     const sharePrice = 0.0001; // Standard share price
-    const totalShares = Math.floor(packagePrice / sharePrice);
+    const totalAvailableShares = Math.floor(fullAmount / sharePrice);
+    const totalBoughtShares = Math.floor(addedAmount / sharePrice);
     const availableShares = Math.floor(availableAmount / sharePrice);
     const probability = ticket.probability || 'N/A';
-    const potentialReward = ticket.currencyAlgo?.blockReward || 'N/A';
+    const blockReward = ticket.currencyAlgo?.blockRewardWithNhFee || ticket.currencyAlgo?.blockReward || 0;
     const participants = pkg.numberOfParticipants || 0;
+
+    // Get user's bought shares for this package
+    const myBoughtShares = getMyTeamShares(packageId);
 
     // Calculate price in AUD (assuming BTC price)
     const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
@@ -9242,6 +9291,10 @@ function createTeamPackageCard(pkg) {
 
     // Generate unique ID for this card's share input
     const cardId = `team-${packageId}`;
+
+    // Calculate initial reward display based on user's bought shares
+    // If user has no shares, show 0 reward (they can see it update when they adjust the input)
+    const initialReward = myBoughtShares > 0 ? calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares) : 0;
 
     card.innerHTML = `
         <h4>👥 ${packageName}</h4>
@@ -9260,12 +9313,16 @@ function createTeamPackageCard(pkg) {
                 <span>$${pricePerShareAUD} AUD</span>
             </div>
             <div class="buy-package-stat">
-                <span>Potential Reward:</span>
-                <span>${potentialReward} ${crypto}</span>
+                <span>Block Reward:</span>
+                <span>${blockReward} ${crypto}</span>
             </div>
             <div class="buy-package-stat">
-                <span>Total Shares:</span>
-                <span>${totalShares}</span>
+                <span>Share Distribution:</span>
+                <span style="color: #4CAF50;" id="${cardId}-share-dist">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Your Potential Reward:</span>
+                <span style="color: #FFD700; font-weight: bold;" id="${cardId}-reward">${initialReward.toFixed(8)} ${crypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Available Shares:</span>
@@ -9282,10 +9339,16 @@ function createTeamPackageCard(pkg) {
                 type="number"
                 id="${cardId}-shares"
                 class="share-input"
-                value="0"
+                value="${myBoughtShares}"
                 min="0"
                 max="${availableShares}"
+                oninput="updateShareCost('${cardId}')"
                 onchange="validateShares('${cardId}', ${availableShares})"
+                data-block-reward="${blockReward}"
+                data-total-bought="${totalBoughtShares}"
+                data-my-bought="${myBoughtShares}"
+                data-total-available="${totalAvailableShares}"
+                data-crypto="${crypto}"
             />
             <button class="share-button" onclick="adjustShares('${cardId}', 1)">+</button>
         </div>
@@ -9296,6 +9359,11 @@ function createTeamPackageCard(pkg) {
             Buy Shares
         </button>
     `;
+
+    // Trigger initial cost/reward update
+    setTimeout(() => {
+        updateShareCost(cardId);
+    }, 0);
 
     return card;
 }
@@ -9327,7 +9395,16 @@ function validateShares(cardId, maxShares) {
 function updateShareCost(cardId) {
     const input = document.getElementById(`${cardId}-shares`);
     const costDisplay = document.getElementById(`${cardId}-cost`);
+    const rewardDisplay = document.getElementById(`${cardId}-reward`);
+    const shareDistDisplay = document.getElementById(`${cardId}-share-dist`);
     const shares = parseInt(input.value) || 0;
+
+    // Extract data attributes from input
+    const blockReward = parseFloat(input.dataset.blockReward) || 0;
+    const totalBoughtShares = parseInt(input.dataset.totalBought) || 0;
+    const myBoughtShares = parseInt(input.dataset.myBought) || 0;
+    const totalAvailableShares = parseInt(input.dataset.totalAvailable) || 0;
+    const crypto = input.dataset.crypto || '';
 
     // Extract share price from the card (stored in the buy button's onclick)
     const card = input.closest('.buy-package-card');
@@ -9343,9 +9420,30 @@ function updateShareCost(cardId) {
 
         costDisplay.textContent = `Total: ${totalBTC} BTC ($${totalAUD} AUD)`;
         costDisplay.style.color = '#4CAF50';
+
+        // Calculate and update reward display
+        const potentialReward = calculateTeamReward(blockReward, totalBoughtShares, shares);
+        if (rewardDisplay) {
+            rewardDisplay.textContent = `${potentialReward.toFixed(8)} ${crypto}`;
+        }
+
+        // Update share distribution display
+        if (shareDistDisplay) {
+            shareDistDisplay.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+        }
     } else {
         costDisplay.textContent = 'Total: 0 BTC ($0.00 AUD)';
         costDisplay.style.color = '#ffa500';
+
+        // Show 0 reward when no shares selected
+        if (rewardDisplay) {
+            rewardDisplay.textContent = `0.00000000 ${crypto}`;
+        }
+
+        // Keep share distribution display
+        if (shareDistDisplay) {
+            shareDistDisplay.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+        }
     }
 }
 
@@ -9353,6 +9451,9 @@ function updateShareCost(cardId) {
 window.adjustShares = adjustShares;
 window.validateShares = validateShares;
 window.updateShareCost = updateShareCost;
+window.getMyTeamShares = getMyTeamShares;
+window.saveMyTeamShares = saveMyTeamShares;
+window.calculateTeamReward = calculateTeamReward;
 
 // Buy solo package using POST /main/api/v2/hashpower/solo/order
 async function buySoloPackage(ticketId, crypto, packagePrice) {
@@ -9513,7 +9614,13 @@ async function buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares) 
         const result = await response.json();
         console.log('✅ Team package purchased successfully:', result);
 
-        showModal(`✅ Team Package purchased successfully!\n\nCrypto: ${crypto}\nShares: ${shares}\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nOrder is now active and mining.`);
+        // Save user's bought shares (increment existing shares)
+        const currentShares = getMyTeamShares(packageId);
+        const newTotalShares = currentShares + shares;
+        saveMyTeamShares(packageId, newTotalShares);
+        console.log(`💾 Saved team shares for package ${packageId}: ${newTotalShares} shares (was ${currentShares})`);
+
+        showModal(`✅ Team Package purchased successfully!\n\nCrypto: ${crypto}\nShares: ${shares}\nTotal Shares Owned: ${newTotalShares}\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nOrder is now active and mining.`);
 
         // Update stats
         easyMiningData.allTimeStats.totalSpent += totalBTC * btcPrice;
