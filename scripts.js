@@ -9656,17 +9656,27 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Probability section - handle dual-crypto packages
     let probabilityInfo = '';
     if (pkg.isDualCrypto) {
-        // Show both probabilities for dual-crypto packages
-        probabilityInfo = `
-            <div class="buy-package-stat">
-                <span>Probability ${pkg.mergeCrypto}:</span>
-                <span>${pkg.mergeProbability}</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Probability ${pkg.mainCrypto}:</span>
-                <span>${pkg.mainProbability}</span>
-            </div>
-        `;
+        // For solo dual-crypto packages (Palladium), show both probabilities on one line
+        if (!pkg.isTeam) {
+            probabilityInfo = `
+                <div class="buy-package-stat">
+                    <span>Probability:</span>
+                    <span>${pkg.mergeProbability} ${pkg.mergeCrypto} ${pkg.mainProbability} ${pkg.mainCrypto}</span>
+                </div>
+            `;
+        } else {
+            // For team dual-crypto packages, show on separate lines
+            probabilityInfo = `
+                <div class="buy-package-stat">
+                    <span>Probability ${pkg.mergeCrypto}:</span>
+                    <span>${pkg.mergeProbability}</span>
+                </div>
+                <div class="buy-package-stat">
+                    <span>Probability ${pkg.mainCrypto}:</span>
+                    <span>${pkg.mainProbability}</span>
+                </div>
+            `;
+        }
     } else if (pkg.probability) {
         // Single crypto package
         probabilityInfo = `
