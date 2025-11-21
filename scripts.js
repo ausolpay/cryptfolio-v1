@@ -9909,6 +9909,24 @@ async function fetchPackageCryptoPrices(packages) {
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
+    // Fetch balance from NiceHash API
+    try {
+        console.log('💰 Fetching balance from NiceHash API...');
+        const balanceData = await fetchNiceHashBalances();
+        window.niceHashBalance = {
+            available: balanceData.available || 0,
+            pending: balanceData.pending || 0
+        };
+        console.log('✅ Balance fetched:', window.niceHashBalance);
+    } catch (error) {
+        console.warn('⚠️ Failed to fetch balance, using fallback:', error);
+        // Fallback to easyMiningData or zero
+        window.niceHashBalance = {
+            available: easyMiningData?.balanceBTC || 0,
+            pending: easyMiningData?.pendingBTC || 0
+        };
+    }
+
     // Try to fetch from API, fall back to mock data
     let singlePackages = await fetchNiceHashSoloPackages();
 
@@ -9961,18 +9979,31 @@ async function loadBuyPackagesDataOnPage() {
     console.log(`📦 Populating ${singlePackages.length} single packages...`);
 
     // Add balance display
-    const availableBalance = easyMiningData?.balanceBTC || 0;
-    const balanceAUD = window.packageCryptoPrices?.['btc']?.aud
+    const availableBalance = window.niceHashBalance?.available || 0;
+    const pendingBalance = window.niceHashBalance?.pending || 0;
+    const availableAUD = window.packageCryptoPrices?.['btc']?.aud
         ? (availableBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
+        : '0.00';
+    const pendingAUD = window.packageCryptoPrices?.['btc']?.aud
+        ? (pendingBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
         : '0.00';
 
     singleContainer.innerHTML = `
         <div style="padding: 15px; margin-bottom: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #aaa; font-size: 14px;">💰 Available Balance:</span>
+                <div>
+                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance:</div>
+                    <div style="color: #aaa; font-size: 14px;">⏳ Pending Balance:</div>
+                </div>
                 <div style="text-align: right;">
-                    <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                    <div style="color: #888; font-size: 13px;">≈ $${balanceAUD} AUD</div>
+                    <div style="margin-bottom: 8px;">
+                        <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
+                        <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
+                    </div>
+                    <div>
+                        <div style="color: #FFA500; font-size: 16px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
+                        <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -9998,15 +10029,24 @@ async function loadBuyPackagesDataOnPage() {
 
     console.log(`👥 Populating ${teamPackages.length} team packages...`);
 
-    // Add balance display
+    // Add balance display (reuse variables from solo packages section)
     teamContainer.innerHTML = `
         <div style="padding: 15px; margin-bottom: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #aaa; font-size: 14px;">💰 Available Balance:</span>
+                <div>
+                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance:</div>
+                    <div style="color: #aaa; font-size: 14px;">⏳ Pending Balance:</div>
+                </div>
                 <div style="text-align: right;">
-                    <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                    <div style="color: #888; font-size: 13px;">≈ $${balanceAUD} AUD</div>
-                    <div style="color: #ffa500; font-size: 12px; margin-top: 5px;">1 share = 0.0001 BTC</div>
+                    <div style="margin-bottom: 8px;">
+                        <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
+                        <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
+                    </div>
+                    <div>
+                        <div style="color: #FFA500; font-size: 16px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
+                        <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
+                    </div>
+                    <div style="color: #ffa500; font-size: 12px; margin-top: 8px; border-top: 1px solid #444; padding-top: 8px;">1 share = 0.0001 BTC</div>
                 </div>
             </div>
         </div>
@@ -10208,8 +10248,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         `;
     }
 
-    // Get available balance
-    const availableBalance = easyMiningData?.balanceBTC || 0;
+    // Get available balance from fetched NiceHash balance
+    const availableBalance = window.niceHashBalance?.available || 0;
 
     // Calculate affordability
     let canAfford = false;
@@ -10295,7 +10335,7 @@ function adjustShares(packageName, delta) {
     input.value = newValue;
 
     // Check balance and update + button state for team packages
-    const availableBalance = easyMiningData?.balanceBTC || 0;
+    const availableBalance = window.niceHashBalance?.available || 0;
     const sharePrice = 0.0001; // Team packages: 0.0001 BTC per share
     const nextShareCost = (newValue + 1) * sharePrice;
 
