@@ -1867,6 +1867,10 @@ body.light-mode .buy-package-card {
     box-shadow: 0 0 15px rgba(255, 165, 0, 0.5);
 }
 
+.buy-package-card.team-package {
+    height: auto;
+}
+
 .buy-package-card h4 {
     margin-top: 0;
     margin-bottom: 10px;

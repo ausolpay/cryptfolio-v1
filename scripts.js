@@ -9538,7 +9538,7 @@ async function loadBuyPackagesDataOnPage() {
 
 function createBuyPackageCardForPage(pkg, isRecommended) {
     const card = document.createElement('div');
-    card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '');
+    card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '') + (pkg.isTeam ? ' team-package' : '');
 
     // Use package crypto prices (fetched specifically for buy packages page)
     const prices = window.packageCryptoPrices || {};
@@ -9710,14 +9710,21 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         `;
     }
 
-    // For team packages: add share selector
+    // For team packages: add share selector with buy button on same row
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1)" class="share-adjuster-btn">-</button>
             <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="0" min="0" max="${pkg.totalShares - pkg.boughtShares}" class="share-adjuster-input" readonly>
             <button onclick="adjustShares('${pkg.name}', 1)" class="share-adjuster-btn">+</button>
-            <span class="share-adjuster-label">shares</span>
+            <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})' style="margin-left: 10px;">Buy</button>
         </div>
+    ` : '';
+
+    // For solo packages: separate buy button
+    const soloBuyButton = !pkg.isTeam ? `
+        <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
+            Buy
+        </button>
     ` : '';
 
     card.innerHTML = `
@@ -9737,9 +9744,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
         </div>
         ${teamShareSelector}
-        <button class="buy-now-btn" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
-            Buy Now
-        </button>
+        ${soloBuyButton}
     `;
 
     return card;
