@@ -770,8 +770,68 @@ async function loadSoloAlerts() {
                 const mergeCrypto = this.dataset.mergeCrypto || null;
 
                 if (this.checked) {
-                    // Open confirmation modal
-                    showAutoBuyConfirmationModal(packageName, crypto, mergeCrypto, 1, false);
+                    // Simple confirmation dialog
+                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nWhen an alert triggers, this package will be purchased automatically.\n\nCooldown: 1 hour 15 minutes between purchases.`)) {
+                        this.checked = false;
+                        return;
+                    }
+
+                    // Check/prompt for withdrawal addresses
+                    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+                    let mainAddress = savedAddresses[crypto];
+                    if (!mainAddress) {
+                        mainAddress = prompt(`Enter ${crypto} withdrawal address for auto-buy:`);
+                        if (!mainAddress || mainAddress.trim() === '') {
+                            alert('Withdrawal address is required for auto-buy');
+                            this.checked = false;
+                            return;
+                        }
+                        savedAddresses[crypto] = mainAddress.trim();
+                    }
+
+                    let mergeAddress = null;
+                    if (mergeCrypto) {
+                        mergeAddress = savedAddresses[mergeCrypto];
+                        if (!mergeAddress) {
+                            mergeAddress = prompt(`Enter ${mergeCrypto} withdrawal address for auto-buy:`);
+                            if (!mergeAddress || mergeAddress.trim() === '') {
+                                alert('Withdrawal address is required for auto-buy');
+                                this.checked = false;
+                                return;
+                            }
+                            savedAddresses[mergeCrypto] = mergeAddress.trim();
+                        }
+                    }
+
+                    // Save addresses
+                    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+
+                    // Save auto-buy settings
+                    const storageKey = `${loggedInUser}_soloAutoBuy`;
+                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+                    autoBuySettings[packageName] = {
+                        enabled: true,
+                        crypto: crypto,
+                        mergeCrypto: mergeCrypto || null,
+                        mainAddress: mainAddress,
+                        mergeAddress: mergeAddress,
+                        shares: 1,
+                        lastBuyTime: null
+                    };
+
+                    localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                    console.log(`✅ Auto-buy enabled for ${packageName}`);
+
+                    // Update status text
+                    const statusSpan = this.nextElementSibling;
+                    if (statusSpan) {
+                        statusSpan.textContent = '✓ Enabled';
+                        statusSpan.style.color = '#4CAF50';
+                    }
+
+                    alert(`Auto-buy enabled for ${packageName}!`);
                 } else {
                     // Disable auto-buy
                     const storageKey = `${loggedInUser}_soloAutoBuy`;
@@ -985,8 +1045,68 @@ async function loadTeamAlerts() {
                     const sharesInput = document.getElementById(sharesInputId);
                     const shares = sharesInput ? parseInt(sharesInput.value) || 1 : 1;
 
-                    // Open confirmation modal
-                    showAutoBuyConfirmationModal(packageName, crypto, mergeCrypto, shares, true);
+                    // Simple confirmation dialog
+                    if (!confirm(`Enable Auto-Buy for ${packageName}?\n\nShares: ${shares}\n\nWhen an alert triggers, this package will be purchased automatically with ${shares} share(s).\n\nCooldown: 1 hour 15 minutes between purchases.`)) {
+                        this.checked = false;
+                        return;
+                    }
+
+                    // Check/prompt for withdrawal addresses
+                    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+                    let mainAddress = savedAddresses[crypto];
+                    if (!mainAddress) {
+                        mainAddress = prompt(`Enter ${crypto} withdrawal address for auto-buy:`);
+                        if (!mainAddress || mainAddress.trim() === '') {
+                            alert('Withdrawal address is required for auto-buy');
+                            this.checked = false;
+                            return;
+                        }
+                        savedAddresses[crypto] = mainAddress.trim();
+                    }
+
+                    let mergeAddress = null;
+                    if (mergeCrypto) {
+                        mergeAddress = savedAddresses[mergeCrypto];
+                        if (!mergeAddress) {
+                            mergeAddress = prompt(`Enter ${mergeCrypto} withdrawal address for auto-buy:`);
+                            if (!mergeAddress || mergeAddress.trim() === '') {
+                                alert('Withdrawal address is required for auto-buy');
+                                this.checked = false;
+                                return;
+                            }
+                            savedAddresses[mergeCrypto] = mergeAddress.trim();
+                        }
+                    }
+
+                    // Save addresses
+                    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+
+                    // Save auto-buy settings
+                    const storageKey = `${loggedInUser}_teamAutoBuy`;
+                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+                    autoBuySettings[packageName] = {
+                        enabled: true,
+                        crypto: crypto,
+                        mergeCrypto: mergeCrypto || null,
+                        mainAddress: mainAddress,
+                        mergeAddress: mergeAddress,
+                        shares: shares,
+                        lastBuyTime: null
+                    };
+
+                    localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                    console.log(`✅ Auto-buy enabled for ${packageName} with ${shares} share(s)`);
+
+                    // Update status text
+                    const statusSpan = this.nextElementSibling;
+                    if (statusSpan) {
+                        statusSpan.textContent = '✓ Enabled';
+                        statusSpan.style.color = '#4CAF50';
+                    }
+
+                    alert(`Auto-buy enabled for ${packageName} with ${shares} share(s)!`);
                 } else {
                     // Disable auto-buy
                     const storageKey = `${loggedInUser}_teamAutoBuy`;
@@ -8612,183 +8732,6 @@ function showBuyTab(tab) {
     }
 }
 
-// Auto-Buy Modal Functions
-let pendingAutoBuy = null;
-
-function showAutoBuyConfirmationModal(packageName, crypto, mergeCrypto, shares, isTeam) {
-    console.log(`Opening auto-buy confirmation for ${packageName}`);
-
-    // Store pending auto-buy data
-    pendingAutoBuy = {
-        packageName,
-        crypto,
-        mergeCrypto,
-        shares: shares || 1,
-        isTeam: isTeam || false
-    };
-
-    const modal = document.getElementById('autobuy-confirmation-modal');
-
-    // Update package name
-    document.getElementById('autobuy-package-name').textContent = packageName;
-
-    // Update shares display (only for team packages)
-    if (isTeam) {
-        document.getElementById('autobuy-shares-display').textContent = shares || 1;
-    } else {
-        // For solo packages, show "N/A" or hide the shares line
-        document.getElementById('autobuy-shares-display').textContent = 'N/A';
-    }
-
-    // Load saved addresses
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
-
-    // Setup main crypto address
-    document.getElementById('autobuy-main-crypto-label').textContent = crypto;
-    const mainAddress = savedAddresses[crypto];
-
-    if (mainAddress) {
-        document.getElementById('autobuy-main-address-value').textContent = mainAddress;
-        document.getElementById('autobuy-main-address-saved').style.display = 'block';
-        document.getElementById('autobuy-main-address-input').style.display = 'none';
-    } else {
-        document.getElementById('autobuy-main-address-saved').style.display = 'none';
-        document.getElementById('autobuy-main-address-input').style.display = 'block';
-        document.getElementById('autobuy-main-address').value = '';
-    }
-
-    // Setup merge crypto address (for dual-crypto packages)
-    if (mergeCrypto) {
-        document.getElementById('autobuy-merge-section').style.display = 'block';
-        document.getElementById('autobuy-merge-crypto-label').textContent = mergeCrypto;
-        const mergeAddress = savedAddresses[mergeCrypto];
-
-        if (mergeAddress) {
-            document.getElementById('autobuy-merge-address-value').textContent = mergeAddress;
-            document.getElementById('autobuy-merge-address-saved').style.display = 'block';
-            document.getElementById('autobuy-merge-address-input').style.display = 'none';
-        } else {
-            document.getElementById('autobuy-merge-address-saved').style.display = 'none';
-            document.getElementById('autobuy-merge-address-input').style.display = 'block';
-            document.getElementById('autobuy-merge-address').value = '';
-        }
-    } else {
-        document.getElementById('autobuy-merge-section').style.display = 'none';
-    }
-
-    modal.style.display = 'block';
-}
-
-function closeAutoBuyConfirmationModal() {
-    document.getElementById('autobuy-confirmation-modal').style.display = 'none';
-
-    // If modal was closed without confirming, uncheck the toggle
-    if (pendingAutoBuy) {
-        const checkboxId = pendingAutoBuy.isTeam
-            ? `team-autobuy-${pendingAutoBuy.packageName.replace(/\s+/g, '-')}`
-            : `autobuy-${pendingAutoBuy.packageName.replace(/\s+/g, '-')}`;
-        const checkbox = document.getElementById(checkboxId);
-        if (checkbox) {
-            checkbox.checked = false;
-        }
-    }
-
-    pendingAutoBuy = null;
-}
-
-function editAutoBuyAddress(type) {
-    if (type === 'main') {
-        document.getElementById('autobuy-main-address-saved').style.display = 'none';
-        document.getElementById('autobuy-main-address-input').style.display = 'block';
-    } else {
-        document.getElementById('autobuy-merge-address-saved').style.display = 'none';
-        document.getElementById('autobuy-merge-address-input').style.display = 'block';
-    }
-}
-
-function confirmAutoBuy() {
-    if (!pendingAutoBuy) {
-        console.error('No pending auto-buy to confirm');
-        return;
-    }
-
-    const { packageName, crypto, mergeCrypto, shares, isTeam } = pendingAutoBuy;
-
-    // Load saved addresses
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
-
-    // Validate main address
-    let mainAddress = savedAddresses[crypto];
-    const mainInput = document.getElementById('autobuy-main-address');
-
-    if (!mainAddress && mainInput.style.display !== 'none') {
-        mainAddress = mainInput.value.trim();
-        if (!mainAddress) {
-            alert(`Please enter a ${crypto} withdrawal address`);
-            return;
-        }
-        // Save the new address
-        savedAddresses[crypto] = mainAddress;
-    }
-
-    // Validate merge address if dual-crypto
-    let mergeAddress = null;
-    if (mergeCrypto) {
-        mergeAddress = savedAddresses[mergeCrypto];
-        const mergeInput = document.getElementById('autobuy-merge-address');
-
-        if (!mergeAddress && mergeInput.style.display !== 'none') {
-            mergeAddress = mergeInput.value.trim();
-            if (!mergeAddress) {
-                alert(`Please enter a ${mergeCrypto} withdrawal address`);
-                return;
-            }
-            // Save the new address
-            savedAddresses[mergeCrypto] = mergeAddress;
-        }
-    }
-
-    // Save all addresses
-    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
-
-    // Save auto-buy settings
-    const storageKey = isTeam ? `${loggedInUser}_teamAutoBuy` : `${loggedInUser}_soloAutoBuy`;
-    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
-
-    autoBuySettings[packageName] = {
-        enabled: true,
-        crypto: crypto,
-        mergeCrypto: mergeCrypto || null,
-        mainAddress: mainAddress,
-        mergeAddress: mergeAddress,
-        shares: shares || 1,
-        lastBuyTime: null // Will be set when first purchase happens
-    };
-
-    localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
-
-    console.log(`✅ Auto-buy enabled for ${packageName}`, autoBuySettings[packageName]);
-
-    // Close modal
-    document.getElementById('autobuy-confirmation-modal').style.display = 'none';
-    pendingAutoBuy = null;
-
-    // Update UI status text next to checkbox
-    const checkboxId = isTeam
-        ? `team-autobuy-${packageName.replace(/\s+/g, '-')}`
-        : `autobuy-${packageName.replace(/\s+/g, '-')}`;
-    const checkbox = document.getElementById(checkboxId);
-    if (checkbox) {
-        const statusSpan = checkbox.nextElementSibling;
-        if (statusSpan) {
-            statusSpan.textContent = '✓ Enabled';
-            statusSpan.style.color = '#4CAF50';
-        }
-    }
-
-    alert(`Auto-buy enabled for ${packageName}!\n\nThe package will be automatically purchased when an alert triggers.\n\nCooldown: 1 hour 15 minutes between purchases.`);
-}
-
 // Make modal functions globally accessible
 window.showPackageDetailModal = showPackageDetailModal;
 window.closePackageDetailModal = closePackageDetailModal;
@@ -8796,10 +8739,6 @@ window.showBuyPackagesModal = showBuyPackagesModal;
 window.closeBuyPackagesModal = closeBuyPackagesModal;
 window.showBuyTab = showBuyTab;
 window.buyPackage = buyPackage;
-window.showAutoBuyConfirmationModal = showAutoBuyConfirmationModal;
-window.closeAutoBuyConfirmationModal = closeAutoBuyConfirmationModal;
-window.editAutoBuyAddress = editAutoBuyAddress;
-window.confirmAutoBuy = confirmAutoBuy;
 
 async function loadBuyPackagesData() {
     console.log('\n🛒 Loading available packages from NiceHash API...\n');
