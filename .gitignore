@@ -1,0 +1,15 @@
+# Logs
+logs/
+*.log
+
+# Development files
+*.backup
+.claude/
+.playwright-mcp/
+
+# Documentation (keep only CLAUDE.md)
+*.md
+!CLAUDE.md
+
+# Development/test files
+new_fetchNiceHashOrders.js
