@@ -2234,12 +2234,11 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 .buy-packages-container-page {
     display: grid;
-    grid-template-columns: repeat(auto-fit, 420px); /* Auto-fit fixed square boxes */
+    grid-template-columns: repeat(3, 420px); /* 3 fixed square boxes per row */
     gap: 15px; /* Gap between cards */
-    margin-top: 20px;
+    margin: 20px auto 0 auto; /* Center the section */
     padding: 0 20px;
-    justify-content: center; /* Center the grid */
-    width: 100%; /* Full width, auto-adjusts to fit boxes */
+    width: fit-content; /* Section width fits the boxes exactly */
 }
 
 /* Narrow Tablet - 2 columns */
