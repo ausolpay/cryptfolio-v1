@@ -8462,10 +8462,6 @@ async function fetchNiceHashSoloPackages() {
 async function fetchPackageCryptoPrices(packages) {
     console.log('💰 Fetching prices for package cryptocurrencies...');
 
-    // Extract unique crypto IDs from packages
-    const uniqueCryptos = [...new Set(packages.map(pkg => pkg.crypto).filter(Boolean))];
-    console.log('💰 Unique cryptos to fetch:', uniqueCryptos);
-
     // Map crypto symbols to CoinGecko IDs
     const cryptoIdMap = {
         'BTC': 'bitcoin',
@@ -8473,14 +8469,29 @@ async function fetchPackageCryptoPrices(packages) {
         'KAS': 'kaspa',
         'RVN': 'ravencoin',
         'DOGE': 'dogecoin',
-        'LTC': 'litecoin',
-        'DOGE/LTC': 'dogecoin' // For dual cryptos, use first
+        'LTC': 'litecoin'
     };
 
     const prices = {};
 
-    // Add BTC for price calculations
-    const idsToFetch = ['bitcoin', ...uniqueCryptos.map(symbol => cryptoIdMap[symbol]).filter(Boolean)];
+    // Extract all cryptos needed (including both from dual-crypto packages)
+    const cryptosToFetch = new Set(['bitcoin']); // Always include BTC for price calculations
+
+    packages.forEach(pkg => {
+        if (pkg.isDualCrypto) {
+            // For dual-crypto packages, add both cryptos
+            cryptosToFetch.add(pkg.mainCrypto);
+            cryptosToFetch.add(pkg.mergeCrypto);
+        } else if (pkg.crypto) {
+            // For single-crypto packages, add the crypto
+            cryptosToFetch.add(pkg.crypto);
+        }
+    });
+
+    console.log('💰 Cryptos to fetch:', Array.from(cryptosToFetch));
+
+    // Convert symbols to CoinGecko IDs
+    const idsToFetch = Array.from(cryptosToFetch).map(symbol => cryptoIdMap[symbol]).filter(Boolean);
     const uniqueIds = [...new Set(idsToFetch)];
 
     console.log('💰 CoinGecko IDs to fetch:', uniqueIds);
@@ -8496,7 +8507,7 @@ async function fetchPackageCryptoPrices(packages) {
         // Store prices with both symbol and ID as keys for easy lookup
         for (const [id, priceData] of Object.entries(data)) {
             prices[id] = priceData;
-            // Also store by symbol
+            // Also store by symbol (lowercase)
             for (const [symbol, coinGeckoId] of Object.entries(cryptoIdMap)) {
                 if (coinGeckoId === id) {
                     prices[symbol.toLowerCase()] = priceData;
@@ -8510,6 +8521,7 @@ async function fetchPackageCryptoPrices(packages) {
         }
 
         console.log('✅ Package crypto prices loaded:', prices);
+        console.log('💰 Price check - DOGE:', prices['doge'], 'LTC:', prices['ltc']);
         return prices;
 
     } catch (error) {
