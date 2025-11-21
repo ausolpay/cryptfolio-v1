@@ -206,11 +206,15 @@ function initializeApp() {
         const noBlocksFoundSound = document.getElementById('no-blocks-found-sound');
         const blockFoundCompleteSound = document.getElementById('block-found-complete-sound');
         const packageStartSound = document.getElementById('package-start-sound');
+        const soloPkgAlertSound = document.getElementById('solo-pkg-alert-sound');
+        const teamPkgAlertSound = document.getElementById('team-pkg-alert-sound');
 
         blockFoundSound.muted = !isEasyMiningAudioEnabled;
         noBlocksFoundSound.muted = !isEasyMiningAudioEnabled;
         blockFoundCompleteSound.muted = !isEasyMiningAudioEnabled;
         packageStartSound.muted = !isEasyMiningAudioEnabled;
+        soloPkgAlertSound.muted = !isEasyMiningAudioEnabled;
+        teamPkgAlertSound.muted = !isEasyMiningAudioEnabled;
 
         easyMiningAudioToggle.addEventListener('change', function () {
             if (this.checked) {
@@ -218,11 +222,15 @@ function initializeApp() {
                 noBlocksFoundSound.muted = false;
                 blockFoundCompleteSound.muted = false;
                 packageStartSound.muted = false;
+                soloPkgAlertSound.muted = false;
+                teamPkgAlertSound.muted = false;
             } else {
                 blockFoundSound.muted = true;
                 noBlocksFoundSound.muted = true;
                 blockFoundCompleteSound.muted = true;
                 packageStartSound.muted = true;
+                soloPkgAlertSound.muted = true;
+                teamPkgAlertSound.muted = true;
             }
             setStorageItem('isEasyMiningAudioEnabled', this.checked);
         });
@@ -7836,6 +7844,9 @@ async function updateRecommendations() {
         if (newSoloAlerts.length > 0) {
             console.log(`🔔 New solo package alert(s): ${newSoloAlerts.map(p => p.name).join(', ')}`);
             playSound('solo-pkg-alert-sound');
+            if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+                navigator.vibrate([100, 50, 100]); // Double vibrate for alert
+            }
             // Mark these packages as alerted
             newSoloAlerts.forEach(pkg => alertedSoloPackages.add(pkg.name));
         }
@@ -7847,6 +7858,9 @@ async function updateRecommendations() {
         if (newTeamAlerts.length > 0) {
             console.log(`🔔 New team package alert(s): ${newTeamAlerts.map(p => p.name).join(', ')}`);
             playSound('team-pkg-alert-sound');
+            if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
+                navigator.vibrate([100, 50, 100]); // Double vibrate for alert
+            }
             // Mark these packages as alerted
             newTeamAlerts.forEach(pkg => alertedTeamPackages.add(pkg.name));
         }
