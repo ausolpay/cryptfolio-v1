@@ -10347,12 +10347,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Calculate per-share rewards for dual-crypto packages
         let mergeRewardPerShare = pkg.mergeBlockReward || 0;
         let mainRewardPerShare = pkg.blockReward || 0;
+        let rewardValuePerShare = parseFloat(rewardAUD);
 
         if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
             const sharePrice = 0.0001;
             const totalSharesInPackage = pkg.addedAmount / sharePrice;
             mergeRewardPerShare = (pkg.mergeBlockReward || 0) / totalSharesInPackage;
             mainRewardPerShare = (pkg.blockReward || 0) / totalSharesInPackage;
+            rewardValuePerShare = parseFloat(rewardAUD) / totalSharesInPackage;
 
             console.log(`🎨 DISPLAYING Palladium ${pkg.name} per-share:`, {
                 mergeCrypto: pkg.mergeCrypto,
@@ -10361,6 +10363,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 mainCrypto: pkg.mainCrypto,
                 totalMainReward: pkg.blockReward,
                 mainRewardPerShare: mainRewardPerShare,
+                totalRewardValueAUD: rewardAUD,
+                rewardValuePerShare: rewardValuePerShare.toFixed(2),
                 totalSharesInPackage: totalSharesInPackage
             });
         }
@@ -10377,17 +10381,19 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardAUD} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardValuePerShare.toFixed(2)} AUD</span>
             </div>
         `;
     } else if (pkg.blockReward) {
         // Single crypto package - calculate per-share reward
         let rewardPerShare = pkg.blockReward;
+        let rewardValuePerShare = parseFloat(rewardAUD);
 
         if (pkg.isTeam && pkg.addedAmount && pkg.addedAmount > 0) {
             const sharePrice = 0.0001;
             const totalSharesInPackage = pkg.addedAmount / sharePrice;
             rewardPerShare = pkg.blockReward / totalSharesInPackage;
+            rewardValuePerShare = parseFloat(rewardAUD) / totalSharesInPackage;
         }
 
         rewardInfo = `
@@ -10397,7 +10403,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardAUD} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${rewardValuePerShare.toFixed(2)} AUD</span>
             </div>
         `;
     }
