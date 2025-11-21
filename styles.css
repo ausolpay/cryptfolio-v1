@@ -1840,8 +1840,8 @@ body.light-mode .tab-button {
     justify-content: space-between;
     overflow: hidden; /* Keep content within bounds */
     box-sizing: border-box;
-    width: 420px; /* Fixed square width */
-    height: 420px; /* Fixed square height */
+    width: 336px; /* Fixed square width - 1/5 smaller than 420px */
+    height: 336px; /* Fixed square height - 1/5 smaller than 420px */
     font-size: 14px; /* Base font size that scales with card */
 }
 
@@ -2234,24 +2234,39 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 .buy-packages-container-page {
     display: grid;
-    grid-template-columns: repeat(3, 420px); /* 3 fixed square boxes per row */
+    grid-template-columns: repeat(3, 336px); /* 3 fixed square boxes per row on desktop */
     gap: 15px; /* Gap between cards */
     margin: 20px auto 0 auto; /* Center the section */
     padding: 0 20px;
     width: fit-content; /* Section width fits the boxes exactly */
 }
 
-/* Narrow Tablet - 2 columns */
+/* Narrow Tablet - 2 columns with smaller boxes */
 @media (max-width: 1040px) {
     .buy-packages-container-page {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, 300px);
+    }
+
+    .buy-package-card {
+        width: 300px;
+        height: 300px;
+        font-size: 13px; /* Slightly smaller font for smaller boxes */
     }
 }
 
-/* Mobile - 1 column */
+/* Mobile - 1 column with scaled down boxes */
 @media (max-width: 700px) {
     .buy-packages-container-page {
-        grid-template-columns: 1fr;
+        grid-template-columns: 280px;
+        padding: 0 10px; /* Less padding on mobile */
+        gap: 10px;
+    }
+
+    .buy-package-card {
+        width: 280px;
+        height: 280px;
+        font-size: 12px; /* Smaller font for mobile boxes */
+        padding: 12px;
     }
 }
 
