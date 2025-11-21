@@ -4533,13 +4533,22 @@ async function fetchEasyMiningData() {
             }
         } else {
             console.warn('API credentials incomplete, using fallback data');
-            // Preserve last known balances instead of resetting to 0
-            // This prevents losing NiceHash balance when credentials are missing
+            // Load package holdings from storage (persist user's packages)
+            // But do NOT load live balances - they should show 0 until real API data arrives
             const storedData = JSON.parse(getStorageItem(`${loggedInUser}_easyMiningData`)) || {};
-            easyMiningData.availableBTC = storedData.availableBTC || '0.00000000';
-            easyMiningData.pendingBTC = storedData.pendingBTC || '0.00000000';
+
+            // Keep balances at 0 (no credentials = no live balance data)
+            easyMiningData.availableBTC = '0.00000000';
+            easyMiningData.pendingBTC = '0.00000000';
+
+            // Preserve package holdings and stats from storage
             easyMiningData.activePackages = storedData.activePackages || [];
-            console.log(`📦 Using stored balances: Available ${easyMiningData.availableBTC}, Pending ${easyMiningData.pendingBTC}`);
+            easyMiningData.allTimeStats = storedData.allTimeStats || easyMiningData.allTimeStats;
+            easyMiningData.todayStats = storedData.todayStats || easyMiningData.todayStats;
+            easyMiningData.blocksFoundSession = storedData.blocksFoundSession || 0;
+            easyMiningData.lastBlockCount = storedData.lastBlockCount || 0;
+
+            console.log(`📦 Loaded stored package data (${easyMiningData.activePackages.length} packages). Live balances showing 0 until API connected.`);
         }
 
         // Save easyMiningData to localStorage to persist balances
