@@ -6364,6 +6364,12 @@ function displayActivePackages() {
                 <span>Reward:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
+            ${!pkg.active && pkg.blockFound && pkg.reward > 0 ? `
+            <div class="package-card-stat">
+                <span>Reward AUD:</span>
+                <span style="color: #00ff00;">$${convertCryptoToAUD(pkg.reward, pkg.crypto).toFixed(2)} AUD${pkg.rewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary).toFixed(2)} AUD` : ''}</span>
+            </div>
+            ` : ''}
             ${pkg.isTeam && pkg.ownedShares !== null && pkg.ownedShares !== undefined && pkg.totalShares !== null && pkg.totalShares !== undefined && pkg.ownedShares > 0 && pkg.totalShares > 0 ? `
             <div class="package-card-stat">
                 <span>My Shares:</span>
