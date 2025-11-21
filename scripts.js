@@ -8218,21 +8218,43 @@ function loadBuyPackagesDataOnPage() {
 
     // Populate single packages
     const singleContainer = document.getElementById('buy-single-packages-page');
+    if (!singleContainer) {
+        console.error('❌ Could not find buy-single-packages-page container!');
+        return;
+    }
+
+    console.log(`📦 Populating ${singlePackages.length} single packages...`);
     singleContainer.innerHTML = '';
     singlePackages.forEach(pkg => {
-        const isRecommended = recommended.includes(pkg.name);
-        const card = createBuyPackageCardForPage(pkg, isRecommended);
-        singleContainer.appendChild(card);
+        try {
+            const isRecommended = recommended.includes(pkg.name);
+            const card = createBuyPackageCardForPage(pkg, isRecommended);
+            singleContainer.appendChild(card);
+        } catch (error) {
+            console.error('❌ Error creating card for package:', pkg.name, error);
+        }
     });
+    console.log('✅ Single packages populated');
 
     // Populate team packages
     const teamContainer = document.getElementById('buy-team-packages-page');
+    if (!teamContainer) {
+        console.error('❌ Could not find buy-team-packages-page container!');
+        return;
+    }
+
+    console.log(`👥 Populating ${teamPackages.length} team packages...`);
     teamContainer.innerHTML = '';
     teamPackages.forEach(pkg => {
-        const isRecommended = recommended.includes(pkg.name);
-        const card = createBuyPackageCardForPage(pkg, isRecommended);
-        teamContainer.appendChild(card);
+        try {
+            const isRecommended = recommended.includes(pkg.name);
+            const card = createBuyPackageCardForPage(pkg, isRecommended);
+            teamContainer.appendChild(card);
+        } catch (error) {
+            console.error('❌ Error creating card for package:', pkg.name, error);
+        }
     });
+    console.log('✅ Team packages populated');
 }
 
 function createBuyPackageCardForPage(pkg, isRecommended) {
@@ -8242,10 +8264,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Calculate reward in AUD based on crypto prices
     let rewardAUD = 0;
     if (pkg.blockReward && pkg.crypto) {
-        const cryptoKey = pkg.crypto.toLowerCase().split('/')[0]; // Handle DOGE/LTC
-        const cryptoData = cryptoPrices[cryptoKey];
-        if (cryptoData && cryptoData.aud) {
-            rewardAUD = (pkg.blockReward * cryptoData.aud).toFixed(2);
+        try {
+            const cryptoKey = pkg.crypto.toLowerCase().split('/')[0]; // Handle DOGE/LTC
+            if (typeof cryptoPrices !== 'undefined' && cryptoPrices[cryptoKey] && cryptoPrices[cryptoKey].aud) {
+                rewardAUD = (pkg.blockReward * cryptoPrices[cryptoKey].aud).toFixed(2);
+            }
+        } catch (error) {
+            console.log('Could not calculate reward AUD:', error);
+            rewardAUD = 0;
         }
     }
 

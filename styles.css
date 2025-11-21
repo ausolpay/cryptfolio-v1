@@ -2138,16 +2138,9 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 .buy-packages-container-page {
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 columns on desktop */
+    grid-template-columns: repeat(3, 1fr); /* 3 columns on desktop */
     gap: 20px;
     margin-top: 20px;
-}
-
-/* Wide Tablet - 3 columns */
-@media (max-width: 1390px) {
-    .buy-packages-container-page {
-        grid-template-columns: repeat(3, 1fr);
-    }
 }
 
 /* Narrow Tablet - 2 columns */
