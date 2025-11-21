@@ -344,27 +344,17 @@ function loadUserData() {
 
             const holdingsElement = document.getElementById(`${crypto.id}-holdings`);
             if (holdingsElement) {
-                // For Bitcoin, use display holdings (includes NiceHash balance)
-                // For other cryptos, use manual holdings from localStorage
-                let holdings = 0;
+                // Load ONLY manual holdings from storage (not displayHoldings)
+                // EasyMining will add NiceHash balance when it loads
+                let holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+
                 if (crypto.id === 'bitcoin') {
-                    // Try to load displayed holdings (manual + NiceHash) first
-                    holdings = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayHoldings`)) ||
-                               parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
                     // No formatting for BTC - use raw number with 8 decimals
                     holdingsElement.textContent = holdings.toFixed(8);
+                    console.log(`📖 Loaded Bitcoin manual holdings: ${holdings.toFixed(8)} (EasyMining balance will be added when it loads)`);
 
-                    // Also load and display the stored AUD value for Bitcoin
-                    const btcValueElement = document.getElementById('bitcoin-value-aud');
-                    if (btcValueElement) {
-                        const storedAUD = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayAUD`)) || 0;
-                        if (storedAUD > 0) {
-                            btcValueElement.textContent = formatNumber(storedAUD.toFixed(2));
-                            console.log(`📖 Loaded Bitcoin AUD from localStorage: $${storedAUD.toFixed(2)}`);
-                        }
-                    }
+                    // Don't load stored AUD value - will be recalculated with current price
                 } else {
-                    holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
                     holdingsElement.textContent = formatNumber(holdings.toFixed(3));
                 }
             }
@@ -2560,14 +2550,13 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
 
                     priceElement.textContent = `$${formatNumber(priceInAud.toFixed(8), true)}`; // Update price
 
-                    // For Bitcoin, use display holdings (manual + NiceHash balance) instead of just manual holdings
-                    let holdings;
-                    if (coingeckoId === 'bitcoin') {
-                        // Use stored display holdings which includes NiceHash balance
-                        holdings = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayHoldings`)) ||
-                                   parseFloat(localStorage.getItem(`${loggedInUser}_${coingeckoId}Holdings`)) || 0;
-                    } else {
-                        holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${coingeckoId}Holdings`)) || 0;
+                    // Get current holdings from DOM (reflects real-time value including EasyMining)
+                    // Don't read from localStorage to avoid showing stale NiceHash balance
+                    const holdingsElement = document.getElementById(`${coingeckoId}-holdings`);
+                    let holdings = 0;
+                    if (holdingsElement) {
+                        // Parse current displayed value (already includes EasyMining balance for Bitcoin)
+                        holdings = parseFloat(holdingsElement.textContent.replace(/,/g, '')) || 0;
                     }
 
                     const holdingsValueAud = holdings * priceInAud;
@@ -6770,18 +6759,9 @@ function updateBTCHoldings() {
         }
     }
 
-    // If NiceHash balance is 0 but we have a stored display value with NiceHash, preserve it
-    // This prevents losing NiceHash balance when API temporarily fails or credentials missing
-    const storedDisplayHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoin_displayHoldings`)) || 0;
-    let totalToDisplay;
-    if (niceHashBalance === 0 && storedDisplayHoldings > manualHoldings) {
-        // Use stored value which includes last known NiceHash balance
-        console.log(`⚠️ NiceHash balance is 0, preserving stored display value: ${storedDisplayHoldings.toFixed(8)}`);
-        totalToDisplay = storedDisplayHoldings;
-    } else {
-        // Total to display = manual + NiceHash
-        totalToDisplay = manualHoldings + niceHashBalance;
-    }
+    // Total to display = manual + NiceHash (always use live values, never load from storage)
+    // This prevents showing stale NiceHash balance from previous session
+    const totalToDisplay = manualHoldings + niceHashBalance;
 
     console.log(`💰 BTC Holdings: Manual ${manualHoldings.toFixed(8)} + NiceHash ${niceHashBalance.toFixed(8)} = Total ${totalToDisplay.toFixed(8)}`);
 
