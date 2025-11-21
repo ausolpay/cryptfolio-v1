@@ -59,6 +59,7 @@ button {
     margin-left: 3px;
     margin-right: 3px;
     min-height: 44px; /* Ensures consistent button height when scaled down */
+    min-width: 80px; /* Prevent button squishing on mobile */
 }
 
 button:hover {
@@ -149,6 +150,7 @@ input[type="number"], .add-crypto input[type="text"], .login-form input[type="em
     background-color: #333;
     color: #ffffff;
     box-sizing: border-box; /* Ensures padding and border are included in the total width and height */
+    min-height: 44px; /* Match button height */
 }
 
 .login-buttons, .register-buttons {
