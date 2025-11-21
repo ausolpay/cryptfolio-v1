@@ -9975,16 +9975,13 @@ async function loadBuyPackagesDataOnPage() {
     // Recommendations section container is hidden in HTML - we only use recommendedNames for highlighting
     // Recommendations display only shows in EasyMining section
 
-    // Populate single packages
-    const singleContainer = document.getElementById('buy-single-packages-page');
-    if (!singleContainer) {
-        console.error('❌ Could not find buy-single-packages-page container!');
+    // Populate balance section at the top
+    const balanceSection = document.getElementById('buy-packages-balance-section');
+    if (!balanceSection) {
+        console.error('❌ Could not find buy-packages-balance-section container!');
         return;
     }
 
-    console.log(`📦 Populating ${singlePackages.length} single packages...`);
-
-    // Add balance display
     const availableBalance = window.niceHashBalance?.available || 0;
     const pendingBalance = window.niceHashBalance?.pending || 0;
     const availableAUD = window.packageCryptoPrices?.['btc']?.aud
@@ -9994,8 +9991,8 @@ async function loadBuyPackagesDataOnPage() {
         ? (pendingBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
         : '0.00';
 
-    singleContainer.innerHTML = `
-        <div style="padding: 15px; margin-bottom: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+    balanceSection.innerHTML = `
+        <div style="padding: 15px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance:</div>
@@ -10010,10 +10007,22 @@ async function loadBuyPackagesDataOnPage() {
                         <div style="color: #FFA500; font-size: 16px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
                         <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
                     </div>
+                    <div style="color: #ffa500; font-size: 12px; margin-top: 8px; border-top: 1px solid #444; padding-top: 8px;">1 share = 0.0001 BTC</div>
                 </div>
             </div>
         </div>
     `;
+    console.log('✅ Balance section populated');
+
+    // Populate single packages
+    const singleContainer = document.getElementById('buy-single-packages-page');
+    if (!singleContainer) {
+        console.error('❌ Could not find buy-single-packages-page container!');
+        return;
+    }
+
+    console.log(`📦 Populating ${singlePackages.length} single packages...`);
+    singleContainer.innerHTML = '';
 
     singlePackages.forEach(pkg => {
         try {
@@ -10034,29 +10043,7 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     console.log(`👥 Populating ${teamPackages.length} team packages...`);
-
-    // Add balance display (reuse variables from solo packages section)
-    teamContainer.innerHTML = `
-        <div style="padding: 15px; margin-bottom: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance:</div>
-                    <div style="color: #aaa; font-size: 14px;">⏳ Pending Balance:</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="margin-bottom: 8px;">
-                        <div style="color: #4CAF50; font-size: 18px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                        <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
-                    </div>
-                    <div>
-                        <div style="color: #FFA500; font-size: 16px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
-                        <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
-                    </div>
-                    <div style="color: #ffa500; font-size: 12px; margin-top: 8px; border-top: 1px solid #444; padding-top: 8px;">1 share = 0.0001 BTC</div>
-                </div>
-            </div>
-        </div>
-    `;
+    teamContainer.innerHTML = '';
 
     teamPackages.forEach(pkg => {
         try {
