@@ -326,6 +326,56 @@
         </div>
     </div>
 
+    <!-- CoinGecko API Settings Page -->
+    <div id="coingecko-settings-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v1.6</h1>
+                <p>CoinGecko API Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">CoinGecko API Keys</h3>
+                <p style="margin: 10px 0; color: #666;">At least one CoinGecko API key is required to receive token data.</p>
+
+                <div class="input-group">
+                    <label for="primary-api-key-page">Primary API Key (Required):</label>
+                    <input type="text" id="primary-api-key-page" placeholder="Enter your CoinGecko API Key">
+                </div>
+
+                <div class="input-group">
+                    <label for="fallback-api-key-1-page">Fallback API Key 1 (Optional):</label>
+                    <input type="text" id="fallback-api-key-1-page" placeholder="Enter fallback API key (optional)">
+                </div>
+
+                <div class="input-group">
+                    <label for="fallback-api-key-2-page">Fallback API Key 2 (Optional):</label>
+                    <input type="text" id="fallback-api-key-2-page" placeholder="Enter fallback API key (optional)">
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateCoinGeckoApi()" class="activate-button">Activate API Keys</button>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearCoinGeckoApiKeys()" class="delete-button">Clear API Keys</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showAppPage()">← Back</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v1.6 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © 2024</p>
+            <p>Data by CoinGecko / MEXC / LBank</p>
+        </div>
+    </div>
+
     <!-- Buy Packages Page -->
     <div id="buy-packages-page" class="container" style="display: none;">
         <div class="header">
@@ -440,7 +490,7 @@
             </div>
             <div style="margin-top: 20px;">
                 <button id="easymining-settings-btn" onclick="closeSettingsModal(); showEasyMiningSettingsPage();">EasyMining</button>
-                <button id="coingecko-api-btn" onclick="showCoinGeckoApiModal()">CG API</button>
+                <button id="coingecko-api-btn" onclick="closeSettingsModal(); showCoinGeckoApiSettingsPage();">CG API</button>
                 <button class="delete-button" onclick="closeSettingsModal()">Close</button>
             </div>
         </div>
@@ -651,38 +701,6 @@
             
             <div style="margin-top: 20px;">
                 <button class="cancel-button" onclick="closeEasyMiningSettingsModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- CoinGecko API Settings Modal -->
-    <div id="coingecko-api-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeCoinGeckoApiModal()">&times;</span>
-            <h2 class="settings-title">COINGECKO API SETTINGS</h2>
-
-            <div class="easymining-settings-content">
-                <p style="margin-top: 0; color: #ffa500;">At least one CoinGecko API key is required to receive token data.</p>
-
-                <div class="input-group">
-                    <label for="primary-api-key">Primary API Key (Required):</label>
-                    <input type="text" id="primary-api-key" placeholder="Enter your CoinGecko API Key">
-                </div>
-
-                <div class="input-group">
-                    <label for="fallback-api-key-1">Fallback API Key 1 (Optional):</label>
-                    <input type="text" id="fallback-api-key-1" placeholder="Enter fallback API key (optional)">
-                </div>
-
-                <div class="input-group">
-                    <label for="fallback-api-key-2">Fallback API Key 2 (Optional):</label>
-                    <input type="text" id="fallback-api-key-2" placeholder="Enter fallback API key (optional)">
-                </div>
-            </div>
-
-            <div style="margin-top: 20px;">
-                <button onclick="saveCoinGeckoApiKeys()" class="activate-button">Activate</button>
-                <button class="cancel-button" onclick="closeCoinGeckoApiModal()">Close</button>
             </div>
         </div>
     </div>
