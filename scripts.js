@@ -8200,20 +8200,27 @@ async function fetchNiceHashSoloPackages() {
         const endpoint = '/main/api/v2/public/solo/package';
         const url = `https://api2.nicehash.com${endpoint}`;
 
+        console.log('📡 Making request to:', url);
+
         const response = await fetch(url, {
             method: 'GET',
+            mode: 'cors', // Enable CORS
             headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Accept': 'application/json'
             }
         });
 
+        console.log('📡 Response status:', response.status);
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('❌ API Error Response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
 
         const packages = await response.json();
         console.log(`✅ Fetched ${packages.length} solo packages from API`);
+        console.log('📦 Raw API data (first 2):', packages.slice(0, 2));
 
         // Transform API data to our package format
         const transformedPackages = packages
@@ -8241,11 +8248,13 @@ async function fetchNiceHashSoloPackages() {
                 };
             });
 
-        console.log('✅ Transformed packages:', transformedPackages);
+        console.log(`✅ Transformed ${transformedPackages.length} packages`);
+        console.log('✅ API DATA IS BEING USED!');
         return transformedPackages;
 
     } catch (error) {
         console.error('❌ Error fetching solo packages from API:', error);
+        console.error('❌ Error details:', error.message);
         console.log('📦 Falling back to mock data');
         return null; // Return null to signal fallback to mock data
     }

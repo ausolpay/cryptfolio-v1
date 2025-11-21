@@ -1834,12 +1834,12 @@ body.light-mode .tab-button {
     background-color: #2a2a2a;
     border: 1px solid #444;
     border-radius: 8px;
-    padding: 20px;
-    aspect-ratio: 1; /* Make cards square */
+    padding: 30px; /* Bigger padding */
+    min-height: 450px; /* Bigger minimum height */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    overflow: hidden; /* Prevent content overflow */
+    overflow: auto; /* Allow scroll if needed */
     box-sizing: border-box;
 }
 
@@ -2165,11 +2165,20 @@ body.light-mode .easymining-toggles .setting-item {
    EASYMINING SETTINGS PAGE & BUY PACKAGES PAGE STYLES
    ============================================================================= */
 
-.easymining-settings-form,
-.buy-packages-form {
+.easymining-settings-form {
     max-width: 600px;
     margin: 20px auto;
     padding: 20px;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+}
+
+.buy-packages-form {
+    max-width: 90%; /* Much wider for buy packages */
+    width: 100%;
+    margin: 20px auto;
+    padding: 40px;
     background-color: #1e1e1e;
     border: 1px solid #333;
     border-radius: 8px;
@@ -2222,8 +2231,9 @@ body.light-mode .easymining-settings-form input[type="password"] {
 .buy-packages-container-page {
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3 columns on desktop */
-    gap: 20px;
+    gap: 30px; /* Bigger gap between cards */
     margin-top: 20px;
+    padding: 0 20px; /* Add horizontal padding */
 }
 
 /* Narrow Tablet - 2 columns */
