@@ -6810,17 +6810,33 @@ function updateStats() {
     };
 }
 
+// Track current recommendations to prevent unnecessary re-renders
+let currentRecommendations = [];
+
 async function updateRecommendations() {
     const bestPackagesContainer = document.getElementById('best-packages-container');
     const teamAlertsContainer = document.getElementById('team-alerts-container');
 
-    bestPackagesContainer.innerHTML = '';
-    teamAlertsContainer.innerHTML = '';
-
-    console.log('🔄 Updating package recommendations...');
+    console.log('🔄 Checking for recommendation updates...');
 
     // Get recommended packages based on alert thresholds
     const recommendations = await checkPackageRecommendations();
+
+    // Check if recommendations actually changed
+    const recommendationNames = recommendations.map(pkg => pkg.name).sort().join(',');
+    const currentNames = currentRecommendations.map(pkg => pkg.name).sort().join(',');
+
+    if (recommendationNames === currentNames) {
+        console.log('✅ Recommendations unchanged, skipping re-render');
+        return;
+    }
+
+    console.log('🔄 Recommendations changed, updating display...');
+    currentRecommendations = recommendations;
+
+    // Clear containers
+    bestPackagesContainer.innerHTML = '';
+    if (teamAlertsContainer) teamAlertsContainer.innerHTML = '';
 
     if (recommendations.length === 0) {
         bestPackagesContainer.innerHTML = '<p style="color: #aaa;">No packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure alerts</a> to get recommendations.</p>';
@@ -6839,40 +6855,6 @@ async function updateRecommendations() {
     });
 
     console.log('✅ Recommendations updated successfully');
-    
-    // Check team package criteria
-    const teamPackages = easyMiningData.activePackages.filter(pkg => pkg.isTeam && pkg.active);
-
-    teamPackages.forEach(pkg => {
-        // Team packages recommendations (simplified for live API)
-        // Real API doesn't provide probability/shares data in the same format
-        let shouldAlert = false;
-
-        // Alert for any active team packages with good reward/price ratio
-        const ratio = (pkg.reward || 0) / (pkg.price || 1);
-        if (ratio > 0.01) { // Decent reward ratio
-            shouldAlert = true;
-        }
-
-        if (shouldAlert) {
-            const card = document.createElement('div');
-            card.className = 'recommendation-card';
-            card.innerHTML = `
-                <h4>🚀 ${pkg.name}</h4>
-                <p><strong>Reward:</strong> ${pkg.reward} ${pkg.crypto}</p>
-                <p><strong>Price:</strong> $${(pkg.price || 0).toFixed(4)}</p>
-                <p><strong>Time Remaining:</strong> ${pkg.timeRemaining}</p>
-            `;
-            teamAlertsContainer.appendChild(card);
-
-            // Play alert sound
-            playSound('package-alert-sound');
-        }
-    });
-    
-    if (teamAlertsContainer.innerHTML === '') {
-        teamAlertsContainer.innerHTML = '<p>No team package alerts at this time.</p>';
-    }
 }
 
 function checkForNewBlocks() {
@@ -8749,7 +8731,26 @@ async function loadBuyPackagesDataOnPage() {
     const allPackages = [...singlePackages, ...teamPackages];
     window.packageCryptoPrices = await fetchPackageCryptoPrices(allPackages);
 
-    const recommended = getRecommendedPackages();
+    // Load recommendations based on alert thresholds
+    console.log('🔔 Loading recommendations for buy packages page...');
+    const recommendations = await checkPackageRecommendations();
+    const recommendedNames = recommendations.map(pkg => pkg.name);
+
+    // Populate recommendations section
+    const recommendationsContainer = document.getElementById('buy-packages-recommendations');
+    if (recommendationsContainer) {
+        recommendationsContainer.innerHTML = '';
+
+        if (recommendations.length === 0) {
+            recommendationsContainer.innerHTML = '<p style="color: #aaa;">No packages meet your alert thresholds. <a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure alerts</a> to get recommendations.</p>';
+        } else {
+            recommendations.forEach(pkg => {
+                const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
+                recommendationsContainer.appendChild(card);
+            });
+            console.log(`✅ Displayed ${recommendations.length} recommended package(s) on buy page`);
+        }
+    }
 
     // Populate single packages
     const singleContainer = document.getElementById('buy-single-packages-page');
@@ -8762,7 +8763,7 @@ async function loadBuyPackagesDataOnPage() {
     singleContainer.innerHTML = '';
     singlePackages.forEach(pkg => {
         try {
-            const isRecommended = recommended.includes(pkg.name);
+            const isRecommended = recommendedNames.includes(pkg.name);
             const card = createBuyPackageCardForPage(pkg, isRecommended);
             singleContainer.appendChild(card);
         } catch (error) {
@@ -8782,7 +8783,7 @@ async function loadBuyPackagesDataOnPage() {
     teamContainer.innerHTML = '';
     teamPackages.forEach(pkg => {
         try {
-            const isRecommended = recommended.includes(pkg.name);
+            const isRecommended = recommendedNames.includes(pkg.name);
             const card = createBuyPackageCardForPage(pkg, isRecommended);
             teamContainer.appendChild(card);
         } catch (error) {
