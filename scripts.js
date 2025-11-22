@@ -11933,6 +11933,9 @@ async function buyTeamPackage(pkg, packageId) {
         return;
     }
 
+    // Standard share price for team packages
+    const sharePrice = 0.0001; // 1 share = 0.0001 BTC
+
     // Calculate total price
     const prices = window.packageCryptoPrices || {};
     let priceAUD = 0;
