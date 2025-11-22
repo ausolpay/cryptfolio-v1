@@ -1682,6 +1682,7 @@ body.light-mode .stat-label {
     padding: 15px;
     animation: glow 2s infinite;
     width: 100%;
+    height: auto; /* Auto height to fit content */
     box-sizing: border-box;
 }
 

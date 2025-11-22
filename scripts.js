@@ -7540,6 +7540,7 @@ let currentPackageTab = 'active';
 // Switch package tab
 function switchPackageTab(tab) {
     currentPackageTab = tab;
+    showAllPackages = false; // Reset to collapsed view when switching tabs
 
     // Update tab UI
     document.querySelectorAll('.package-tab').forEach(btn => {
