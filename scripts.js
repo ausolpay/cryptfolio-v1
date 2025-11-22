@@ -12434,13 +12434,13 @@ function startEasyMiningAlertsPolling() {
     // Initial load
     updateRecommendations();
 
-    // Poll every 5 seconds
+    // Poll every 1 second
     easyMiningAlertsPollingInterval = setInterval(() => {
         console.log('🔄 Refreshing EasyMining alerts...');
         updateRecommendations();
-    }, 5000);
+    }, 1000);
 
-    console.log('✅ EasyMining alerts polling started (5s interval)');
+    console.log('✅ EasyMining alerts polling started (1s interval)');
 }
 
 function stopEasyMiningAlertsPolling() {
