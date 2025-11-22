@@ -8283,10 +8283,10 @@ async function updateRecommendations() {
 
                 console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`, teamRecommendations);
 
-                // Display each recommended team package using the same function as buy packages page
+                // Display each recommended team package using the same card format as solo packages
                 teamRecommendations.forEach((pkg, index) => {
                     console.log(`🔍 Creating team card ${index + 1}/${teamRecommendations.length} for:`, pkg.name);
-                    const card = createTeamPackageCard(pkg);
+                    const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
                     if (card) {
                         teamAlertsContainer.appendChild(card);
                         console.log(`✅ Team card ${index + 1} added to container`);
