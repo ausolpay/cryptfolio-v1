@@ -8257,8 +8257,9 @@ async function updateRecommendations() {
         }
     }
 
-    // Update team recommendations if changed
-    if (teamChanged) {
+    // Update team recommendations if changed OR if container is empty (first load)
+    const isTeamContainerEmpty = teamAlertsContainer && teamAlertsContainer.innerHTML.trim() === '';
+    if (teamChanged || isTeamContainerEmpty) {
         currentTeamRecommendations = teamRecommendations;
         if (teamAlertsContainer) {
             teamAlertsContainer.innerHTML = '';
