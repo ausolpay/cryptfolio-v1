@@ -9259,6 +9259,15 @@ function calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares, myS
     const totalShares = othersBought + myShares;
     const reward = (blockReward / totalShares) * myShares;
 
+    console.log(`💰 Team Reward Calculation:
+    - Block Reward: ${blockReward}
+    - Total Bought (from API): ${totalBoughtShares}
+    - My Previously Bought: ${myBoughtShares}
+    - My Desired Shares: ${myShares}
+    - Others Bought: ${othersBought}
+    - Total Pool: ${totalShares}
+    - My Reward: ${reward}`);
+
     return reward;
 }
 
@@ -9287,6 +9296,16 @@ function createTeamPackageCard(pkg) {
 
     // Get user's bought shares for this package
     const myBoughtShares = getMyTeamShares(packageId);
+
+    console.log(`📦 Team Package Card: ${packageName}
+    - Package ID: ${packageId}
+    - Full Amount: ${fullAmount} BTC
+    - Added Amount: ${addedAmount} BTC
+    - Total Available Shares: ${totalAvailableShares}
+    - Total Bought Shares: ${totalBoughtShares}
+    - Available Shares: ${availableShares}
+    - Block Reward: ${blockReward} ${crypto}
+    - My Bought Shares: ${myBoughtShares}`);
 
     // Calculate price in AUD (assuming BTC price)
     const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
