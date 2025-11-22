@@ -54,38 +54,42 @@ let lastValidChartPrice = null; // Store last valid price for chart
 let tradingViewWidget = null; // Store TradingView widget instance
 let currentChartInterval = '5'; // Default 5 minutes (TradingView format)
 
-// Map CoinGecko crypto IDs to TradingView symbols
+// Map CoinGecko crypto IDs to TradingView symbols (MEXC primary, Binance fallback)
 function getCryptoTradingViewSymbol(cryptoId) {
-    const symbolMap = {
-        'bitcoin': 'BINANCE:BTCUSDT',
-        'ethereum': 'BINANCE:ETHUSDT',
-        'bitcoin-cash': 'BINANCE:BCHUSDT',
-        'ravencoin': 'BINANCE:RVNUSDT',
-        'dogecoin': 'BINANCE:DOGEUSDT',
-        'litecoin': 'BINANCE:LTCUSDT',
-        'kaspa': 'BINANCE:KASUSDT',
-        'ripple': 'BINANCE:XRPUSDT',
-        'cardano': 'BINANCE:ADAUSDT',
-        'solana': 'BINANCE:SOLUSDT',
-        'polkadot': 'BINANCE:DOTUSDT',
-        'matic-network': 'BINANCE:MATICUSDT',
-        'chainlink': 'BINANCE:LINKUSDT',
-        'uniswap': 'BINANCE:UNIUSDT',
-        'avalanche-2': 'BINANCE:AVAXUSDT',
-        'cosmos': 'BINANCE:ATOMUSDT',
-        'algorand': 'BINANCE:ALGOUSDT',
-        'stellar': 'BINANCE:XLMUSDT',
-        'vechain': 'BINANCE:VETUSDT',
-        'filecoin': 'BINANCE:FILUSDT',
-        'monero': 'BINANCE:XMRUSDT',
-        'tron': 'BINANCE:TRXUSDT',
-        'ethereum-classic': 'BINANCE:ETCUSDT',
-        'eos': 'BINANCE:EOSUSDT',
-        'tezos': 'BINANCE:XTZUSDT'
+    // Map CoinGecko IDs to trading symbols
+    const tickerMap = {
+        'bitcoin': 'BTC',
+        'ethereum': 'ETH',
+        'bitcoin-cash': 'BCH',
+        'ravencoin': 'RVN',
+        'dogecoin': 'DOGE',
+        'litecoin': 'LTC',
+        'kaspa': 'KAS',
+        'ripple': 'XRP',
+        'cardano': 'ADA',
+        'solana': 'SOL',
+        'polkadot': 'DOT',
+        'matic-network': 'MATIC',
+        'chainlink': 'LINK',
+        'uniswap': 'UNI',
+        'avalanche-2': 'AVAX',
+        'cosmos': 'ATOM',
+        'algorand': 'ALGO',
+        'stellar': 'XLM',
+        'vechain': 'VET',
+        'filecoin': 'FIL',
+        'monero': 'XMR',
+        'tron': 'TRX',
+        'ethereum-classic': 'ETC',
+        'eos': 'EOS',
+        'tezos': 'XTZ'
     };
 
-    // Return mapped symbol or construct a default one
-    return symbolMap[cryptoId] || `BINANCE:${cryptoId.toUpperCase()}USDT`;
+    const ticker = tickerMap[cryptoId] || cryptoId.toUpperCase();
+
+    // Try MEXC first, then fallback to Binance if symbol not found
+    // TradingView will use the first available exchange
+    return `MEXC:${ticker}USDT`;
 }
 
 // Initialize TradingView widget
@@ -5013,57 +5017,6 @@ function closeCandlestickModal() {
     }
 }
 
-// ============================================================================
-// CHART INTERVAL AND ZOOM CONTROLS
-// ============================================================================
-
-// Toggle interval dropdown
-function toggleIntervalDropdown() {
-    const dropdown = document.getElementById('interval-dropdown');
-    const button = document.getElementById('interval-button');
-
-    dropdown.classList.toggle('show');
-    button.classList.toggle('active');
-}
-
-// Select interval and reload chart data
-async function selectInterval(interval, label) {
-    console.log(`📊 Changing chart interval to: ${interval}`);
-
-    // Update selected state in UI
-    document.querySelectorAll('.interval-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    event.target.classList.add('selected');
-
-    // Update button text
-    document.getElementById('current-interval').textContent = interval;
-
-    // Close dropdown
-    toggleIntervalDropdown();
-
-    // Update global interval
-    currentChartInterval = interval;
-
-    // Reinitialize TradingView chart with new interval
-    if (currentCryptoId) {
-        initializeTradingViewChart(currentCryptoId, interval);
-    }
-}
-
-
-// Close dropdown when clicking outside
-document.addEventListener('click', function(event) {
-    const dropdown = document.getElementById('interval-dropdown');
-    const button = document.getElementById('interval-button');
-
-    if (dropdown && button) {
-        if (!button.contains(event.target) && !dropdown.contains(event.target)) {
-            dropdown.classList.remove('show');
-            button.classList.remove('active');
-        }
-    }
-});
 
 
 

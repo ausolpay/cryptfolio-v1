@@ -651,27 +651,7 @@
             </div>
 
             <!-- TradingView Chart Container -->
-            <div id="tradingview-chart-container" style="height: 500px; width: 100%;"></div>
-
-            <!-- Chart Controls -->
-            <div class="chart-controls">
-                <div class="interval-selector-container">
-                    <button id="interval-button" class="chart-button" onclick="toggleIntervalDropdown()">
-                        <span id="current-interval">5</span>
-                        <span class="dropdown-arrow">▲</span>
-                    </button>
-                    <div id="interval-dropdown" class="interval-dropdown">
-                        <div class="interval-option" onclick="selectInterval('1', '1 Minute')">1</div>
-                        <div class="interval-option selected" onclick="selectInterval('5', '5 Minutes')">5</div>
-                        <div class="interval-option" onclick="selectInterval('15', '15 Minutes')">15</div>
-                        <div class="interval-option" onclick="selectInterval('30', '30 Minutes')">30</div>
-                        <div class="interval-option" onclick="selectInterval('60', '1 Hour')">60</div>
-                        <div class="interval-option" onclick="selectInterval('240', '4 Hours')">240</div>
-                        <div class="interval-option" onclick="selectInterval('D', 'Daily')">D</div>
-                        <div class="interval-option" onclick="selectInterval('W', 'Weekly')">W</div>
-                    </div>
-                </div>
-            </div>
+            <div id="tradingview-chart-container" class="tradingview-chart"></div>
 
             <div id="modal-info" class="modal-info">
             <h1 id="live-price" class="live-price"></h1>
