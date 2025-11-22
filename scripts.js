@@ -10608,12 +10608,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             <span style="color: #4CAF50;">${pkg.numberOfParticipants || 0}</span>
         </div>
         <div class="buy-package-stat">
-            <span>Share %:</span>
-            <span style="color: #ffa500;">${pkg.shares || '0'}% ${(() => {
+            <span>Share Distribution:</span>
+            <span style="color: #ffa500;">${(() => {
                 const sharePrice = 0.0001;
-                const sharesBought = pkg.addedAmount ? Math.round(pkg.addedAmount / sharePrice) : 0;
-                const totalShares = pkg.fullAmount ? Math.round(pkg.fullAmount / sharePrice) : 0;
-                return sharesBought > 0 || totalShares > 0 ? `(${sharesBought}/${totalShares})` : '';
+                const totalBoughtShares = pkg.addedAmount ? Math.floor(pkg.addedAmount / sharePrice) : 0;
+                const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 0;
+                const myBoughtShares = getMyTeamShares(pkg.id) || 0;
+                return `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
             })()}</span>
         </div>
         ${countdownInfo}
@@ -10663,14 +10664,16 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         let myMainReward = pkg.blockReward || 0;
         let myRewardValueAUD = parseFloat(rewardAUD);
 
-        if (pkg.isTeam && pkg.fullAmount && pkg.fullAmount > 0) {
+        if (pkg.isTeam && pkg.addedAmount !== undefined) {
             const sharePrice = 0.0001;
-            const existingShares = pkg.fullAmount / sharePrice;
+            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
             const myShares = 1; // Initial display for 1 share
-            const totalShares = existingShares + myShares;
 
-            // Formula: reward_per_share = blockReward / totalShares
-            //          my_reward = reward_per_share × myShares
+            // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
+            const othersBought = totalBoughtShares - myBoughtShares;
+            const totalShares = othersBought + myShares;
+
             const mergeRewardPerShare = totalShares > 0 ? (pkg.mergeBlockReward || 0) / totalShares : 0;
             const mainRewardPerShare = totalShares > 0 ? (pkg.blockReward || 0) / totalShares : 0;
             const rewardValuePerShareAUD = totalShares > 0 ? parseFloat(rewardAUD) / totalShares : 0;
@@ -10679,18 +10682,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             myMainReward = mainRewardPerShare * myShares;
             myRewardValueAUD = rewardValuePerShareAUD * myShares;
 
-            console.log(`🎨 DISPLAYING Palladium ${pkg.name} for 1 share:`, {
-                mergeCrypto: pkg.mergeCrypto,
-                totalMergeReward: pkg.mergeBlockReward,
-                myMergeReward: myMergeReward,
-                mainCrypto: pkg.mainCrypto,
-                totalMainReward: pkg.blockReward,
-                myMainReward: myMainReward,
-                totalRewardValueAUD: rewardAUD,
-                myRewardValueAUD: myRewardValueAUD.toFixed(2),
-                existingShares: existingShares,
-                totalShares: totalShares
-            });
+            console.log(`💰 ${pkg.name} Dual-Crypto Reward (Page):
+            - Total Bought: ${totalBoughtShares}, My Bought: ${myBoughtShares}, Buying: ${myShares}
+            - Others: ${othersBought}, Pool: ${totalShares}
+            - ${pkg.mergeCrypto} Block: ${pkg.mergeBlockReward}, My Reward: ${myMergeReward.toFixed(2)}
+            - ${pkg.mainCrypto} Block: ${pkg.blockReward}, My Reward: ${myMainReward.toFixed(4)}`);
         }
 
         // Show both rewards for dual-crypto packages (DOGE+LTC)
@@ -10714,19 +10710,26 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         let myMainReward = pkg.blockReward;
         let myRewardValueAUD = parseFloat(rewardAUD);
 
-        if (pkg.isTeam && pkg.fullAmount && pkg.fullAmount > 0) {
+        if (pkg.isTeam && pkg.addedAmount !== undefined) {
             const sharePrice = 0.0001;
-            const existingShares = pkg.fullAmount / sharePrice;
+            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
             const myShares = 1; // Initial display for 1 share
-            const totalShares = existingShares + myShares;
 
-            // Formula: reward_per_share = blockReward / totalShares
-            //          my_reward = reward_per_share × myShares
+            // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
+            const othersBought = totalBoughtShares - myBoughtShares;
+            const totalShares = othersBought + myShares;
+
             const mainRewardPerShare = totalShares > 0 ? pkg.blockReward / totalShares : 0;
             const rewardValuePerShareAUD = totalShares > 0 ? parseFloat(rewardAUD) / totalShares : 0;
 
             myMainReward = mainRewardPerShare * myShares;
             myRewardValueAUD = rewardValuePerShareAUD * myShares;
+
+            console.log(`💰 ${pkg.name} Single-Crypto Reward (Page):
+            - Total Bought: ${totalBoughtShares}, My Bought: ${myBoughtShares}, Buying: ${myShares}
+            - Others: ${othersBought}, Pool: ${totalShares}
+            - Block Reward: ${pkg.blockReward}, My Reward: ${myMainReward.toFixed(8)}`);
         }
 
         rewardInfo = `
