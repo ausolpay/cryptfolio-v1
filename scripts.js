@@ -11342,7 +11342,27 @@ function adjustShares(packageName, delta) {
     const max = parseInt(input.max) || 9999;
     const newValue = Math.max(1, Math.min(max, currentValue + delta)); // Minimum is 1, not 0
 
+    console.log(`📝 Setting input.value from ${currentValue} to ${newValue}`);
+
+    // Temporarily remove readonly to allow value change to be visually reflected
+    const wasReadonly = input.hasAttribute('readonly');
+    if (wasReadonly) {
+        input.removeAttribute('readonly');
+        console.log(`🔓 Removed readonly attribute temporarily`);
+    }
+
     input.value = newValue;
+    console.log(`📝 Verifying: input.value is now ${input.value}`);
+
+    // Restore readonly attribute
+    if (wasReadonly) {
+        input.setAttribute('readonly', true);
+        console.log(`🔒 Restored readonly attribute`);
+    }
+
+    // Force a visual update by triggering change event
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
 
     // Immediately save to persistent storage
     if (!window.packageShareValues) {
