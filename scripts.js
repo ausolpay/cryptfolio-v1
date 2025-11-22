@@ -4868,6 +4868,7 @@ async function openCandlestickModal(cryptoId) {
                     },
                     y: {
                         beginAtZero: false,
+                        grace: '5%', // Add 5% padding to prevent bars touching edges
                         grid: {
                             color: 'rgba(211,211,211,0.2)',
                             drawBorder: false
@@ -4875,6 +4876,23 @@ async function openCandlestickModal(cryptoId) {
                         ticks: {
                             callback: function(value) {
                                 return `$${value.toFixed(8)}`;
+                            },
+                            maxTicksLimit: 8 // Limit number of y-axis labels for clarity
+                        },
+                        // ✅ FIX: Ensure y-axis never shows 0 or invalid ranges
+                        afterDataLimits: function(axis) {
+                            const range = axis.max - axis.min;
+                            // If range is too small or invalid, set reasonable defaults
+                            if (range <= 0 || isNaN(range) || axis.min <= 0) {
+                                console.warn(`⚠️ Invalid y-axis range detected, fixing...`);
+                                const allData = axis.chart.data.datasets[0].data;
+                                if (allData && allData.length > 0) {
+                                    const validPrices = allData.flatMap(d => [d.h, d.l]).filter(p => p > 0);
+                                    if (validPrices.length > 0) {
+                                        axis.min = Math.min(...validPrices) * 0.95; // 5% below min
+                                        axis.max = Math.max(...validPrices) * 1.05; // 5% above max
+                                    }
+                                }
                             }
                         }
                     }
@@ -4888,11 +4906,22 @@ async function openCandlestickModal(cryptoId) {
                         mode: 'index',
                         intersect: false,
                         position: 'nearest',
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: '#26a69a',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
                         callbacks: {
                             label: function(context) {
-                                let h = context.raw.h.toFixed(8);
-                                let l = context.raw.l.toFixed(8);
-                                return `H: $${h}, L: $${l}`;
+                                const d = context.raw;
+                                return [
+                                    `Open: $${d.o.toFixed(8)}`,
+                                    `High: $${d.h.toFixed(8)}`,
+                                    `Low: $${d.l.toFixed(8)}`,
+                                    `Close: $${d.c.toFixed(8)}`
+                                ];
                             },
                             title: function(context) {
                                 const date = new Date(context[0].parsed.x);
@@ -4925,11 +4954,28 @@ async function openCandlestickModal(cryptoId) {
                 },
                 elements: {
                     candlestick: {
-                        borderColor: '#26a69a',
+                        color: {
+                            up: '#26a69a',    // Green for price increase
+                            down: '#ef5350',  // Red for price decrease
+                            unchanged: '#999' // Gray for no change
+                        },
+                        borderColor: {
+                            up: '#26a69a',
+                            down: '#ef5350',
+                            unchanged: '#999'
+                        },
                         borderWidth: 1,
                         barThickness: 5
                     }
-                }
+                },
+                animation: {
+                    duration: 750 // Smooth animations
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                maintainAspectRatio: true
             }
         });
 
@@ -5022,19 +5068,32 @@ async function fetchCandlestickData(cryptoId) {
 }
 
 function formatCandlestickData(data) {
-    // ✅ FIX: Filter out any candles with 0 or invalid values
-    const validData = data.filter(d => {
-        const isValid = d.o > 0 && d.h > 0 && d.l > 0 && d.c > 0 &&
-                       !isNaN(d.o) && !isNaN(d.h) && !isNaN(d.l) && !isNaN(d.c);
-        if (!isValid) {
-            console.warn(`⚠️ Filtering out invalid candle:`, d);
-        }
-        return isValid;
-    });
+    // ✅ FIX: Filter out any candles with 0 or invalid values and sort by time
+    const validData = data
+        .filter(d => {
+            const isValid = d && d.o > 0 && d.h > 0 && d.l > 0 && d.c > 0 &&
+                           !isNaN(d.o) && !isNaN(d.h) && !isNaN(d.l) && !isNaN(d.c) &&
+                           d.o !== null && d.h !== null && d.l !== null && d.c !== null;
+            if (!isValid) {
+                console.warn(`⚠️ Filtering out invalid candle:`, d);
+            }
+            return isValid;
+        })
+        .sort((a, b) => new Date(a.x) - new Date(b.x)); // Sort by time
+
+    console.log(`📊 Chart data: ${data.length} total, ${validData.length} valid candles`);
+
+    // If we have valid data, set the last price as the stored valid price
+    if (validData.length > 0) {
+        const lastCandle = validData[validData.length - 1];
+        const lastPrice = lastCandle.c / 1.52; // Convert back to USD
+        lastValidChartPrice = lastPrice;
+        console.log(`💾 Stored last valid price: $${lastPrice}`);
+    }
 
     return {
         datasets: [{
-            label: 'Candlestick Chart',
+            label: 'Price',
             data: validData.map(d => ({
                 x: new Date(d.x),
                 o: d.o,
