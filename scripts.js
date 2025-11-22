@@ -1,4 +1,4 @@
-// CryptFolio v1.6 - Main Application Script - Stable build 2
+// CryptFolio v1.6 - Main Application Script - Stable 3
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
