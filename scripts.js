@@ -1076,6 +1076,10 @@ async function loadTeamAlerts() {
         return;
     }
 
+    // Fetch solo packages to get current small package probabilities
+    const soloPackages = await fetchNiceHashSoloPackages();
+    console.log(`📦 Fetched ${soloPackages?.length || 0} solo packages for current probability display`);
+
     // Get saved team alerts
     const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
     const savedAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
@@ -1102,6 +1106,15 @@ async function loadTeamAlerts() {
         // For dual-crypto, get separate thresholds
         const savedMainProb = savedSettings[`probability_${pkg.mainCrypto}`] || '';
         const savedMergeProb = savedSettings[`probability_${pkg.mergeCrypto}`] || '';
+
+        // Find corresponding small package and get its current probability
+        const smallPackageName = pkg.name.replace('Team ', '') + ' S';
+        const smallPackage = soloPackages?.find(sp => sp.name === smallPackageName);
+        let smallPackageCurrentProb = '';
+        if (smallPackage && smallPackage.probability) {
+            const match = smallPackage.probability.match(/1:(\d+)/);
+            if (match) smallPackageCurrentProb = match[1];
+        }
 
         const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb || savedTimeUntilStart || savedSmallPackageProbability;
 
@@ -1215,7 +1228,10 @@ async function loadTeamAlerts() {
             </div>
 
             <div style="margin-bottom: 10px;">
-                <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 5px;">📦 Small Package Probability Threshold (${pkg.name.replace('Team ', '')} S)</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <label style="color: #aaa; font-size: 14px;">📦 Small Package Probability Threshold (${pkg.name.replace('Team ', '')} S)</label>
+                    <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageCurrentProb || 'N/A'}</span>
+                </div>
                 <input type="number"
                        id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability"
                        value="${savedSmallPackageProbability}"
