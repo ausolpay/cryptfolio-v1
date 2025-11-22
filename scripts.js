@@ -4020,6 +4020,24 @@ function applyRightAlignment() {
 }
 
 let cryptoInfoInterval = null; // Store the interval ID for refreshing
+let modalLivePriceInterval = null; // Store interval for syncing modal live price with holdings box
+
+// ✅ FIX: Function to sync modal live price with holdings box price
+function syncModalLivePrice() {
+    if (!currentCryptoId || !isModalOpen) return;
+
+    const livePriceElement = document.getElementById('live-price');
+    const holdingsPriceElement = document.getElementById(`${currentCryptoId}-price-aud`);
+
+    if (livePriceElement && holdingsPriceElement) {
+        const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+        const displayPriceUsd = displayPriceAud / 1.52; // Convert back to USD
+
+        if (displayPriceAud > 0) {
+            livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${displayPriceAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${displayPriceUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
+        }
+    }
+}
 
 // Updated fetchCryptoInfo function to include liquidity data and properly right-align table data
 async function fetchCryptoInfo(cryptoId) {
@@ -4299,11 +4317,19 @@ function updatePriceInChart(priceInUsd) {
         // Update the chart
         candlestickChart.update();
 
-        // Update live price in the modal header (show both AUD and USD)
+        // ✅ FIX: Read live price directly from holdings box to prevent 0 drops
+        // Always use the same reliable price source as the main holdings display
         const livePriceElement = document.getElementById('live-price');
-        if (livePriceElement) {
-            livePriceElement.innerHTML = `<span style="font-weight: normal;"></span><b>$${priceInAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${priceInUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
-            // Update live price
+        if (livePriceElement && currentCryptoId) {
+            const holdingsPriceElement = document.getElementById(`${currentCryptoId}-price-aud`);
+            if (holdingsPriceElement) {
+                const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+                const displayPriceUsd = displayPriceAud / 1.52; // Convert back to USD
+
+                if (displayPriceAud > 0) {
+                    livePriceElement.innerHTML = `<span style="font-weight: normal;"></span><b>$${displayPriceAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${displayPriceUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
+                }
+            }
         }
     }
 }
@@ -4453,11 +4479,19 @@ function updateCandlestickChart(priceInAud, priceInUsd) {
 
     candlestickChart.update(); // Update the chart to reflect the new data
 
-    // Update live price in the modal header (show both AUD and USD)
+    // ✅ FIX: Read live price directly from holdings box to prevent 0 drops
+    // Always use the same reliable price source as the main holdings display
     const livePriceElement = document.getElementById('live-price');
-    if (livePriceElement) {
-        livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${priceInAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${priceInUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
-        // Update live price
+    if (livePriceElement && currentCryptoId) {
+        const holdingsPriceElement = document.getElementById(`${currentCryptoId}-price-aud`);
+        if (holdingsPriceElement) {
+            const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+            const displayPriceUsd = displayPriceAud / 1.52; // Convert back to USD
+
+            if (displayPriceAud > 0) {
+                livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${displayPriceAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${displayPriceUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
+            }
+        }
     }
 }
 
@@ -4772,6 +4806,12 @@ async function openCandlestickModal(cryptoId) {
         cryptoInfoInterval = null;
     }
 
+    // ✅ FIX: Clear modal live price sync interval if exists
+    if (modalLivePriceInterval !== null) {
+        clearInterval(modalLivePriceInterval);
+        modalLivePriceInterval = null;
+    }
+
     const modal = document.getElementById('candlestick-modal');
     const ctx = document.getElementById('candlestick-chart').getContext('2d');
 
@@ -5040,9 +5080,18 @@ async function openCandlestickModal(cryptoId) {
             if (isModalOpen && currentCryptoId === cryptoId) {
                 await fetchCryptoInfo(cryptoId);
                 await fetchCryptoSentiment(cryptoId);
-                await fetchNewsAndRedditData(cryptoName); 
+                await fetchNewsAndRedditData(cryptoName);
             }
         }, 30000); // 30 seconds
+
+        // ✅ FIX: Start syncing modal live price with holdings box every second
+        if (modalLivePriceInterval) clearInterval(modalLivePriceInterval);
+        modalLivePriceInterval = setInterval(() => {
+            syncModalLivePrice();
+        }, 1000); // Update every second to stay in sync
+
+        // Initial sync
+        syncModalLivePrice();
 
     } catch (error) {
         console.error('Error fetching or displaying candlestick data:', error);
@@ -5092,6 +5141,12 @@ function closeCandlestickModal() {
     if (cryptoInfoInterval !== null) {
         clearInterval(cryptoInfoInterval);
         cryptoInfoInterval = null;
+    }
+
+    // ✅ FIX: Clear modal live price sync interval
+    if (modalLivePriceInterval !== null) {
+        clearInterval(modalLivePriceInterval);
+        modalLivePriceInterval = null;
     }
 }
 
