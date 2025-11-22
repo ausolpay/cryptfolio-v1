@@ -6894,34 +6894,44 @@ async function fetchNiceHashOrders() {
                     }
 
                     // Calculate user's share of secondary crypto rewards (for dual mining)
-                    // For team packages (both active and completed), check if secondary reward exists in member data
+                    // ✅ SEPARATED LOGIC: Active team packages vs Completed team packages
                     // This handles Team Palladium (DOGE/LTC) and other dual-mining packages
-                    // ✅ FIXED: Changed from isCompletedTeam to isTeamPackage to work for active packages too
-                    if (isTeamPackage && userMember?.rewards && userMember.rewards.length > 1) {
-                        // Multiple rewards = dual mining, get secondary reward
-                        console.log(`      🔍 DUAL-MINING DETECTED in member rewards (${userMember.rewards.length} rewards)`);
-                        const secondaryRewardData = userMember.rewards.find(r => r.coin !== order.soloMiningCoin);
+
+                    // ACTIVE TEAM PACKAGES: Check which coins actually won
+                    if (isTeamPackage && order.status?.code !== 'COMPLETED' && userMember?.rewards) {
+                        console.log(`      📋 ACTIVE TEAM PACKAGE: Checking for secondary crypto rewards...`);
+                        // Look for the specific secondary coin in rewards array
+                        const secondaryRewardData = userMember.rewards.find(r => r.coin === order.soloMiningMergeCoin);
                         if (secondaryRewardData) {
                             secondaryCryptoReward = parseFloat(secondaryRewardData.rewardAmount || 0);
-                            console.log(`      → SECONDARY CRYPTO REWARD (from members array): ${secondaryCryptoReward.toFixed(8)} ${secondaryRewardData.coin}`);
+                            console.log(`      → ACTIVE TEAM: Secondary crypto (${order.soloMiningMergeCoin}) WON - reward: ${secondaryCryptoReward.toFixed(8)}`);
                         } else {
-                            console.log(`      ⚠️ Multiple rewards but couldn't find secondary coin`);
+                            secondaryCryptoReward = 0;
+                            console.log(`      → ACTIVE TEAM: Secondary crypto (${order.soloMiningMergeCoin}) NOT won - reward: 0`);
                         }
-                    } else if (isTeamPackage && userMember?.rewards && userMember.rewards.length === 1) {
-                        // Team package with only 1 reward = only one coin won
-                        // Check which coin it is to ensure we don't incorrectly show secondary reward
-                        const singleReward = userMember.rewards[0];
-                        console.log(`      📋 TEAM PACKAGE: Single reward detected - ${singleReward.coin} won, ${order.soloMiningMergeCoin} NOT won`);
-                        secondaryCryptoReward = 0; // Explicitly set to 0 since secondary coin didn't win
-                    } else if (!isTeamPackage && totalPackageSecondaryCryptoReward > 0) {
-                        // SOLO PACKAGE ONLY: Use package-level secondary rewards
-                        // For team packages, we ONLY use userMember.rewards data (never package totals)
+                    }
+                    // COMPLETED TEAM PACKAGES: Use original working logic
+                    else if (isCompletedTeam && userMember?.rewards) {
+                        console.log(`      📋 COMPLETED TEAM PACKAGE: Checking for secondary crypto rewards...`);
+                        // Look for the specific secondary coin in rewards array
+                        const secondaryRewardData = userMember.rewards.find(r => r.coin === order.soloMiningMergeCoin);
+                        if (secondaryRewardData) {
+                            secondaryCryptoReward = parseFloat(secondaryRewardData.rewardAmount || 0);
+                            console.log(`      → COMPLETED TEAM: Secondary crypto (${order.soloMiningMergeCoin}) reward: ${secondaryCryptoReward.toFixed(8)}`);
+                        } else {
+                            secondaryCryptoReward = 0;
+                            console.log(`      → COMPLETED TEAM: Secondary crypto (${order.soloMiningMergeCoin}) NOT won - reward: 0`);
+                        }
+                    }
+                    // SOLO PACKAGES: Use package-level secondary rewards
+                    else if (!isTeamPackage && totalPackageSecondaryCryptoReward > 0) {
                         const secondaryRewardPerShare = totalPackageSecondaryCryptoReward / totalShares;
                         secondaryCryptoReward = secondaryRewardPerShare * myShares;
                         console.log(`      → SOLO: Secondary crypto reward calculation: (${totalPackageSecondaryCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${secondaryCryptoReward.toFixed(8)} ${order.soloMiningMergeCoin}`);
-                    } else if (isTeamPackage) {
-                        // Team package but no user rewards yet - set to 0
-                        console.log(`      📋 TEAM PACKAGE: No user rewards found, secondary reward = 0`);
+                    }
+                    // TEAM PACKAGES WITH NO REWARDS YET
+                    else if (isTeamPackage) {
+                        console.log(`      📋 TEAM PACKAGE: No user rewards found yet, secondary reward = 0`);
                         secondaryCryptoReward = 0;
                     }
                 } else {
