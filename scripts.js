@@ -9494,6 +9494,10 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
     }
 
     try {
+        // Sync time with NiceHash server before purchase
+        console.log('⏰ Syncing time with NiceHash server...');
+        await syncNiceHashTime();
+
         console.log('🛒 Creating NiceHash solo order...');
         console.log('   Ticket ID:', ticketId);
         console.log('   Crypto:', crypto);
@@ -11078,6 +11082,10 @@ Do you want to continue?
     }
 
     try {
+        // Sync time with NiceHash server before purchase
+        console.log('⏰ Syncing time with NiceHash server...');
+        await syncNiceHashTime();
+
         // Determine which crypto(s) for logging
         const mainCryptoSymbol = isDualCrypto ? pkg.mainCrypto : pkg.crypto;
         const mergeCryptoSymbol = isDualCrypto ? pkg.mergeCrypto : null;
