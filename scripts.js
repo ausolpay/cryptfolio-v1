@@ -8339,11 +8339,9 @@ function createTeamPackageRecommendationCard(pkg) {
     const totalShares = pkg.fullAmount ? Math.round(pkg.fullAmount / sharePrice) : 0;
     const shareCount = (sharesBought > 0 || totalShares > 0) ? ` (${sharesBought}/${totalShares})` : '';
 
-    // Calculate price in AUD (using global packageCryptoPrices)
-    const btcPrice = (window.packageCryptoPrices && window.packageCryptoPrices['bitcoin'])
-        ? window.packageCryptoPrices['bitcoin'].aud
-        : 140000;
-    const pricePerShareAUD = (sharePrice * btcPrice).toFixed(2);
+    // ✅ FIX: Use convertBTCtoAUD() to get LIVE BTC price (same as Buy Packages page)
+    // This prevents showing incorrect fallback price (140000) until user presses +/-
+    const pricePerShareAUD = convertBTCtoAUD(sharePrice).toFixed(2);
 
     const teamInfo = `
         <div class="buy-package-stat">
@@ -8360,7 +8358,19 @@ function createTeamPackageRecommendationCard(pkg) {
         </div>
     `;
 
-    // ✅ REMOVED: Alert thresholds and bullet points for cleaner mobile display
+    // ✅ FIX: Add balance checking for team alert buttons (same as Buy Packages page)
+    const availableBalance = window.niceHashBalance?.available || 0;
+
+    // Calculate initial affordability for Buy button
+    const canAffordFirstShare = availableBalance >= sharePrice;
+    const buyButtonDisabled = canAffordFirstShare ? '' : 'disabled';
+    const buyButtonStyle = canAffordFirstShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+
+    // Calculate initial affordability for + button (can afford 2 shares = 1 current + 1 next)
+    const canAffordSecondShare = availableBalance >= (sharePrice * 2);
+    const plusButtonDisabled = canAffordSecondShare ? '' : 'disabled';
+    const plusButtonStyle = canAffordSecondShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+
     // Create a unique card ID for share controls
     const cardId = `team-alert-${pkg.id || pkg.name.replace(/\s+/g, '-')}`;
     const maxShares = pkg.availableShares || 1000;
@@ -8374,42 +8384,72 @@ function createTeamPackageRecommendationCard(pkg) {
                 <span>${pkg.duration}</span>
             </div>
             ${teamInfo}
+            <div class="buy-package-stat">
+                <span>Reward:</span>
+                <span id="main-reward-${pkg.name.replace(/\s+/g, '-')}" style="color: #4CAF50;">${(pkg.blockReward || 0).toFixed(4)} ${pkg.crypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Reward Value:</span>
+                <span id="reward-value-${pkg.name.replace(/\s+/g, '-')}" style="color: #4CAF50;">$0.00 AUD</span>
+            </div>
         </div>
 
-        <!-- ✅ NEW: Shares selector (- 1 +) for direct purchase from alerts -->
+        <!-- ✅ FIXED: Shares selector with balance checking -->
         <div class="shares-selector" style="margin: 15px 0;">
             <label style="display: block; margin-bottom: 8px; color: #aaa; font-size: 14px;">
                 Shares to buy:
             </label>
             <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <button onclick="adjustShares('${cardId}', -1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">-</button>
-                <input type="number" id="${cardId}-shares" value="1" min="1" max="${maxShares}"
-                    style="width: 80px; text-align: center; padding: 8px; font-size: 16px; border: 1px solid #555; background-color: #2a2a2a; color: white; border-radius: 5px;">
-                <button onclick="adjustShares('${cardId}', 1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">+</button>
+                <button onclick="adjustShares('${pkg.name}', -1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">-</button>
+                <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="${maxShares}"
+                    style="width: 80px; text-align: center; padding: 8px; font-size: 16px; border: 1px solid #555; background-color: #2a2a2a; color: white; border-radius: 5px;" readonly>
+                <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer; ${plusButtonStyle}" ${plusButtonDisabled}>+</button>
             </div>
             <div style="margin-top: 8px; font-size: 12px; color: #888;">
-                Cost: <span id="${cardId}-cost">$${pricePerShareAUD}</span> AUD
+                Cost: <span id="price-${pkg.name.replace(/\s+/g, '-')}">$${pricePerShareAUD}</span> AUD
             </div>
         </div>
 
-        <!-- ✅ CHANGED: Buy button for direct purchase from alerts -->
-        <button class="buy-now-btn" onclick="buyTeamPackageFromAlert('${pkg.id}', '${pkg.crypto}', ${sharePrice}, '${cardId}', ${maxShares})">
+        <!-- ✅ FIXED: Buy button with balance checking -->
+        <button class="buy-now-btn" onclick="buyTeamPackageFromAlert('${pkg.id}', '${pkg.crypto}', ${sharePrice}, '${cardId}', ${maxShares})" style="${buyButtonStyle}" ${buyButtonDisabled}>
             Buy Now
         </button>
     `;
 
-    // Add event listener for share input to update cost
-    setTimeout(() => {
-        const sharesInput = document.getElementById(`${cardId}-shares`);
-        const costDisplay = document.getElementById(`${cardId}-cost`);
-        if (sharesInput && costDisplay) {
-            sharesInput.addEventListener('input', () => {
-                const shares = parseInt(sharesInput.value) || 1;
-                const totalCost = (shares * sharePrice * btcPrice).toFixed(2);
-                costDisplay.textContent = `$${totalCost}`;
-            });
-        }
-    }, 100);
+    // Initialize package base values for adjustShares to work correctly
+    if (!window.packageBaseValues) {
+        window.packageBaseValues = {};
+    }
+
+    // Calculate total bought shares from addedAmount
+    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
+    const myBoughtShares = 0; // For alerts, assume no previous purchases
+
+    // Get crypto prices for reward calculation
+    const prices = JSON.parse(localStorage.getItem('cryptoPrices') || '{}');
+    const cryptoPrice = prices[pkg.crypto.toLowerCase()]?.aud || 0;
+    const totalRewardAUD = pkg.blockReward ? (pkg.blockReward * cryptoPrice) : 0;
+
+    window.packageBaseValues[pkg.name] = {
+        packageId: pkg.id,
+        priceAUD: parseFloat(pricePerShareAUD),
+        totalRewardAUD: totalRewardAUD,
+        totalMainReward: pkg.blockReward || 0,
+        totalMergeReward: pkg.mergeBlockReward || 0,
+        totalBoughtShares: totalBoughtShares,
+        myBoughtShares: myBoughtShares,
+        mainCrypto: pkg.crypto,
+        mergeCrypto: pkg.mergeCrypto,
+        isDualCrypto: false
+    };
+
+    // Initialize share value
+    if (!window.packageShareValues) {
+        window.packageShareValues = {};
+    }
+    window.packageShareValues[pkg.name] = 1;
+
+    console.log(`📦 Initialized team alert package base values for ${pkg.name}:`, window.packageBaseValues[pkg.name]);
 
     return card;
 }
@@ -11563,22 +11603,45 @@ function adjustShares(packageName, delta, buttonElement) {
         }
     }
 
-    // Check balance and update + button state for team packages
+    // Check balance and update + button and Buy button state for team packages
     const availableBalance = window.niceHashBalance?.available || 0;
     const sharePrice = 0.0001; // Team packages: 0.0001 BTC per share
+    const currentShareCost = newValue * sharePrice;
     const nextShareCost = (newValue + 1) * sharePrice;
 
+    // Update + button state
     if (plusButton) {
         if (availableBalance < nextShareCost) {
             // Disable + button if can't afford next share
             plusButton.disabled = true;
             plusButton.style.opacity = '0.5';
             plusButton.style.cursor = 'not-allowed';
+            console.log(`➕ Plus button DISABLED - balance: ${availableBalance}, next share cost: ${nextShareCost}`);
         } else {
             // Enable + button if can afford next share
             plusButton.disabled = false;
             plusButton.style.opacity = '1';
             plusButton.style.cursor = 'pointer';
+            console.log(`➕ Plus button ENABLED - balance: ${availableBalance}, next share cost: ${nextShareCost}`);
+        }
+    }
+
+    // ✅ FIX: Update Buy button state for highlighted team packages (EasyMining alerts)
+    // Find Buy button in the same container
+    const buyButton = container?.querySelector('.buy-now-btn');
+    if (buyButton) {
+        if (availableBalance < currentShareCost) {
+            // Disable Buy button if can't afford current shares
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+            console.log(`🛒 Buy button DISABLED - balance: ${availableBalance}, current cost: ${currentShareCost}`);
+        } else {
+            // Enable Buy button if can afford current shares
+            buyButton.disabled = false;
+            buyButton.style.opacity = '1';
+            buyButton.style.cursor = 'pointer';
+            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance}, current cost: ${currentShareCost}`);
         }
     }
 }
