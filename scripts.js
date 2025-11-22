@@ -11436,57 +11436,37 @@ function adjustShares(packageName, delta, buttonElement) {
     // CRITICAL: Detect if we're on the buy packages page vs EasyMining alerts
     const container = input.closest('.share-adjuster, .easymining-alert-card, .buy-package-card') || document;
     const isBuyPackagePage = container.classList?.contains('buy-package-card');
-    const isRecommendedPackage = container.classList?.contains('recommended');
+    const isRecommended = container.classList?.contains('recommended');
 
-    // CRITICAL FIX: Recommended (highlighted/alerted) packages use different element IDs than buy packages modal
-    // - Buy packages modal: uses updateShareCost() which expects team-UUID-shares, team-UUID-cost, etc.
-    // - Recommended packages: use shares-Package-Name, reward-value-Package-Name, price-Package-Name, etc.
-    if (isBuyPackagePage && !isRecommendedPackage) {
-        // BUY PACKAGES MODAL (non-highlighted): Use the dedicated updateShareCost function
-        // CRITICAL FIX: Extract cardId from the actual input element ID
-        // Input ID can be: "shares-Package-Name" (alert format) or "cardId-shares" (buy page format)
-        let cardId;
-        if (input.id.startsWith('shares-')) {
-            // Alert format: "shares-Package-Name" → cardId is "Package-Name"
-            cardId = input.id.replace('shares-', '');
-        } else if (input.id.endsWith('-shares')) {
-            // Buy page format: "team-UUID-shares" → cardId is "team-UUID"
-            cardId = input.id.replace('-shares', '');
-        } else {
-            // Fallback: use normalized package name
-            cardId = normalizedName;
-        }
-        console.log(`🛒 Buy packages modal detected - calling updateShareCost('${cardId}') [input.id: ${input.id}]`);
-        updateShareCost(cardId);
+    console.log(`📦 Package detection for "${packageName}":`, {
+        containerFound: !!container,
+        containerClass: container?.className,
+        isBuyPackagePage: isBuyPackagePage,
+        isRecommended: isRecommended
+    });
 
-        // Check balance and update + button state
-        const availableBalance = window.niceHashBalance?.available || 0;
-        const sharePrice = 0.0001; // Team packages: 0.0001 BTC per share
-        const nextShareCost = (newValue + 1) * sharePrice;
-
-        if (plusButton) {
-            if (availableBalance < nextShareCost) {
-                plusButton.disabled = true;
-                plusButton.style.opacity = '0.5';
-                plusButton.style.cursor = 'not-allowed';
-            } else {
-                plusButton.disabled = false;
-                plusButton.style.opacity = '1';
-                plusButton.style.cursor = 'pointer';
-            }
-        }
-        return; // Exit early - updateShareCost handles everything
-    }
-
-    // EASYMINING ALERTS: Continue with original logic
-    // Update reward value and price based on shares
+    // Update reward value and price based on shares (works for both highlighted and non-highlighted packages)
     const packageId = packageName.replace(/\s+/g, '-');
     const rewardValueElement = container.querySelector(`#reward-value-${packageId}`) || document.getElementById(`reward-value-${packageId}`);
     const priceElement = container.querySelector(`#price-${packageId}`) || document.getElementById(`price-${packageId}`);
     const mainRewardElement = container.querySelector(`#main-reward-${packageId}`) || document.getElementById(`main-reward-${packageId}`);
     const mergeRewardElement = container.querySelector(`#merge-reward-${packageId}`) || document.getElementById(`merge-reward-${packageId}`);
 
-    console.log(`🎨 Found price element in same container:`, !!priceElement, priceElement?.textContent);
+    console.log(`🔍 Element lookup for packageId "${packageId}":`, {
+        rewardValueFound: !!rewardValueElement,
+        priceFound: !!priceElement,
+        mainRewardFound: !!mainRewardElement,
+        mergeRewardFound: !!mergeRewardElement,
+        priceText: priceElement?.textContent,
+        rewardText: rewardValueElement?.textContent
+    });
+
+    // Debug: Check if packageBaseValues exists
+    console.log(`💾 Package base values check:`, {
+        exists: !!(window.packageBaseValues && window.packageBaseValues[packageName]),
+        availablePackages: window.packageBaseValues ? Object.keys(window.packageBaseValues) : [],
+        packageData: window.packageBaseValues?.[packageName]
+    });
 
     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
         const baseValues = window.packageBaseValues[packageName];
@@ -11512,15 +11492,23 @@ function adjustShares(packageName, delta, buttonElement) {
 
         // Update AUD displays
         if (rewardValueElement) {
+            const oldReward = rewardValueElement.textContent;
             rewardValueElement.textContent = `$${myRewardAUD} AUD`;
-            console.log(`✅ Updated reward value: $${myRewardAUD} AUD`);
+            console.log(`✅ Updated reward value: ${oldReward} → $${myRewardAUD} AUD`);
+            // Verify the update actually happened
+            console.log(`✔️ Verification - reward element now shows: "${rewardValueElement.textContent}"`);
+        } else {
+            console.error(`❌ REWARD ELEMENT NOT FOUND for package: ${packageName}`);
         }
+
         if (priceElement) {
             const oldPrice = priceElement.textContent;
             priceElement.textContent = `$${newPriceAUD} AUD`;
             console.log(`✅ Updated price: ${oldPrice} → $${newPriceAUD} AUD`);
+            // Verify the update actually happened
+            console.log(`✔️ Verification - price element now shows: "${priceElement.textContent}"`);
         } else {
-            console.warn(`⚠️ Price element not found for package: ${packageName}`);
+            console.error(`❌ PRICE ELEMENT NOT FOUND for package: ${packageName}`);
         }
 
         // Update crypto reward amounts with CORRECT formula
