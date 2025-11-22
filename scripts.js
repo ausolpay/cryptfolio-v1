@@ -11019,23 +11019,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
     }
 
-    // Calculate package price in AUD from BTC price
+    // Calculate package price in AUD from BTC price using live portfolio BTC price
     let priceAUD = 0;
     if (pkg.priceBTC) {
         try {
-            // Get BTC price with fallback to 140000 AUD
-            const btcPriceAUD = (prices['btc'] && prices['btc'].aud)
-                ? prices['btc'].aud
-                : (prices['bitcoin'] && prices['bitcoin'].aud)
-                    ? prices['bitcoin'].aud
-                    : 140000;
-
-            priceAUD = (pkg.priceBTC * btcPriceAUD).toFixed(2);
-            console.log(`💵 ${pkg.name} Price Calc:`, {
+            // Get LIVE BTC price from portfolio page (same as buy packages page)
+            priceAUD = convertBTCtoAUD(pkg.priceBTC).toFixed(2);
+            console.log(`💵 ${pkg.name} Price Calc (LIVE):`, {
                 priceBTC: pkg.priceBTC,
-                btcPrice_AUD: btcPriceAUD,
-                priceAUD: priceAUD,
-                usingFallback: !prices['btc'] && !prices['bitcoin']
+                priceAUD: priceAUD
             });
         } catch (error) {
             console.log('Could not calculate price AUD:', error);
