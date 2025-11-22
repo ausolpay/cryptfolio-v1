@@ -8457,9 +8457,18 @@ async function executeAutoBuyTeam(recommendations) {
                 }
             }
 
-            // Create order payload with wallet address(es)
+            // Create order payload with wallet address(es), amount, and shares object
             const bodyData = {
                 amount: totalAmount,
+                shares: {
+                    small: shares,
+                    medium: 0,
+                    large: 0,
+                    couponSmall: 0,
+                    couponMedium: 0,
+                    couponLarge: 0,
+                    massBuy: 0
+                },
                 soloMiningRewardAddr: mainWalletAddress.trim()
             };
 
@@ -10716,8 +10725,18 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
                 // Generate fresh auth headers for each request
                 const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
 
-                // Request body with address (no amount field - each POST = 1 share)
+                // Request body with address, amount, and shares object (each POST = 1 share)
                 const orderData = {
+                    amount: 0.0001, // 1 share = 0.0001 BTC
+                    shares: {
+                        small: 1,
+                        medium: 0,
+                        large: 0,
+                        couponSmall: 0,
+                        couponMedium: 0,
+                        couponLarge: 0,
+                        massBuy: 0
+                    },
                     soloMiningRewardAddr: mainWalletAddress.trim()
                 };
 
