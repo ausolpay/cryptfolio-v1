@@ -11127,7 +11127,10 @@ Do you want to continue?
 
         let response;
 
-        if (USE_VERCEL_PROXY) {
+        // TEMPORARY: Force direct API call to see raw NiceHash error
+        const forceDirectCall = true;
+
+        if (USE_VERCEL_PROXY && !forceDirectCall) {
             // Use Vercel serverless function as proxy
             console.log('✅ Using Vercel proxy to create team order');
             response = await fetch(VERCEL_PROXY_ENDPOINT, {
@@ -11144,7 +11147,10 @@ Do you want to continue?
             });
         } else {
             // Direct call to NiceHash
-            console.log('📡 Direct call to NiceHash API');
+            console.log('📡 FORCING DIRECT CALL to NiceHash API for debugging');
+            console.log('📡 URL:', `https://api2.nicehash.com${endpoint}`);
+            console.log('📡 Headers:', headers);
+            console.log('📡 Body:', body);
             response = await fetch(`https://api2.nicehash.com${endpoint}`, {
                 method: 'POST',
                 headers: headers,
