@@ -4031,10 +4031,14 @@ function syncModalLivePrice() {
 
     if (livePriceElement && holdingsPriceElement) {
         const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-        const displayPriceUsd = displayPriceAud / 1.52; // Convert back to USD
 
         if (displayPriceAud > 0) {
-            livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${displayPriceAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${displayPriceUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
+            // Format with commas and 2 decimals: 131,142.00
+            const formattedPrice = displayPriceAud.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${formattedPrice} AUD</b>`;
         }
     }
 }
@@ -4252,86 +4256,59 @@ function debounceUpdateUI(cryptoId, priceInAud) {
 
 
 
-// Function to update the candlestick chart with live USD price and convert it to AUD
+// Function to update the candlestick chart with stable price from holdings box
 function updatePriceInChart(priceInUsd) {
-    // ✅ FIX: Validate price - never update with 0 or invalid values
-    if (!priceInUsd || priceInUsd <= 0 || isNaN(priceInUsd)) {
-        console.warn(`⚠️ Invalid price received: ${priceInUsd}, using last valid price: ${lastValidChartPrice}`);
-        // Use last valid price if available, otherwise skip
-        if (!lastValidChartPrice || lastValidChartPrice <= 0) {
-            console.warn(`⚠️ No valid price available, skipping chart update`);
-            return;
-        }
-        priceInUsd = lastValidChartPrice; // Use stored last valid price
+    if (!candlestickChart || !currentCryptoId) return;
+
+    // ✅ FIX: Read stable price from holdings box instead of using WebSocket data
+    const holdingsPriceElement = document.getElementById(`${currentCryptoId}-price-aud`);
+    if (!holdingsPriceElement) return;
+
+    const priceInAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+    if (priceInAud <= 0) return;
+
+    const now = new Date();
+    const lastCandle = candlestickChart.data.datasets[0].data[candlestickChart.data.datasets[0].data.length - 1];
+
+    // Update existing candle or create new one
+    if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
+        lastCandle.c = priceInAud;
+        if (priceInAud > lastCandle.h) lastCandle.h = priceInAud;
+        if (priceInAud < lastCandle.l) lastCandle.l = priceInAud;
     } else {
-        // Store this valid price for future use
-        lastValidChartPrice = priceInUsd;
+        candlestickChart.data.datasets[0].data.push({
+            x: now,
+            o: priceInAud,
+            h: priceInAud,
+            l: priceInAud,
+            c: priceInAud
+        });
     }
 
-    const conversionRate = 1.52; // Example conversion rate from USD to AUD
-    const priceInAud = priceInUsd * conversionRate;
+    // ✅ FIX: Stabilize y-axis - only update if price moves outside current range
+    const currentMin = candlestickChart.options.scales.y.min || 0;
+    const currentMax = candlestickChart.options.scales.y.max || 0;
+    const currentRange = currentMax - currentMin;
+    const buffer = currentRange * 0.15; // 15% buffer
 
-    if (candlestickChart) {
-        const now = new Date();
-        const lastCandle = candlestickChart.data.datasets[0].data[candlestickChart.data.datasets[0].data.length - 1];
+    // Only recalculate y-axis if price goes outside the buffered range
+    if (priceInAud < (currentMin + buffer) || priceInAud > (currentMax - buffer) || currentRange === 0) {
+        const allPrices = candlestickChart.data.datasets[0].data
+            .flatMap(candle => [candle.h, candle.l])
+            .filter(p => p > 0);
 
-        if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
-            // Update existing candle with valid price
-            lastCandle.c = priceInAud;
-            if (priceInAud > lastCandle.h) lastCandle.h = priceInAud;
-            if (priceInAud < lastCandle.l) lastCandle.l = priceInAud;
-            console.log(`Updated existing candle at ${lastCandle.x} with price: AUD $${priceInAud}`);
-        } else {
-            // Create new candle with valid price
-            candlestickChart.data.datasets[0].data.push({
-                x: now,
-                o: priceInAud,
-                h: priceInAud,
-                l: priceInAud,
-                c: priceInAud
-            });
-            console.log(`Created new candle at ${now} with price: AUD $${priceInAud}`);
-        }
-
-        // ✅ FIX: Remove any bad candles from the chart data before updating y-axis
-        const originalLength = candlestickChart.data.datasets[0].data.length;
-        candlestickChart.data.datasets[0].data = candlestickChart.data.datasets[0].data.filter(candle => {
-            return candle && candle.o > 0 && candle.h > 0 && candle.l > 0 && candle.c > 0 &&
-                   !isNaN(candle.o) && !isNaN(candle.h) && !isNaN(candle.l) && !isNaN(candle.c);
-        });
-        if (candlestickChart.data.datasets[0].data.length !== originalLength) {
-            console.warn(`🧹 Removed ${originalLength - candlestickChart.data.datasets[0].data.length} invalid candles from chart`);
-        }
-
-        // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
-        const allPrices = candlestickChart.data.datasets[0].data.flatMap(candle => [candle.h, candle.l]).filter(p => p > 0);
         if (allPrices.length > 0) {
             const minPrice = Math.min(...allPrices);
             const maxPrice = Math.max(...allPrices);
-            const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+            const padding = (maxPrice - minPrice) * 0.1;
 
             candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
             candlestickChart.options.scales.y.max = maxPrice + padding;
         }
-
-        // Update the chart
-        candlestickChart.update();
-
-        // ✅ FIX: Read live price directly from holdings box to prevent 0 drops
-        // Always use the same reliable price source as the main holdings display
-        const livePriceElement = document.getElementById('live-price');
-        if (livePriceElement && currentCryptoId) {
-            const holdingsPriceElement = document.getElementById(`${currentCryptoId}-price-aud`);
-            if (holdingsPriceElement) {
-                const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-                const displayPriceUsd = displayPriceAud / 1.52; // Convert back to USD
-
-                if (displayPriceAud > 0) {
-                    livePriceElement.innerHTML = `<span style="font-weight: normal;"></span><b>$${displayPriceAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${displayPriceUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
-                }
-            }
-        }
     }
+
+    // Update chart smoothly
+    candlestickChart.update('none'); // 'none' mode = no animation, smoother updates
 }
 
 
@@ -4412,87 +4389,59 @@ async function fetchWithCache(cryptoId) {
 
 
 
-// Function to update the candlestick chart with live price data in AUD and USD
+// Function to update the candlestick chart with stable price from holdings box
 function updateCandlestickChart(priceInAud, priceInUsd) {
-    if (!candlestickChart || !candlestickChart.data || !candlestickChart.data.datasets || candlestickChart.data.datasets.length === 0) {
-        console.error('Candlestick chart not initialized or data is missing.');
-        return;
-    }
+    if (!candlestickChart || !currentCryptoId) return;
 
-    // ✅ FIX: Validate prices - never update with 0 or invalid values
-    if (!priceInAud || priceInAud <= 0 || isNaN(priceInAud)) {
-        console.warn(`⚠️ Invalid AUD price received: ${priceInAud}, skipping chart update`);
-        return;
-    }
+    // ✅ FIX: Read stable price from holdings box instead of using passed parameters
+    const holdingsPriceElement = document.getElementById(`${currentCryptoId}-price-aud`);
+    if (!holdingsPriceElement) return;
+
+    const stablePriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+    if (stablePriceAud <= 0) return;
 
     const now = new Date();
     const lastCandle = candlestickChart.data.datasets[0].data[candlestickChart.data.datasets[0].data.length - 1];
 
-    // Check if the current time is within the same 5-minute interval
+    // Update existing candle or create new one
     if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
-        // If within 5 minutes, update the last candle
-        lastCandle.c = priceInAud;
-        if (priceInAud > lastCandle.h) lastCandle.h = priceInAud;
-        if (priceInAud < lastCandle.l) lastCandle.l = priceInAud;
-        console.log(`Updated existing candle at ${lastCandle.x} with price: AUD $${priceInAud}`);
+        lastCandle.c = stablePriceAud;
+        if (stablePriceAud > lastCandle.h) lastCandle.h = stablePriceAud;
+        if (stablePriceAud < lastCandle.l) lastCandle.l = stablePriceAud;
     } else {
-        // Otherwise, create a new candle
         candlestickChart.data.datasets[0].data.push({
             x: now,
-            o: priceInAud,
-            h: priceInAud,
-            l: priceInAud,
-            c: priceInAud
+            o: stablePriceAud,
+            h: stablePriceAud,
+            l: stablePriceAud,
+            c: stablePriceAud
         });
-        console.log(`Created new candle at ${now} with price: AUD $${priceInAud}`);
     }
 
-    // ✅ FIX: Remove any bad candles from the chart data before updating y-axis
-    const originalLength = candlestickChart.data.datasets[0].data.length;
-    candlestickChart.data.datasets[0].data = candlestickChart.data.datasets[0].data.filter(candle => {
-        return candle && candle.o > 0 && candle.h > 0 && candle.l > 0 && candle.c > 0 &&
-               !isNaN(candle.o) && !isNaN(candle.h) && !isNaN(candle.l) && !isNaN(candle.c);
-    });
-    if (candlestickChart.data.datasets[0].data.length !== originalLength) {
-        console.warn(`🧹 Removed ${originalLength - candlestickChart.data.datasets[0].data.length} invalid candles from chart`);
-    }
+    // ✅ FIX: Stabilize y-axis - only update if price moves outside current range
+    const currentMin = candlestickChart.options.scales.y.min || 0;
+    const currentMax = candlestickChart.options.scales.y.max || 0;
+    const currentRange = currentMax - currentMin;
+    const buffer = currentRange * 0.15; // 15% buffer
 
-    // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
-    // Filter out 0 and invalid values to prevent chart from dropping to 0
-    const allPrices = candlestickChart.data.datasets[0].data
-        .flatMap(candle => [candle.h, candle.l])
-        .filter(p => p && p > 0 && !isNaN(p));
+    // Only recalculate y-axis if price goes outside the buffered range
+    if (stablePriceAud < (currentMin + buffer) || stablePriceAud > (currentMax - buffer) || currentRange === 0) {
+        const allPrices = candlestickChart.data.datasets[0].data
+            .flatMap(candle => [candle.h, candle.l])
+            .filter(p => p > 0);
 
-    if (allPrices.length > 0) {
-        const minPrice = Math.min(...allPrices);
-        const maxPrice = Math.max(...allPrices);
-        const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+        if (allPrices.length > 0) {
+            const minPrice = Math.min(...allPrices);
+            const maxPrice = Math.max(...allPrices);
+            const padding = (maxPrice - minPrice) * 0.1;
 
-        candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
-        candlestickChart.options.scales.y.max = maxPrice + padding;
-    }
-
-    // Adjust the chart's x-axis time range to zoom out slightly and leave room on the right
-    const paddingTime = 10 * 60 * 1000; // Add 10 minutes of padding to the right
-    candlestickChart.options.scales.x.min = new Date(now.getTime() - 6 * 60 * 60 * 1000); // 6 hours ago
-    candlestickChart.options.scales.x.max = new Date(now.getTime() + paddingTime); // Add extra space to the right for padding
-
-    candlestickChart.update(); // Update the chart to reflect the new data
-
-    // ✅ FIX: Read live price directly from holdings box to prevent 0 drops
-    // Always use the same reliable price source as the main holdings display
-    const livePriceElement = document.getElementById('live-price');
-    if (livePriceElement && currentCryptoId) {
-        const holdingsPriceElement = document.getElementById(`${currentCryptoId}-price-aud`);
-        if (holdingsPriceElement) {
-            const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-            const displayPriceUsd = displayPriceAud / 1.52; // Convert back to USD
-
-            if (displayPriceAud > 0) {
-                livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${displayPriceAud.toFixed(8)}</b> <span style="font-weight: normal;">AUD</span> (<b>$${displayPriceUsd.toFixed(8)}</b> <span style="font-weight: normal;">USD</span>)`;
-            }
+            candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
+            candlestickChart.options.scales.y.max = maxPrice + padding;
         }
     }
+
+    // Update chart smoothly
+    candlestickChart.update('none'); // 'none' mode = no animation, smoother updates
 }
 
 
