@@ -7769,6 +7769,14 @@ function displayActivePackages() {
             }
         }
 
+        // Robot icon for auto-bought packages
+        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        const isAutoBought = autoBoughtPackages[pkg.id];
+        let robotHtml = '';
+        if (isAutoBought) {
+            robotHtml = '<div class="auto-buy-indicator" title="Auto-bought by bot" style="position: absolute; left: 5px; top: 5px; font-size: 20px;">🤖</div>';
+        }
+
         // Rocket icon logic:
         // - Active packages: flashing rocket (mining in progress, regardless of blocks found)
         // - Completed packages: no rocket (removed to avoid clutter)
@@ -7786,6 +7794,7 @@ function displayActivePackages() {
         }
 
         card.innerHTML = `
+            ${robotHtml}
             ${rocketHtml}
             <div class="package-card-name">${pkg.name}${blockBadge}</div>
             <div class="package-card-stat">
@@ -8033,6 +8042,16 @@ async function executeAutoBuySolo(recommendations) {
             const result = await response.json();
             console.log('✅ Solo package auto-purchased successfully:', result);
 
+            // Mark this package as auto-bought
+            const packageId = result.id || result.orderId || ticketId;
+            const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+            autoBoughtPackages[packageId] = {
+                type: 'solo',
+                timestamp: Date.now(),
+                price: parseFloat(pkg.price) || 0
+            };
+            localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+
             // Update lastBuyTime and save
             autoBuy.lastBuyTime = Date.now();
             localStorage.setItem(`${loggedInUser}_soloAutoBuy`, JSON.stringify(autoBuySettings));
@@ -8044,9 +8063,7 @@ async function executeAutoBuySolo(recommendations) {
             console.log(`   ⏳ Next auto-buy available in 1 hour`);
 
             // ✅ Update stats (same as manual buy)
-            const btcPrice = (window.packageCryptoPrices && window.packageCryptoPrices['bitcoin'])
-                ? window.packageCryptoPrices['bitcoin'].aud
-                : 140000;
+            const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
             const packagePrice = parseFloat(pkg.price) || 0;
 
             easyMiningData.allTimeStats.totalSpent += packagePrice * btcPrice;
@@ -8085,7 +8102,11 @@ async function executeAutoBuyTeam(recommendations) {
         }
 
         // Execute auto-buy
-        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (${autoBuy.shares} shares)`);
+        const shares = autoBuy.shares || 1;
+        const sharePrice = 0.0001;
+        const totalAmount = shares * sharePrice;
+
+        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (${shares} shares = ${totalAmount} BTC)`);
 
         try {
             // Auto-buy: skip confirmation, call the purchase API directly
@@ -8094,12 +8115,31 @@ async function executeAutoBuyTeam(recommendations) {
                 continue;
             }
 
-            const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${pkg.id}`;
+            // Sync time before purchase
+            await syncNiceHashTime();
+
+            // Get package ID - use same logic as manual buy
+            const packageId = pkg.apiData?.id || pkg.id;
+            const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+
+            // Get withdrawal address for the crypto
+            const crypto = pkg.crypto || pkg.currencyAlgo?.title || 'Unknown';
+            let mainWalletAddress = getWithdrawalAddress(crypto);
+
+            if (!mainWalletAddress) {
+                console.error(`❌ No withdrawal address configured for ${crypto}`);
+                continue;
+            }
+
+            // Use new request format with amount field
             const bodyData = {
-                shares: autoBuy.shares || 1
+                amount: totalAmount,
+                soloMiningRewardAddr: mainWalletAddress.trim()
             };
             const body = JSON.stringify(bodyData);
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+            console.log(`📡 Auto-buy request: ${shares} shares (${totalAmount} BTC) to ${crypto} address`);
 
             let response;
             if (USE_VERCEL_PROXY) {
@@ -8128,11 +8168,34 @@ async function executeAutoBuyTeam(recommendations) {
 
             const result = await response.json();
 
+            // Save bought shares (add to existing)
+            const currentShares = getMyTeamShares(packageId) || 0;
+            const newTotalShares = currentShares + shares;
+            saveMyTeamShares(packageId, newTotalShares);
+            console.log(`💾 Saved team shares: ${newTotalShares} (was ${currentShares}, added ${shares})`);
+
+            // Mark this package as auto-bought
+            const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+            autoBoughtPackages[packageId] = {
+                type: 'team',
+                timestamp: Date.now(),
+                shares: shares,
+                amount: totalAmount
+            };
+            localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+
             // Update lastBuyTime
             autoBuy.lastBuyTime = Date.now();
             localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
 
-            console.log(`✅ Auto-buy completed for ${pkg.name} with ${autoBuy.shares} share(s). Order ID: ${result.id || result.orderId || 'N/A'}. Next auto-buy available in 1 hour.`, result);
+            // Update stats
+            const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
+            const totalPriceAUD = totalAmount * btcPrice;
+            easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
+            easyMiningData.todayStats.totalSpent += totalPriceAUD;
+            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+            console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} with ${shares} share(s). Order ID: ${result.id || result.orderId || 'N/A'}. Next auto-buy available in 1 hour.`);
 
             // Refresh package data
             await fetchEasyMiningData();
