@@ -11095,15 +11095,14 @@ Do you want to continue?
         // For Silver/Gold: only soloMiningRewardAddr is used
         // For Palladium: soloMiningRewardAddr = LTC address, mergeSoloMiningRewardAddr = DOGE address
         const orderData = {
-            amount: shares,
-            clear: false,
-            code: '',
             shares: shares,
-            soloMiningRewardAddr: mainWalletAddress.trim(), // Main crypto address (BCH, BTC, or LTC for Palladium)
-            mergeSoloMiningRewardAddr: isDualCrypto ? (mergeWalletAddress?.trim() || '') : '', // Merge crypto address (DOGE for Palladium)
-            soloMiningRewardWithdrawalAddrId: '',
-            mergeSoloMiningRewardWithdrawalAddrId: ''
+            soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address (BCH, BTC, or LTC for Palladium)
         };
+
+        // Add merge address for dual-crypto packages (Palladium DOGE)
+        if (isDualCrypto && mergeWalletAddress) {
+            orderData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
+        }
 
         console.log('📦 Team order payload:', {
             endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
