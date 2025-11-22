@@ -8094,7 +8094,7 @@ async function executeAutoBuyTeam(recommendations) {
                 continue;
             }
 
-            const endpoint = `/main/api/v2/hashpower/shared/ticket/${pkg.id}`;
+            const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${pkg.id}`;
             const bodyData = {
                 shares: autoBuy.shares || 1
             };
@@ -10198,7 +10198,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
     }
 }
 
-// Buy team package using POST /main/api/v2/hashpower/shared/ticket/{id}
+// Buy team package using POST /hashpower/api/v2/hashpower/shared/ticket/{id}
 // New consolidated team package buy function using updated NiceHash API endpoint
 async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     // 1. Validate API settings
@@ -12046,7 +12046,7 @@ Do you want to continue?
         }
 
         console.log('📦 Team package purchase:', {
-            endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
+            endpoint: `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`,
             method: 'POST',
             totalShares: shares,
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
@@ -12060,8 +12060,8 @@ Do you want to continue?
         console.log('📄 Request body (per share):', JSON.stringify(orderData, null, 2));
 
         // Loop to purchase shares (each request buys 1 share)
-        // Endpoint: POST /main/api/v2/hashpower/shared/ticket/{id}
-        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
+        // Endpoint: POST /hashpower/api/v2/hashpower/shared/ticket/{id}
+        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
 
         console.log(`🔄 Starting purchase loop for ${shares} shares...`);
 
