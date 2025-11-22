@@ -8416,16 +8416,30 @@ function createTeamPackageRecommendationCard(pkg) {
 
 // ✅ NEW: Helper function for adjusting shares in team alert cards
 function adjustShares(cardId, delta) {
-    // Sanitize the package name for use in element IDs (replace spaces with hyphens)
+    // Handle two different ID formats:
+    // 1. Alert cards: shares-{PackageName} (e.g., shares-Gold-Package)
+    // 2. Buy packages page: {cardId}-shares (e.g., team-123-shares)
+
     const sanitizedId = cardId.replace(/\s+/g, '-');
-    const input = document.getElementById(`shares-${sanitizedId}`);
-    if (!input) return;
+
+    // Try alert card format first
+    let input = document.getElementById(`shares-${sanitizedId}`);
+
+    // If not found, try buy packages page format
+    if (!input) {
+        input = document.getElementById(`${cardId}-shares`);
+    }
+
+    if (!input) {
+        console.warn(`⚠️ Could not find share input for cardId: ${cardId}`);
+        return;
+    }
 
     const currentValue = parseInt(input.value) || 1;
     const newValue = Math.max(1, Math.min(currentValue + delta, parseInt(input.max) || 1000));
     input.value = newValue;
 
-    // Update price display for team packages
+    // Update price display for team packages (alert cards only)
     const priceElement = document.getElementById(`price-${sanitizedId}`);
     if (priceElement) {
         // Calculate new price: shares × 0.0001 BTC × live BTC price AUD
@@ -8439,7 +8453,7 @@ function adjustShares(cardId, delta) {
         priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
     }
 
-    // Trigger input event to update cost display
+    // Trigger input event to update cost display (for buy packages page)
     input.dispatchEvent(new Event('input'));
 }
 
