@@ -9248,12 +9248,15 @@ function saveMyTeamShares(packageId, shares) {
 }
 
 // Helper function to calculate team reward based on participation
-function calculateTeamReward(blockReward, totalBoughtShares, myShares) {
+function calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares, myShares) {
     if (myShares === 0) return 0;
 
-    // Formula: blockReward ÷ (totalBoughtShares + myShares) × myShares
-    // Note: totalBoughtShares can be 0 if no one has bought yet
-    const totalShares = totalBoughtShares + myShares;
+    // Formula: blockReward ÷ ((totalBoughtShares - myBoughtShares) + myShares) × myShares
+    // totalBoughtShares from API includes MY already bought shares, so we subtract them first
+    // Then add the new total shares I want to buy
+    // Example: Total bought=4 (incl. my 2), I want 3 total: 3.125 ÷ ((4-2)+3) × 3 = 3.125 ÷ 5 × 3
+    const othersBought = totalBoughtShares - myBoughtShares;
+    const totalShares = othersBought + myShares;
     const reward = (blockReward / totalShares) * myShares;
 
     return reward;
@@ -9294,7 +9297,7 @@ function createTeamPackageCard(pkg) {
 
     // Calculate initial reward display based on user's bought shares
     // If user has no shares, show 0 reward (they can see it update when they adjust the input)
-    const initialReward = myBoughtShares > 0 ? calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares) : 0;
+    const initialReward = myBoughtShares > 0 ? calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares, myBoughtShares) : 0;
 
     card.innerHTML = `
         <h4>👥 ${packageName}</h4>
@@ -9422,7 +9425,7 @@ function updateShareCost(cardId) {
         costDisplay.style.color = '#4CAF50';
 
         // Calculate and update reward display
-        const potentialReward = calculateTeamReward(blockReward, totalBoughtShares, shares);
+        const potentialReward = calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares, shares);
         if (rewardDisplay) {
             rewardDisplay.textContent = `${potentialReward.toFixed(8)} ${crypto}`;
         }
