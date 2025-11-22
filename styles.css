@@ -1320,6 +1320,8 @@ body.light-mode .balance-label {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: 1; /* Equal width tabs on desktop */
+    justify-content: center; /* Center content within each tab */
 }
 
 .package-tab:hover {
