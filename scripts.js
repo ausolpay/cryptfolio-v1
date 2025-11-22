@@ -9920,6 +9920,14 @@ function createTeamPackageCard(pkg) {
     const packageName = ticket.name || 'Unknown Package';
     const crypto = ticket.currencyAlgo?.currency || 'Unknown';
     const packageId = ticket.id || pkg.id;  // Use currencyAlgoTicket.id for POST endpoint
+
+    // Debug: Log ID extraction
+    console.log('🔍 ID Extraction:', {
+        'pkg.id (package ID)': pkg.id,
+        'ticket.id (currencyAlgoTicket.id)': ticket.id,
+        'Selected packageId for API': packageId,
+        'Package name': packageName
+    });
     const packagePrice = ticket.price || 0;
     const fullAmount = pkg.fullAmount || packagePrice;
     const addedAmount = pkg.addedAmount || 0;
@@ -10271,7 +10279,14 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
                 const body = JSON.stringify(orderData);
                 const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-                console.log(`📦 Share ${i} body:`, orderData);
+                console.log(`📦 Share ${i} Request Details:`, {
+                    endpoint: endpoint,
+                    packageId: packageId,
+                    method: 'POST',
+                    body: orderData,
+                    headers: headers,
+                    fullURL: USE_VERCEL_PROXY ? VERCEL_PROXY_ENDPOINT : `https://api2.nicehash.com${endpoint}`
+                });
 
                 let response;
                 if (USE_VERCEL_PROXY) {
@@ -10293,6 +10308,8 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
                     });
                 }
 
+                console.log(`📥 Response Status: ${response.status} ${response.statusText}`);
+
                 if (response.ok) {
                     successCount++;
                     const result = await response.json();
@@ -10300,7 +10317,13 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
                 } else {
                     failCount++;
                     const errorData = await response.json();
-                    console.error(`❌ Share ${i}/${shares} failed:`, errorData);
+                    console.error(`❌ Share ${i}/${shares} failed:`, {
+                        status: response.status,
+                        statusText: response.statusText,
+                        endpoint: endpoint,
+                        packageId: packageId,
+                        errorData: errorData
+                    });
                 }
 
                 // Small delay between requests (avoid rate limiting)
