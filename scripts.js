@@ -50,6 +50,22 @@ let candlestickChart;
 let currentCryptoId;
 let lastValidChartPrice = null; // Store last valid price for chart
 
+// Chart interval management
+let currentChartInterval = '5m'; // Default 5 minutes
+let currentIntervalMs = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// Interval configurations
+const intervalConfigs = {
+    '1s': { ms: 1000, coingecko: 1, unit: 'second' },
+    '1m': { ms: 60 * 1000, coingecko: 1, unit: 'minute' },
+    '5m': { ms: 5 * 60 * 1000, coingecko: 1, unit: 'minute' },
+    '15m': { ms: 15 * 60 * 1000, coingecko: 1, unit: 'minute' },
+    '30m': { ms: 30 * 60 * 1000, coingecko: 1, unit: 'minute' },
+    '1h': { ms: 60 * 60 * 1000, coingecko: 1, unit: 'hour' },
+    '24h': { ms: 24 * 60 * 60 * 1000, coingecko: 7, unit: 'day' },
+    '7d': { ms: 7 * 24 * 60 * 60 * 1000, coingecko: 30, unit: 'day' },
+    '1y': { ms: 365 * 24 * 60 * 60 * 1000, coingecko: 365, unit: 'day' }
+};
 
 function getApiKey() {
     return apiKeys[currentApiKeyIndex];
@@ -4262,8 +4278,8 @@ function updatePriceInChart(priceInUsd) {
     const now = new Date();
     const lastCandle = candlestickChart.data.datasets[0].data[candlestickChart.data.datasets[0].data.length - 1];
 
-    // Update existing candle or create new one
-    if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
+    // Update existing candle or create new one based on selected interval
+    if (lastCandle && now - new Date(lastCandle.x) < currentIntervalMs) {
         lastCandle.c = priceInAud;
         if (priceInAud > lastCandle.h) lastCandle.h = priceInAud;
         if (priceInAud < lastCandle.l) lastCandle.l = priceInAud;
@@ -4395,8 +4411,8 @@ function updateCandlestickChart(priceInAud, priceInUsd) {
     const now = new Date();
     const lastCandle = candlestickChart.data.datasets[0].data[candlestickChart.data.datasets[0].data.length - 1];
 
-    // Update existing candle or create new one
-    if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
+    // Update existing candle or create new one based on selected interval
+    if (lastCandle && now - new Date(lastCandle.x) < currentIntervalMs) {
         lastCandle.c = stablePriceAud;
         if (stablePriceAud > lastCandle.h) lastCandle.h = stablePriceAud;
         if (stablePriceAud < lastCandle.l) lastCandle.l = stablePriceAud;
@@ -4467,12 +4483,19 @@ function saveCandlestickData(cryptoId, priceInAud) {
 }
 
 async function fetchHistoricalData(cryptoId) {
-    const response = await fetch(`https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1`);
+    // Get days parameter based on selected interval
+    const days = intervalConfigs[currentChartInterval].coingecko;
+
+    console.log(`📊 Fetching ${days} days of historical data for interval: ${currentChartInterval}`);
+
+    const response = await fetch(`https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=${days}`);
     if (!response.ok) {
         throw new Error('Failed to fetch historical data');
     }
     const data = await response.json();
     const conversionRate = 1.51; // Example conversion rate from USD to AUD
+
+    console.log(`✅ Fetched ${data.length} candles for ${currentChartInterval} interval`);
 
     return data.map(d => ({
         x: new Date(d[0]),
@@ -5091,6 +5114,109 @@ function closeCandlestickModal() {
         modalLivePriceInterval = null;
     }
 }
+
+// ============================================================================
+// CHART INTERVAL AND ZOOM CONTROLS
+// ============================================================================
+
+// Toggle interval dropdown
+function toggleIntervalDropdown() {
+    const dropdown = document.getElementById('interval-dropdown');
+    const button = document.getElementById('interval-button');
+
+    dropdown.classList.toggle('show');
+    button.classList.toggle('active');
+}
+
+// Select interval and reload chart data
+async function selectInterval(interval, label) {
+    console.log(`📊 Changing chart interval to: ${interval}`);
+
+    // Update selected state in UI
+    document.querySelectorAll('.interval-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    event.target.classList.add('selected');
+
+    // Update button text
+    document.getElementById('current-interval').textContent = interval;
+
+    // Close dropdown
+    toggleIntervalDropdown();
+
+    // Update global interval
+    currentChartInterval = interval;
+    currentIntervalMs = intervalConfigs[interval].ms;
+
+    // Reload chart data with new interval
+    if (currentCryptoId) {
+        await reloadChartWithInterval(currentCryptoId);
+    }
+}
+
+// Reload chart data with new interval
+async function reloadChartWithInterval(cryptoId) {
+    try {
+        // Fetch new historical data based on interval
+        const historicalData = await fetchHistoricalData(cryptoId);
+
+        // Update chart data
+        if (candlestickChart) {
+            const chartData = formatCandlestickData(historicalData);
+            candlestickChart.data = chartData;
+            candlestickChart.update();
+            console.log(`✅ Chart reloaded with ${interval} interval`);
+        }
+    } catch (error) {
+        console.error('Error reloading chart:', error);
+    }
+}
+
+// Zoom chart in or out
+function zoomChart(direction) {
+    if (!candlestickChart) return;
+
+    const chart = candlestickChart;
+    const xAxis = chart.options.scales.x;
+
+    // Get current time range
+    const currentMin = xAxis.min ? new Date(xAxis.min) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const currentMax = xAxis.max ? new Date(xAxis.max) : new Date();
+
+    const currentRange = currentMax - currentMin;
+
+    if (direction === 'in') {
+        // Zoom in: reduce range by 30%, focus on latest candle
+        const newRange = currentRange * 0.7;
+        const latestTime = new Date(); // Focus on now (latest candle)
+
+        xAxis.min = new Date(latestTime.getTime() - newRange);
+        xAxis.max = new Date(latestTime.getTime() + newRange * 0.1); // Small padding on right
+    } else if (direction === 'out') {
+        // Zoom out: increase range by 50%
+        const newRange = currentRange * 1.5;
+        const latestTime = new Date();
+
+        xAxis.min = new Date(latestTime.getTime() - newRange);
+        xAxis.max = new Date(latestTime.getTime() + newRange * 0.1);
+    }
+
+    chart.update('none');
+    console.log(`🔍 Zoomed ${direction}: Range now ${(xAxis.max - xAxis.min) / (60 * 60 * 1000)} hours`);
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('interval-dropdown');
+    const button = document.getElementById('interval-button');
+
+    if (dropdown && button) {
+        if (!button.contains(event.target) && !dropdown.contains(event.target)) {
+            dropdown.classList.remove('show');
+            button.classList.remove('active');
+        }
+    }
+});
 
 
 

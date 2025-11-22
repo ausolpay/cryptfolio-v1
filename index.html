@@ -650,6 +650,32 @@
                 <span id="crypto-name" class="crypto-name"></span>
             </div>
             <canvas id="candlestick-chart"></canvas>
+
+            <!-- Chart Controls -->
+            <div class="chart-controls">
+                <div class="interval-selector-container">
+                    <button id="interval-button" class="chart-button" onclick="toggleIntervalDropdown()">
+                        <span id="current-interval">5m</span>
+                        <span class="dropdown-arrow">▲</span>
+                    </button>
+                    <div id="interval-dropdown" class="interval-dropdown">
+                        <div class="interval-option" onclick="selectInterval('1s', '1 Second')">1s</div>
+                        <div class="interval-option" onclick="selectInterval('1m', '1 Minute')">1m</div>
+                        <div class="interval-option selected" onclick="selectInterval('5m', '5 Minutes')">5m</div>
+                        <div class="interval-option" onclick="selectInterval('15m', '15 Minutes')">15m</div>
+                        <div class="interval-option" onclick="selectInterval('30m', '30 Minutes')">30m</div>
+                        <div class="interval-option" onclick="selectInterval('1h', '1 Hour')">1h</div>
+                        <div class="interval-option" onclick="selectInterval('24h', '24 Hours')">24h</div>
+                        <div class="interval-option" onclick="selectInterval('7d', '7 Days')">7d</div>
+                        <div class="interval-option" onclick="selectInterval('1y', '1 Year')">1y</div>
+                    </div>
+                </div>
+                <div class="zoom-controls">
+                    <button class="chart-button zoom-button" onclick="zoomChart('out')" title="Zoom Out">−</button>
+                    <button class="chart-button zoom-button" onclick="zoomChart('in')" title="Zoom In">+</button>
+                </div>
+            </div>
+
             <div id="modal-info" class="modal-info">
             <h1 id="live-price" class="live-price"></h1>
             <p id="holdings-info" class="holdings-info"></p> <!-- Add this line -->
