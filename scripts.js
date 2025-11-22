@@ -11358,6 +11358,14 @@ function adjustShares(packageName, delta, buttonElement) {
     const newValue = Math.max(1, Math.min(max, currentValue + delta)); // Minimum is 1, not 0
 
     console.log(`📝 Setting input.value from ${currentValue} to ${newValue}`);
+    console.log(`🔍 Input element details:`, {
+        id: input.id,
+        value: input.value,
+        readonly: input.hasAttribute('readonly'),
+        disabled: input.disabled,
+        parentClass: input.parentElement?.className,
+        cardClass: input.closest('.buy-package-card')?.className
+    });
 
     // Temporarily remove readonly to allow value change to be visually reflected
     const wasReadonly = input.hasAttribute('readonly');
@@ -11368,6 +11376,7 @@ function adjustShares(packageName, delta, buttonElement) {
 
     input.value = newValue;
     console.log(`📝 Verifying: input.value is now ${input.value}`);
+    console.log(`👀 Visual check: input.value = "${input.value}", displayed value should be ${newValue}`);
 
     // Restore readonly attribute
     if (wasReadonly) {
