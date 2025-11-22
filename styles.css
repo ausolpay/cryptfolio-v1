@@ -1387,7 +1387,7 @@ body.light-mode .package-tab.active {
         padding: 4px; /* Reduce padding on mobile */
         width: auto;
         height: auto;
-        max-width: calc(100% - 10px); /* 10px narrower for narrow mobile devices */
+        max-width: calc(100% - 5px); /* 5px narrower for narrow mobile devices */
         margin-left: -5px; /* Move 5px to the left on mobile */
     }
 
