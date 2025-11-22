@@ -5165,7 +5165,7 @@ async function reloadChartWithInterval(cryptoId) {
             const chartData = formatCandlestickData(historicalData);
             candlestickChart.data = chartData;
             candlestickChart.update();
-            console.log(`✅ Chart reloaded with ${interval} interval`);
+            console.log(`✅ Chart reloaded with ${currentChartInterval} interval`);
         }
     } catch (error) {
         console.error('Error reloading chart:', error);
