@@ -3042,7 +3042,12 @@ function formatNumber(number, isPrice = false) {
             return parts.join('.');
         }
     }
-    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    // ✅ FIX: Only add commas to integer part, not decimal part
+    // This prevents showing numbers like 792.558,444,001 (incorrect)
+    // Now shows: 792.558444001 (correct)
+    const parts = number.toString().split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
 }
 
 function sortContainersByValue() {
@@ -5709,6 +5714,9 @@ async function fetchEasyMiningData() {
 
         // Check for package status changes (start/complete)
         checkForPackageStatusChanges();
+
+        // ✅ Auto-add crypto boxes for active packages (ensures live prices are used)
+        await autoAddCryptoBoxesForActivePackages();
 
         // Update BTC holdings if toggles are enabled
         updateBTCHoldings();
@@ -8595,6 +8603,95 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
     // Update total portfolio value
     updateTotalHoldings();
+}
+
+// ✅ NEW: Auto-add crypto boxes when packages become ACTIVE
+// This ensures live prices are used in calculations even if the package hasn't found rewards yet
+async function autoAddCryptoBoxesForActivePackages() {
+    console.log('\n📦 Checking for missing crypto boxes in active packages...');
+
+    if (!easyMiningData.activePackages || easyMiningData.activePackages.length === 0) {
+        console.log('   No active packages to check');
+        return;
+    }
+
+    // Crypto symbol to CoinGecko ID mapping
+    const cryptoMapping = {
+        'BTC': 'bitcoin',
+        'BCH': 'bitcoin-cash',
+        'RVN': 'ravencoin',
+        'DOGE': 'dogecoin',
+        'LTC': 'litecoin',
+        'KAS': 'kaspa'
+    };
+
+    // Track which cryptos we've already checked this run to avoid duplicates
+    const checkedCryptos = new Set();
+
+    for (const pkg of easyMiningData.activePackages) {
+        // Only check ACTIVE packages (not completed or pending)
+        if (pkg.status?.code !== 'ACTIVE') {
+            continue;
+        }
+
+        console.log(`\n   📦 Active Package: ${pkg.name}`);
+
+        // Check primary crypto
+        if (pkg.crypto) {
+            const cryptoId = cryptoMapping[pkg.crypto] || pkg.crypto.toLowerCase();
+
+            if (!checkedCryptos.has(cryptoId)) {
+                checkedCryptos.add(cryptoId);
+
+                // Check if crypto exists in portfolio
+                const cryptoExists = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
+
+                if (!cryptoExists) {
+                    console.log(`   🆕 Adding missing crypto box: ${pkg.crypto} (${cryptoId})`);
+                    try {
+                        await addCryptoById(cryptoId);
+                        console.log(`   ✅ Successfully added ${pkg.crypto} to portfolio`);
+
+                        // Fetch prices for the new crypto
+                        await fetchPrices();
+                    } catch (error) {
+                        console.error(`   ❌ Failed to add ${pkg.crypto}:`, error);
+                    }
+                } else {
+                    console.log(`   ✓ ${pkg.crypto} already exists in portfolio`);
+                }
+            }
+        }
+
+        // Check secondary crypto (for dual-mining packages like Palladium)
+        if (pkg.cryptoSecondary) {
+            const secondaryCryptoId = cryptoMapping[pkg.cryptoSecondary] || pkg.cryptoSecondary.toLowerCase();
+
+            if (!checkedCryptos.has(secondaryCryptoId)) {
+                checkedCryptos.add(secondaryCryptoId);
+
+                // Check if secondary crypto exists in portfolio
+                const secondaryCryptoExists = users[loggedInUser].cryptos.find(c => c.id === secondaryCryptoId);
+
+                if (!secondaryCryptoExists) {
+                    console.log(`   🆕 Adding missing secondary crypto box: ${pkg.cryptoSecondary} (${secondaryCryptoId})`);
+                    try {
+                        await addCryptoById(secondaryCryptoId);
+                        console.log(`   ✅ Successfully added ${pkg.cryptoSecondary} to portfolio`);
+
+                        // Fetch prices for the new crypto
+                        await fetchPrices();
+                    } catch (error) {
+                        console.error(`   ❌ Failed to add ${pkg.cryptoSecondary}:`, error);
+                    }
+                } else {
+                    console.log(`   ✓ ${pkg.cryptoSecondary} already exists in portfolio`);
+                }
+            }
+        }
+    }
+
+    console.log('\n✅ Finished checking for missing crypto boxes\n');
 }
 
 // Manual trigger for testing auto-update (can be called from browser console)
