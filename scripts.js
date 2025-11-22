@@ -8251,7 +8251,7 @@ async function updateRecommendations() {
 
             // Display each recommended package using the same card format as buy packages
             recommendations.forEach(pkg => {
-                const card = createBuyPackageCardForPage(pkg, true, 'alerts'); // alerts context
+                const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
                 bestPackagesContainer.appendChild(card);
             });
         }
@@ -8286,7 +8286,7 @@ async function updateRecommendations() {
                 // Display each recommended team package using the same card format as solo packages
                 teamRecommendations.forEach((pkg, index) => {
                     console.log(`🔍 Creating team card ${index + 1}/${teamRecommendations.length} for:`, pkg.name);
-                    const card = createBuyPackageCardForPage(pkg, true, 'alerts'); // alerts context
+                    const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
                     if (card) {
                         teamAlertsContainer.appendChild(card);
                         console.log(`✅ Team card ${index + 1} added to container`);
@@ -10764,7 +10764,7 @@ async function loadBuyPackagesDataOnPage() {
     singlePackages.forEach(pkg => {
         try {
             const isRecommended = soloRecommendedNames.includes(pkg.name);
-            const card = createBuyPackageCardForPage(pkg, isRecommended, 'buypage');
+            const card = createBuyPackageCardForPage(pkg, isRecommended);
             singleContainer.appendChild(card);
         } catch (error) {
             console.error('❌ Error creating card for package:', pkg.name, error);
@@ -10785,7 +10785,7 @@ async function loadBuyPackagesDataOnPage() {
     teamPackages.forEach(pkg => {
         try {
             const isRecommended = teamRecommendedNames.includes(pkg.name);
-            const card = createBuyPackageCardForPage(pkg, isRecommended, 'buypage');
+            const card = createBuyPackageCardForPage(pkg, isRecommended);
             teamContainer.appendChild(card);
         } catch (error) {
             console.error('❌ Error creating card for package:', pkg.name, error);
@@ -10935,12 +10935,9 @@ function stopCountdownUpdates() {
     }
 }
 
-function createBuyPackageCardForPage(pkg, isRecommended, context = 'buypage') {
+function createBuyPackageCardForPage(pkg, isRecommended) {
     const card = document.createElement('div');
     card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '') + (pkg.isTeam ? ' team-package' : '');
-
-    // Determine which adjust function to use based on context
-    const adjustFunction = context === 'alerts' ? 'adjustSharesForAlerts' : 'adjustSharesForBuyPage';
 
     // Use package crypto prices (fetched specifically for buy packages page)
     const prices = window.packageCryptoPrices || {};
@@ -11228,9 +11225,9 @@ function createBuyPackageCardForPage(pkg, isRecommended, context = 'buypage') {
     // For team packages: add share selector with buy button on same row
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
-            <button onclick="${adjustFunction}('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
+            <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
             <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="9999" class="share-adjuster-input" readonly>
-            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="${adjustFunction}('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
+            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
     ` : '';
@@ -11318,59 +11315,8 @@ function createBuyPackageCardForPage(pkg, isRecommended, context = 'buypage') {
     return card;
 }
 
-// Function to adjust shares for EASYMINING TEAM ALERTS
-function adjustSharesForAlerts(packageName, delta, buttonElement) {
-    console.log(`🔔 adjustSharesForAlerts CALLED: packageName="${packageName}", delta=${delta}`);
-
-    const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
-
-    // Find input in the same container as the button
-    let input;
-    if (buttonElement && typeof buttonElement === 'object') {
-        const container = buttonElement.closest('.buy-package-card, .easymining-alert-card');
-        if (container) {
-            input = container.querySelector(`#${inputId}`);
-        }
-    }
-    if (!input) {
-        input = document.getElementById(inputId);
-    }
-
-    if (!input) {
-        console.error(`❌ Input not found: ${inputId}`);
-        return;
-    }
-
-    const currentValue = parseInt(input.value) || 1;
-    const newValue = Math.max(1, Math.min(currentValue + delta, parseInt(input.max) || 9999));
-
-    console.log(`📝 Alert shares: ${currentValue} → ${newValue}`);
-    input.value = newValue;
-
-    // Calculate price: shares × 0.0001 BTC × BTC price in AUD
-    const sharePrice = 0.0001; // Each share = 0.0001 BTC
-    const totalBTC = newValue * sharePrice;
-    const priceAUD = convertBTCtoAUD(totalBTC);
-
-    // Find price element in same container
-    const packageId = packageName.replace(/\s+/g, '-');
-    const container = input.closest('.buy-package-card, .easymining-alert-card');
-    const priceElement = container ? container.querySelector(`#price-${packageId}`) : document.getElementById(`price-${packageId}`);
-
-    if (priceElement) {
-        priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
-        console.log(`✅ Alert price updated: $${priceAUD.toFixed(2)} AUD`);
-    }
-
-    // Save to storage
-    if (!window.packageShareValues) {
-        window.packageShareValues = {};
-    }
-    window.packageShareValues[packageName] = newValue;
-}
-
-// Function to adjust shares for team packages on BUY PACKAGES PAGE
-function adjustSharesForBuyPage(packageName, delta, buttonElement) {
+// Function to adjust shares for team packages
+function adjustShares(packageName, delta, buttonElement) {
     console.log(`🎯 adjustShares CALLED: packageName="${packageName}", delta=${delta}`);
 
     const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
