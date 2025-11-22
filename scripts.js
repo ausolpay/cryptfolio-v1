@@ -11109,7 +11109,7 @@ Do you want to continue?
         }
 
         console.log('📦 Team order payload:', {
-            endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
+            endpoint: `/main/api/v2/hashpower/shared/order?ticketId=${packageId}`,
             method: 'POST',
             amount: orderData.amount,
             amountBreakdown: `${shares} shares × 0.0001 BTC = ${orderData.amount} BTC`,
@@ -11119,8 +11119,9 @@ Do you want to continue?
             packageId: packageId
         });
 
-        // Call NiceHash API to create team order - POST /main/api/v2/hashpower/shared/ticket/{id}
-        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
+        // Call NiceHash API to create team order
+        // Try using the same pattern as solo: /hashpower/shared/order?ticketId=xxx
+        const endpoint = `/main/api/v2/hashpower/shared/order?ticketId=${packageId}`;
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
