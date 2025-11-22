@@ -10016,11 +10016,15 @@ function createTeamPackageCard(pkg) {
     const ticket = pkg.currencyAlgoTicket || {};
     const packageName = ticket.name || 'Unknown Package';
     const crypto = ticket.currencyAlgo?.currency || 'Unknown';
-    const packageId = ticket.id || pkg.id;  // Use currencyAlgoTicket.id for POST endpoint
+
+    // ✅ Use CONSISTENT package ID logic across all locations (buy packages, alerts, auto-buy)
+    // This ensures shares sync correctly between buy packages page and team alerts
+    const packageId = pkg.apiData?.id || ticket.id || pkg.id;
 
     // Debug: Log ID extraction
     console.log('🔍 ID Extraction:', {
         'pkg.id (package ID)': pkg.id,
+        'pkg.apiData?.id': pkg.apiData?.id,
         'ticket.id (currencyAlgoTicket.id)': ticket.id,
         'Selected packageId for API': packageId,
         'Package name': packageName
