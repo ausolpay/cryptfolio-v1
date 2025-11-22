@@ -3092,17 +3092,85 @@ async function autoResetPercentage() {
     console.log("Checking for 24hr Auto Reset Percentage");
 }
 
+// Auto-reset EasyMining daily stats and rockets at 6 AM
+async function autoResetEasyMiningDaily() {
+    const resetHour = 6; // Set to 6 AM (same as percentage reset)
+    const resetMinute = 0; // Set to 00 minutes
+
+    const now = new Date();
+    const lastResetDate = getStorageItem(`${loggedInUser}_lastEasyMiningResetDate`);
+    const todayDate = now.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+    try {
+        // Check if it's time to reset
+        if (now.getHours() === resetHour && now.getMinutes() === resetMinute) {
+            if (lastResetDate !== todayDate) {
+                console.log("🔄 Resetting EasyMining daily stats and rockets at 06:00 AM");
+                setStorageItem(`${loggedInUser}_lastEasyMiningResetDate`, todayDate);
+
+                // Reset today's stats
+                easyMiningData.todayStats = {
+                    totalBlocks: 0,
+                    totalReward: 0,
+                    totalSpent: 0,
+                    pnl: 0
+                };
+
+                // Clear rockets
+                clearRockets();
+
+                // Save to localStorage
+                localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+                console.log("✅ EasyMining daily stats and rockets reset successfully");
+            }
+        }
+
+        // Check if the reset was missed and the app was opened after the reset time
+        if (now.getHours() > resetHour || (now.getHours() === resetHour && now.getMinutes() > resetMinute)) {
+            if (lastResetDate !== todayDate) {
+                console.log("🔄 Performing missed EasyMining daily reset");
+                setStorageItem(`${loggedInUser}_lastEasyMiningResetDate`, todayDate);
+
+                // Reset today's stats
+                easyMiningData.todayStats = {
+                    totalBlocks: 0,
+                    totalReward: 0,
+                    totalSpent: 0,
+                    pnl: 0
+                };
+
+                // Clear rockets
+                clearRockets();
+
+                // Save to localStorage
+                localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+                console.log("✅ Missed EasyMining daily reset completed");
+            }
+        }
+    } catch (error) {
+        console.error("❌ Error during EasyMining daily reset:", error);
+    }
+
+    console.log("🔍 Checking for 24hr EasyMining Daily Reset");
+}
+
 // Call autoResetPercentage on app load to handle missed resets with a 3-second delay
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         autoResetPercentage();
+        autoResetEasyMiningDaily(); // Also check EasyMining reset
     }, 1000);
 });
 
 
 // Set an interval to check every minute (only once)
 if (!autoResetInterval) {
-    autoResetInterval = setInterval(autoResetPercentage, 60000);
+    autoResetInterval = setInterval(() => {
+        autoResetPercentage();
+        autoResetEasyMiningDaily(); // Check both resets every minute
+    }, 60000);
 }
 
 
