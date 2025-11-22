@@ -5646,19 +5646,14 @@ async function fetchEasyMiningData() {
             } catch (apiError) {
                 // Handle different types of API errors
                 if (apiError.message.includes('fetch')) {
-                    // CORS error - use mock data for testing
-                    console.warn('⚠️ CORS error detected - using mock data for testing');
-                    console.warn('📝 To fix: Deploy with backend proxy or use serverless functions');
+                    // ✅ REMOVED MOCK DATA - No fallback, just log the error
+                    console.error('❌ Network error - unable to fetch EasyMining data');
+                    console.error('📝 This may be due to CORS, network issues, or API being down');
+                    console.error('💡 Data will remain empty until connection is restored');
 
-                    // Use realistic mock data that simulates actual API responses
-                    easyMiningData.availableBTC = (Math.random() * 0.001).toFixed(8);
-                    easyMiningData.pendingBTC = (Math.random() * 0.0005).toFixed(8);
-                    easyMiningData.activePackages = generateMockPackages();
-
-                    console.log('🔧 Using mock data for testing:');
-                    console.log(`Available BTC: ${easyMiningData.availableBTC}`);
-                    console.log(`Pending BTC: ${easyMiningData.pendingBTC}`);
-                    console.log(`Active Packages: ${easyMiningData.activePackages.length}`);
+                    // Don't set any data - let it remain empty/previous values
+                    // This prevents false balances from appearing during reconnects
+                    throw apiError; // Re-throw to trigger error handling below
                 } else if (apiError.message.includes('401')) {
                     // 401 Authentication Error - provide specific guidance
                     console.error('❌ 401 Authentication Error - API credentials rejected by NiceHash');
