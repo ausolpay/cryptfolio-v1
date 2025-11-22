@@ -11434,7 +11434,10 @@ function adjustShares(packageName, delta, buttonElement) {
     pauseBuyPackagesPolling();
 
     // CRITICAL: Detect if we're on the buy packages page vs EasyMining alerts
-    const container = input.closest('.share-adjuster, .easymining-alert-card, .buy-package-card') || document;
+    // MUST check for .buy-package-card FIRST to get the correct container with recommended class
+    const container = input.closest('.buy-package-card, .easymining-alert-card') ||
+                      input.closest('.share-adjuster') ||
+                      document;
     const isBuyPackagePage = container.classList?.contains('buy-package-card');
     const isRecommended = container.classList?.contains('recommended');
 
@@ -11470,6 +11473,13 @@ function adjustShares(packageName, delta, buttonElement) {
 
     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
         const baseValues = window.packageBaseValues[packageName];
+
+        console.log(`💰 Price calculation for ${packageName}:`, {
+            pricePerShareAUD: baseValues.priceAUD,
+            numberOfShares: newValue,
+            calculatedPrice: baseValues.priceAUD * newValue,
+            formattedPrice: (baseValues.priceAUD * newValue).toFixed(2)
+        });
 
         // Price increases linearly with shares (you pay for each share)
         const newPriceAUD = (baseValues.priceAUD * newValue).toFixed(2);
