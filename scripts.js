@@ -11097,7 +11097,15 @@ Do you want to continue?
         // For Silver/Gold: only soloMiningRewardAddr is used
         // For Palladium: soloMiningRewardAddr = LTC address, mergeSoloMiningRewardAddr = DOGE address
         const orderData = {
-            shares: shares,
+            shares: {
+                small: shares,      // Put user's shares in the 'small' size
+                medium: 0,
+                large: 0,
+                couponSmall: 0,
+                couponMedium: 0,
+                couponLarge: 0,
+                massBuy: 0
+            },
             soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address (BCH, BTC, or LTC for Palladium)
         };
 
@@ -11109,7 +11117,8 @@ Do you want to continue?
         console.log('📦 Team order payload:', {
             endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
             method: 'POST',
-            shares: orderData.shares,
+            shares: orderData.shares, // Object with small, medium, large, etc.
+            sharesBreakdown: `small=${orderData.shares.small}, medium=${orderData.shares.medium}, large=${orderData.shares.large}`,
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
             mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr ? orderData.mergeSoloMiningRewardAddr.substring(0, 10) + '...' : '(empty)',
             packageId: packageId
