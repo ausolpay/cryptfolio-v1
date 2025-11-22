@@ -10712,125 +10712,95 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         // 6. Sync NiceHash time
         await syncNiceHashTime();
 
-        // 7. Purchase loop - 1 POST per share with addresses in body
-        console.log(`🛒 Purchasing ${shares} share(s) via ${shares} POST request(s)...`);
+        // 7. Make single POST request for all shares (same as auto-buy)
+        console.log(`🛒 Purchasing ${shares} share(s) via single POST request...`);
 
-        let successCount = 0;
-        let failCount = 0;
+        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
 
-        for (let i = 1; i <= shares; i++) {
-            try {
-                console.log(`📡 Purchasing share ${i}/${shares}...`);
+        // Request body with address, amount, and shares object
+        const orderData = {
+            amount: totalAmount, // Total BTC for all shares
+            shares: {
+                small: shares,
+                medium: 0,
+                large: 0,
+                couponSmall: 0,
+                couponMedium: 0,
+                couponLarge: 0,
+                massBuy: 0
+            },
+            soloMiningRewardAddr: mainWalletAddress.trim()
+        };
 
-                // Generate fresh auth headers for each request
-                const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const body = JSON.stringify(orderData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-                // Request body with address, amount, and shares object (each POST = 1 share)
-                const orderData = {
-                    amount: 0.0001, // 1 share = 0.0001 BTC
-                    shares: {
-                        small: 1,
-                        medium: 0,
-                        large: 0,
-                        couponSmall: 0,
-                        couponMedium: 0,
-                        couponLarge: 0,
-                        massBuy: 0
-                    },
-                    soloMiningRewardAddr: mainWalletAddress.trim()
-                };
+        console.log(`📦 Manual Buy Request Details:`, {
+            endpoint: endpoint,
+            packageId: packageId,
+            method: 'POST',
+            body: orderData,
+            headers: headers,
+            fullURL: USE_VERCEL_PROXY ? VERCEL_PROXY_ENDPOINT : `https://api2.nicehash.com${endpoint}`
+        });
 
-                const body = JSON.stringify(orderData);
-                const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
-
-                console.log(`📦 Share ${i} Request Details:`, {
+        let response;
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     endpoint: endpoint,
-                    packageId: packageId,
                     method: 'POST',
-                    body: orderData,
                     headers: headers,
-                    fullURL: USE_VERCEL_PROXY ? VERCEL_PROXY_ENDPOINT : `https://api2.nicehash.com${endpoint}`
-                });
+                    body: orderData
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
 
-                let response;
-                if (USE_VERCEL_PROXY) {
-                    response = await fetch(VERCEL_PROXY_ENDPOINT, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            endpoint: endpoint,
-                            method: 'POST',
-                            headers: headers,
-                            body: orderData
-                        })
-                    });
-                } else {
-                    response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                        method: 'POST',
-                        headers: headers,
-                        body: body
-                    });
-                }
+        console.log(`📥 Response Status: ${response.status} ${response.statusText}`);
 
-                console.log(`📥 Response Status: ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API Error: ${response.status}`);
+        }
 
-                if (response.ok) {
-                    successCount++;
-                    const result = await response.json();
-                    console.log(`✅ Share ${i}/${shares} purchased successfully:`, result);
-                } else {
-                    failCount++;
-                    const errorData = await response.json();
-                    console.error(`❌ Share ${i}/${shares} failed:`, {
-                        status: response.status,
-                        statusText: response.statusText,
-                        endpoint: endpoint,
-                        packageId: packageId,
-                        errorData: errorData
-                    });
-                }
+        const result = await response.json();
+        console.log('✅ Team package purchased successfully:', result);
 
-                // Small delay between requests (avoid rate limiting)
-                if (i < shares) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-
-            } catch (error) {
-                failCount++;
-                console.error(`❌ Error purchasing share ${i}/${shares}:`, error);
-            }
+        // Validate response indicates success
+        if (!result || (!result.id && !result.orderId && !result.success)) {
+            throw new Error(`Purchase failed: Invalid response from NiceHash (no order ID returned)`);
         }
 
         // 8. Update tracking and show results
-        if (successCount > 0) {
-            const currentShares = getMyTeamShares(packageId) || 0;
-            const newTotalShares = currentShares + successCount;
-            saveMyTeamShares(packageId, newTotalShares);
-            console.log(`💾 Saved team shares for package ${packageId}: ${newTotalShares} shares (was ${currentShares})`);
+        const currentShares = getMyTeamShares(packageId) || 0;
+        const newTotalShares = currentShares + shares;
+        saveMyTeamShares(packageId, newTotalShares);
+        console.log(`💾 Saved team shares for package ${packageId}: ${newTotalShares} shares (was ${currentShares})`);
 
-            const successCostBTC = (successCount * sharePrice).toFixed(8);
-            const successCostAUD = (successCount * sharePrice * btcPrice).toFixed(2);
+        showModal(
+            `✅ Purchase Complete!\n\n` +
+            `Purchased: ${shares} share(s)\n` +
+            `Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
+            `Total Shares Owned: ${newTotalShares}\n` +
+            `Order ID: ${result.id || result.orderId || 'N/A'}\n\n` +
+            `Order is now active and mining.`
+        );
 
-            showModal(
-                `✅ Purchase Complete!\n\n` +
-                `Successful: ${successCount}/${shares} shares\n` +
-                `Failed: ${failCount}/${shares} shares\n` +
-                `Cost: ${successCostBTC} BTC ($${successCostAUD} AUD)\n` +
-                `Total Shares Owned: ${newTotalShares}\n\n` +
-                `Orders are now active and mining.`
-            );
+        // Update stats
+        easyMiningData.allTimeStats.totalSpent += parseFloat(totalAUD);
+        easyMiningData.todayStats.totalSpent += parseFloat(totalAUD);
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-            // Update stats for successful purchases only
-            const successCost = successCount * sharePrice * btcPrice;
-            easyMiningData.allTimeStats.totalSpent += successCost;
-            easyMiningData.todayStats.totalSpent += successCost;
-            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
-
-            // Refresh data
-            await fetchEasyMiningData();
-        } else {
-            showModal(`❌ All purchases failed.\n\nPlease check your API credentials and balance.`);
-        }
+        // Refresh data
+        await fetchEasyMiningData();
 
         closeBuyPackagesModal();
 
