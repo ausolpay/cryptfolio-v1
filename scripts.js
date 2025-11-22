@@ -4235,6 +4235,12 @@ function debounceUpdateUI(cryptoId, priceInAud) {
 
 // Function to update the candlestick chart with live USD price and convert it to AUD
 function updatePriceInChart(priceInUsd) {
+    // ✅ FIX: Validate price - never update with 0 or invalid values
+    if (!priceInUsd || priceInUsd <= 0 || isNaN(priceInUsd)) {
+        console.warn(`⚠️ Invalid price received: ${priceInUsd}, skipping chart update`);
+        return; // Don't update chart with invalid price
+    }
+
     const conversionRate = 1.52; // Example conversion rate from USD to AUD
     const priceInAud = priceInUsd * conversionRate;
 
@@ -4243,11 +4249,13 @@ function updatePriceInChart(priceInUsd) {
         const lastCandle = candlestickChart.data.datasets[0].data[candlestickChart.data.datasets[0].data.length - 1];
 
         if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
+            // Update existing candle with valid price
             lastCandle.c = priceInAud;
             if (priceInAud > lastCandle.h) lastCandle.h = priceInAud;
             if (priceInAud < lastCandle.l) lastCandle.l = priceInAud;
             console.log(`Updated existing candle at ${lastCandle.x} with price: AUD $${priceInAud}`);
         } else {
+            // Create new candle with valid price
             candlestickChart.data.datasets[0].data.push({
                 x: now,
                 o: priceInAud,
@@ -4257,6 +4265,15 @@ function updatePriceInChart(priceInUsd) {
             });
             console.log(`Created new candle at ${now} with price: AUD $${priceInAud}`);
         }
+
+        // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
+        const allPrices = candlestickChart.data.datasets[0].data.flatMap(candle => [candle.h, candle.l]);
+        const minPrice = Math.min(...allPrices);
+        const maxPrice = Math.max(...allPrices);
+        const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+
+        candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
+        candlestickChart.options.scales.y.max = maxPrice + padding;
 
         // Update the chart
         candlestickChart.update();
@@ -4355,17 +4372,23 @@ function updateCandlestickChart(priceInAud, priceInUsd) {
         return;
     }
 
+    // ✅ FIX: Validate prices - never update with 0 or invalid values
+    if (!priceInAud || priceInAud <= 0 || isNaN(priceInAud)) {
+        console.warn(`⚠️ Invalid AUD price received: ${priceInAud}, skipping chart update`);
+        return;
+    }
+
     const now = new Date();
     const lastCandle = candlestickChart.data.datasets[0].data[candlestickChart.data.datasets[0].data.length - 1];
 
     // Check if the current time is within the same 5-minute interval
-    if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) { 
+    if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
         // If within 5 minutes, update the last candle
         lastCandle.c = priceInAud;
         if (priceInAud > lastCandle.h) lastCandle.h = priceInAud;
         if (priceInAud < lastCandle.l) lastCandle.l = priceInAud;
         console.log(`Updated existing candle at ${lastCandle.x} with price: AUD $${priceInAud}`);
-    } else { 
+    } else {
         // Otherwise, create a new candle
         candlestickChart.data.datasets[0].data.push({
             x: now,
@@ -4376,6 +4399,15 @@ function updateCandlestickChart(priceInAud, priceInUsd) {
         });
         console.log(`Created new candle at ${now} with price: AUD $${priceInAud}`);
     }
+
+    // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
+    const allPrices = candlestickChart.data.datasets[0].data.flatMap(candle => [candle.h, candle.l]);
+    const minPrice = Math.min(...allPrices);
+    const maxPrice = Math.max(...allPrices);
+    const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+
+    candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
+    candlestickChart.options.scales.y.max = maxPrice + padding;
 
     // Adjust the chart's x-axis time range to zoom out slightly and leave room on the right
     const paddingTime = 10 * 60 * 1000; // Add 10 minutes of padding to the right
