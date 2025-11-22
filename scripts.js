@@ -558,6 +558,118 @@ function saveWithdrawalAddresses() {
     loadWithdrawalAddresses();
 }
 
+// ✅ NEW: Load withdrawal addresses from NiceHash saved addresses
+async function loadNiceHashSavedAddresses() {
+    console.log('🔄 Loading NiceHash saved withdrawal addresses...');
+
+    // Check if we have API credentials
+    if (!easyMiningSettings.apiKey || !easyMiningSettings.apiSecret || !easyMiningSettings.orgId) {
+        alert('❌ Please enter your NiceHash API credentials first!\n\nGo to EasyMining Settings and add your API Key, Secret, and Organization ID.');
+        return;
+    }
+
+    try {
+        // Show loading feedback
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '⏳ Loading from NiceHash...';
+        button.disabled = true;
+
+        // Sync time with NiceHash server
+        await syncNiceHashTime();
+
+        // Prepare API request
+        const endpoint = '/main/api/v2/hashpower/sharedTicketExternalAddress/list';
+        const method = 'GET';
+
+        // Generate auth headers
+        const headers = generateNiceHashAuthHeaders(method, endpoint, null);
+
+        console.log('📡 Fetching saved addresses from NiceHash API...');
+
+        // Make request via proxy
+        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint: endpoint,
+                method: method,
+                headers: headers,
+                body: null
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`API Error ${response.status}: ${JSON.stringify(errorData)}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Received NiceHash saved addresses:', data);
+
+        // Parse the addresses
+        // Expected format: { list: [ { currency: 'BTC', address: '...' }, ... ] }
+        if (!data.list || !Array.isArray(data.list)) {
+            throw new Error('Invalid response format from NiceHash API');
+        }
+
+        // Map NiceHash currency codes to our symbols
+        const currencyMapping = {
+            'BTC': 'BTC',
+            'BCH': 'BCH',
+            'KAS': 'KAS',
+            'RVN': 'RVN',
+            'DOGE': 'DOGE',
+            'LTC': 'LTC'
+        };
+
+        // Populate input fields with addresses
+        let foundCount = 0;
+        data.list.forEach(item => {
+            const currency = item.currency;
+            const address = item.address;
+
+            console.log(`   📍 Found ${currency}: ${address}`);
+
+            // Map to our crypto symbol
+            const symbol = currencyMapping[currency];
+            if (symbol) {
+                const input = document.getElementById(`wallet-${symbol}`);
+                if (input) {
+                    input.value = address;
+                    foundCount++;
+                    console.log(`   ✅ Set ${symbol} address`);
+                }
+            }
+        });
+
+        // Auto-save the addresses
+        saveWithdrawalAddresses();
+
+        // Restore button
+        button.innerHTML = originalText;
+        button.disabled = false;
+
+        if (foundCount === 0) {
+            alert('ℹ️ No withdrawal addresses found in your NiceHash account.\n\nPlease add addresses in NiceHash first.');
+        } else {
+            console.log(`✅ Successfully loaded ${foundCount} addresses from NiceHash`);
+        }
+
+    } catch (error) {
+        console.error('❌ Error loading NiceHash saved addresses:', error);
+
+        // Restore button
+        const button = document.querySelector('[onclick="loadNiceHashSavedAddresses()"]');
+        if (button) {
+            button.innerHTML = '📥 Use NH Saved Addresses';
+            button.disabled = false;
+        }
+
+        alert(`❌ Failed to load addresses from NiceHash:\n\n${error.message}\n\nPlease check:\n1. Your API credentials are correct\n2. You have saved withdrawal addresses in NiceHash\n3. Your API key has proper permissions`);
+    }
+}
+
 function clearWithdrawalAddresses() {
     if (!confirm('Are you sure you want to clear all withdrawal addresses?\n\nThis cannot be undone.')) {
         return;
