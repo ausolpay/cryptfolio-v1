@@ -8182,9 +8182,9 @@ async function updateRecommendations() {
 
                 console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`);
 
-                // Display each recommended team package with reasons
+                // Display each recommended team package using the same function as buy packages page
                 teamRecommendations.forEach(pkg => {
-                    const card = createTeamPackageRecommendationCard(pkg);
+                    const card = createTeamPackageCard(pkg);
                     teamAlertsContainer.appendChild(card);
                 });
             }

@@ -1401,6 +1401,16 @@ body.light-mode .package-tab.active {
         padding: 4px; /* Reduce padding on mobile */
     }
 
+    /* EasyMining section alerts - more height on mobile for buy button and shares selector */
+    .recommendations-container .buy-package-card {
+        min-height: auto; /* Auto height to fit content */
+        height: auto; /* Allow content to determine height */
+    }
+
+    .recommendations-container .buy-package-card.team-package {
+        min-height: auto; /* Extra height for team packages with shares selector */
+    }
+
     .package-card {
         padding: 6px; /* Reduce padding on mobile */
     }
