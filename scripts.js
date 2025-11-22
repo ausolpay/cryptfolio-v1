@@ -11094,12 +11094,17 @@ Do you want to continue?
         });
 
         // Create order payload for team mining package
-        // Use amount instead of shares object (e.g., 2 shares = 0.0002 BTC)
-        const sharePrice = 0.0001; // BTC per share
-        const totalAmount = sharePrice * shares;
-
+        // Use shares object - put user's shares in "small" field
         const orderData = {
-            amount: totalAmount,    // Total BTC (e.g., 0.0002 for 2 shares)
+            shares: {
+                small: shares,      // User's share count goes here
+                medium: 0,
+                large: 0,
+                couponSmall: 0,
+                couponMedium: 0,
+                couponLarge: 0,
+                massBuy: 0
+            },
             soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address
         };
 
@@ -11111,8 +11116,8 @@ Do you want to continue?
         console.log('📦 Team order payload:', {
             endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
             method: 'POST',
-            amount: orderData.amount,
-            amountBreakdown: `${shares} shares × 0.0001 BTC = ${orderData.amount} BTC`,
+            shares: orderData.shares,
+            sharesBreakdown: `small=${orderData.shares.small}, medium=${orderData.shares.medium}, large=${orderData.shares.large}`,
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
             mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr || '(not set)',
             isDualCrypto: isDualCrypto,
