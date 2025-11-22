@@ -5335,8 +5335,7 @@ function scheduleEasyMiningErrorAlert(errorMessage) {
             const timeSinceFirstError = Date.now() - firstEasyMiningErrorTime;
 
             if (timeSinceFirstError >= EASYMINING_ERROR_DELAY) {
-                console.log(`❌ Errors persisted for 20+ seconds - showing alert`);
-                alert(errorMessage);
+                console.error(`❌ EasyMining errors persisted for 20+ seconds: ${errorMessage}`);
                 lastEasyMiningErrorAlert = Date.now();
             }
 
@@ -5380,8 +5379,7 @@ function showEasyMiningSettingsModal() {
     console.log('Modal element:', modal);
 
     if (!modal) {
-        console.error('❌ Modal not found!');
-        alert('ERROR: EasyMining modal not found in DOM!');
+        console.error('❌ EasyMining modal not found in DOM!');
         return;
     }
 
@@ -5823,7 +5821,7 @@ async function fetchEasyMiningData() {
 
             // Validate credentials are present
             if (!validateNiceHashCredentials()) {
-                alert('❌ Please enter all NiceHash API credentials!\n\nMake sure you have filled in:\n- API Key\n- API Secret\n- Organization ID');
+                console.error('❌ NiceHash API credentials missing');
                 throw new Error('Missing credentials');
             }
 
