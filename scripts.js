@@ -54,47 +54,18 @@ let lastValidChartPrice = null; // Store last valid price for chart
 let tradingViewWidget = null; // Store TradingView widget instance
 let currentChartInterval = '5'; // Default 5 minutes (TradingView format)
 
-// Map CoinGecko crypto IDs to TradingView symbols (MEXC primary, Binance fallback)
-function getCryptoTradingViewSymbol(cryptoId) {
-    // Map CoinGecko IDs to trading symbols
-    const tickerMap = {
-        'bitcoin': 'BTC',
-        'ethereum': 'ETH',
-        'bitcoin-cash': 'BCH',
-        'ravencoin': 'RVN',
-        'dogecoin': 'DOGE',
-        'litecoin': 'LTC',
-        'kaspa': 'KAS',
-        'ripple': 'XRP',
-        'cardano': 'ADA',
-        'solana': 'SOL',
-        'polkadot': 'DOT',
-        'matic-network': 'MATIC',
-        'chainlink': 'LINK',
-        'uniswap': 'UNI',
-        'avalanche-2': 'AVAX',
-        'cosmos': 'ATOM',
-        'algorand': 'ALGO',
-        'stellar': 'XLM',
-        'vechain': 'VET',
-        'filecoin': 'FIL',
-        'monero': 'XMR',
-        'tron': 'TRX',
-        'ethereum-classic': 'ETC',
-        'eos': 'EOS',
-        'tezos': 'XTZ'
-    };
+// Build TradingView symbol from crypto ticker (MEXC exchange)
+function getTradingViewSymbol(symbol) {
+    // Convert symbol to uppercase for TradingView format
+    const ticker = symbol.toUpperCase();
 
-    const ticker = tickerMap[cryptoId] || cryptoId.toUpperCase();
-
-    // Try MEXC first, then fallback to Binance if symbol not found
-    // TradingView will use the first available exchange
+    // Use MEXC exchange (consistent with WebSocket integration)
     return `MEXC:${ticker}USDT`;
 }
 
 // Initialize TradingView widget
-function initializeTradingViewChart(cryptoId, interval) {
-    console.log(`📊 Initializing TradingView chart for ${cryptoId} with interval ${interval}`);
+function initializeTradingViewChart(cryptoSymbol, interval) {
+    console.log(`📊 Initializing TradingView chart for ${cryptoSymbol} with interval ${interval}`);
 
     // Destroy existing widget if present
     if (tradingViewWidget) {
@@ -106,7 +77,7 @@ function initializeTradingViewChart(cryptoId, interval) {
         tradingViewWidget = null;
     }
 
-    const symbol = getCryptoTradingViewSymbol(cryptoId);
+    const tradingViewSymbol = getTradingViewSymbol(cryptoSymbol);
     const container = document.getElementById('tradingview-chart-container');
 
     // Clear container
@@ -117,7 +88,7 @@ function initializeTradingViewChart(cryptoId, interval) {
     try {
         tradingViewWidget = new TradingView.widget({
             autosize: true,
-            symbol: symbol,
+            symbol: tradingViewSymbol,
             interval: interval,
             timezone: "Etc/UTC",
             theme: "dark",
@@ -139,7 +110,7 @@ function initializeTradingViewChart(cryptoId, interval) {
             hide_volume: false
         });
 
-        console.log(`✅ TradingView widget initialized for ${symbol}`);
+        console.log(`✅ TradingView widget initialized for ${tradingViewSymbol}`);
     } catch (error) {
         console.error('Error initializing TradingView widget:', error);
     }
@@ -4927,7 +4898,7 @@ async function openCandlestickModal(cryptoId) {
         }
 
         // Initialize TradingView chart with current interval
-        initializeTradingViewChart(cryptoId, currentChartInterval);
+        initializeTradingViewChart(symbol, currentChartInterval);
         modal.style.display = 'block';
 
         // Fetch and display detailed info and sentiment data
