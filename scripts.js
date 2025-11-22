@@ -12382,7 +12382,7 @@ function startBuyPackagesPolling() {
     // Initial load
     loadBuyPackagesDataOnPage();
 
-    // Poll every 1 second
+    // Poll every 5 seconds
     buyPackagesPollingInterval = setInterval(() => {
         if (!buyPackagesPollingPaused) {
             console.log('🔄 Refreshing buy packages data...');
@@ -12390,9 +12390,9 @@ function startBuyPackagesPolling() {
         } else {
             console.log('⏸️ Polling paused - skipping refresh');
         }
-    }, 1000);
+    }, 5000);
 
-    console.log('✅ Buy packages polling started (1s interval)');
+    console.log('✅ Buy packages polling started (5s interval)');
 }
 
 function stopBuyPackagesPolling() {
@@ -12434,13 +12434,13 @@ function startEasyMiningAlertsPolling() {
     // Initial load
     updateRecommendations();
 
-    // Poll every 1 second
+    // Poll every 5 seconds
     easyMiningAlertsPollingInterval = setInterval(() => {
         console.log('🔄 Refreshing EasyMining alerts...');
         updateRecommendations();
-    }, 1000);
+    }, 5000);
 
-    console.log('✅ EasyMining alerts polling started (1s interval)');
+    console.log('✅ EasyMining alerts polling started (5s interval)');
 }
 
 function stopEasyMiningAlertsPolling() {
