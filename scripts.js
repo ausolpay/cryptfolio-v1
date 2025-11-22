@@ -6067,6 +6067,7 @@ let loadingProgressInterval = null;
 let currentProgress = 0;
 let targetProgress = 0;
 let isFetchingEasyMiningData = false; // Prevent overlapping fetches
+let isProcessingRewards = false; // Prevent duplicate reward additions from concurrent calls
 
 function showEasyMiningLoadingBar() {
     const loadingBar = document.getElementById('easymining-loading-bar');
@@ -9367,264 +9368,278 @@ async function autoUpdateCryptoHoldings(newBlocks) {
         return;
     }
 
-    console.log(`\n${'='.repeat(80)}`);
-    console.log('🔄 AUTO-UPDATE CRYPTO HOLDINGS - Processing rewards');
-    console.log(`${'='.repeat(80)}\n`);
-
-    // Load tracked rewards to prevent double-adding
-    const trackedKey = `${loggedInUser}_easyMiningAddedRewards`;
-    let addedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
-
-    // Get ALL packages that found blocks (both active AND completed)
-    // This ensures we process rewards from all packages, not just active ones
-    const allPackages = easyMiningData.activePackages || [];
-    const packagesWithBlocks = allPackages.filter(pkg => pkg.blockFound);
-
-    console.log(`📦 Processing ${packagesWithBlocks.length} packages with blocks found (active + completed)`);
-
-    for (const pkg of packagesWithBlocks) {
-        console.log(`\n${'─'.repeat(80)}`);
-        console.log(`📦 Package: ${pkg.name} (${pkg.crypto})`);
-        console.log(`   Order ID: ${pkg.id}`);
-        console.log(`   Total blocks: ${pkg.totalBlocks}`);
-        console.log(`   Package reward: ${pkg.reward} ${pkg.crypto}`);
-
-        // Check if this package has already been processed
-        const packageKey = `${pkg.id}_total`;
-        if (addedRewards[packageKey]) {
-            console.log(`   ℹ️ Package already processed on ${new Date(addedRewards[packageKey].timestamp).toLocaleString()}`);
-            console.log(`   Previous amount: ${addedRewards[packageKey].amount} ${pkg.crypto}`);
-
-            // Check if reward amount has changed (new blocks found)
-            if (addedRewards[packageKey].amount === pkg.reward) {
-                console.log(`   ✓ No new rewards since last check, skipping`);
-                continue;
-            } else {
-                console.log(`   🎉 Reward increased from ${addedRewards[packageKey].amount} to ${pkg.reward}`);
-                console.log(`   💰 Adding difference: ${pkg.reward - addedRewards[packageKey].amount} ${pkg.crypto}`);
-            }
-        }
-
-        // Use the ALREADY CALCULATED reward from package data
-        const crypto = pkg.crypto;
-        const rewardAmount = parseFloat(pkg.reward) || 0;
-
-        if (rewardAmount === 0 || isNaN(rewardAmount)) {
-            console.log(`   ⚠️ No reward to add (amount: ${rewardAmount})`);
-            continue;
-        }
-
-        // Map crypto symbol to CoinGecko ID
-        const cryptoMapping = {
-            'BTC': 'bitcoin',
-            'BCH': 'bitcoin-cash',
-            'RVN': 'ravencoin',
-            'DOGE': 'dogecoin',
-            'LTC': 'litecoin',
-            'KAS': 'kaspa'
-        };
-        const cryptoId = cryptoMapping[crypto] || crypto.toLowerCase();
-
-        console.log(`   💰 Adding ${rewardAmount} ${crypto} to holdings`);
-
-        // Check if crypto already exists in portfolio
-        let cryptoExists = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
-
-        if (!cryptoExists) {
-            // Auto-add crypto to portfolio
-            try {
-                await addCryptoById(cryptoId);
-                console.log(`   ✅ Auto-added ${cryptoId} to portfolio`);
-
-                // Immediately fetch prices for the new crypto
-                await fetchPrices();
-                console.log(`   ✅ Fetched price for ${cryptoId}`);
-            } catch (error) {
-                console.error(`   ❌ Failed to auto-add ${cryptoId}:`, error);
-                continue;
-            }
-        }
-
-        // Calculate amount to add
-        let amountToAdd = rewardAmount;
-        if (addedRewards[packageKey]) {
-            // Only add the difference if package was previously processed
-            amountToAdd = rewardAmount - addedRewards[packageKey].amount;
-
-            // ✅ FIX: Prevent negative amounts (API data inconsistency)
-            if (amountToAdd < 0) {
-                console.log(`   ⚠️ WARNING: Reward amount decreased! Preventing negative addition.`);
-                console.log(`   Previous: ${addedRewards[packageKey].amount}, Current: ${rewardAmount}`);
-                console.log(`   This package will be skipped to prevent subtracting from holdings.`);
-                continue; // Skip this package entirely
-            }
-        }
-
-        // ✅ SAFETY: Final check to ensure amountToAdd is valid and positive
-        if (isNaN(amountToAdd) || amountToAdd <= 0) {
-            console.log(`   ⚠️ Invalid or zero amount to add (${amountToAdd}), skipping`);
-            continue;
-        }
-
-        // Update holdings for this crypto
-        const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
-        const newHoldings = currentHoldings + amountToAdd;
-
-        // Save to localStorage
-        setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
-        console.log(`   💾 Updated ${cryptoId} holdings: ${currentHoldings} + ${amountToAdd} = ${newHoldings}`);
-
-        // For Bitcoin, use updateBTCHoldings() to include NiceHash balance (same as manual update)
-        // For other cryptos, update display and AUD directly
-        if (cryptoId === 'bitcoin' && typeof updateBTCHoldings === 'function') {
-            console.log(`   🔄 Calling updateBTCHoldings() to add NiceHash balance`);
-            updateBTCHoldings();
-            sortContainersByValue();
-        } else {
-            // Update holdings display
-            const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
-            if (holdingsElement) {
-                holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
-                console.log(`   📊 Updated holdings display`);
-            }
-
-            // Update the AUD value
-            const priceElement = document.getElementById(`${cryptoId}-price-aud`);
-            const valueElement = document.getElementById(`${cryptoId}-value-aud`);
-            if (priceElement && valueElement) {
-                const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-                const valueInAud = newHoldings * priceInAud;
-                valueElement.textContent = formatNumber(valueInAud.toFixed(2));
-                console.log(`   💰 Updated AUD value: $${valueInAud.toFixed(2)}`);
-
-                sortContainersByValue();
-            }
-        }
-
-        // Process secondary rewards (for dual mining packages like Palladium DOGE/LTC)
-        if (pkg.cryptoSecondary && pkg.rewardSecondary > 0) {
-            console.log(`\n   💎 SECONDARY REWARD DETECTED (Dual Mining)`);
-            console.log(`   Secondary crypto: ${pkg.cryptoSecondary}`);
-            console.log(`   Secondary reward: ${pkg.rewardSecondary}`);
-
-            const secondaryCrypto = pkg.cryptoSecondary;
-            const secondaryRewardAmount = parseFloat(pkg.rewardSecondary) || 0;
-
-            if (secondaryRewardAmount > 0 && !isNaN(secondaryRewardAmount)) {
-                // Map secondary crypto symbol to CoinGecko ID
-                const secondaryCryptoId = cryptoMapping[secondaryCrypto] || secondaryCrypto.toLowerCase();
-
-                console.log(`   💰 Adding ${secondaryRewardAmount} ${secondaryCrypto} to holdings`);
-
-                // Check if this secondary reward was already added
-                const secondaryPackageKey = `${pkg.id}_secondary`;
-                let secondaryAmountToAdd = secondaryRewardAmount;
-
-                if (addedRewards[secondaryPackageKey]) {
-                    console.log(`   ℹ️ Secondary reward already processed`);
-                    console.log(`   Previous amount: ${addedRewards[secondaryPackageKey].amount} ${secondaryCrypto}`);
-
-                    // Check if secondary reward amount has changed
-                    if (addedRewards[secondaryPackageKey].amount === secondaryRewardAmount) {
-                        console.log(`   ✓ No new secondary rewards since last check, skipping`);
-                        secondaryAmountToAdd = 0; // ✅ FIX: Set to 0 to prevent re-adding
-                    } else {
-                        console.log(`   🎉 Secondary reward increased from ${addedRewards[secondaryPackageKey].amount} to ${secondaryRewardAmount}`);
-                        secondaryAmountToAdd = secondaryRewardAmount - addedRewards[secondaryPackageKey].amount;
-
-                        // ✅ FIX: Prevent negative amounts (API data inconsistency)
-                        if (secondaryAmountToAdd < 0) {
-                            console.log(`   ⚠️ WARNING: Secondary reward decreased! Preventing negative addition.`);
-                            console.log(`   Previous: ${addedRewards[secondaryPackageKey].amount}, Current: ${secondaryRewardAmount}`);
-                            secondaryAmountToAdd = 0;
-                        }
-                    }
-                }
-
-                // Check if secondary crypto already exists in portfolio
-                let secondaryCryptoExists = users[loggedInUser].cryptos.find(c => c.id === secondaryCryptoId);
-
-                if (!secondaryCryptoExists) {
-                    // Auto-add secondary crypto to portfolio
-                    try {
-                        await addCryptoById(secondaryCryptoId);
-                        console.log(`   ✅ Auto-added ${secondaryCryptoId} to portfolio`);
-
-                        // Immediately fetch prices for the new crypto
-                        await fetchPrices();
-                        console.log(`   ✅ Fetched price for ${secondaryCryptoId}`);
-                    } catch (error) {
-                        console.error(`   ❌ Failed to auto-add ${secondaryCryptoId}:`, error);
-                    }
-                }
-
-                // ✅ SAFETY: Final check to ensure secondaryAmountToAdd is valid and positive
-                if (secondaryAmountToAdd > 0 && !isNaN(secondaryAmountToAdd)) {
-                    // Update holdings for secondary crypto
-                    const currentSecondaryHoldings = parseFloat(getStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`)) || 0;
-                    const newSecondaryHoldings = currentSecondaryHoldings + secondaryAmountToAdd;
-
-                    // Save to localStorage
-                    setStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`, newSecondaryHoldings);
-                    console.log(`   💾 Updated ${secondaryCryptoId} holdings: ${currentSecondaryHoldings} + ${secondaryAmountToAdd} = ${newSecondaryHoldings}`);
-
-                    // Update holdings display
-                    const secondaryHoldingsElement = document.getElementById(`${secondaryCryptoId}-holdings`);
-                    if (secondaryHoldingsElement) {
-                        secondaryHoldingsElement.textContent = formatNumber(newSecondaryHoldings.toFixed(8));
-                        console.log(`   📊 Updated secondary holdings display`);
-                    }
-
-                    // Update the AUD value
-                    const secondaryPriceElement = document.getElementById(`${secondaryCryptoId}-price-aud`);
-                    const secondaryValueElement = document.getElementById(`${secondaryCryptoId}-value-aud`);
-                    if (secondaryPriceElement && secondaryValueElement) {
-                        const secondaryPriceInAud = parseFloat(secondaryPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-                        const secondaryValueInAud = newSecondaryHoldings * secondaryPriceInAud;
-                        secondaryValueElement.textContent = formatNumber(secondaryValueInAud.toFixed(2));
-                        console.log(`   💰 Updated secondary AUD value: $${secondaryValueInAud.toFixed(2)}`);
-
-                        sortContainersByValue();
-                    }
-
-                    // Mark secondary reward as processed
-                    addedRewards[secondaryPackageKey] = {
-                        orderId: pkg.id,
-                        packageName: pkg.name,
-                        crypto: secondaryCrypto,
-                        amount: secondaryRewardAmount,
-                        timestamp: Date.now(),
-                        totalBlocks: pkg.totalBlocks
-                    };
-                    setStorageItem(trackedKey, JSON.stringify(addedRewards));
-                    console.log(`   ✓ Marked secondary reward as processed (total: ${secondaryRewardAmount} ${secondaryCrypto})`);
-
-                    console.log(`   ✅ Successfully added ${secondaryAmountToAdd} ${secondaryCrypto} to holdings`);
-                }
-            }
-        }
-
-        // Mark this package as processed with current reward amount
-        addedRewards[packageKey] = {
-            orderId: pkg.id,
-            packageName: pkg.name,
-            crypto: crypto,
-            amount: rewardAmount, // Store total reward amount
-            timestamp: Date.now(),
-            totalBlocks: pkg.totalBlocks
-        };
-        setStorageItem(trackedKey, JSON.stringify(addedRewards));
-        console.log(`   ✓ Marked package as processed (total reward: ${rewardAmount} ${crypto})`);
-
-        console.log(`   ✅ Successfully added ${amountToAdd} ${crypto} to holdings`);
+    // 🔒 MUTEX: Prevent concurrent calls from adding rewards twice
+    if (isProcessingRewards) {
+        console.log('⏭️ Skipping auto-update - rewards already being processed');
+        return;
     }
 
-    console.log(`\n${'='.repeat(80)}`);
-    console.log('✅ AUTO-UPDATE COMPLETE');
-    console.log(`${'='.repeat(80)}\n`);
+    // Lock the function
+    isProcessingRewards = true;
 
-    // Update total portfolio value
-    updateTotalHoldings();
+    try {
+        console.log(`\n${'='.repeat(80)}`);
+        console.log('🔄 AUTO-UPDATE CRYPTO HOLDINGS - Processing rewards');
+        console.log(`${'='.repeat(80)}\n`);
+
+        // Load tracked rewards to prevent double-adding
+        const trackedKey = `${loggedInUser}_easyMiningAddedRewards`;
+        let addedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
+
+        // Get ALL packages that found blocks (both active AND completed)
+        // This ensures we process rewards from all packages, not just active ones
+        const allPackages = easyMiningData.activePackages || [];
+        const packagesWithBlocks = allPackages.filter(pkg => pkg.blockFound);
+
+        console.log(`📦 Processing ${packagesWithBlocks.length} packages with blocks found (active + completed)`);
+
+        for (const pkg of packagesWithBlocks) {
+            console.log(`\n${'─'.repeat(80)}`);
+            console.log(`📦 Package: ${pkg.name} (${pkg.crypto})`);
+            console.log(`   Order ID: ${pkg.id}`);
+            console.log(`   Total blocks: ${pkg.totalBlocks}`);
+            console.log(`   Package reward: ${pkg.reward} ${pkg.crypto}`);
+    
+            // Check if this package has already been processed
+            const packageKey = `${pkg.id}_total`;
+            if (addedRewards[packageKey]) {
+                console.log(`   ℹ️ Package already processed on ${new Date(addedRewards[packageKey].timestamp).toLocaleString()}`);
+                console.log(`   Previous amount: ${addedRewards[packageKey].amount} ${pkg.crypto}`);
+    
+                // Check if reward amount has changed (new blocks found)
+                if (addedRewards[packageKey].amount === pkg.reward) {
+                    console.log(`   ✓ No new rewards since last check, skipping`);
+                    continue;
+                } else {
+                    console.log(`   🎉 Reward increased from ${addedRewards[packageKey].amount} to ${pkg.reward}`);
+                    console.log(`   💰 Adding difference: ${pkg.reward - addedRewards[packageKey].amount} ${pkg.crypto}`);
+                }
+            }
+    
+            // Use the ALREADY CALCULATED reward from package data
+            const crypto = pkg.crypto;
+            const rewardAmount = parseFloat(pkg.reward) || 0;
+    
+            if (rewardAmount === 0 || isNaN(rewardAmount)) {
+                console.log(`   ⚠️ No reward to add (amount: ${rewardAmount})`);
+                continue;
+            }
+    
+            // Map crypto symbol to CoinGecko ID
+            const cryptoMapping = {
+                'BTC': 'bitcoin',
+                'BCH': 'bitcoin-cash',
+                'RVN': 'ravencoin',
+                'DOGE': 'dogecoin',
+                'LTC': 'litecoin',
+                'KAS': 'kaspa'
+            };
+            const cryptoId = cryptoMapping[crypto] || crypto.toLowerCase();
+    
+            console.log(`   💰 Adding ${rewardAmount} ${crypto} to holdings`);
+    
+            // Check if crypto already exists in portfolio
+            let cryptoExists = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
+    
+            if (!cryptoExists) {
+                // Auto-add crypto to portfolio
+                try {
+                    await addCryptoById(cryptoId);
+                    console.log(`   ✅ Auto-added ${cryptoId} to portfolio`);
+    
+                    // Immediately fetch prices for the new crypto
+                    await fetchPrices();
+                    console.log(`   ✅ Fetched price for ${cryptoId}`);
+                } catch (error) {
+                    console.error(`   ❌ Failed to auto-add ${cryptoId}:`, error);
+                    continue;
+                }
+            }
+    
+            // Calculate amount to add
+            let amountToAdd = rewardAmount;
+            if (addedRewards[packageKey]) {
+                // Only add the difference if package was previously processed
+                amountToAdd = rewardAmount - addedRewards[packageKey].amount;
+    
+                // ✅ FIX: Prevent negative amounts (API data inconsistency)
+                if (amountToAdd < 0) {
+                    console.log(`   ⚠️ WARNING: Reward amount decreased! Preventing negative addition.`);
+                    console.log(`   Previous: ${addedRewards[packageKey].amount}, Current: ${rewardAmount}`);
+                    console.log(`   This package will be skipped to prevent subtracting from holdings.`);
+                    continue; // Skip this package entirely
+                }
+            }
+    
+            // ✅ SAFETY: Final check to ensure amountToAdd is valid and positive
+            if (isNaN(amountToAdd) || amountToAdd <= 0) {
+                console.log(`   ⚠️ Invalid or zero amount to add (${amountToAdd}), skipping`);
+                continue;
+            }
+    
+            // Update holdings for this crypto
+            const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+            const newHoldings = currentHoldings + amountToAdd;
+    
+            // Save to localStorage
+            setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
+            console.log(`   💾 Updated ${cryptoId} holdings: ${currentHoldings} + ${amountToAdd} = ${newHoldings}`);
+    
+            // For Bitcoin, use updateBTCHoldings() to include NiceHash balance (same as manual update)
+            // For other cryptos, update display and AUD directly
+            if (cryptoId === 'bitcoin' && typeof updateBTCHoldings === 'function') {
+                console.log(`   🔄 Calling updateBTCHoldings() to add NiceHash balance`);
+                updateBTCHoldings();
+                sortContainersByValue();
+            } else {
+                // Update holdings display
+                const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
+                if (holdingsElement) {
+                    holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
+                    console.log(`   📊 Updated holdings display`);
+                }
+    
+                // Update the AUD value
+                const priceElement = document.getElementById(`${cryptoId}-price-aud`);
+                const valueElement = document.getElementById(`${cryptoId}-value-aud`);
+                if (priceElement && valueElement) {
+                    const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+                    const valueInAud = newHoldings * priceInAud;
+                    valueElement.textContent = formatNumber(valueInAud.toFixed(2));
+                    console.log(`   💰 Updated AUD value: $${valueInAud.toFixed(2)}`);
+    
+                    sortContainersByValue();
+                }
+            }
+    
+            // Process secondary rewards (for dual mining packages like Palladium DOGE/LTC)
+            if (pkg.cryptoSecondary && pkg.rewardSecondary > 0) {
+                console.log(`\n   💎 SECONDARY REWARD DETECTED (Dual Mining)`);
+                console.log(`   Secondary crypto: ${pkg.cryptoSecondary}`);
+                console.log(`   Secondary reward: ${pkg.rewardSecondary}`);
+    
+                const secondaryCrypto = pkg.cryptoSecondary;
+                const secondaryRewardAmount = parseFloat(pkg.rewardSecondary) || 0;
+    
+                if (secondaryRewardAmount > 0 && !isNaN(secondaryRewardAmount)) {
+                    // Map secondary crypto symbol to CoinGecko ID
+                    const secondaryCryptoId = cryptoMapping[secondaryCrypto] || secondaryCrypto.toLowerCase();
+    
+                    console.log(`   💰 Adding ${secondaryRewardAmount} ${secondaryCrypto} to holdings`);
+    
+                    // Check if this secondary reward was already added
+                    const secondaryPackageKey = `${pkg.id}_secondary`;
+                    let secondaryAmountToAdd = secondaryRewardAmount;
+    
+                    if (addedRewards[secondaryPackageKey]) {
+                        console.log(`   ℹ️ Secondary reward already processed`);
+                        console.log(`   Previous amount: ${addedRewards[secondaryPackageKey].amount} ${secondaryCrypto}`);
+    
+                        // Check if secondary reward amount has changed
+                        if (addedRewards[secondaryPackageKey].amount === secondaryRewardAmount) {
+                            console.log(`   ✓ No new secondary rewards since last check, skipping`);
+                            secondaryAmountToAdd = 0; // ✅ FIX: Set to 0 to prevent re-adding
+                        } else {
+                            console.log(`   🎉 Secondary reward increased from ${addedRewards[secondaryPackageKey].amount} to ${secondaryRewardAmount}`);
+                            secondaryAmountToAdd = secondaryRewardAmount - addedRewards[secondaryPackageKey].amount;
+    
+                            // ✅ FIX: Prevent negative amounts (API data inconsistency)
+                            if (secondaryAmountToAdd < 0) {
+                                console.log(`   ⚠️ WARNING: Secondary reward decreased! Preventing negative addition.`);
+                                console.log(`   Previous: ${addedRewards[secondaryPackageKey].amount}, Current: ${secondaryRewardAmount}`);
+                                secondaryAmountToAdd = 0;
+                            }
+                        }
+                    }
+    
+                    // Check if secondary crypto already exists in portfolio
+                    let secondaryCryptoExists = users[loggedInUser].cryptos.find(c => c.id === secondaryCryptoId);
+    
+                    if (!secondaryCryptoExists) {
+                        // Auto-add secondary crypto to portfolio
+                        try {
+                            await addCryptoById(secondaryCryptoId);
+                            console.log(`   ✅ Auto-added ${secondaryCryptoId} to portfolio`);
+    
+                            // Immediately fetch prices for the new crypto
+                            await fetchPrices();
+                            console.log(`   ✅ Fetched price for ${secondaryCryptoId}`);
+                        } catch (error) {
+                            console.error(`   ❌ Failed to auto-add ${secondaryCryptoId}:`, error);
+                        }
+                    }
+    
+                    // ✅ SAFETY: Final check to ensure secondaryAmountToAdd is valid and positive
+                    if (secondaryAmountToAdd > 0 && !isNaN(secondaryAmountToAdd)) {
+                        // Update holdings for secondary crypto
+                        const currentSecondaryHoldings = parseFloat(getStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`)) || 0;
+                        const newSecondaryHoldings = currentSecondaryHoldings + secondaryAmountToAdd;
+    
+                        // Save to localStorage
+                        setStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`, newSecondaryHoldings);
+                        console.log(`   💾 Updated ${secondaryCryptoId} holdings: ${currentSecondaryHoldings} + ${secondaryAmountToAdd} = ${newSecondaryHoldings}`);
+    
+                        // Update holdings display
+                        const secondaryHoldingsElement = document.getElementById(`${secondaryCryptoId}-holdings`);
+                        if (secondaryHoldingsElement) {
+                            secondaryHoldingsElement.textContent = formatNumber(newSecondaryHoldings.toFixed(8));
+                            console.log(`   📊 Updated secondary holdings display`);
+                        }
+    
+                        // Update the AUD value
+                        const secondaryPriceElement = document.getElementById(`${secondaryCryptoId}-price-aud`);
+                        const secondaryValueElement = document.getElementById(`${secondaryCryptoId}-value-aud`);
+                        if (secondaryPriceElement && secondaryValueElement) {
+                            const secondaryPriceInAud = parseFloat(secondaryPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+                            const secondaryValueInAud = newSecondaryHoldings * secondaryPriceInAud;
+                            secondaryValueElement.textContent = formatNumber(secondaryValueInAud.toFixed(2));
+                            console.log(`   💰 Updated secondary AUD value: $${secondaryValueInAud.toFixed(2)}`);
+    
+                            sortContainersByValue();
+                        }
+    
+                        // Mark secondary reward as processed
+                        addedRewards[secondaryPackageKey] = {
+                            orderId: pkg.id,
+                            packageName: pkg.name,
+                            crypto: secondaryCrypto,
+                            amount: secondaryRewardAmount,
+                            timestamp: Date.now(),
+                            totalBlocks: pkg.totalBlocks
+                        };
+                        setStorageItem(trackedKey, JSON.stringify(addedRewards));
+                        console.log(`   ✓ Marked secondary reward as processed (total: ${secondaryRewardAmount} ${secondaryCrypto})`);
+    
+                        console.log(`   ✅ Successfully added ${secondaryAmountToAdd} ${secondaryCrypto} to holdings`);
+                    }
+                }
+            }
+    
+            // Mark this package as processed with current reward amount
+            addedRewards[packageKey] = {
+                orderId: pkg.id,
+                packageName: pkg.name,
+                crypto: crypto,
+                amount: rewardAmount, // Store total reward amount
+                timestamp: Date.now(),
+                totalBlocks: pkg.totalBlocks
+            };
+            setStorageItem(trackedKey, JSON.stringify(addedRewards));
+            console.log(`   ✓ Marked package as processed (total reward: ${rewardAmount} ${crypto})`);
+    
+            console.log(`   ✅ Successfully added ${amountToAdd} ${crypto} to holdings`);
+        }
+
+        console.log(`\n${'='.repeat(80)}`);
+        console.log('✅ AUTO-UPDATE COMPLETE');
+        console.log(`${'='.repeat(80)}\n`);
+
+        // Update total portfolio value
+        updateTotalHoldings();
+    } finally {
+        // 🔓 Always unlock, even if there was an error
+        isProcessingRewards = false;
+    }
 }
 
 // ✅ Check for missed rewards (runs on load and every 30 seconds)
