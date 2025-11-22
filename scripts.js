@@ -1212,7 +1212,7 @@ async function loadTeamAlerts() {
             smallPackageProbabilityInputs = `
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <span style="color: #F7931A; font-weight: bold;">📦 DOGE Small Package Probability (Palladium DOGE S)</span>
+                        <label style="color: #aaa; font-size: 14px;">📦 DOGE Small Package Probability (Palladium DOGE S)</label>
                         <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageDOGEProb || 'N/A'}</span>
                     </div>
                     <input type="number"
@@ -1225,7 +1225,7 @@ async function loadTeamAlerts() {
 
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <span style="color: #C3A634; font-weight: bold;">📦 LTC Small Package Probability (Palladium LTC S)</span>
+                        <label style="color: #aaa; font-size: 14px;">📦 LTC Small Package Probability (Palladium LTC S)</label>
                         <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageLTCProb || 'N/A'}</span>
                     </div>
                     <input type="number"
