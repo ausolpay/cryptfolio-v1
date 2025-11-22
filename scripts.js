@@ -4090,14 +4090,38 @@ function syncModalLivePrice() {
         const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
 
         if (displayPriceAud > 0) {
-            // Format with commas and 2 decimals: 131,142.00
+            // Format with commas and 3 decimals: 131,142.123
             const formattedPrice = displayPriceAud.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                minimumFractionDigits: 3,
+                maximumFractionDigits: 3
             });
             livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${formattedPrice} AUD</b>`;
         }
     }
+}
+
+// Function to update percentage changes in the chart modal
+function updateModalPercentageChanges(percentageChange24h, percentageChange7d, percentageChange30d) {
+    const modalPercentageChangesElement = document.getElementById('modal-percentage-changes');
+
+    if (!modalPercentageChangesElement) return;
+
+    // Helper function to format percentage with color
+    const formatPercentage = (value, label) => {
+        const isPositive = value >= 0;
+        const color = isPositive ? '#00FF00' : '#FF0000';
+        const sign = isPositive ? '+' : '';
+        return `<span style="color: ${color}; font-weight: bold;">${label}: ${sign}${value.toFixed(2)}%</span>`;
+    };
+
+    // Create the HTML content
+    const html = `
+        ${formatPercentage(percentageChange24h, '24h')} |
+        ${formatPercentage(percentageChange7d, '7d')} |
+        ${formatPercentage(percentageChange30d, '30d')}
+    `;
+
+    modalPercentageChangesElement.innerHTML = html;
 }
 
 // Updated fetchCryptoInfo function to include liquidity data and properly right-align table data
@@ -4178,6 +4202,13 @@ async function fetchCryptoInfo(cryptoId) {
         if (athAtlElement) {
             athAtlElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">$${coinData.market_data.ath.aud} / $${coinData.market_data.atl.aud}</span>`;
         }
+
+        // Extract and update percentage changes in modal
+        const percentageChange24h = coinData.market_data?.price_change_percentage_24h || 0;
+        const percentageChange7d = coinData.market_data?.price_change_percentage_7d || 0;
+        const percentageChange30d = coinData.market_data?.price_change_percentage_30d || 0;
+
+        updateModalPercentageChanges(percentageChange24h, percentageChange7d, percentageChange30d);
 
     } catch (error) {
         console.error('Error fetching detailed crypto info:', error);

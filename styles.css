@@ -833,6 +833,13 @@ canvas:active {
     width: 100%;
 }
 
+.modal-percentage-changes {
+    font-size: calc(40% * var(--vw));
+    margin-top: 5px;
+    text-align: center;
+    width: 100%;
+}
+
 :root {
     --vw: 1vw;
 }
