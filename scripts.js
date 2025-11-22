@@ -7714,10 +7714,10 @@ function displayActivePackages() {
 
         container.appendChild(card);
     });
-    
-    // Show/hide "Show More" button
+
+    // Show/hide "Show More" button - only show if current tab has more than 6 packages
     const showMoreBtn = document.getElementById('show-more-packages');
-    if (easyMiningData.activePackages.length > 6) {
+    if (filteredPackages.length > 6) {
         showMoreBtn.style.display = 'block';
     } else {
         showMoreBtn.style.display = 'none';

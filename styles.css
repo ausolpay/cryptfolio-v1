@@ -1291,6 +1291,13 @@ body.light-mode .balance-label {
     width: 100%;
 }
 
+/* Show More Button - Centered under packages */
+#show-more-packages {
+    display: block;
+    margin: 20px auto 0 auto; /* Center the button */
+    max-width: 300px;
+}
+
 /* Package Tabs */
 .package-tabs {
     display: flex;
@@ -1384,9 +1391,6 @@ body.light-mode .package-tab.active {
         margin-left: -5px; /* Move 5px to the left on mobile */
     }
 
-    #show-more-packages {
-        margin-left: -6px; /* Move Show More button 6px to the left on mobile */
-    }
 
     .stats-section {
         padding: 4px; /* Reduce padding on mobile */
