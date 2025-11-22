@@ -491,6 +491,10 @@ function showAppPage() {
     // Start EasyMining alerts polling if enabled
     if (easyMiningSettings && easyMiningSettings.enabled) {
         startEasyMiningAlertsPolling();
+
+        // Preload buy packages data in background for faster page loading
+        console.log('📦 Preloading buy packages data...');
+        loadBuyPackagesDataOnPage();
     }
 }
 
