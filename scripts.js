@@ -11363,7 +11363,9 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 const sharePrice = 0.0001;
                 const totalBoughtShares = pkg.addedAmount ? Math.floor(pkg.addedAmount / sharePrice) : 0;
                 const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 0;
-                const myBoughtShares = getMyTeamShares(pkg.id) || 0;
+                // Use same ID logic as when saving shares
+                const packageId = pkg.apiData?.id || pkg.id;
+                const myBoughtShares = getMyTeamShares(packageId) || 0;
                 return `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
             })()}</span>
         </div>
@@ -11519,7 +11521,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     let myBoughtShares = 0;
     let initialShareValue = 1;
     if (pkg.isTeam) {
-        myBoughtShares = getMyTeamShares(pkg.id) || 0;
+        // Use same ID logic as when saving shares
+        const packageId = pkg.apiData?.id || pkg.id;
+        myBoughtShares = getMyTeamShares(packageId) || 0;
+        console.log(`📊 Team package "${pkg.name}" - ID: ${packageId}, My shares: ${myBoughtShares}`);
         // Start with current shares, or 1 if they haven't bought any
         initialShareValue = myBoughtShares > 0 ? myBoughtShares : 1;
     }
