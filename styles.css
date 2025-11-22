@@ -1381,7 +1381,11 @@ body.light-mode .package-tab.active {
         width: auto;
         height: auto;
         max-width: calc(100% - 20px); /* 20px narrower for narrow mobile devices */
-        margin: 0 auto; /* Center the section */
+        margin-left: -10px; /* Move 10px to the left on mobile */
+    }
+
+    #show-more-packages {
+        margin-left: -12px; /* Move Show More button 12px to the left on mobile */
     }
 
     .stats-section {
