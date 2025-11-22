@@ -7869,6 +7869,9 @@ async function executeAutoBuySolo(recommendations) {
 
         // Execute auto-buy
         console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name}`);
+        console.log(`   Package:`, pkg);
+        console.log(`   Crypto: ${pkg.crypto}`);
+        console.log(`   Price: ${pkg.price} BTC`);
 
         try {
             // Auto-buy: skip confirmation, call the purchase API directly
@@ -7877,9 +7880,19 @@ async function executeAutoBuySolo(recommendations) {
                 continue;
             }
 
-            const endpoint = `/main/api/v2/hashpower/solo/order?ticketId=${pkg.ticketId || pkg.id}`;
+            // ✅ FIX: Sync time with NiceHash server before purchase (critical for authentication)
+            console.log('⏰ Syncing time with NiceHash server...');
+            await syncNiceHashTime();
+
+            const ticketId = pkg.ticketId || pkg.id;
+            console.log('🛒 Creating NiceHash solo order...');
+            console.log('   Ticket ID:', ticketId);
+
+            const endpoint = `/main/api/v2/hashpower/solo/order?ticketId=${ticketId}`;
             const body = JSON.stringify({});
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+            console.log('📡 Auto-buy endpoint:', endpoint);
 
             let response;
             if (USE_VERCEL_PROXY) {
@@ -7907,12 +7920,27 @@ async function executeAutoBuySolo(recommendations) {
             }
 
             const result = await response.json();
+            console.log('✅ Solo package auto-purchased successfully:', result);
 
-            // Update lastBuyTime
+            // Update lastBuyTime and save
             autoBuy.lastBuyTime = Date.now();
             localStorage.setItem(`${loggedInUser}_soloAutoBuy`, JSON.stringify(autoBuySettings));
 
-            console.log(`✅ Auto-buy completed for ${pkg.name}. Order ID: ${result.id || result.orderId || 'N/A'}. Next auto-buy available in 1 hour.`, result);
+            console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name}`);
+            console.log(`   Order ID: ${result.id || result.orderId || 'N/A'}`);
+            console.log(`   Crypto: ${pkg.crypto}`);
+            console.log(`   Price: ${pkg.price} BTC`);
+            console.log(`   ⏳ Next auto-buy available in 1 hour`);
+
+            // ✅ Update stats (same as manual buy)
+            const btcPrice = (window.packageCryptoPrices && window.packageCryptoPrices['bitcoin'])
+                ? window.packageCryptoPrices['bitcoin'].aud
+                : 140000;
+            const packagePrice = parseFloat(pkg.price) || 0;
+
+            easyMiningData.allTimeStats.totalSpent += packagePrice * btcPrice;
+            easyMiningData.todayStats.totalSpent += packagePrice * btcPrice;
+            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
             // Refresh package data
             await fetchEasyMiningData();
