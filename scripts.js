@@ -11124,6 +11124,9 @@ Do you want to continue?
             packageId: packageId
         });
 
+        // Log the actual JSON that will be sent
+        console.log('📄 Stringified orderData:', JSON.stringify(orderData, null, 2));
+
         // Call NiceHash API to create team order
         // Endpoint: POST /main/api/v2/hashpower/shared/ticket/{id}
         const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
@@ -11135,23 +11138,22 @@ Do you want to continue?
         if (USE_VERCEL_PROXY) {
             // Use Vercel serverless function as proxy
             console.log('✅ Using Vercel proxy to create team order');
-            console.log('📡 Full request details:', {
-                proxyUrl: VERCEL_PROXY_ENDPOINT,
-                nicehashEndpoint: endpoint,
+
+            const proxyPayload = {
+                endpoint: endpoint,
                 method: 'POST',
-                bodyData: orderData
-            });
+                headers: headers,
+                body: orderData
+            };
+
+            console.log('📡 Full proxy payload:', JSON.stringify(proxyPayload, null, 2));
+
             response = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    endpoint: endpoint,
-                    method: 'POST',
-                    headers: headers,
-                    body: orderData
-                })
+                body: JSON.stringify(proxyPayload)
             });
         } else {
             // Direct call to NiceHash
@@ -11167,12 +11169,17 @@ Do you want to continue?
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ API Error Response:', errorText);
+            console.error('❌ API Error Response (raw):', errorText);
+            console.error('❌ Response status:', response.status);
+            console.error('❌ Response headers:', Object.fromEntries(response.headers.entries()));
+
             let errorMessage = `API Error: ${response.status}`;
             try {
                 const errorData = JSON.parse(errorText);
-                errorMessage = errorData.message || errorData.error_message || errorMessage;
+                console.error('❌ Parsed error data:', errorData);
+                errorMessage = errorData.message || errorData.error_message || errorData.error || errorData.details || errorMessage;
             } catch (e) {
+                console.error('❌ Could not parse error as JSON:', e.message);
                 errorMessage = errorText || errorMessage;
             }
             throw new Error(errorMessage);
