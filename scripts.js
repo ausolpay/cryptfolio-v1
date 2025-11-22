@@ -420,13 +420,19 @@ function showAppPage() {
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+
+    // Start EasyMining alerts polling if enabled
+    if (easyMiningSettings && easyMiningSettings.enabled) {
+        startEasyMiningAlertsPolling();
+    }
 }
 
 function showEasyMiningSettingsPage() {
     console.log('Showing EasyMining Settings Page');
 
-    // Stop buy packages polling when leaving the page
+    // Stop buy packages and alerts polling when leaving the page
     stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -460,6 +466,10 @@ function showEasyMiningSettingsPage() {
 
 function showWithdrawalAddressesPage() {
     console.log('Showing Withdrawal Addresses Page');
+
+    // Stop polling when leaving app page
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -576,8 +586,9 @@ function getWithdrawalAddress(crypto) {
 async function showPackageAlertsPage() {
     console.log('Showing Package Alerts Page');
 
-    // Stop buy packages polling when leaving the page
+    // Stop buy packages and alerts polling when leaving the page
     stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -1529,6 +1540,9 @@ async function checkTeamRecommendations() {
 
 function showBuyPackagesPage() {
     console.log('Showing Buy Packages Page');
+
+    // Stop EasyMining alerts polling when leaving main app page
+    stopEasyMiningAlertsPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -5051,6 +5065,7 @@ let easyMiningData = {
 };
 
 let easyMiningPollingInterval = null;
+let easyMiningAlertsPollingInterval = null; // For solo/team alerts in main EasyMining section
 let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
@@ -5295,6 +5310,10 @@ window.clearAPICredentials = clearAPICredentials;
 
 function showCoinGeckoApiSettingsPage() {
     console.log('Showing CoinGecko API Settings Page');
+
+    // Stop polling when leaving app page
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -8646,6 +8665,10 @@ async function addCryptoById(cryptoId) {
 function showPackageDetailPage(pkg) {
     console.log('Showing Package Detail Page for:', pkg.name);
 
+    // Stop polling when leaving app page
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+
     // Debug team package data
     if (pkg.isTeam) {
         console.log(`\n🔍 TEAM PACKAGE DETAIL DATA: ${pkg.name}`);
@@ -11580,6 +11603,36 @@ function pauseBuyPackagesPolling() {
         buyPackagesPauseTimer = null;
         console.log('▶️ Resuming buy packages polling');
     }, 10000);
+}
+
+// =============================================================================
+// EASYMINING ALERTS POLLING (Solo/Team Alerts in Main Section)
+// =============================================================================
+
+function startEasyMiningAlertsPolling() {
+    console.log('🔄 Starting EasyMining alerts polling...');
+
+    // Stop any existing polling
+    stopEasyMiningAlertsPolling();
+
+    // Initial load
+    updateRecommendations();
+
+    // Poll every 5 seconds
+    easyMiningAlertsPollingInterval = setInterval(() => {
+        console.log('🔄 Refreshing EasyMining alerts...');
+        updateRecommendations();
+    }, 5000);
+
+    console.log('✅ EasyMining alerts polling started (5s interval)');
+}
+
+function stopEasyMiningAlertsPolling() {
+    if (easyMiningAlertsPollingInterval) {
+        clearInterval(easyMiningAlertsPollingInterval);
+        easyMiningAlertsPollingInterval = null;
+        console.log('⏹️ EasyMining alerts polling stopped');
+    }
 }
 
 // =============================================================================
