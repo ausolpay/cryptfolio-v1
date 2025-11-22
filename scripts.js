@@ -8341,7 +8341,7 @@ function createTeamPackageRecommendationCard(pkg) {
 
     // ✅ FIX: Use convertBTCtoAUD() to get LIVE BTC price (same as Buy Packages page)
     // This prevents showing incorrect fallback price (140000) until user presses +/-
-    const pricePerShareAUD = convertBTCtoAUD(sharePrice).toFixed(2);
+    const pricePerShareAUD = convertBTCtoAUD(sharePrice);
 
     const teamInfo = `
         <div class="buy-package-stat">
@@ -8354,7 +8354,7 @@ function createTeamPackageRecommendationCard(pkg) {
         </div>
         <div class="buy-package-stat">
             <span>Share Price (AUD):</span>
-            <span>$${pricePerShareAUD} AUD</span>
+            <span>$${pricePerShareAUD.toFixed(2)} AUD</span>
         </div>
     `;
 
@@ -8406,7 +8406,7 @@ function createTeamPackageRecommendationCard(pkg) {
                 <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer; ${plusButtonStyle}" ${plusButtonDisabled}>+</button>
             </div>
             <div style="margin-top: 8px; font-size: 12px; color: #888;">
-                Cost: <span id="price-${pkg.name.replace(/\s+/g, '-')}">$${pricePerShareAUD}</span> AUD
+                Cost: <span id="price-${pkg.name.replace(/\s+/g, '-')}">$${pricePerShareAUD.toFixed(2)}</span> AUD
             </div>
         </div>
 
@@ -8432,7 +8432,7 @@ function createTeamPackageRecommendationCard(pkg) {
 
     window.packageBaseValues[pkg.name] = {
         packageId: pkg.id,
-        priceAUD: parseFloat(pricePerShareAUD),
+        priceAUD: pricePerShareAUD,  // Already a number from convertBTCtoAUD
         totalRewardAUD: totalRewardAUD,
         totalMainReward: pkg.blockReward || 0,
         totalMergeReward: pkg.mergeBlockReward || 0,
@@ -11266,10 +11266,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     let plusButtonDisabled = '';
     let plusButtonStyle = '';
     if (pkg.isTeam) {
-        // Check if user can afford first share for initial + button state
-        const canAffordFirstShare = availableBalance >= sharePrice;
-        plusButtonDisabled = canAffordFirstShare ? '' : 'disabled';
-        plusButtonStyle = canAffordFirstShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+        // Check if user can afford SECOND share (current 1 + next 1 = 2 shares total)
+        const canAffordSecondShare = availableBalance >= (sharePrice * 2);
+        plusButtonDisabled = canAffordSecondShare ? '' : 'disabled';
+        plusButtonStyle = canAffordSecondShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
     }
 
     // For team packages: add share selector with buy button on same row
