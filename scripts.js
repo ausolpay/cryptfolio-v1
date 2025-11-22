@@ -8308,12 +8308,107 @@ async function updateRecommendations() {
 
 function createTeamPackageRecommendationCard(pkg) {
     const card = document.createElement('div');
-    card.className = 'buy-package-card recommended';
+    card.className = 'buy-package-card recommended team-package';
+
+    // Use package crypto prices (fetched specifically for buy packages page)
+    const prices = window.packageCryptoPrices || {};
+
+    // Calculate reward in AUD based on crypto prices
+    let rewardAUD = 0;
+    let mainRewardAUD = 0;
+    let mergeRewardAUD = 0;
+
+    if (pkg.isDualCrypto) {
+        // Dual-crypto package (e.g., DOGE+LTC)
+        try {
+            // Calculate main crypto reward (LTC)
+            const mainCryptoKey = pkg.mainCrypto.toLowerCase();
+            if (prices[mainCryptoKey] && prices[mainCryptoKey].aud) {
+                mainRewardAUD = parseFloat((pkg.blockReward * prices[mainCryptoKey].aud).toFixed(2));
+            }
+
+            // Calculate merge crypto reward (DOGE)
+            const mergeCryptoKey = pkg.mergeCrypto.toLowerCase();
+            if (prices[mergeCryptoKey] && prices[mergeCryptoKey].aud) {
+                mergeRewardAUD = parseFloat((pkg.mergeBlockReward * prices[mergeCryptoKey].aud).toFixed(2));
+            }
+
+            // Total reward in AUD
+            rewardAUD = (mainRewardAUD + mergeRewardAUD).toFixed(2);
+        } catch (error) {
+            console.log('Could not calculate dual crypto reward AUD:', error);
+            rewardAUD = 0;
+        }
+    } else {
+        // Single crypto package
+        if (pkg.blockReward && pkg.crypto) {
+            try {
+                const cryptoKey = pkg.crypto.toLowerCase();
+                if (prices[cryptoKey] && prices[cryptoKey].aud) {
+                    rewardAUD = (pkg.blockReward * prices[cryptoKey].aud).toFixed(2);
+                }
+            } catch (error) {
+                console.log('Could not calculate reward AUD:', error);
+                rewardAUD = 0;
+            }
+        }
+    }
+
+    // Calculate package price in AUD from BTC price using live portfolio BTC price
+    let priceAUD = 0;
+    const sharePrice = 0.0001;
+    try {
+        // Get LIVE BTC price from portfolio page (same as buy packages page)
+        priceAUD = convertBTCtoAUD(sharePrice).toFixed(2);
+    } catch (error) {
+        console.log('Could not calculate price AUD:', error);
+        priceAUD = 0;
+    }
+
+    // For team packages: show shares, participants, and countdown
+    let countdownInfo = '';
+    if (pkg.lifeTimeTill) {
+        // Calculate time until start
+        const startTime = new Date(pkg.lifeTimeTill);
+        const now = new Date();
+        const timeUntilStart = startTime - now;
+
+        if (timeUntilStart > 0) {
+            // Package hasn't started yet - show countdown
+            const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+            const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+
+            countdownInfo = `
+                <div class="buy-package-stat">
+                    <span>Starting:</span>
+                    <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                </div>
+            `;
+        }
+    }
+
+    const sharesInfo = `
+        <div class="buy-package-stat">
+            <span>Participants:</span>
+            <span style="color: #4CAF50;">${pkg.numberOfParticipants || 0}</span>
+        </div>
+        <div class="buy-package-stat">
+            <span>Share Distribution:</span>
+            <span style="color: #ffa500;">${(() => {
+                const totalBoughtShares = pkg.addedAmount ? Math.floor(pkg.addedAmount / sharePrice) : 0;
+                const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 0;
+                const myBoughtShares = getMyTeamShares(pkg.id) || 0;
+                return `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+            })()}</span>
+        </div>
+        ${countdownInfo}
+    `;
 
     // Probability section - handle dual-crypto packages
     let probabilityInfo = '';
     if (pkg.isDualCrypto) {
-        // Show both probabilities for dual-crypto packages
+        // For team dual-crypto packages, show on separate lines
         probabilityInfo = `
             <div class="buy-package-stat">
                 <span>Probability ${pkg.mergeCrypto}:</span>
@@ -8334,51 +8429,116 @@ function createTeamPackageRecommendationCard(pkg) {
         `;
     }
 
-    // Team-specific info
-    const sharePrice = 0.0001;
-    const sharesBought = pkg.addedAmount ? Math.round(pkg.addedAmount / sharePrice) : 0;
-    const totalShares = pkg.fullAmount ? Math.round(pkg.fullAmount / sharePrice) : 0;
-    const shareCount = (sharesBought > 0 || totalShares > 0) ? ` (${sharesBought}/${totalShares})` : '';
+    // Potential reward section - handle dual-crypto packages
+    let rewardInfo = '';
+    const packageId = pkg.name.replace(/\s+/g, '-');
 
-    // Get current share count for this package
-    const currentShares = window.easyMiningAlertShares?.[pkg.name] || 1;
+    if (pkg.isDualCrypto) {
+        // Calculate rewards for 1 share using division formula
+        let myMergeReward = pkg.mergeBlockReward || 0;
+        let myMainReward = pkg.blockReward || 0;
+        let myRewardValueAUD = parseFloat(rewardAUD);
 
-    // ✅ FIX: Use convertBTCtoAUD() to get LIVE BTC price (same as Buy Packages page)
-    // Calculate total price based on current shares
-    const pricePerShareAUD = convertBTCtoAUD(sharePrice);
-    const totalPriceAUD = pricePerShareAUD * currentShares;
+        if (pkg.addedAmount !== undefined) {
+            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
+            const myShares = 1; // Initial display for 1 share
 
-    const teamInfo = `
-        <div class="buy-package-stat">
-            <span>Participants:</span>
-            <span style="color: #4CAF50;">${pkg.numberOfParticipants || 0}</span>
-        </div>
-        <div class="buy-package-stat">
-            <span>Share %:</span>
-            <span style="color: #ffa500;">${pkg.shares || '0'}%${shareCount}</span>
-        </div>
-        <div class="buy-package-stat">
-            <span>Share Price (AUD):</span>
-            <span>$${pricePerShareAUD.toFixed(2)} AUD</span>
-        </div>
-    `;
+            // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
+            const othersBought = totalBoughtShares - myBoughtShares;
+            const totalShares = othersBought + myShares;
 
-    // ✅ FIX: Add balance checking for team alert buttons (same as Buy Packages page)
+            const mergeRewardPerShare = totalShares > 0 ? (pkg.mergeBlockReward || 0) / totalShares : 0;
+            const mainRewardPerShare = totalShares > 0 ? (pkg.blockReward || 0) / totalShares : 0;
+            const rewardValuePerShareAUD = totalShares > 0 ? parseFloat(rewardAUD) / totalShares : 0;
+
+            myMergeReward = mergeRewardPerShare * myShares;
+            myMainReward = mainRewardPerShare * myShares;
+            myRewardValueAUD = rewardValuePerShareAUD * myShares;
+
+            console.log(`💰 ${pkg.name} Dual-Crypto Reward (Alert):
+            - Total Bought: ${totalBoughtShares}, My Bought: ${myBoughtShares}, Buying: ${myShares}
+            - Others: ${othersBought}, Pool: ${totalShares}
+            - ${pkg.mergeCrypto} Block: ${pkg.mergeBlockReward}, My Reward: ${myMergeReward.toFixed(2)}
+            - ${pkg.mainCrypto} Block: ${pkg.blockReward}, My Reward: ${myMainReward.toFixed(4)}`);
+        }
+
+        // Show both rewards for dual-crypto packages (DOGE+LTC)
+        const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
+        rewardInfo = `
+            <div class="buy-package-stat">
+                <span>Reward ${pkg.mergeCrypto}:</span>
+                <span id="merge-reward-${packageId}" style="color: #4CAF50;">${myMergeReward.toFixed(mergeDecimals)} ${pkg.mergeCrypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Reward ${pkg.mainCrypto}:</span>
+                <span id="main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(4)} ${pkg.mainCrypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Reward Value:</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+            </div>
+        `;
+    } else if (pkg.blockReward) {
+        // Single crypto package - calculate reward for 1 share using division formula
+        let myMainReward = pkg.blockReward;
+        let myRewardValueAUD = parseFloat(rewardAUD);
+
+        if (pkg.addedAmount !== undefined) {
+            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
+            const myShares = 1; // Initial display for 1 share
+
+            // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
+            const othersBought = totalBoughtShares - myBoughtShares;
+            const totalShares = othersBought + myShares;
+
+            const mainRewardPerShare = totalShares > 0 ? pkg.blockReward / totalShares : 0;
+            const rewardValuePerShareAUD = totalShares > 0 ? parseFloat(rewardAUD) / totalShares : 0;
+
+            myMainReward = mainRewardPerShare * myShares;
+            myRewardValueAUD = rewardValuePerShareAUD * myShares;
+
+            console.log(`💰 ${pkg.name} Single-Crypto Reward (Alert):
+            - Total Bought: ${totalBoughtShares}, My Bought: ${myBoughtShares}, Buying: ${myShares}
+            - Others: ${othersBought}, Pool: ${totalShares}
+            - Block Reward: ${pkg.blockReward}, My Reward: ${myMainReward.toFixed(8)}`);
+        }
+
+        rewardInfo = `
+            <div class="buy-package-stat">
+                <span>Reward:</span>
+                <span id="main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Reward Value:</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+            </div>
+        `;
+    }
+
+    // Get available balance from fetched NiceHash balance
     const availableBalance = window.niceHashBalance?.available || 0;
 
-    // Calculate initial affordability for Buy button (based on current shares)
-    const canAffordCurrentShares = availableBalance >= (sharePrice * currentShares);
-    const buyButtonDisabled = canAffordCurrentShares ? '' : 'disabled';
-    const buyButtonStyle = canAffordCurrentShares ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    // Calculate affordability for team package
+    const canAfford = availableBalance >= sharePrice;
+    const buyButtonDisabled = canAfford ? '' : 'disabled';
+    const buyButtonStyle = canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;';
 
-    // Calculate initial affordability for + button (can afford current + 1 more)
-    const canAffordNextShare = availableBalance >= (sharePrice * (currentShares + 1));
-    const plusButtonDisabled = canAffordNextShare ? '' : 'disabled';
-    const plusButtonStyle = canAffordNextShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    // For team packages: calculate initial + button state
+    const canAffordSecondShare = availableBalance >= (sharePrice * 2);
+    const plusButtonDisabled = canAffordSecondShare ? '' : 'disabled';
+    const plusButtonStyle = canAffordSecondShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
 
-    // Create a unique card ID for share controls
-    const cardId = `team-alert-${pkg.id || pkg.name.replace(/\s+/g, '-')}`;
-    const maxShares = pkg.availableShares || 1000;
+    // For team packages: add share selector with buy button on same row
+    const teamShareSelector = `
+        <div class="share-adjuster">
+            <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="9999" class="share-adjuster-input" readonly>
+            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
+            <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
+        </div>
+    `;
 
     card.innerHTML = `
         <h4>${pkg.name} ⭐</h4>
@@ -8388,71 +8548,65 @@ function createTeamPackageRecommendationCard(pkg) {
                 <span>Duration:</span>
                 <span>${pkg.duration}</span>
             </div>
-            ${teamInfo}
+            ${sharesInfo}
+            ${rewardInfo}
             <div class="buy-package-stat">
-                <span>Reward:</span>
-                <span id="main-reward-${pkg.name.replace(/\s+/g, '-')}" style="color: #4CAF50;">${(pkg.blockReward || 0).toFixed(4)} ${pkg.crypto}</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Reward Value:</span>
-                <span id="reward-value-${pkg.name.replace(/\s+/g, '-')}" style="color: #4CAF50;">$0.00 AUD</span>
+                <span>Price:</span>
+                <span id="price-${packageId}">$${priceAUD} AUD</span>
             </div>
         </div>
-
-        <!-- ✅ FIXED: Shares selector with balance checking -->
-        <div class="shares-selector" style="margin: 15px 0;">
-            <label style="display: block; margin-bottom: 8px; color: #aaa; font-size: 14px;">
-                Shares to buy:
-            </label>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <button onclick="adjustShares('${pkg.name}', -1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">-</button>
-                <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${window.easyMiningAlertShares?.[pkg.name] || 1}" min="1" max="${maxShares}"
-                    style="width: 80px; text-align: center; padding: 8px; font-size: 16px; border: 1px solid #555; background-color: #2a2a2a; color: white; border-radius: 5px;" readonly>
-                <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer; ${plusButtonStyle}" ${plusButtonDisabled}>+</button>
-            </div>
-            <div style="margin-top: 8px; font-size: 12px; color: #888;">
-                Cost: <span id="price-${pkg.name.replace(/\s+/g, '-')}">$${totalPriceAUD.toFixed(2)}</span> AUD
-            </div>
-        </div>
-
-        <!-- ✅ FIXED: Buy button with balance checking -->
-        <button class="buy-now-btn" onclick="buyTeamPackageFromAlert('${pkg.id}', '${pkg.crypto}', ${sharePrice}, '${cardId}', ${maxShares})" style="${buyButtonStyle}" ${buyButtonDisabled}>
-            Buy Now
-        </button>
+        ${teamShareSelector}
     `;
 
-    // Initialize package base values for adjustShares to work correctly
+    // Store base values for team packages to enable dynamic updates
     if (!window.packageBaseValues) {
         window.packageBaseValues = {};
     }
 
-    // Calculate total bought shares from addedAmount
-    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-    const myBoughtShares = 0; // For alerts, assume no previous purchases
+    // Store total package rewards and calculate shares using addedAmount (total bought)
+    // Price: 1 share = 0.0001 BTC
+    const btcPriceAUD = prices['btc']?.aud || 0;
+    const pricePerShareAUD = sharePrice * btcPriceAUD;
 
-    // Get crypto prices for reward calculation
-    const prices = JSON.parse(localStorage.getItem('cryptoPrices') || '{}');
-    const cryptoPrice = prices[pkg.crypto.toLowerCase()]?.aud || 0;
-    const totalRewardAUD = pkg.blockReward ? (pkg.blockReward * cryptoPrice) : 0;
+    // Calculate total bought shares from addedAmount (NOT fullAmount!)
+    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
+    const myBoughtShares = getMyTeamShares(pkg.id) || 0;
+
+    // Store total block rewards
+    const totalRewardAUD = parseFloat(rewardAUD) || 0;
+    const totalMainReward = pkg.blockReward || 0;
+    const totalMergeReward = pkg.mergeBlockReward || 0;
+
+    console.log(`📊 ${pkg.name} alert package base values:`, {
+        packageId: pkg.id,
+        addedAmount: pkg.addedAmount,
+        fullAmount: pkg.fullAmount,
+        totalBoughtShares: totalBoughtShares,
+        myBoughtShares: myBoughtShares,
+        totalRewardAUD: totalRewardAUD,
+        totalMainReward: totalMainReward,
+        totalMergeReward: totalMergeReward,
+        pricePerShareAUD: pricePerShareAUD.toFixed(2)
+    });
 
     window.packageBaseValues[pkg.name] = {
         packageId: pkg.id,
-        priceAUD: pricePerShareAUD,  // Already a number from convertBTCtoAUD
+        priceAUD: pricePerShareAUD,
         totalRewardAUD: totalRewardAUD,
-        totalMainReward: pkg.blockReward || 0,
-        totalMergeReward: pkg.mergeBlockReward || 0,
+        totalMainReward: totalMainReward,
+        totalMergeReward: totalMergeReward,
         totalBoughtShares: totalBoughtShares,
         myBoughtShares: myBoughtShares,
-        mainCrypto: pkg.crypto,
+        mainCrypto: pkg.mainCrypto || pkg.crypto,
         mergeCrypto: pkg.mergeCrypto,
-        isDualCrypto: false
+        isDualCrypto: pkg.isDualCrypto
     };
 
-    // Initialize share value for EasyMining alerts separately
-    if (!window.easyMiningAlertShares) {
-        window.easyMiningAlertShares = {};
+    // Initialize share value to 1
+    if (!window.packageShareValues) {
+        window.packageShareValues = {};
     }
-    window.easyMiningAlertShares[pkg.name] = 1;
+    window.packageShareValues[pkg.name] = 1;
 
     console.log(`📦 Initialized team alert package base values for ${pkg.name}:`, window.packageBaseValues[pkg.name]);
 
