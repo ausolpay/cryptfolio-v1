@@ -1380,13 +1380,13 @@ body.light-mode .package-tab.active {
         padding: 4px; /* Reduce padding on mobile */
         width: auto;
         height: auto;
-        max-width: calc(100% - 10px); /* 10px narrower for narrow mobile devices */
+        max-width: calc(100% - 20px); /* 20px narrower for narrow mobile devices */
         margin: 0 auto; /* Center the section */
     }
 
     .stats-section {
         padding: 4px; /* Reduce padding on mobile */
-        margin-left: -10px; /* Move 10px to the left to center better on mobile */
+        margin-left: -5px; /* Move 5px to the left to center better on mobile */
     }
 
     .recommendations-section {
