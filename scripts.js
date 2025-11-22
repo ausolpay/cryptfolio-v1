@@ -8251,7 +8251,7 @@ async function updateRecommendations() {
 
             // Display each recommended package using the same card format as buy packages
             recommendations.forEach(pkg => {
-                const card = createBuyPackageCardForPage(pkg, true, 'alerts'); // true = isRecommended, 'alerts' = context
+                const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
                 bestPackagesContainer.appendChild(card);
             });
         }
@@ -8286,7 +8286,7 @@ async function updateRecommendations() {
                 // Display each recommended team package using the same card format as solo packages
                 teamRecommendations.forEach((pkg, index) => {
                     console.log(`🔍 Creating team card ${index + 1}/${teamRecommendations.length} for:`, pkg.name);
-                    const card = createBuyPackageCardForPage(pkg, true, 'alerts'); // true = isRecommended, 'alerts' = context
+                    const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
                     if (card) {
                         teamAlertsContainer.appendChild(card);
                         console.log(`✅ Team card ${index + 1} added to container`);
@@ -10652,9 +10652,9 @@ async function fetchPackageCryptoPrices(packages) {
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
-    // Initialize share values storage if not exists (separate for Buy Packages page)
-    if (!window.buyPackagesShareValues) {
-        window.buyPackagesShareValues = {};
+    // Initialize share values storage if not exists
+    if (!window.packageShareValues) {
+        window.packageShareValues = {};
     }
 
     // Fetch balance from NiceHash API
@@ -10799,10 +10799,10 @@ async function loadBuyPackagesDataOnPage() {
     // Start countdown updates for team packages
     startCountdownUpdates();
 
-    // Restore saved share values after packages are populated (Buy Packages page storage)
-    if (window.buyPackagesShareValues && Object.keys(window.buyPackagesShareValues).length > 0) {
-        console.log('🛒 Restoring Buy Packages share values:', window.buyPackagesShareValues);
-        for (const [packageName, value] of Object.entries(window.buyPackagesShareValues)) {
+    // Restore saved share values after packages are populated
+    if (window.packageShareValues && Object.keys(window.packageShareValues).length > 0) {
+        console.log('🔄 Restoring share values:', window.packageShareValues);
+        for (const [packageName, value] of Object.entries(window.packageShareValues)) {
             if (value > 0) {
                 const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
 
@@ -10945,14 +10945,9 @@ function stopCountdownUpdates() {
     }
 }
 
-function createBuyPackageCardForPage(pkg, isRecommended, context = 'buypage') {
+function createBuyPackageCardForPage(pkg, isRecommended) {
     const card = document.createElement('div');
-    // Add 'easymining-alert-card' class when in alerts context for proper function targeting
-    const contextClass = context === 'alerts' ? ' easymining-alert-card' : '';
-    card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '') + (pkg.isTeam ? ' team-package' : '') + contextClass;
-
-    // Determine which adjust function to use based on context
-    const adjustFunction = context === 'alerts' ? 'adjustSharesForAlerts' : 'adjustSharesForBuyPackages';
+    card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '') + (pkg.isTeam ? ' team-package' : '');
 
     // Use package crypto prices (fetched specifically for buy packages page)
     const prices = window.packageCryptoPrices || {};
@@ -11240,9 +11235,9 @@ function createBuyPackageCardForPage(pkg, isRecommended, context = 'buypage') {
     // For team packages: add share selector with buy button on same row
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
-            <button onclick="${adjustFunction}('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
+            <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
             <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="9999" class="share-adjuster-input" readonly>
-            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="${adjustFunction}('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
+            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
     ` : '';
@@ -11320,46 +11315,39 @@ function createBuyPackageCardForPage(pkg, isRecommended, context = 'buypage') {
             isDualCrypto: pkg.isDualCrypto
         };
 
-        // Initialize share value to 1 (use appropriate storage based on context)
-        if (context === 'alerts') {
-            if (!window.alertsShareValues) {
-                window.alertsShareValues = {};
-            }
-            window.alertsShareValues[pkg.name] = 1;
-        } else {
-            if (!window.buyPackagesShareValues) {
-                window.buyPackagesShareValues = {};
-            }
-            window.buyPackagesShareValues[pkg.name] = 1;
+        // Initialize share value to 1
+        if (!window.packageShareValues) {
+            window.packageShareValues = {};
         }
+        window.packageShareValues[pkg.name] = 1;
     }
 
     return card;
 }
 
-// =============================================================================
-// SEPARATE FUNCTIONS FOR BUY PACKAGES PAGE AND EASYMINING ALERTS
-// =============================================================================
-
-// Function to adjust shares ONLY for Buy Packages Page
-function adjustSharesForBuyPackages(packageName, delta, buttonElement) {
-    console.log(`🛒 [BUY PACKAGES] adjustShares CALLED: packageName="${packageName}", delta=${delta}`);
+// Function to adjust shares for team packages
+function adjustShares(packageName, delta, buttonElement) {
+    console.log(`🎯 adjustShares CALLED: packageName="${packageName}", delta=${delta}`);
 
     const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
+    console.log(`🔍 Looking for input with ID: "${inputId}"`);
 
-    // ONLY look in Buy Packages page containers
+    // CRITICAL FIX: Find input in the same container as the button to avoid conflicts
+    // between EasyMining alerts and Buy Packages page (both have same IDs!)
     let input;
     if (buttonElement && typeof buttonElement === 'object') {
-        const container = buttonElement.closest('.buy-package-card');
+        // Find the input in the same parent container as the button
+        const container = buttonElement.closest('.share-adjuster, .easymining-alert-card, .buy-package-card');
         if (container) {
             input = container.querySelector(`#${inputId}`);
-            console.log(`🛒 Found input in Buy Packages card:`, !!input);
+            console.log(`🔍 Found input via button's container:`, !!input);
         }
     }
 
+    // Fallback to getElementById if button element not provided
     if (!input) {
-        console.error(`❌ [BUY PACKAGES] Input NOT found in Buy Packages page!`);
-        return;
+        input = document.getElementById(inputId);
+        console.log(`🔍 Found input via getElementById (may be wrong one!):`, !!input);
     }
 
     const plusButtonId = `plus-${packageName.replace(/\s+/g, '-')}`;
@@ -11419,12 +11407,12 @@ function adjustSharesForBuyPackages(packageName, delta, buttonElement) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
-    // Save to SEPARATE storage for Buy Packages page
-    if (!window.buyPackagesShareValues) {
-        window.buyPackagesShareValues = {};
+    // Immediately save to persistent storage
+    if (!window.packageShareValues) {
+        window.packageShareValues = {};
     }
-    window.buyPackagesShareValues[packageName] = newValue;
-    console.log(`🛒 💾 [BUY PACKAGES] Saved ${packageName} = ${newValue}`);
+    window.packageShareValues[packageName] = newValue;
+    console.log(`💾 Saved ${packageName} = ${newValue}`);
 
     // Pause polling for 10 seconds when adjusting shares
     pauseBuyPackagesPolling();
@@ -11432,19 +11420,14 @@ function adjustSharesForBuyPackages(packageName, delta, buttonElement) {
     // Update reward value and price based on shares
     const packageId = packageName.replace(/\s+/g, '-');
 
-    // ONLY find elements in the SAME Buy Packages card
-    const container = input.closest('.buy-package-card');
-    if (!container) {
-        console.error(`❌ [BUY PACKAGES] Container not found!`);
-        return;
-    }
+    // CRITICAL: Find elements in the same container to avoid duplicate ID conflicts
+    const container = input.closest('.share-adjuster, .easymining-alert-card, .buy-package-card') || document;
+    const rewardValueElement = container.querySelector(`#reward-value-${packageId}`) || document.getElementById(`reward-value-${packageId}`);
+    const priceElement = container.querySelector(`#price-${packageId}`) || document.getElementById(`price-${packageId}`);
+    const mainRewardElement = container.querySelector(`#main-reward-${packageId}`) || document.getElementById(`main-reward-${packageId}`);
+    const mergeRewardElement = container.querySelector(`#merge-reward-${packageId}`) || document.getElementById(`merge-reward-${packageId}`);
 
-    const rewardValueElement = container.querySelector(`#reward-value-${packageId}`);
-    const priceElement = container.querySelector(`#price-${packageId}`);
-    const mainRewardElement = container.querySelector(`#main-reward-${packageId}`);
-    const mergeRewardElement = container.querySelector(`#merge-reward-${packageId}`);
-
-    console.log(`🛒 Found price element in Buy Packages card:`, !!priceElement);
+    console.log(`🎨 Found price element in same container:`, !!priceElement, priceElement?.textContent);
 
     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
         const baseValues = window.packageBaseValues[packageName];
@@ -11496,7 +11479,7 @@ function adjustSharesForBuyPackages(packageName, delta, buttonElement) {
             mergeRewardElement.textContent = `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`;
         }
 
-        console.log(`🛒 [BUY PACKAGES] Updated ${packageName}:`, {
+        console.log(`📊 adjustShares Updated ${packageName}:`, {
             totalBoughtShares: totalBoughtShares,
             myBoughtShares: myBoughtShares,
             myShares: myShares,
@@ -11507,7 +11490,20 @@ function adjustSharesForBuyPackages(packageName, delta, buttonElement) {
             priceAUD: newPriceAUD
         });
     } else {
-        console.error(`❌ [BUY PACKAGES] packageBaseValues not found for ${packageName}`);
+        // EASYMINING ALERTS: Simple price calculation when packageBaseValues not available
+        console.log(`📋 EasyMining alert mode: Using simple price calculation`);
+
+        const sharePrice = 0.0001; // Each share = 0.0001 BTC
+        const totalBTC = newValue * sharePrice;
+        const priceAUD = convertBTCtoAUD(totalBTC);
+
+        if (priceElement) {
+            const oldPrice = priceElement.textContent;
+            priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
+            console.log(`✅ Alert price updated: ${oldPrice} → $${priceAUD.toFixed(2)} AUD`);
+        } else {
+            console.warn(`⚠️ Price element not found for alert: ${packageName}`);
+        }
     }
 
     // Check balance and update + button state for team packages
@@ -11530,100 +11526,8 @@ function adjustSharesForBuyPackages(packageName, delta, buttonElement) {
     }
 }
 
-// Function to adjust shares ONLY for EasyMining Alerts
-function adjustSharesForAlerts(packageName, delta, buttonElement) {
-    console.log(`🔔 [ALERTS] adjustShares CALLED: packageName="${packageName}", delta=${delta}`);
-
-    const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
-
-    // ONLY look in EasyMining alert containers
-    let input;
-    if (buttonElement && typeof buttonElement === 'object') {
-        const container = buttonElement.closest('.easymining-alert-card');
-        if (container) {
-            input = container.querySelector(`#${inputId}`);
-            console.log(`🔔 Found input in EasyMining alert card:`, !!input);
-        }
-    }
-
-    if (!input) {
-        console.error(`❌ [ALERTS] Input NOT found in EasyMining alerts!`);
-        return;
-    }
-
-    const currentValue = parseInt(input.value) || 1;
-    const max = parseInt(input.max) || 9999;
-    const newValue = Math.max(1, Math.min(max, currentValue + delta));
-
-    console.log(`🔔 [ALERTS] Setting input.value from ${currentValue} to ${newValue}`);
-
-    // Remove readonly temporarily
-    const wasReadonly = input.hasAttribute('readonly');
-    if (wasReadonly) {
-        input.removeAttribute('readonly');
-    }
-
-    // Set value
-    input.value = newValue;
-    input.setAttribute('value', newValue);
-
-    // Force browser repaint
-    const originalDisplay = input.style.display;
-    input.style.display = 'none';
-    input.offsetHeight;
-    input.style.display = originalDisplay;
-
-    // Restore readonly
-    if (wasReadonly) {
-        input.setAttribute('readonly', true);
-    }
-
-    // Dispatch events
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-
-    // Save to SEPARATE storage for EasyMining alerts
-    if (!window.alertsShareValues) {
-        window.alertsShareValues = {};
-    }
-    window.alertsShareValues[packageName] = newValue;
-    console.log(`🔔 💾 [ALERTS] Saved ${packageName} = ${newValue}`);
-
-    // Update price display with simple calculation
-    const packageId = packageName.replace(/\s+/g, '-');
-
-    // ONLY find elements in the SAME Alert card
-    const container = input.closest('.easymining-alert-card');
-    if (!container) {
-        console.error(`❌ [ALERTS] Container not found!`);
-        return;
-    }
-
-    const priceElement = container.querySelector(`#price-${packageId}`);
-    const rewardValueElement = container.querySelector(`#reward-value-${packageId}`);
-
-    // Simple price calculation for alerts
-    const sharePrice = 0.0001; // Each share = 0.0001 BTC
-    const totalBTC = newValue * sharePrice;
-    const priceAUD = convertBTCtoAUD(totalBTC);
-
-    if (priceElement) {
-        priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
-        console.log(`🔔 [ALERTS] Price updated: $${priceAUD.toFixed(2)} AUD`);
-    }
-
-    // Update reward if element exists (simple pro-rata calculation)
-    if (rewardValueElement) {
-        // Simple reward estimate: assume standard block reward divided by typical shares
-        const estimatedRewardAUD = priceAUD * 10; // Rough estimate
-        rewardValueElement.textContent = `$${estimatedRewardAUD.toFixed(2)} AUD`;
-        console.log(`🔔 [ALERTS] Reward updated: $${estimatedRewardAUD.toFixed(2)} AUD`);
-    }
-}
-
-// Make functions globally accessible
-window.adjustSharesForBuyPackages = adjustSharesForBuyPackages;
-window.adjustSharesForAlerts = adjustSharesForAlerts;
+// Make adjustShares globally accessible
+window.adjustShares = adjustShares;
 
 async function buyTeamPackage(pkg, packageId) {
     console.log('🛒 Purchasing team package:', pkg.name);
