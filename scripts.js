@@ -10370,10 +10370,12 @@ async function loadBuyPackagesDataOnPage() {
                         // Price increases linearly
                         const newPriceAUD = (baseValues.priceAUD * value).toFixed(2);
 
-                        // Calculate reward per share based on total shares
-                        const existingShares = baseValues.existingShares || 0;
+                        // CORRECT FORMULA: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
+                        const totalBoughtShares = baseValues.totalBoughtShares || 0;
+                        const myBoughtShares = baseValues.myBoughtShares || 0;
                         const myShares = value;
-                        const totalShares = existingShares + myShares;
+                        const othersBought = totalBoughtShares - myBoughtShares;
+                        const totalShares = othersBought + myShares;
 
                         const totalRewardAUD = baseValues.totalRewardAUD || 0;
                         const totalMainReward = baseValues.totalMainReward || 0;
@@ -10389,7 +10391,7 @@ async function loadBuyPackagesDataOnPage() {
                             priceElement.textContent = `$${newPriceAUD} AUD`;
                         }
 
-                        // Update crypto reward amounts
+                        // Update crypto reward amounts with CORRECT formula
                         if (mainRewardElement && totalMainReward) {
                             const rewardPerShare = totalShares > 0 ? totalMainReward / totalShares : 0;
                             const myMainReward = rewardPerShare * myShares;
@@ -10818,23 +10820,27 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             window.packageBaseValues = {};
         }
 
-        // Store total package rewards and calculate shares using fullAmount
+        // Store total package rewards and calculate shares using addedAmount (total bought)
         // Price: 1 share = 0.0001 BTC
         const sharePrice = 0.0001;
         const btcPriceAUD = prices['btc']?.aud || 0;
         const pricePerShareAUD = sharePrice * btcPriceAUD;
 
-        // Calculate existing shares from fullAmount (total BTC in pool)
-        const existingShares = pkg.fullAmount && pkg.fullAmount > 0 ? pkg.fullAmount / sharePrice : 0;
+        // Calculate total bought shares from addedAmount (NOT fullAmount!)
+        const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
+        const myBoughtShares = getMyTeamShares(pkg.id) || 0;
 
         // Store total block rewards
         const totalRewardAUD = parseFloat(rewardAUD) || 0;
         const totalMainReward = pkg.blockReward || 0;
         const totalMergeReward = pkg.mergeBlockReward || 0;
 
-        console.log(`📊 ${pkg.name} package values:`, {
+        console.log(`📊 ${pkg.name} package base values:`, {
+            packageId: pkg.id,
+            addedAmount: pkg.addedAmount,
             fullAmount: pkg.fullAmount,
-            existingShares: existingShares,
+            totalBoughtShares: totalBoughtShares,
+            myBoughtShares: myBoughtShares,
             totalRewardAUD: totalRewardAUD,
             totalMainReward: totalMainReward,
             totalMergeReward: totalMergeReward,
@@ -10842,11 +10848,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         });
 
         window.packageBaseValues[pkg.name] = {
+            packageId: pkg.id,
             priceAUD: pricePerShareAUD,
             totalRewardAUD: totalRewardAUD,
             totalMainReward: totalMainReward,
             totalMergeReward: totalMergeReward,
-            existingShares: existingShares,
+            totalBoughtShares: totalBoughtShares,  // Changed from existingShares
+            myBoughtShares: myBoughtShares,        // NEW: track user's bought shares
             mainCrypto: pkg.mainCrypto || pkg.crypto,
             mergeCrypto: pkg.mergeCrypto,
             isDualCrypto: pkg.isDualCrypto
@@ -10900,18 +10908,19 @@ function adjustShares(packageName, delta) {
         // Price increases linearly with shares (you pay for each share)
         const newPriceAUD = (baseValues.priceAUD * newValue).toFixed(2);
 
-        // Calculate reward per share based on total shares (existing + mine)
-        // Formula: reward_per_share = blockReward / (existingShares + myShares)
-        //          my_reward = reward_per_share × myShares
-        const existingShares = baseValues.existingShares || 0;
-        const myShares = newValue;
-        const totalShares = existingShares + myShares;
+        // CORRECT FORMULA: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
+        // totalBoughtShares from API includes MY bought shares, so subtract them first
+        const totalBoughtShares = baseValues.totalBoughtShares || 0;
+        const myBoughtShares = baseValues.myBoughtShares || 0;
+        const myShares = newValue;  // Current input value
+        const othersBought = totalBoughtShares - myBoughtShares;  // Others' shares
+        const totalShares = othersBought + myShares;  // Total pool after my purchase
 
         const totalRewardAUD = baseValues.totalRewardAUD || 0;
         const totalMainReward = baseValues.totalMainReward || 0;
         const totalMergeReward = baseValues.totalMergeReward || 0;
 
-        // Divide total reward by total shares, then multiply by my shares
+        // Divide total reward by correct total shares, then multiply by my shares
         const rewardPerShareAUD = totalShares > 0 ? totalRewardAUD / totalShares : 0;
         const myRewardAUD = (rewardPerShareAUD * myShares).toFixed(2);
 
@@ -10923,7 +10932,7 @@ function adjustShares(packageName, delta) {
             priceElement.textContent = `$${newPriceAUD} AUD`;
         }
 
-        // Update crypto reward amounts
+        // Update crypto reward amounts with CORRECT formula
         if (mainRewardElement && totalMainReward) {
             const rewardPerShare = totalShares > 0 ? totalMainReward / totalShares : 0;
             const myMainReward = rewardPerShare * myShares;
@@ -10938,9 +10947,11 @@ function adjustShares(packageName, delta) {
             mergeRewardElement.textContent = `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`;
         }
 
-        console.log(`📊 Updated ${packageName}:`, {
+        console.log(`📊 adjustShares Updated ${packageName}:`, {
+            totalBoughtShares: totalBoughtShares,
+            myBoughtShares: myBoughtShares,
             myShares: myShares,
-            existingShares: existingShares,
+            othersBought: othersBought,
             totalShares: totalShares,
             rewardPerShareAUD: rewardPerShareAUD.toFixed(2),
             myRewardAUD: myRewardAUD,
