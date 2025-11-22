@@ -10007,7 +10007,7 @@ function createTeamPackageCard(pkg) {
         <div class="total-cost" id="${cardId}-cost" style="margin: 10px 0; color: #ffa500; font-weight: bold;">
             Total: 0 BTC ($0.00 AUD)
         </div>
-        <button class="buy-package-button" onclick="buyTeamPackage('${packageId}', '${crypto}', ${sharePrice}, '${cardId}', ${availableShares})">
+        <button class="buy-package-button" onclick="buyTeamPackageUpdated('${packageId}', '${crypto}', '${cardId}')">
             Buy Shares
         </button>
     `;
@@ -10183,7 +10183,9 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
 }
 
 // Buy team package using POST /main/api/v2/hashpower/shared/ticket/{id}
-async function buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares) {
+// New consolidated team package buy function using updated NiceHash API endpoint
+async function buyTeamPackageUpdated(packageId, crypto, cardId) {
+    // 1. Validate API settings
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
         showModal('Please configure EasyMining API settings first!');
         closeBuyPackagesModal();
@@ -10191,6 +10193,7 @@ async function buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares) 
         return;
     }
 
+    // 2. Get share count from input
     const input = document.getElementById(`${cardId}-shares`);
     const shares = parseInt(input.value) || 0;
 
@@ -10199,51 +10202,71 @@ async function buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares) 
         return;
     }
 
-    if (shares > maxShares) {
-        showModal(`Maximum available shares: ${maxShares}`);
-        return;
-    }
+    // 3. Calculate total amount (shares × 0.0001 BTC)
+    const sharePrice = 0.0001;
+    const totalAmount = shares * sharePrice;
+    const totalCostBTC = totalAmount.toFixed(8);
 
-    const totalBTC = sharePrice * shares;
     const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
-    const totalAUD = (totalBTC * btcPrice).toFixed(2);
+    const totalAUD = (totalAmount * btcPrice).toFixed(2);
 
-    if (!confirm(`Purchase ${shares} share(s) for ${crypto}?\n\nCost per share: ${sharePrice.toFixed(8)} BTC\nTotal cost: ${totalBTC.toFixed(8)} BTC ($${totalAUD} AUD)\n\nThis will create an order on NiceHash.`)) {
-        return;
+    // 4. Get wallet address from localStorage
+    let mainWalletAddress = getWithdrawalAddress(crypto);
+
+    if (!mainWalletAddress) {
+        mainWalletAddress = prompt(`Enter your ${crypto} withdrawal address for rewards:`);
+        if (!mainWalletAddress) {
+            showModal('Withdrawal address required to purchase team shares.');
+            return;
+        }
+        saveWithdrawalAddress(crypto, mainWalletAddress);
     }
+
+    // 5. Confirm purchase
+    const confirmed = confirm(
+        `Purchase ${shares} share(s) for ${crypto}?\n\n` +
+        `Total Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
+        `Withdrawal Address: ${mainWalletAddress}\n\n` +
+        `Click OK to proceed with purchase.`
+    );
+
+    if (!confirmed) return;
 
     try {
         console.log('🛒 Creating NiceHash team order...');
         console.log('   Package ID:', packageId);
         console.log('   Crypto:', crypto);
         console.log('   Shares:', shares);
-        console.log('   Price per share:', sharePrice, 'BTC');
-        console.log('   Total:', totalBTC, 'BTC');
+        console.log('   Total Amount:', totalAmount, 'BTC');
 
-        // POST /main/api/v2/hashpower/shared/ticket/{id} with shares in request body
-        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
-        const bodyData = {
-            shares: shares
+        // 6. Sync NiceHash time
+        await syncNiceHashTime();
+
+        // 7. Prepare request - NEW ENDPOINT
+        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const orderData = {
+            amount: totalAmount,
+            soloMiningRewardAddr: mainWalletAddress.trim()
         };
-        const body = JSON.stringify(bodyData);
+
+        const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
         console.log('📡 Endpoint:', endpoint);
-        console.log('📦 Body:', bodyData);
+        console.log('📦 Body:', orderData);
 
+        // 8. Make API call - Single POST with total amount
         let response;
 
         if (USE_VERCEL_PROXY) {
             response = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     endpoint: endpoint,
                     method: 'POST',
                     headers: headers,
-                    body: bodyData
+                    body: orderData
                 })
             });
         } else {
@@ -10262,21 +10285,20 @@ async function buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares) 
         const result = await response.json();
         console.log('✅ Team package purchased successfully:', result);
 
-        // Save user's bought shares (increment existing shares)
-        const currentShares = getMyTeamShares(packageId);
+        // 9. Update localStorage tracking
+        const currentShares = getMyTeamShares(packageId) || 0;
         const newTotalShares = currentShares + shares;
         saveMyTeamShares(packageId, newTotalShares);
         console.log(`💾 Saved team shares for package ${packageId}: ${newTotalShares} shares (was ${currentShares})`);
 
-        showModal(`✅ Team Package purchased successfully!\n\nCrypto: ${crypto}\nShares: ${shares}\nTotal Shares Owned: ${newTotalShares}\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nOrder is now active and mining.`);
+        showModal(`✅ Team Package purchased successfully!\n\nCrypto: ${crypto}\nShares: ${shares}\nTotal Cost: ${totalCostBTC} BTC\nTotal Shares Owned: ${newTotalShares}\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nOrder is now active and mining.`);
 
-        // Update stats
-        easyMiningData.allTimeStats.totalSpent += totalBTC * btcPrice;
-        easyMiningData.todayStats.totalSpent += totalBTC * btcPrice;
-
+        // 10. Update stats
+        easyMiningData.allTimeStats.totalSpent += totalAmount * btcPrice;
+        easyMiningData.todayStats.totalSpent += totalAmount * btcPrice;
         localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-        // Refresh package data
+        // 11. Refresh package data
         await fetchEasyMiningData();
 
         closeBuyPackagesModal();
@@ -10289,7 +10311,7 @@ async function buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares) 
 
 // Make buy functions globally accessible
 window.buySoloPackage = buySoloPackage;
-window.buyTeamPackage = buyTeamPackage;
+window.buyTeamPackageUpdated = buyTeamPackageUpdated;
 
 async function buyPackage(pkg) {
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
