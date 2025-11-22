@@ -5650,6 +5650,7 @@ let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 let showAllPackages = false;
+let missedRewardsCheckInterval = null; // For checking missed rewards every 30 seconds
 
 // Error alert throttling with delayed alerts (prevent spam during reconnection)
 let lastEasyMiningErrorAlert = 0;
@@ -5801,6 +5802,9 @@ function activateEasyMining() {
     // Start polling (section will be shown automatically after loading bar completes)
     startEasyMiningPolling();
 
+    // Start missed rewards check
+    startMissedRewardsCheck();
+
     closeEasyMiningSettingsModal();
     showModal('✅ EasyMining activated successfully!\n\nThe EasyMining section will appear after loading completes.');
 }
@@ -5843,6 +5847,9 @@ function activateEasyMiningFromPage() {
     // Start polling (section will be shown automatically after loading bar completes)
     startEasyMiningPolling();
 
+    // Start missed rewards check
+    startMissedRewardsCheck();
+
     // Go back to app page
     showAppPage();
     alert('✅ EasyMining activated successfully!\n\nThe EasyMining section will appear after loading completes.');
@@ -5872,6 +5879,7 @@ function clearAPICredentials() {
 
     // Stop polling and hide section
     stopEasyMiningPolling();
+    stopMissedRewardsCheck();
     document.getElementById('easymining-section').style.display = 'none';
 
     console.log('API credentials cleared');
@@ -9619,6 +9627,57 @@ async function autoUpdateCryptoHoldings(newBlocks) {
     updateTotalHoldings();
 }
 
+// ✅ Check for missed rewards (runs on load and every 30 seconds)
+// This ensures that rewards found while the app was closed get added to holdings
+async function checkMissedRewards() {
+    // Only check if EasyMining is enabled and auto-update is on
+    if (!easyMiningSettings.enabled || !easyMiningSettings.autoUpdateHoldings) {
+        return;
+    }
+
+    // Only check if we have active packages loaded
+    if (!easyMiningData.activePackages || easyMiningData.activePackages.length === 0) {
+        return;
+    }
+
+    console.log('\n🔍 Checking for missed rewards...');
+
+    // Call the existing auto-update function which already has duplicate prevention
+    // It will check all packages with blocks and only add rewards that haven't been added yet
+    await autoUpdateCryptoHoldings();
+
+    console.log('✅ Missed rewards check complete\n');
+}
+
+// Start the missed rewards check interval (every 30 seconds)
+function startMissedRewardsCheck() {
+    // Clear any existing interval
+    if (missedRewardsCheckInterval) {
+        clearInterval(missedRewardsCheckInterval);
+    }
+
+    console.log('🕐 Starting missed rewards check (every 30 seconds)');
+
+    // Initial check after 10 seconds (give time for data to load)
+    setTimeout(() => {
+        checkMissedRewards();
+    }, 10000);
+
+    // Then check every 30 seconds
+    missedRewardsCheckInterval = setInterval(() => {
+        checkMissedRewards();
+    }, 30000);
+}
+
+// Stop the missed rewards check interval
+function stopMissedRewardsCheck() {
+    if (missedRewardsCheckInterval) {
+        clearInterval(missedRewardsCheckInterval);
+        missedRewardsCheckInterval = null;
+        console.log('⏹️ Stopped missed rewards check');
+    }
+}
+
 // ✅ NEW: Auto-add crypto boxes when packages become ACTIVE
 // This ensures live prices are used in calculations even if the package hasn't found rewards yet
 async function autoAddCryptoBoxesForActivePackages() {
@@ -13128,7 +13187,9 @@ function initializeEasyMining() {
             section.style.display = 'none';
             // Start polling if EasyMining is enabled (section will be shown after loading bar completes)
             startEasyMiningPolling();
-            console.log('✅ EasyMining enabled - starting polling (section will appear after loading)');
+            // Start missed rewards check (checks on load and every 30 seconds)
+            startMissedRewardsCheck();
+            console.log('✅ EasyMining enabled - starting polling and missed rewards check (section will appear after loading)');
         } else {
             // Hide section if not enabled
             section.style.display = 'none';
@@ -13180,6 +13241,9 @@ function cleanupResources() {
 
     // Stop EasyMining polling
     stopEasyMiningPolling();
+
+    // Stop missed rewards check
+    stopMissedRewardsCheck();
 
     // Close WebSocket connections
     if (socket && socket.readyState === WebSocket.OPEN) {
