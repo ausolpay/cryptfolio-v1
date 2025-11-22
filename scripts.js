@@ -3060,7 +3060,7 @@ function removeStorageItem(key) {
 
 
 async function autoResetPercentage() {
-    const resetHour = 6; // Set to 6 AM
+    const resetHour = 0; // Set to 12:00 AM (midnight)
     const resetMinute = 0; // Set to 00 minutes
 
     const now = new Date();
@@ -3071,16 +3071,16 @@ async function autoResetPercentage() {
         // Check if it's time to reset
         if (now.getHours() === resetHour && now.getMinutes() === resetMinute) {
             if (lastResetDate !== todayDate) {
-                console.log("Resetting percentage at 06:00 AM");
+                console.log("🔄 Resetting percentage at 12:00 AM (midnight)");
                 setStorageItem(`${loggedInUser}_lastPercentageResetDate`, todayDate);
                 await resetPercentageDaily(); // Call the existing resetPercentage function
             }
         }
 
         // Check if the reset was missed and the app was opened after the reset time
-        if (now.getHours() > resetHour && now.getMinutes() > resetMinute) {
+        if (now.getHours() > resetHour || (now.getHours() === resetHour && now.getMinutes() > resetMinute)) {
             if (lastResetDate !== todayDate) {
-                console.log("Resetting missed auto percentage reset");
+                console.log("🔄 Performing missed percentage reset (after midnight)");
                 setStorageItem(`${loggedInUser}_lastPercentageResetDate`, todayDate);
                 await resetPercentageDaily(); // Call the existing resetPercentage function
             }
@@ -3092,9 +3092,9 @@ async function autoResetPercentage() {
     console.log("Checking for 24hr Auto Reset Percentage");
 }
 
-// Auto-reset EasyMining daily stats and rockets at 6 AM
+// Auto-reset EasyMining daily stats and rockets at midnight
 async function autoResetEasyMiningDaily() {
-    const resetHour = 6; // Set to 6 AM (same as percentage reset)
+    const resetHour = 0; // Set to 12:00 AM (midnight)
     const resetMinute = 0; // Set to 00 minutes
 
     const now = new Date();
@@ -3105,7 +3105,7 @@ async function autoResetEasyMiningDaily() {
         // Check if it's time to reset
         if (now.getHours() === resetHour && now.getMinutes() === resetMinute) {
             if (lastResetDate !== todayDate) {
-                console.log("🔄 Resetting EasyMining daily stats and rockets at 06:00 AM");
+                console.log("🔄 Resetting EasyMining daily stats and rockets at 12:00 AM (midnight)");
                 setStorageItem(`${loggedInUser}_lastEasyMiningResetDate`, todayDate);
 
                 // Reset today's stats
@@ -3122,14 +3122,14 @@ async function autoResetEasyMiningDaily() {
                 // Save to localStorage
                 localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-                console.log("✅ EasyMining daily stats and rockets reset successfully");
+                console.log("✅ EasyMining daily stats and rockets reset successfully at midnight");
             }
         }
 
         // Check if the reset was missed and the app was opened after the reset time
         if (now.getHours() > resetHour || (now.getHours() === resetHour && now.getMinutes() > resetMinute)) {
             if (lastResetDate !== todayDate) {
-                console.log("🔄 Performing missed EasyMining daily reset");
+                console.log("🔄 Performing missed EasyMining daily reset (after midnight)");
                 setStorageItem(`${loggedInUser}_lastEasyMiningResetDate`, todayDate);
 
                 // Reset today's stats
@@ -3146,14 +3146,14 @@ async function autoResetEasyMiningDaily() {
                 // Save to localStorage
                 localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-                console.log("✅ Missed EasyMining daily reset completed");
+                console.log("✅ Missed EasyMining daily reset completed (after midnight)");
             }
         }
     } catch (error) {
         console.error("❌ Error during EasyMining daily reset:", error);
     }
 
-    console.log("🔍 Checking for 24hr EasyMining Daily Reset");
+    console.log("🔍 Checking for 24hr EasyMining Daily Reset (midnight)");
 }
 
 // Call autoResetPercentage on app load to handle missed resets with a 3-second delay
