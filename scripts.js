@@ -1096,12 +1096,13 @@ async function loadTeamAlerts() {
         const savedProbability = savedSettings.probability || '';
         const savedShares = savedSettings.shares || '';
         const savedParticipants = savedSettings.participants || '';
+        const savedTimeUntilStart = savedSettings.timeUntilStart || '';
 
         // For dual-crypto, get separate thresholds
         const savedMainProb = savedSettings[`probability_${pkg.mainCrypto}`] || '';
         const savedMergeProb = savedSettings[`probability_${pkg.mergeCrypto}`] || '';
 
-        const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb;
+        const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb || savedTimeUntilStart;
 
         // Get auto-buy settings
         const autoBuySettings = savedAutoBuy[pkg.name] || {};
@@ -1197,6 +1198,19 @@ async function loadTeamAlerts() {
                        placeholder="e.g., 10 (means ≥10)"
                        min="1"
                        style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 5px;">⏰ Time Until Start Threshold (minutes)</label>
+                <input type="number"
+                       id="team-alert-${pkg.name.replace(/\s+/g, '-')}-timeUntilStart"
+                       value="${savedTimeUntilStart}"
+                       placeholder="e.g., 60 (within 60 minutes)"
+                       min="1"
+                       style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                <div style="color: #888; font-size: 12px; margin-top: 5px;">
+                    ⚠️ If set, package must be within this many minutes of start AND meet one of the other thresholds
+                </div>
             </div>
 
             <!-- Auto-Buy Section -->
@@ -1450,6 +1464,16 @@ function saveTeamAlerts() {
             const threshold = input.value.trim();
             if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
                 packageData[packageName].participants = parseInt(threshold);
+            }
+        } else if (id.endsWith('-timeUntilStart')) {
+            // Time until start threshold (in minutes)
+            const packageName = parts.slice(0, -1).join(' ');
+
+            if (!packageData[packageName]) packageData[packageName] = {};
+
+            const threshold = input.value.trim();
+            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
+                packageData[packageName].timeUntilStart = parseInt(threshold);
             }
         }
     });
@@ -1715,13 +1739,52 @@ async function checkTeamRecommendations() {
             }
         }
 
-        // Add to recommendations if ANY threshold is met
-        if (meetsAnyThreshold) {
+        // 4. Check TIME UNTIL START threshold (if set, this becomes a required AND condition)
+        let shouldRecommend = false;
+
+        if (alert.timeUntilStart) {
+            // Time threshold is set - must be within time threshold AND meet at least one other threshold
+            const startTime = pkg.startTs || pkg.startTime;
+
+            if (startTime) {
+                const now = Date.now();
+                const timeUntilStartMs = startTime - now;
+                const minutesUntilStart = Math.floor(timeUntilStartMs / (1000 * 60));
+
+                console.log(`⏰ ${pkg.name}: Time until start = ${minutesUntilStart} minutes, Threshold = ${alert.timeUntilStart} minutes`);
+
+                const meetsTimeThreshold = minutesUntilStart > 0 && minutesUntilStart <= alert.timeUntilStart;
+
+                if (meetsTimeThreshold && meetsAnyThreshold) {
+                    // Both conditions met: within time threshold AND meets at least one other threshold
+                    shouldRecommend = true;
+                    reasons.push(`⏰ Starts in ${minutesUntilStart} min (≤ ${alert.timeUntilStart} min)`);
+                    console.log(`✅ ${pkg.name}: Within time threshold (${minutesUntilStart} ≤ ${alert.timeUntilStart}) AND meets other threshold(s)`);
+                } else if (!meetsTimeThreshold && meetsAnyThreshold) {
+                    console.log(`❌ ${pkg.name}: Meets other threshold(s) but NOT within time threshold (${minutesUntilStart} min > ${alert.timeUntilStart} min)`);
+                } else if (meetsTimeThreshold && !meetsAnyThreshold) {
+                    console.log(`❌ ${pkg.name}: Within time threshold but does NOT meet any other threshold`);
+                } else {
+                    console.log(`❌ ${pkg.name}: Does NOT meet time threshold AND does NOT meet any other threshold`);
+                }
+            } else {
+                console.log(`⚠️ ${pkg.name}: Time threshold set but package has no startTime/startTs`);
+            }
+        } else {
+            // No time threshold set - use normal OR logic (any threshold met = recommend)
+            if (meetsAnyThreshold) {
+                shouldRecommend = true;
+                console.log(`✅ ${pkg.name}: Meets at least one threshold (no time restriction)`);
+            } else {
+                console.log(`❌ ${pkg.name}: Does not meet any threshold`);
+            }
+        }
+
+        // Add to recommendations if conditions are met
+        if (shouldRecommend) {
             console.log(`✅ ${pkg.name}: RECOMMENDED (${reasons.join(', ')})`);
             pkg.recommendationReasons = reasons;
             recommendations.push(pkg);
-        } else {
-            console.log(`❌ ${pkg.name}: Does not meet any threshold`);
         }
     });
 
