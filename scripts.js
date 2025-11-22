@@ -8163,10 +8163,19 @@ function displayActivePackages() {
                 <span>Reward:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
-            ${!pkg.active && pkg.blockFound && pkg.reward > 0 ? `
+            ${!pkg.active && pkg.blockFound && (pkg.reward > 0 || (pkg.rewardSecondary > 0 && pkg.cryptoSecondary)) ? `
             <div class="package-card-stat">
                 <span>Reward AUD:</span>
-                <span style="color: #00ff00;">$${convertCryptoToAUD(pkg.reward, pkg.crypto).toFixed(2)} AUD${pkg.rewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary).toFixed(2)} AUD` : ''}</span>
+                <span style="color: #00ff00;">${(() => {
+                    const parts = [];
+                    if (pkg.reward > 0) {
+                        parts.push('$' + convertCryptoToAUD(pkg.reward, pkg.crypto).toFixed(2) + ' AUD');
+                    }
+                    if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
+                        parts.push('$' + convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary).toFixed(2) + ' AUD');
+                    }
+                    return parts.join('<br>+ ');
+                })()}</span>
             </div>
             ` : ''}
             ${pkg.isTeam && pkg.ownedShares !== null && pkg.ownedShares !== undefined && pkg.totalShares !== null && pkg.totalShares !== undefined && pkg.ownedShares > 0 && pkg.totalShares > 0 ? `
