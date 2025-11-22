@@ -8474,7 +8474,9 @@ function createTeamPackageRecommendationCard(pkg) {
             <span style="color: #ffa500;">${(() => {
                 const totalBoughtShares = pkg.addedAmount ? Math.floor(pkg.addedAmount / sharePrice) : 0;
                 const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 0;
-                const myBoughtShares = getMyTeamShares(pkg.id) || 0;
+                // Use same ID logic as when saving shares
+                const packageId = pkg.apiData?.id || pkg.id;
+                const myBoughtShares = getMyTeamShares(packageId) || 0;
                 return `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
             })()}</span>
         </div>
@@ -8517,7 +8519,9 @@ function createTeamPackageRecommendationCard(pkg) {
 
         if (pkg.addedAmount !== undefined) {
             const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
-            const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
+            // Use same ID logic as when saving shares
+            const packageId = pkg.apiData?.id || pkg.id;
+            const myBoughtShares = getMyTeamShares(packageId) || 0; // My previously bought shares
             const myShares = 1; // Initial display for 1 share
 
             // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
@@ -8562,7 +8566,9 @@ function createTeamPackageRecommendationCard(pkg) {
 
         if (pkg.addedAmount !== undefined) {
             const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
-            const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
+            // Use same ID logic as when saving shares
+            const packageId = pkg.apiData?.id || pkg.id;
+            const myBoughtShares = getMyTeamShares(packageId) || 0; // My previously bought shares
             const myShares = 1; // Initial display for 1 share
 
             // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
@@ -8606,11 +8612,17 @@ function createTeamPackageRecommendationCard(pkg) {
     const plusButtonDisabled = canAffordSecondShare ? '' : 'disabled';
     const plusButtonStyle = canAffordSecondShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
 
+    // Get user's current bought shares - use same ID logic as when saving
+    const alertPackageId = pkg.apiData?.id || pkg.id;
+    const myCurrentShares = getMyTeamShares(alertPackageId) || 0;
+    const initialShareValue = myCurrentShares > 0 ? myCurrentShares : 1;
+    console.log(`📊 Team alert "${pkg.name}" - ID: ${alertPackageId}, My shares: ${myCurrentShares}, Initial value: ${initialShareValue}`);
+
     // For team packages: add share selector with buy button on same row
     const teamShareSelector = `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="9999" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="1" max="9999" class="share-adjuster-input" readonly>
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
@@ -8646,7 +8658,8 @@ function createTeamPackageRecommendationCard(pkg) {
 
     // Calculate total bought shares from addedAmount (NOT fullAmount!)
     const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-    const myBoughtShares = getMyTeamShares(pkg.id) || 0;
+    // Use same ID logic as when saving shares (already calculated above as alertPackageId)
+    const myBoughtShares = myCurrentShares;
 
     // Store total block rewards
     const totalRewardAUD = parseFloat(rewardAUD) || 0;
@@ -8654,7 +8667,7 @@ function createTeamPackageRecommendationCard(pkg) {
     const totalMergeReward = pkg.mergeBlockReward || 0;
 
     console.log(`📊 ${pkg.name} alert package base values:`, {
-        packageId: pkg.id,
+        packageId: alertPackageId,
         addedAmount: pkg.addedAmount,
         fullAmount: pkg.fullAmount,
         totalBoughtShares: totalBoughtShares,
@@ -8666,7 +8679,7 @@ function createTeamPackageRecommendationCard(pkg) {
     });
 
     window.packageBaseValues[pkg.name] = {
-        packageId: pkg.id,
+        packageId: alertPackageId,
         priceAUD: pricePerShareAUD,
         totalRewardAUD: totalRewardAUD,
         totalMainReward: totalMainReward,
@@ -8678,11 +8691,11 @@ function createTeamPackageRecommendationCard(pkg) {
         isDualCrypto: pkg.isDualCrypto
     };
 
-    // Initialize share value to 1
+    // Initialize share value to user's current shares (or 1 if none)
     if (!window.packageShareValues) {
         window.packageShareValues = {};
     }
-    window.packageShareValues[pkg.name] = 1;
+    window.packageShareValues[pkg.name] = initialShareValue;
 
     console.log(`📦 Initialized team alert package base values for ${pkg.name}:`, window.packageBaseValues[pkg.name]);
 
