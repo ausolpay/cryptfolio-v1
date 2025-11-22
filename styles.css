@@ -1275,10 +1275,10 @@ body.light-mode .balance-label {
     width: 100%;
 }
 
-/* Single column on mobile/tablet */
-@media (max-width: 768px) {
+/* Single column on mobile/tablet (up to 1040px) */
+@media (max-width: 1040px) {
     .easymining-main-content {
-        grid-template-columns: 1fr; /* Single column on mobile */
+        grid-template-columns: 1fr; /* Single column on mobile and tablet */
     }
 }
 
