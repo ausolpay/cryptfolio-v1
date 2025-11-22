@@ -11094,9 +11094,14 @@ Do you want to continue?
         });
 
         // Create order payload for team mining package
-        // For Silver/Gold: only soloMiningRewardAddr is used
-        // For Palladium: soloMiningRewardAddr = LTC address, mergeSoloMiningRewardAddr = DOGE address
+        // API requires: amount, clear, code, shares object, wallet addresses
+        const sharePrice = 0.0001; // BTC per share
+        const totalAmount = sharePrice * shares;
+
         const orderData = {
+            amount: totalAmount,    // Total BTC being added (shares * price per share)
+            clear: false,           // Don't remove existing funds
+            code: '',               // No coupon code
             shares: {
                 small: shares,      // Put user's shares in the 'small' size
                 medium: 0,
@@ -11106,10 +11111,13 @@ Do you want to continue?
                 couponLarge: 0,
                 massBuy: 0
             },
-            soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address (BCH, BTC, or LTC for Palladium)
+            soloMiningRewardAddr: mainWalletAddress.trim(), // Main crypto address (BCH, BTC, or LTC for Palladium)
+            mergeSoloMiningRewardAddr: '', // Default empty, set below for dual-crypto
+            soloMiningRewardWithdrawalAddrId: '',
+            mergeSoloMiningRewardWithdrawalAddrId: ''
         };
 
-        // Add merge address for dual-crypto packages (Palladium DOGE)
+        // Set merge address for dual-crypto packages (Palladium DOGE)
         if (isDualCrypto && mergeWalletAddress) {
             orderData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
         }
@@ -11117,10 +11125,14 @@ Do you want to continue?
         console.log('📦 Team order payload:', {
             endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
             method: 'POST',
-            shares: orderData.shares, // Object with small, medium, large, etc.
+            amount: orderData.amount,
+            clear: orderData.clear,
+            code: orderData.code || '(empty)',
+            shares: orderData.shares,
             sharesBreakdown: `small=${orderData.shares.small}, medium=${orderData.shares.medium}, large=${orderData.shares.large}`,
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
-            mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr ? orderData.mergeSoloMiningRewardAddr.substring(0, 10) + '...' : '(empty)',
+            mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr || '(empty)',
+            isDualCrypto: isDualCrypto,
             packageId: packageId
         });
 
