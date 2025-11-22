@@ -48,6 +48,7 @@ let conversionRateInterval = null;
 
 let candlestickChart;
 let currentCryptoId;
+let lastValidChartPrice = null; // Store last valid price for chart
 
 
 function getApiKey() {
@@ -4237,8 +4238,16 @@ function debounceUpdateUI(cryptoId, priceInAud) {
 function updatePriceInChart(priceInUsd) {
     // ✅ FIX: Validate price - never update with 0 or invalid values
     if (!priceInUsd || priceInUsd <= 0 || isNaN(priceInUsd)) {
-        console.warn(`⚠️ Invalid price received: ${priceInUsd}, skipping chart update`);
-        return; // Don't update chart with invalid price
+        console.warn(`⚠️ Invalid price received: ${priceInUsd}, using last valid price: ${lastValidChartPrice}`);
+        // Use last valid price if available, otherwise skip
+        if (!lastValidChartPrice || lastValidChartPrice <= 0) {
+            console.warn(`⚠️ No valid price available, skipping chart update`);
+            return;
+        }
+        priceInUsd = lastValidChartPrice; // Use stored last valid price
+    } else {
+        // Store this valid price for future use
+        lastValidChartPrice = priceInUsd;
     }
 
     const conversionRate = 1.52; // Example conversion rate from USD to AUD
@@ -4267,13 +4276,15 @@ function updatePriceInChart(priceInUsd) {
         }
 
         // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
-        const allPrices = candlestickChart.data.datasets[0].data.flatMap(candle => [candle.h, candle.l]);
-        const minPrice = Math.min(...allPrices);
-        const maxPrice = Math.max(...allPrices);
-        const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+        const allPrices = candlestickChart.data.datasets[0].data.flatMap(candle => [candle.h, candle.l]).filter(p => p > 0);
+        if (allPrices.length > 0) {
+            const minPrice = Math.min(...allPrices);
+            const maxPrice = Math.max(...allPrices);
+            const padding = (maxPrice - minPrice) * 0.1; // 10% padding
 
-        candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
-        candlestickChart.options.scales.y.max = maxPrice + padding;
+            candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
+            candlestickChart.options.scales.y.max = maxPrice + padding;
+        }
 
         // Update the chart
         candlestickChart.update();
@@ -4427,6 +4438,12 @@ function updateCandlestickChart(priceInAud, priceInUsd) {
 
 
 function saveCandlestickData(cryptoId, priceInAud) {
+    // ✅ FIX: Don't save invalid prices
+    if (!priceInAud || priceInAud <= 0 || isNaN(priceInAud)) {
+        console.warn(`⚠️ Skipping save of invalid price: ${priceInAud}`);
+        return;
+    }
+
     const now = new Date();
     const candlestickData = JSON.parse(localStorage.getItem(`${cryptoId}_candlestickData`)) || [];
 
@@ -5005,10 +5022,20 @@ async function fetchCandlestickData(cryptoId) {
 }
 
 function formatCandlestickData(data) {
+    // ✅ FIX: Filter out any candles with 0 or invalid values
+    const validData = data.filter(d => {
+        const isValid = d.o > 0 && d.h > 0 && d.l > 0 && d.c > 0 &&
+                       !isNaN(d.o) && !isNaN(d.h) && !isNaN(d.l) && !isNaN(d.c);
+        if (!isValid) {
+            console.warn(`⚠️ Filtering out invalid candle:`, d);
+        }
+        return isValid;
+    });
+
     return {
         datasets: [{
             label: 'Candlestick Chart',
-            data: data.map(d => ({
+            data: validData.map(d => ({
                 x: new Date(d.x),
                 o: d.o,
                 h: d.h,
