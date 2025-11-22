@@ -8414,68 +8414,8 @@ function createTeamPackageRecommendationCard(pkg) {
     return card;
 }
 
-// ✅ NEW: Helper function for adjusting shares in team alert cards
-function adjustShares(cardId, delta) {
-    // Handle two different ID formats:
-    // 1. Alert cards: shares-{PackageName} (e.g., shares-Gold-Package)
-    // 2. Buy packages page: {cardId}-shares (e.g., team-123-shares)
-
-    console.log(`🔧 adjustShares called with cardId: "${cardId}", delta: ${delta}`);
-
-    const sanitizedId = cardId.replace(/\s+/g, '-');
-    console.log(`🔧 Sanitized ID: "${sanitizedId}"`);
-
-    // Try alert card format first
-    let input = document.getElementById(`shares-${sanitizedId}`);
-    console.log(`🔧 Looking for input: "shares-${sanitizedId}" - Found:`, !!input);
-
-    // If not found, try buy packages page format
-    if (!input) {
-        input = document.getElementById(`${cardId}-shares`);
-        console.log(`🔧 Looking for input: "${cardId}-shares" - Found:`, !!input);
-    }
-
-    if (!input) {
-        console.warn(`⚠️ Could not find share input for cardId: ${cardId}`);
-        return;
-    }
-
-    const currentValue = parseInt(input.value) || 0;
-    const minValue = parseInt(input.min) || 0;
-    const maxValue = parseInt(input.max) || 999999;
-    const newValue = Math.max(minValue, Math.min(currentValue + delta, maxValue));
-    console.log(`🔧 Share value: ${currentValue} → ${newValue} (min: ${minValue}, max: ${maxValue})`);
-    input.value = newValue;
-
-    // Update price display for team packages
-    const priceElement = document.getElementById(`price-${sanitizedId}`);
-    console.log(`🔧 Looking for price element: "price-${sanitizedId}" - Found:`, !!priceElement);
-
-    if (priceElement) {
-        // Calculate new price: shares × 0.0001 BTC × live BTC price AUD
-        const sharePrice = 0.0001; // Each share costs 0.0001 BTC
-        const totalBTC = newValue * sharePrice;
-        const priceAUD = convertBTCtoAUD(totalBTC);
-
-        console.log(`💰 Updated price for ${cardId}: ${newValue} shares × ${sharePrice} BTC = ${totalBTC} BTC = $${priceAUD.toFixed(2)} AUD`);
-
-        // Update the price display
-        priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
-        console.log(`✅ Price element updated successfully`);
-    } else {
-        console.warn(`⚠️ Price element not found for: "price-${sanitizedId}"`);
-    }
-
-    // Trigger input event to update cost display (for buy packages page non-highlighted cards)
-    input.dispatchEvent(new Event('input'));
-    console.log(`🔧 Input event dispatched`);
-
-    // Also call updateShareCost for non-highlighted team package cards (format: team-123)
-    if (cardId.startsWith('team-')) {
-        console.log(`🔧 Calling updateShareCost for non-highlighted card: ${cardId}`);
-        updateShareCost(cardId);
-    }
-}
+// NOTE: adjustShares() function is defined later in the file (line ~11379)
+// It handles share adjustment for team packages on the buy packages page
 
 // ✅ NEW: Buy team package directly from alert (wrapper for buyTeamPackage)
 async function buyTeamPackageFromAlert(packageId, crypto, sharePrice, cardId, maxShares) {
@@ -11377,12 +11317,26 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
 // Function to adjust shares for team packages
 function adjustShares(packageName, delta) {
+    console.log(`🎯 adjustShares CALLED: packageName="${packageName}", delta=${delta}`);
+
     const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
+    console.log(`🔍 Looking for input with ID: "${inputId}"`);
+
     const input = document.getElementById(inputId);
+    console.log(`🔍 Input element found:`, !!input);
+
     const plusButtonId = `plus-${packageName.replace(/\s+/g, '-')}`;
     const plusButton = document.getElementById(plusButtonId);
 
-    if (!input) return;
+    if (!input) {
+        console.error(`❌ Input element NOT FOUND for ID: "${inputId}"`);
+        console.log(`📋 All elements with 'shares' in ID:`);
+        document.querySelectorAll('[id*="shares"]').forEach(el => {
+            console.log(`  - ${el.id}`);
+        });
+        return;
+    }
+    console.log(`✅ Input element FOUND! Current value: ${input.value}`);
 
     const currentValue = parseInt(input.value) || 1;
     const max = parseInt(input.max) || 9999;
