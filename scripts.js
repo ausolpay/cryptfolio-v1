@@ -50,83 +50,95 @@ let candlestickChart;
 let currentCryptoId;
 let lastValidChartPrice = null; // Store last valid price for chart
 
-// Chart interval management
-let currentChartInterval = '5m'; // Default 5 minutes
-let currentIntervalMs = 5 * 60 * 1000; // 5 minutes in milliseconds
+// TradingView widget management
+let tradingViewWidget = null; // Store TradingView widget instance
+let currentChartInterval = '5'; // Default 5 minutes (TradingView format)
 
-// Interval configurations
-const intervalConfigs = {
-    '1s': { ms: 1000, coingecko: 1, unit: 'second' },
-    '1m': { ms: 60 * 1000, coingecko: 1, unit: 'minute' },
-    '5m': { ms: 5 * 60 * 1000, coingecko: 1, unit: 'minute' },
-    '15m': { ms: 15 * 60 * 1000, coingecko: 1, unit: 'minute' },
-    '30m': { ms: 30 * 60 * 1000, coingecko: 1, unit: 'minute' },
-    '1h': { ms: 60 * 60 * 1000, coingecko: 1, unit: 'hour' },
-    '24h': { ms: 24 * 60 * 60 * 1000, coingecko: 7, unit: 'day' },
-    '7d': { ms: 7 * 24 * 60 * 60 * 1000, coingecko: 30, unit: 'day' },
-    '1y': { ms: 365 * 24 * 60 * 60 * 1000, coingecko: 365, unit: 'day' }
-};
-
-// Get chart time configuration based on interval
-function getTimeConfigForInterval(interval) {
-    const configs = {
-        '1s': {
-            unit: 'second',
-            stepSize: 5,
-            displayFormats: { second: 'HH:mm:ss' },
-            minUnit: 'second'
-        },
-        '1m': {
-            unit: 'minute',
-            stepSize: 1,
-            displayFormats: { minute: 'HH:mm' },
-            minUnit: 'minute'
-        },
-        '5m': {
-            unit: 'minute',
-            stepSize: 5,
-            displayFormats: { minute: 'HH:mm' },
-            minUnit: 'minute'
-        },
-        '15m': {
-            unit: 'minute',
-            stepSize: 15,
-            displayFormats: { minute: 'HH:mm' },
-            minUnit: 'minute'
-        },
-        '30m': {
-            unit: 'minute',
-            stepSize: 30,
-            displayFormats: { minute: 'HH:mm' },
-            minUnit: 'minute'
-        },
-        '1h': {
-            unit: 'hour',
-            stepSize: 1,
-            displayFormats: { hour: 'MMM D, HH:mm' },
-            minUnit: 'hour'
-        },
-        '24h': {
-            unit: 'hour',
-            stepSize: 6,
-            displayFormats: { hour: 'MMM D, HH:mm' },
-            minUnit: 'hour'
-        },
-        '7d': {
-            unit: 'day',
-            stepSize: 1,
-            displayFormats: { day: 'MMM D' },
-            minUnit: 'day'
-        },
-        '1y': {
-            unit: 'month',
-            stepSize: 1,
-            displayFormats: { month: 'MMM YYYY' },
-            minUnit: 'month'
-        }
+// Map CoinGecko crypto IDs to TradingView symbols
+function getCryptoTradingViewSymbol(cryptoId) {
+    const symbolMap = {
+        'bitcoin': 'BINANCE:BTCUSDT',
+        'ethereum': 'BINANCE:ETHUSDT',
+        'bitcoin-cash': 'BINANCE:BCHUSDT',
+        'ravencoin': 'BINANCE:RVNUSDT',
+        'dogecoin': 'BINANCE:DOGEUSDT',
+        'litecoin': 'BINANCE:LTCUSDT',
+        'kaspa': 'BINANCE:KASUSDT',
+        'ripple': 'BINANCE:XRPUSDT',
+        'cardano': 'BINANCE:ADAUSDT',
+        'solana': 'BINANCE:SOLUSDT',
+        'polkadot': 'BINANCE:DOTUSDT',
+        'matic-network': 'BINANCE:MATICUSDT',
+        'chainlink': 'BINANCE:LINKUSDT',
+        'uniswap': 'BINANCE:UNIUSDT',
+        'avalanche-2': 'BINANCE:AVAXUSDT',
+        'cosmos': 'BINANCE:ATOMUSDT',
+        'algorand': 'BINANCE:ALGOUSDT',
+        'stellar': 'BINANCE:XLMUSDT',
+        'vechain': 'BINANCE:VETUSDT',
+        'filecoin': 'BINANCE:FILUSDT',
+        'monero': 'BINANCE:XMRUSDT',
+        'tron': 'BINANCE:TRXUSDT',
+        'ethereum-classic': 'BINANCE:ETCUSDT',
+        'eos': 'BINANCE:EOSUSDT',
+        'tezos': 'BINANCE:XTZUSDT'
     };
 
-    return configs[interval] || configs['5m']; // Default to 5m if interval not found
+    // Return mapped symbol or construct a default one
+    return symbolMap[cryptoId] || `BINANCE:${cryptoId.toUpperCase()}USDT`;
+}
+
+// Initialize TradingView widget
+function initializeTradingViewChart(cryptoId, interval) {
+    console.log(`📊 Initializing TradingView chart for ${cryptoId} with interval ${interval}`);
+
+    // Destroy existing widget if present
+    if (tradingViewWidget) {
+        try {
+            tradingViewWidget.remove();
+        } catch (e) {
+            console.warn('Error removing old widget:', e);
+        }
+        tradingViewWidget = null;
+    }
+
+    const symbol = getCryptoTradingViewSymbol(cryptoId);
+    const container = document.getElementById('tradingview-chart-container');
+
+    // Clear container
+    if (container) {
+        container.innerHTML = '';
+    }
+
+    try {
+        tradingViewWidget = new TradingView.widget({
+            autosize: true,
+            symbol: symbol,
+            interval: interval,
+            timezone: "Etc/UTC",
+            theme: "dark",
+            style: "1",
+            locale: "en",
+            toolbar_bg: "#1a1a1a",
+            enable_publishing: false,
+            allow_symbol_change: false,
+            hide_side_toolbar: false,
+            hide_top_toolbar: false,
+            save_image: false,
+            container_id: "tradingview-chart-container",
+            studies: [
+                "Volume@tv-basicstudies"
+            ],
+            backgroundColor: "#0f0f0f",
+            gridColor: "rgba(242, 242, 242, 0.06)",
+            hide_legend: false,
+            hide_volume: false
+        });
+
+        console.log(`✅ TradingView widget initialized for ${symbol}`);
+    } catch (error) {
+        console.error('Error initializing TradingView widget:', error);
+    }
 }
 
 function getApiKey() {
@@ -4839,7 +4851,6 @@ async function openCandlestickModal(cryptoId) {
     }
 
     const modal = document.getElementById('candlestick-modal');
-    const ctx = document.getElementById('candlestick-chart').getContext('2d');
 
     try {
         // Fetch the cryptocurrency from user data
@@ -4911,184 +4922,8 @@ async function openCandlestickModal(cryptoId) {
             }
         }
 
-        // Fetch historical data and render the chart
-        const historicalData = await fetchHistoricalData(cryptoId);
-        const savedDataRaw = JSON.parse(localStorage.getItem(`${cryptoId}_candlestickData`)) || [];
-
-        // ✅ FIX: Filter out any bad data from localStorage (0 values or invalid candles)
-        const savedData = savedDataRaw.filter(d => {
-            const isValid = d && d.o > 0 && d.h > 0 && d.l > 0 && d.c > 0 &&
-                           !isNaN(d.o) && !isNaN(d.h) && !isNaN(d.l) && !isNaN(d.c);
-            if (!isValid) {
-                console.warn(`⚠️ Removing bad data from localStorage:`, d);
-            }
-            return isValid;
-        });
-
-        // Clean up localStorage if bad data was found
-        if (savedData.length !== savedDataRaw.length) {
-            console.log(`🧹 Cleaned ${savedDataRaw.length - savedData.length} invalid candles from localStorage`);
-            localStorage.setItem(`${cryptoId}_candlestickData`, JSON.stringify(savedData));
-        }
-
-        const combinedData = [...historicalData, ...savedData];
-
-        const chartData = formatCandlestickData(combinedData);
-        document.getElementById('live-price').textContent = `Waiting for Live Price...`;
-
-        if (candlestickChart) {
-            candlestickChart.destroy();
-        }
-
-        // Get current date and 24 hours ago for x-axis limits
-        const now = new Date();
-        const past24Hours = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-
-        // Get time configuration for current interval
-        const timeConfig = getTimeConfigForInterval(currentChartInterval);
-
-        candlestickChart = new Chart(ctx, {
-            type: 'candlestick',
-            data: chartData,
-            options: {
-                responsive: true,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: timeConfig.unit,
-                            stepSize: timeConfig.stepSize,
-                            displayFormats: timeConfig.displayFormats,
-                            minUnit: timeConfig.minUnit
-                        },
-                        ticks: {
-                            source: 'auto',
-                            autoSkip: true,
-                            maxRotation: 0,
-                            major: {
-                                enabled: true
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(211,211,211,0.2)',
-                            drawBorder: false
-                        },
-                        min: past24Hours, // Set minimum to 24 hours ago
-                        max: now // Set maximum to current time
-                    },
-                    y: {
-                        beginAtZero: false,
-                        grace: '5%', // Add 5% padding to prevent bars touching edges
-                        grid: {
-                            color: 'rgba(211,211,211,0.2)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return `$${value.toFixed(8)}`;
-                            },
-                            maxTicksLimit: 8 // Limit number of y-axis labels for clarity
-                        },
-                        // ✅ FIX: Ensure y-axis never shows 0 or invalid ranges
-                        afterDataLimits: function(axis) {
-                            const range = axis.max - axis.min;
-                            // If range is too small or invalid, set reasonable defaults
-                            if (range <= 0 || isNaN(range) || axis.min <= 0) {
-                                console.warn(`⚠️ Invalid y-axis range detected, fixing...`);
-                                const allData = axis.chart.data.datasets[0].data;
-                                if (allData && allData.length > 0) {
-                                    const validPrices = allData.flatMap(d => [d.h, d.l]).filter(p => p > 0);
-                                    if (validPrices.length > 0) {
-                                        axis.min = Math.min(...validPrices) * 0.95; // 5% below min
-                                        axis.max = Math.max(...validPrices) * 1.05; // 5% above max
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        enabled: true,
-                        mode: 'index',
-                        intersect: false,
-                        position: 'nearest',
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleColor: '#fff',
-                        bodyColor: '#fff',
-                        borderColor: '#26a69a',
-                        borderWidth: 1,
-                        padding: 12,
-                        displayColors: false,
-                        callbacks: {
-                            label: function(context) {
-                                const d = context.raw;
-                                return [
-                                    `Open: $${d.o.toFixed(8)}`,
-                                    `High: $${d.h.toFixed(8)}`,
-                                    `Low: $${d.l.toFixed(8)}`,
-                                    `Close: $${d.c.toFixed(8)}`
-                                ];
-                            },
-                            title: function(context) {
-                                const date = new Date(context[0].parsed.x);
-                                return date.toLocaleString();
-                            }
-                        }
-                    },
-                    zoom: {
-                        pan: {
-                            enabled: true,
-                            mode: 'x',
-                            onPan: function({ chart }) {
-                                chart.update('none');
-                            }
-                        },
-                        zoom: {
-                            wheel: {
-                                enabled: true,
-                                modifierKey: null
-                            },
-                            pinch: {
-                                enabled: true
-                            },
-                            mode: 'x',
-                            onZoom: function({ chart }) {
-                                chart.update('none');
-                            }
-                        }
-                    }
-                },
-                elements: {
-                    candlestick: {
-                        color: {
-                            up: '#26a69a',    // Green for price increase
-                            down: '#ef5350',  // Red for price decrease
-                            unchanged: '#999' // Gray for no change
-                        },
-                        borderColor: {
-                            up: '#26a69a',
-                            down: '#ef5350',
-                            unchanged: '#999'
-                        },
-                        borderWidth: 1,
-                        barThickness: 5
-                    }
-                },
-                animation: {
-                    duration: 750 // Smooth animations
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                maintainAspectRatio: true
-            }
-        });
-
+        // Initialize TradingView chart with current interval
+        initializeTradingViewChart(cryptoId, currentChartInterval);
         modal.style.display = 'block';
 
         // Fetch and display detailed info and sentiment data
@@ -5209,73 +5044,13 @@ async function selectInterval(interval, label) {
 
     // Update global interval
     currentChartInterval = interval;
-    currentIntervalMs = intervalConfigs[interval].ms;
 
-    // Reload chart data with new interval
+    // Reinitialize TradingView chart with new interval
     if (currentCryptoId) {
-        await reloadChartWithInterval(currentCryptoId);
+        initializeTradingViewChart(currentCryptoId, interval);
     }
 }
 
-// Reload chart data with new interval
-async function reloadChartWithInterval(cryptoId) {
-    try {
-        // Fetch new historical data based on interval
-        const historicalData = await fetchHistoricalData(cryptoId);
-
-        // Update chart data and x-axis time configuration
-        if (candlestickChart) {
-            const chartData = formatCandlestickData(historicalData);
-            candlestickChart.data = chartData;
-
-            // Update x-axis time configuration to match new interval
-            const timeConfig = getTimeConfigForInterval(currentChartInterval);
-            candlestickChart.options.scales.x.time.unit = timeConfig.unit;
-            candlestickChart.options.scales.x.time.stepSize = timeConfig.stepSize;
-            candlestickChart.options.scales.x.time.displayFormats = timeConfig.displayFormats;
-            candlestickChart.options.scales.x.time.minUnit = timeConfig.minUnit;
-
-            candlestickChart.update();
-            console.log(`✅ Chart reloaded with ${currentChartInterval} interval`);
-            console.log(`   ⏱️ Time axis now showing: ${timeConfig.unit} (step: ${timeConfig.stepSize})`);
-        }
-    } catch (error) {
-        console.error('Error reloading chart:', error);
-    }
-}
-
-// Zoom chart in or out
-function zoomChart(direction) {
-    if (!candlestickChart) return;
-
-    const chart = candlestickChart;
-    const xAxis = chart.options.scales.x;
-
-    // Get current time range
-    const currentMin = xAxis.min ? new Date(xAxis.min) : new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const currentMax = xAxis.max ? new Date(xAxis.max) : new Date();
-
-    const currentRange = currentMax - currentMin;
-
-    if (direction === 'in') {
-        // Zoom in: reduce range by 30%, focus on latest candle
-        const newRange = currentRange * 0.7;
-        const latestTime = new Date(); // Focus on now (latest candle)
-
-        xAxis.min = new Date(latestTime.getTime() - newRange);
-        xAxis.max = new Date(latestTime.getTime() + newRange * 0.1); // Small padding on right
-    } else if (direction === 'out') {
-        // Zoom out: increase range by 50%
-        const newRange = currentRange * 1.5;
-        const latestTime = new Date();
-
-        xAxis.min = new Date(latestTime.getTime() - newRange);
-        xAxis.max = new Date(latestTime.getTime() + newRange * 0.1);
-    }
-
-    chart.update('none');
-    console.log(`🔍 Zoomed ${direction}: Range now ${(xAxis.max - xAxis.min) / (60 * 60 * 1000)} hours`);
-}
 
 // Close dropdown when clicking outside
 document.addEventListener('click', function(event) {

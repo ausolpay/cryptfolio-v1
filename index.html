@@ -649,30 +649,27 @@
                 <img id="crypto-icon" src="" alt="Crypto Icon" class="crypto-icon">
                 <span id="crypto-name" class="crypto-name"></span>
             </div>
-            <canvas id="candlestick-chart"></canvas>
+
+            <!-- TradingView Chart Container -->
+            <div id="tradingview-chart-container" style="height: 500px; width: 100%;"></div>
 
             <!-- Chart Controls -->
             <div class="chart-controls">
                 <div class="interval-selector-container">
                     <button id="interval-button" class="chart-button" onclick="toggleIntervalDropdown()">
-                        <span id="current-interval">5m</span>
+                        <span id="current-interval">5</span>
                         <span class="dropdown-arrow">▲</span>
                     </button>
                     <div id="interval-dropdown" class="interval-dropdown">
-                        <div class="interval-option" onclick="selectInterval('1s', '1 Second')">1s</div>
-                        <div class="interval-option" onclick="selectInterval('1m', '1 Minute')">1m</div>
-                        <div class="interval-option selected" onclick="selectInterval('5m', '5 Minutes')">5m</div>
-                        <div class="interval-option" onclick="selectInterval('15m', '15 Minutes')">15m</div>
-                        <div class="interval-option" onclick="selectInterval('30m', '30 Minutes')">30m</div>
-                        <div class="interval-option" onclick="selectInterval('1h', '1 Hour')">1h</div>
-                        <div class="interval-option" onclick="selectInterval('24h', '24 Hours')">24h</div>
-                        <div class="interval-option" onclick="selectInterval('7d', '7 Days')">7d</div>
-                        <div class="interval-option" onclick="selectInterval('1y', '1 Year')">1y</div>
+                        <div class="interval-option" onclick="selectInterval('1', '1 Minute')">1</div>
+                        <div class="interval-option selected" onclick="selectInterval('5', '5 Minutes')">5</div>
+                        <div class="interval-option" onclick="selectInterval('15', '15 Minutes')">15</div>
+                        <div class="interval-option" onclick="selectInterval('30', '30 Minutes')">30</div>
+                        <div class="interval-option" onclick="selectInterval('60', '1 Hour')">60</div>
+                        <div class="interval-option" onclick="selectInterval('240', '4 Hours')">240</div>
+                        <div class="interval-option" onclick="selectInterval('D', 'Daily')">D</div>
+                        <div class="interval-option" onclick="selectInterval('W', 'Weekly')">W</div>
                     </div>
-                </div>
-                <div class="zoom-controls">
-                    <button class="chart-button zoom-button" onclick="zoomChart('out')" title="Zoom Out">−</button>
-                    <button class="chart-button zoom-button" onclick="zoomChart('in')" title="Zoom In">+</button>
                 </div>
             </div>
 
@@ -902,12 +899,8 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/push.js/1.0.12/push.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-crosshair"></script>
+    <!-- TradingView Charting Library -->
+    <script src="https://s3.tradingview.com/tv.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <!-- Protocol Buffers library for MEXC WebSocket -->
     <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.5/dist/protobuf.min.js"></script>
