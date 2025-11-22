@@ -8284,6 +8284,7 @@ async function updateRecommendations() {
                 console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`, teamRecommendations);
 
                 // Display each recommended team package using dedicated team alert card function
+                // STABLE VERSION: Team alerts working correctly with createTeamPackageRecommendationCard
                 teamRecommendations.forEach((pkg, index) => {
                     console.log(`🔍 Creating team alert card ${index + 1}/${teamRecommendations.length} for:`, pkg.name);
                     const card = createTeamPackageRecommendationCard(pkg);
