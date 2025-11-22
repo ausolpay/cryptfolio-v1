@@ -12187,7 +12187,7 @@ Do you want to continue?
         // Update stats based on successful purchases only
         const sharesPurchased = successfulPurchases.length;
         const totalPricePaid = sharesPurchased * sharePrice; // sharePrice is per share in BTC
-        const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+        const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
         const totalPriceAUD = totalPricePaid * btcPrice;
 
         easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
