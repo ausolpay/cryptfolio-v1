@@ -6907,10 +6907,22 @@ async function fetchNiceHashOrders() {
                         } else {
                             console.log(`      ⚠️ Multiple rewards but couldn't find secondary coin`);
                         }
-                    } else if (totalPackageSecondaryCryptoReward > 0) {
+                    } else if (isTeamPackage && userMember?.rewards && userMember.rewards.length === 1) {
+                        // Team package with only 1 reward = only one coin won
+                        // Check which coin it is to ensure we don't incorrectly show secondary reward
+                        const singleReward = userMember.rewards[0];
+                        console.log(`      📋 TEAM PACKAGE: Single reward detected - ${singleReward.coin} won, ${order.soloMiningMergeCoin} NOT won`);
+                        secondaryCryptoReward = 0; // Explicitly set to 0 since secondary coin didn't win
+                    } else if (!isTeamPackage && totalPackageSecondaryCryptoReward > 0) {
+                        // SOLO PACKAGE ONLY: Use package-level secondary rewards
+                        // For team packages, we ONLY use userMember.rewards data (never package totals)
                         const secondaryRewardPerShare = totalPackageSecondaryCryptoReward / totalShares;
                         secondaryCryptoReward = secondaryRewardPerShare * myShares;
-                        console.log(`      → Secondary crypto reward calculation: (${totalPackageSecondaryCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${secondaryCryptoReward.toFixed(8)} ${order.soloMiningMergeCoin}`);
+                        console.log(`      → SOLO: Secondary crypto reward calculation: (${totalPackageSecondaryCryptoReward} / ${totalShares.toFixed(2)}) × ${myShares.toFixed(2)} = ${secondaryCryptoReward.toFixed(8)} ${order.soloMiningMergeCoin}`);
+                    } else if (isTeamPackage) {
+                        // Team package but no user rewards yet - set to 0
+                        console.log(`      📋 TEAM PACKAGE: No user rewards found, secondary reward = 0`);
+                        secondaryCryptoReward = 0;
                     }
                 } else {
                     console.log(`      ⚠️ WARNING: Unable to calculate shares (addedAmount or packagePrice missing)`);
