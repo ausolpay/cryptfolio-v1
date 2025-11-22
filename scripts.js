@@ -9919,7 +9919,7 @@ function createTeamPackageCard(pkg) {
     const ticket = pkg.currencyAlgoTicket || {};
     const packageName = ticket.name || 'Unknown Package';
     const crypto = ticket.currencyAlgo?.currency || 'Unknown';
-    const packageId = pkg.id;
+    const packageId = ticket.id || pkg.id;  // Use currencyAlgoTicket.id for POST endpoint
     const packagePrice = ticket.price || 0;
     const fullAmount = pkg.fullAmount || packagePrice;
     const addedAmount = pkg.addedAmount || 0;
