@@ -11094,30 +11094,16 @@ Do you want to continue?
         });
 
         // Create order payload for team mining package
-        // API requires: amount, clear, code, shares object, wallet addresses
+        // Use amount instead of shares object (e.g., 2 shares = 0.0002 BTC)
         const sharePrice = 0.0001; // BTC per share
         const totalAmount = sharePrice * shares;
 
         const orderData = {
-            amount: totalAmount,    // Total BTC being added (shares * price per share)
-            clear: false,           // Don't remove existing funds
-            code: '',               // No coupon code
-            shares: {
-                small: shares,      // Put user's shares in the 'small' size
-                medium: 0,
-                large: 0,
-                couponSmall: 0,
-                couponMedium: 0,
-                couponLarge: 0,
-                massBuy: 0
-            },
-            soloMiningRewardAddr: mainWalletAddress.trim(), // Main crypto address (BCH, BTC, or LTC for Palladium)
-            mergeSoloMiningRewardAddr: '', // Default empty, set below for dual-crypto
-            soloMiningRewardWithdrawalAddrId: '',
-            mergeSoloMiningRewardWithdrawalAddrId: ''
+            amount: totalAmount,    // Total BTC (e.g., 0.0002 for 2 shares)
+            soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address
         };
 
-        // Set merge address for dual-crypto packages (Palladium DOGE)
+        // Add merge address for dual-crypto packages (Palladium DOGE)
         if (isDualCrypto && mergeWalletAddress) {
             orderData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
         }
@@ -11126,12 +11112,9 @@ Do you want to continue?
             endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
             method: 'POST',
             amount: orderData.amount,
-            clear: orderData.clear,
-            code: orderData.code || '(empty)',
-            shares: orderData.shares,
-            sharesBreakdown: `small=${orderData.shares.small}, medium=${orderData.shares.medium}, large=${orderData.shares.large}`,
+            amountBreakdown: `${shares} shares × 0.0001 BTC = ${orderData.amount} BTC`,
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
-            mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr || '(empty)',
+            mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr || '(not set)',
             isDualCrypto: isDualCrypto,
             packageId: packageId
         });
