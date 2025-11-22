@@ -10303,6 +10303,17 @@ async function fetchNiceHashSoloPackages() {
         console.log(`✅ Fetched ${packages.length} solo packages from API`);
         console.log('📦 Raw API data (first 2):', packages.slice(0, 2));
 
+        // Get current BTC price in AUD for price conversion
+        let btcPriceAUD = 100000; // Default fallback
+        const btcPriceElement = document.getElementById('bitcoin-price-aud');
+        if (btcPriceElement) {
+            const parsedBtcPrice = parseFloat(btcPriceElement.textContent.replace(/,/g, '').replace('$', ''));
+            if (parsedBtcPrice > 0) {
+                btcPriceAUD = parsedBtcPrice;
+                console.log(`💰 Current BTC price in AUD: $${btcPriceAUD.toLocaleString()}`);
+            }
+        }
+
         // Transform API data to our package format
         const transformedPackages = packages
             .filter(pkg => pkg.available && pkg.status === 'A') // Only available packages
@@ -10329,6 +10340,9 @@ async function fetchNiceHashSoloPackages() {
                 const mergeBlockReward = hasMergeCurrency
                     ? pkg.mergeCurrencyAlgo.blockReward
                     : null;
+
+                // Calculate AUD price from BTC price
+                const calculatedPriceAUD = pkg.price * btcPriceAUD;
 
                 // Log raw API data for Palladium packages to verify extraction
                 if (pkg.name.includes('Palladium')) {
@@ -10377,11 +10391,11 @@ async function fetchNiceHashSoloPackages() {
                     mainProbability: mainProbability,
                     mergeProbability: mergeProbability,
                     priceBTC: pkg.price,
-                    priceAUD: '0.00', // Will be calculated dynamically from BTC price
+                    priceAUD: calculatedPriceAUD.toFixed(2), // Calculated from BTC price
                     duration: `${durationHours}h`,
                     algorithm: pkg.currencyAlgo.miningAlgorithm,
-                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // Approximate
-                    blockReward: mainBlockReward,
+                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // From projectedSpeed
+                    blockReward: mainBlockReward, // From currencyAlgo.blockReward
                     mergeBlockReward: mergeBlockReward,
                     isDualCrypto: hasMergeCurrency,
                     apiData: pkg // Store original API data for reference
