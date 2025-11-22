@@ -8259,9 +8259,12 @@ async function updateRecommendations() {
 
     // Update team recommendations if changed OR if container is empty (first load)
     const isTeamContainerEmpty = teamAlertsContainer && teamAlertsContainer.innerHTML.trim() === '';
+    console.log(`🔍 Team update check: teamChanged=${teamChanged}, isTeamContainerEmpty=${isTeamContainerEmpty}, teamRecommendations.length=${teamRecommendations.length}`);
+
     if (teamChanged || isTeamContainerEmpty) {
         currentTeamRecommendations = teamRecommendations;
         if (teamAlertsContainer) {
+            console.log(`🔍 Updating team alerts container, recommendations: ${teamRecommendations.length}`);
             teamAlertsContainer.innerHTML = '';
 
             if (teamRecommendations.length === 0) {
@@ -8278,15 +8281,25 @@ async function updateRecommendations() {
                 // Fetch crypto prices for team recommendations
                 window.packageCryptoPrices = await fetchPackageCryptoPrices(teamRecommendations);
 
-                console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`);
+                console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`, teamRecommendations);
 
                 // Display each recommended team package using the same function as buy packages page
-                teamRecommendations.forEach(pkg => {
+                teamRecommendations.forEach((pkg, index) => {
+                    console.log(`🔍 Creating team card ${index + 1}/${teamRecommendations.length} for:`, pkg.name);
                     const card = createTeamPackageCard(pkg);
-                    teamAlertsContainer.appendChild(card);
+                    if (card) {
+                        teamAlertsContainer.appendChild(card);
+                        console.log(`✅ Team card ${index + 1} added to container`);
+                    } else {
+                        console.error(`❌ Failed to create team card ${index + 1} for:`, pkg.name);
+                    }
                 });
             }
+        } else {
+            console.error('❌ teamAlertsContainer not found!');
         }
+    } else {
+        console.log(`⏭️ Skipping team update (no changes detected)`);
     }
 
     console.log('✅ Recommendations updated successfully');
