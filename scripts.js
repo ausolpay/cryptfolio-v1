@@ -8167,14 +8167,14 @@ function displayActivePackages() {
             <div class="package-card-stat">
                 <span>Reward AUD:</span>
                 <span style="color: #00ff00;">${(() => {
-                    const parts = [];
+                    let totalAUD = 0;
                     if (pkg.reward > 0) {
-                        parts.push('$' + convertCryptoToAUD(pkg.reward, pkg.crypto).toFixed(2) + ' AUD');
+                        totalAUD += convertCryptoToAUD(pkg.reward, pkg.crypto);
                     }
                     if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
-                        parts.push('$' + convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary).toFixed(2) + ' AUD');
+                        totalAUD += convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary);
                     }
-                    return parts.join('<br>+ ');
+                    return '$' + totalAUD.toFixed(2) + ' AUD';
                 })()}</span>
             </div>
             ` : ''}
