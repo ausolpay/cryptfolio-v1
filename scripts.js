@@ -8141,24 +8141,61 @@ async function executeAutoBuyTeam(recommendations) {
                 'Selected packageId': packageId
             });
 
-            // Get withdrawal address for the crypto
-            const crypto = pkg.crypto || pkg.currencyAlgo?.title || 'Unknown';
-            let mainWalletAddress = getWithdrawalAddress(crypto);
+            // Check if this is a dual-crypto package (Palladium DOGE+LTC)
+            const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCrypto && pkg.mainCrypto);
 
-            if (!mainWalletAddress) {
-                console.error(`❌ No withdrawal address configured for ${crypto}`);
-                continue;
+            // Get withdrawal addresses for the crypto(s)
+            let mainWalletAddress, mergeWalletAddress;
+            let mainCrypto, mergeCrypto;
+
+            if (isDualCrypto) {
+                // Dual-crypto package: need BOTH addresses
+                mainCrypto = pkg.mainCrypto || 'LTC';
+                mergeCrypto = pkg.mergeCrypto || 'DOGE';
+                mainWalletAddress = getWithdrawalAddress(mainCrypto);
+                mergeWalletAddress = getWithdrawalAddress(mergeCrypto);
+
+                if (!mainWalletAddress) {
+                    console.error(`❌ No withdrawal address configured for ${mainCrypto}`);
+                    continue;
+                }
+                if (!mergeWalletAddress) {
+                    console.error(`❌ No withdrawal address configured for ${mergeCrypto}`);
+                    continue;
+                }
+            } else {
+                // Single crypto package: need ONE address
+                mainCrypto = pkg.crypto || pkg.currencyAlgo?.title || 'Unknown';
+                mainWalletAddress = getWithdrawalAddress(mainCrypto);
+
+                if (!mainWalletAddress) {
+                    console.error(`❌ No withdrawal address configured for ${mainCrypto}`);
+                    continue;
+                }
             }
 
-            // Use new request format with amount field
+            // Create order payload with wallet address(es)
             const bodyData = {
                 amount: totalAmount,
                 soloMiningRewardAddr: mainWalletAddress.trim()
             };
+
+            // Add merge address for dual-crypto packages
+            if (isDualCrypto && mergeWalletAddress) {
+                bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
+            }
+
             const body = JSON.stringify(bodyData);
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-            console.log(`📡 Auto-buy request: ${shares} shares (${totalAmount} BTC) to ${crypto} address`);
+            console.log(`📡 Auto-buy request: ${shares} shares (${totalAmount} BTC)`, {
+                isDualCrypto: isDualCrypto,
+                mainCrypto: mainCrypto,
+                mainWallet: mainWalletAddress.substring(0, 10) + '...',
+                mergeCrypto: mergeCrypto || 'N/A',
+                mergeWallet: mergeWalletAddress ? mergeWalletAddress.substring(0, 10) + '...' : 'N/A',
+                bodyData: bodyData
+            });
 
             let response;
             if (USE_VERCEL_PROXY) {
