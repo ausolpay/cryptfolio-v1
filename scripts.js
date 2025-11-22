@@ -8420,14 +8420,19 @@ function adjustShares(cardId, delta) {
     // 1. Alert cards: shares-{PackageName} (e.g., shares-Gold-Package)
     // 2. Buy packages page: {cardId}-shares (e.g., team-123-shares)
 
+    console.log(`🔧 adjustShares called with cardId: "${cardId}", delta: ${delta}`);
+
     const sanitizedId = cardId.replace(/\s+/g, '-');
+    console.log(`🔧 Sanitized ID: "${sanitizedId}"`);
 
     // Try alert card format first
     let input = document.getElementById(`shares-${sanitizedId}`);
+    console.log(`🔧 Looking for input: "shares-${sanitizedId}" - Found:`, !!input);
 
     // If not found, try buy packages page format
     if (!input) {
         input = document.getElementById(`${cardId}-shares`);
+        console.log(`🔧 Looking for input: "${cardId}-shares" - Found:`, !!input);
     }
 
     if (!input) {
@@ -8435,12 +8440,17 @@ function adjustShares(cardId, delta) {
         return;
     }
 
-    const currentValue = parseInt(input.value) || 1;
-    const newValue = Math.max(1, Math.min(currentValue + delta, parseInt(input.max) || 1000));
+    const currentValue = parseInt(input.value) || 0;
+    const minValue = parseInt(input.min) || 0;
+    const maxValue = parseInt(input.max) || 999999;
+    const newValue = Math.max(minValue, Math.min(currentValue + delta, maxValue));
+    console.log(`🔧 Share value: ${currentValue} → ${newValue} (min: ${minValue}, max: ${maxValue})`);
     input.value = newValue;
 
-    // Update price display for team packages (alert cards only)
+    // Update price display for team packages
     const priceElement = document.getElementById(`price-${sanitizedId}`);
+    console.log(`🔧 Looking for price element: "price-${sanitizedId}" - Found:`, !!priceElement);
+
     if (priceElement) {
         // Calculate new price: shares × 0.0001 BTC × live BTC price AUD
         const sharePrice = 0.0001; // Each share costs 0.0001 BTC
@@ -8451,10 +8461,20 @@ function adjustShares(cardId, delta) {
 
         // Update the price display
         priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
+        console.log(`✅ Price element updated successfully`);
+    } else {
+        console.warn(`⚠️ Price element not found for: "price-${sanitizedId}"`);
     }
 
-    // Trigger input event to update cost display (for buy packages page)
+    // Trigger input event to update cost display (for buy packages page non-highlighted cards)
     input.dispatchEvent(new Event('input'));
+    console.log(`🔧 Input event dispatched`);
+
+    // Also call updateShareCost for non-highlighted team package cards (format: team-123)
+    if (cardId.startsWith('team-')) {
+        console.log(`🔧 Calling updateShareCost for non-highlighted card: ${cardId}`);
+        updateShareCost(cardId);
+    }
 }
 
 // ✅ NEW: Buy team package directly from alert (wrapper for buyTeamPackage)
@@ -9856,16 +9876,8 @@ function createTeamPackageCard(pkg) {
     return card;
 }
 
-// Helper function to adjust share count (+ and - buttons)
-function adjustShares(cardId, delta) {
-    const input = document.getElementById(`${cardId}-shares`);
-    const currentValue = parseInt(input.value) || 0;
-    const max = parseInt(input.max) || 999999;
-    const newValue = Math.max(0, Math.min(max, currentValue + delta));
-
-    input.value = newValue;
-    updateShareCost(cardId);
-}
+// NOTE: adjustShares() function is now defined earlier in the file (line ~8418)
+// with comprehensive support for all ID formats (alert cards, highlighted packages, and non-highlighted packages)
 
 // Helper function to validate share input
 function validateShares(cardId, maxShares) {
