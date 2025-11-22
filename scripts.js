@@ -12382,7 +12382,7 @@ function startBuyPackagesPolling() {
     // Initial load
     loadBuyPackagesDataOnPage();
 
-    // Poll every 5 seconds
+    // Poll every 1 second
     buyPackagesPollingInterval = setInterval(() => {
         if (!buyPackagesPollingPaused) {
             console.log('🔄 Refreshing buy packages data...');
@@ -12390,9 +12390,9 @@ function startBuyPackagesPolling() {
         } else {
             console.log('⏸️ Polling paused - skipping refresh');
         }
-    }, 5000);
+    }, 1000);
 
-    console.log('✅ Buy packages polling started (5s interval)');
+    console.log('✅ Buy packages polling started (1s interval)');
 }
 
 function stopBuyPackagesPolling() {
