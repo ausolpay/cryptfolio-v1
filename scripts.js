@@ -8248,13 +8248,10 @@ function createTeamPackageRecommendationCard(pkg) {
         </div>
     `;
 
-    // Recommendation reasons (why this package was recommended)
-    const reasonsList = pkg.recommendationReasons && pkg.recommendationReasons.length > 0
-        ? `<div class="recommendation-reasons">
-            <strong>✅ Alert Thresholds Met:</strong>
-            <ul>${pkg.recommendationReasons.map(reason => `<li>${reason}</li>`).join('')}</ul>
-        </div>`
-        : '';
+    // ✅ REMOVED: Alert thresholds and bullet points for cleaner mobile display
+    // Create a unique card ID for share controls
+    const cardId = `team-alert-${pkg.id || pkg.name.replace(/\s+/g, '-')}`;
+    const maxShares = pkg.availableShares || 1000;
 
     card.innerHTML = `
         <h4>${pkg.name} ⭐</h4>
@@ -8266,13 +8263,63 @@ function createTeamPackageRecommendationCard(pkg) {
             </div>
             ${teamInfo}
         </div>
-        ${reasonsList}
-        <button class="buy-now-btn" onclick='showBuyPackagesPage()'>
-            View on Buy Team Packages
+
+        <!-- ✅ NEW: Shares selector (- 1 +) for direct purchase from alerts -->
+        <div class="shares-selector" style="margin: 15px 0;">
+            <label style="display: block; margin-bottom: 8px; color: #aaa; font-size: 14px;">
+                Shares to buy:
+            </label>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <button onclick="adjustShares('${cardId}', -1)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">-</button>
+                <input type="number" id="${cardId}-shares" value="1" min="1" max="${maxShares}"
+                    style="width: 80px; text-align: center; padding: 8px; font-size: 16px; border: 1px solid #555; background-color: #2a2a2a; color: white; border-radius: 5px;">
+                <button onclick="adjustShares('${cardId}', 1)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">+</button>
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: #888;">
+                Cost: <span id="${cardId}-cost">$${pricePerShareAUD}</span> AUD
+            </div>
+        </div>
+
+        <!-- ✅ CHANGED: Buy button for direct purchase from alerts -->
+        <button class="buy-now-btn" onclick="buyTeamPackageFromAlert('${pkg.id}', '${pkg.crypto}', ${sharePrice}, '${cardId}', ${maxShares})">
+            Buy Now
         </button>
     `;
 
+    // Add event listener for share input to update cost
+    setTimeout(() => {
+        const sharesInput = document.getElementById(`${cardId}-shares`);
+        const costDisplay = document.getElementById(`${cardId}-cost`);
+        if (sharesInput && costDisplay) {
+            sharesInput.addEventListener('input', () => {
+                const shares = parseInt(sharesInput.value) || 1;
+                const totalCost = (shares * sharePrice * btcPrice).toFixed(2);
+                costDisplay.textContent = `$${totalCost}`;
+            });
+        }
+    }, 100);
+
     return card;
+}
+
+// ✅ NEW: Helper function for adjusting shares in team alert cards
+function adjustShares(cardId, delta) {
+    const input = document.getElementById(`${cardId}-shares`);
+    if (!input) return;
+
+    const currentValue = parseInt(input.value) || 1;
+    const newValue = Math.max(1, Math.min(currentValue + delta, parseInt(input.max) || 1000));
+    input.value = newValue;
+
+    // Trigger input event to update cost display
+    input.dispatchEvent(new Event('input'));
+}
+
+// ✅ NEW: Buy team package directly from alert (wrapper for buyTeamPackage)
+async function buyTeamPackageFromAlert(packageId, crypto, sharePrice, cardId, maxShares) {
+    // This wraps the existing buyTeamPackage function
+    // which already handles confirmation, API calls, and success/error handling
+    await buyTeamPackage(packageId, crypto, sharePrice, cardId, maxShares);
 }
 
 function checkForNewBlocks() {

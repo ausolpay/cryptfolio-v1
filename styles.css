@@ -1626,6 +1626,7 @@ body.light-mode .stat-label {
     box-sizing: border-box; /* Ensure padding is included in width */
     max-width: 100%; /* Ensure section doesn't overflow container */
     width: 100%;
+    height: auto; /* ✅ Fit content, especially important on mobile */
 }
 
 .recommendations-container {
@@ -1636,6 +1637,7 @@ body.light-mode .stat-label {
     padding: 0 20px;
     width: fit-content; /* Section fits the boxes exactly */
     justify-content: center;
+    height: auto; /* ✅ Fit content, especially important on mobile */
 }
 
 /* Tablet - 2 columns */
