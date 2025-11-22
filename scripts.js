@@ -8129,9 +8129,17 @@ async function executeAutoBuyTeam(recommendations) {
             // Sync time before purchase
             await syncNiceHashTime();
 
-            // Get package ID - use same logic as manual buy
-            const packageId = pkg.apiData?.id || pkg.id;
+            // Get package ID - use CONSISTENT logic across all locations
+            // This ensures auto-bought shares sync with manual purchases
+            const packageId = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
             const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+
+            console.log(`📦 Auto-buy package ID:`, {
+                'pkg.id': pkg.id,
+                'pkg.apiData?.id': pkg.apiData?.id,
+                'pkg.currencyAlgoTicket?.id': pkg.currencyAlgoTicket?.id,
+                'Selected packageId': packageId
+            });
 
             // Get withdrawal address for the crypto
             const crypto = pkg.crypto || pkg.currencyAlgo?.title || 'Unknown';
