@@ -11461,6 +11461,21 @@ function adjustShares(packageName, delta, buttonElement) {
             myRewardAUD: myRewardAUD,
             priceAUD: newPriceAUD
         });
+    } else {
+        // EASYMINING ALERTS: Simple price calculation when packageBaseValues not available
+        console.log(`📋 EasyMining alert mode: Using simple price calculation`);
+
+        const sharePrice = 0.0001; // Each share = 0.0001 BTC
+        const totalBTC = newValue * sharePrice;
+        const priceAUD = convertBTCtoAUD(totalBTC);
+
+        if (priceElement) {
+            const oldPrice = priceElement.textContent;
+            priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
+            console.log(`✅ Alert price updated: ${oldPrice} → $${priceAUD.toFixed(2)} AUD`);
+        } else {
+            console.warn(`⚠️ Price element not found for alert: ${packageName}`);
+        }
     }
 
     // Check balance and update + button state for team packages
