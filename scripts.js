@@ -8382,10 +8382,10 @@ function createTeamPackageRecommendationCard(pkg) {
                 Shares to buy:
             </label>
             <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <button onclick="adjustShares('${cardId}', -1)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">-</button>
+                <button onclick="adjustShares('${cardId}', -1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">-</button>
                 <input type="number" id="${cardId}-shares" value="1" min="1" max="${maxShares}"
                     style="width: 80px; text-align: center; padding: 8px; font-size: 16px; border: 1px solid #555; background-color: #2a2a2a; color: white; border-radius: 5px;">
-                <button onclick="adjustShares('${cardId}', 1)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">+</button>
+                <button onclick="adjustShares('${cardId}', 1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">+</button>
             </div>
             <div style="margin-top: 8px; font-size: 12px; color: #888;">
                 Cost: <span id="${cardId}-cost">$${pricePerShareAUD}</span> AUD
@@ -9782,7 +9782,7 @@ function createTeamPackageCard(pkg) {
             </div>
         </div>
         <div class="share-selector">
-            <button class="share-button" onclick="adjustShares('${cardId}', -1)">-</button>
+            <button class="share-button" onclick="adjustShares('${cardId}', -1, this)">-</button>
             <input
                 type="number"
                 id="${cardId}-shares"
@@ -9798,7 +9798,7 @@ function createTeamPackageCard(pkg) {
                 data-total-available="${totalAvailableShares}"
                 data-crypto="${crypto}"
             />
-            <button class="share-button" onclick="adjustShares('${cardId}', 1)">+</button>
+            <button class="share-button" onclick="adjustShares('${cardId}', 1, this)">+</button>
         </div>
         <div class="total-cost" id="${cardId}-cost" style="margin: 10px 0; color: #ffa500; font-weight: bold;">
             Total: 0 BTC ($0.00 AUD)
@@ -11225,9 +11225,9 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // For team packages: add share selector with buy button on same row
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
-            <button onclick="adjustShares('${pkg.name}', -1)" class="share-adjuster-btn">-</button>
+            <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
             <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="9999" class="share-adjuster-input" readonly>
-            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
+            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
     ` : '';
@@ -11316,14 +11316,29 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 }
 
 // Function to adjust shares for team packages
-function adjustShares(packageName, delta) {
+function adjustShares(packageName, delta, buttonElement) {
     console.log(`🎯 adjustShares CALLED: packageName="${packageName}", delta=${delta}`);
 
     const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
     console.log(`🔍 Looking for input with ID: "${inputId}"`);
 
-    const input = document.getElementById(inputId);
-    console.log(`🔍 Input element found:`, !!input);
+    // CRITICAL FIX: Find input in the same container as the button to avoid conflicts
+    // between EasyMining alerts and Buy Packages page (both have same IDs!)
+    let input;
+    if (buttonElement && typeof buttonElement === 'object') {
+        // Find the input in the same parent container as the button
+        const container = buttonElement.closest('.share-adjuster, .easymining-alert-card, .buy-package-card');
+        if (container) {
+            input = container.querySelector(`#${inputId}`);
+            console.log(`🔍 Found input via button's container:`, !!input);
+        }
+    }
+
+    // Fallback to getElementById if button element not provided
+    if (!input) {
+        input = document.getElementById(inputId);
+        console.log(`🔍 Found input via getElementById (may be wrong one!):`, !!input);
+    }
 
     const plusButtonId = `plus-${packageName.replace(/\s+/g, '-')}`;
     const plusButton = document.getElementById(plusButtonId);
