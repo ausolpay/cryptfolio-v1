@@ -67,6 +67,68 @@ const intervalConfigs = {
     '1y': { ms: 365 * 24 * 60 * 60 * 1000, coingecko: 365, unit: 'day' }
 };
 
+// Get chart time configuration based on interval
+function getTimeConfigForInterval(interval) {
+    const configs = {
+        '1s': {
+            unit: 'second',
+            stepSize: 5,
+            displayFormats: { second: 'HH:mm:ss' },
+            minUnit: 'second'
+        },
+        '1m': {
+            unit: 'minute',
+            stepSize: 1,
+            displayFormats: { minute: 'HH:mm' },
+            minUnit: 'minute'
+        },
+        '5m': {
+            unit: 'minute',
+            stepSize: 5,
+            displayFormats: { minute: 'HH:mm' },
+            minUnit: 'minute'
+        },
+        '15m': {
+            unit: 'minute',
+            stepSize: 15,
+            displayFormats: { minute: 'HH:mm' },
+            minUnit: 'minute'
+        },
+        '30m': {
+            unit: 'minute',
+            stepSize: 30,
+            displayFormats: { minute: 'HH:mm' },
+            minUnit: 'minute'
+        },
+        '1h': {
+            unit: 'hour',
+            stepSize: 1,
+            displayFormats: { hour: 'MMM D, HH:mm' },
+            minUnit: 'hour'
+        },
+        '24h': {
+            unit: 'hour',
+            stepSize: 6,
+            displayFormats: { hour: 'MMM D, HH:mm' },
+            minUnit: 'hour'
+        },
+        '7d': {
+            unit: 'day',
+            stepSize: 1,
+            displayFormats: { day: 'MMM D' },
+            minUnit: 'day'
+        },
+        '1y': {
+            unit: 'month',
+            stepSize: 1,
+            displayFormats: { month: 'MMM YYYY' },
+            minUnit: 'month'
+        }
+    };
+
+    return configs[interval] || configs['5m']; // Default to 5m if interval not found
+}
+
 function getApiKey() {
     return apiKeys[currentApiKeyIndex];
 }
@@ -4882,6 +4944,9 @@ async function openCandlestickModal(cryptoId) {
         const now = new Date();
         const past24Hours = new Date(now.getTime() - (24 * 60 * 60 * 1000));
 
+        // Get time configuration for current interval
+        const timeConfig = getTimeConfigForInterval(currentChartInterval);
+
         candlestickChart = new Chart(ctx, {
             type: 'candlestick',
             data: chartData,
@@ -4891,12 +4956,10 @@ async function openCandlestickModal(cryptoId) {
                     x: {
                         type: 'time',
                         time: {
-                            unit: 'minute',
-                            stepSize: 5,
-                            displayFormats: {
-                                minute: 'HH:mm'
-                            },
-                            minUnit: 'minute'
+                            unit: timeConfig.unit,
+                            stepSize: timeConfig.stepSize,
+                            displayFormats: timeConfig.displayFormats,
+                            minUnit: timeConfig.minUnit
                         },
                         ticks: {
                             source: 'auto',
@@ -5160,12 +5223,21 @@ async function reloadChartWithInterval(cryptoId) {
         // Fetch new historical data based on interval
         const historicalData = await fetchHistoricalData(cryptoId);
 
-        // Update chart data
+        // Update chart data and x-axis time configuration
         if (candlestickChart) {
             const chartData = formatCandlestickData(historicalData);
             candlestickChart.data = chartData;
+
+            // Update x-axis time configuration to match new interval
+            const timeConfig = getTimeConfigForInterval(currentChartInterval);
+            candlestickChart.options.scales.x.time.unit = timeConfig.unit;
+            candlestickChart.options.scales.x.time.stepSize = timeConfig.stepSize;
+            candlestickChart.options.scales.x.time.displayFormats = timeConfig.displayFormats;
+            candlestickChart.options.scales.x.time.minUnit = timeConfig.minUnit;
+
             candlestickChart.update();
             console.log(`✅ Chart reloaded with ${currentChartInterval} interval`);
+            console.log(`   ⏱️ Time axis now showing: ${timeConfig.unit} (step: ${timeConfig.stepSize})`);
         }
     } catch (error) {
         console.error('Error reloading chart:', error);
