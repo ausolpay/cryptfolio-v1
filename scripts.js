@@ -11515,21 +11515,31 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         buyButtonStyle = canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;';
     }
 
+    // For team packages: get user's current bought shares
+    let myBoughtShares = 0;
+    let initialShareValue = 1;
+    if (pkg.isTeam) {
+        myBoughtShares = getMyTeamShares(pkg.id) || 0;
+        // Start with current shares, or 1 if they haven't bought any
+        initialShareValue = myBoughtShares > 0 ? myBoughtShares : 1;
+    }
+
     // For team packages: calculate initial + button state
     let plusButtonDisabled = '';
     let plusButtonStyle = '';
     if (pkg.isTeam) {
-        // Check if user can afford SECOND share (current 1 + next 1 = 2 shares total)
-        const canAffordSecondShare = availableBalance >= (sharePrice * 2);
-        plusButtonDisabled = canAffordSecondShare ? '' : 'disabled';
-        plusButtonStyle = canAffordSecondShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+        // Check if user can afford next share (current shares + 1)
+        const nextShareCost = (initialShareValue + 1) * sharePrice;
+        const canAffordNextShare = availableBalance >= nextShareCost;
+        plusButtonDisabled = canAffordNextShare ? '' : 'disabled';
+        plusButtonStyle = canAffordNextShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
     }
 
     // For team packages: add share selector with buy button on same row
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="9999" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="1" max="9999" class="share-adjuster-input" readonly>
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
@@ -12124,10 +12134,17 @@ Do you want to continue?
         const result = await response.json();
         console.log(`✅ Purchase successful:`, result);
 
+        // Save bought shares (add to existing shares)
+        const currentShares = getMyTeamShares(packageId) || 0;
+        const newTotalShares = currentShares + shares;
+        saveMyTeamShares(packageId, newTotalShares);
+        console.log(`💾 Saved team shares for package ${packageId}: ${newTotalShares} shares (was ${currentShares}, added ${shares})`);
+
         // Build success message
         let successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
-        successMessage += `✅ Successfully purchased: ${shares} ${shares === 1 ? 'share' : 'shares'}\n`;
-        successMessage += `💰 Total amount: ${totalAmount} BTC\n`;
+        successMessage += `✅ Purchased: ${shares} ${shares === 1 ? 'share' : 'shares'}\n`;
+        successMessage += `📊 Your total shares: ${newTotalShares}\n`;
+        successMessage += `💰 Amount paid: ${totalAmount} BTC\n`;
         successMessage += `\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}`;
 
         if (!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress)) {
