@@ -10805,17 +10805,27 @@ async function loadBuyPackagesDataOnPage() {
         for (const [packageName, value] of Object.entries(window.packageShareValues)) {
             if (value > 0) {
                 const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
-                const input = document.getElementById(inputId);
+
+                // CRITICAL FIX: Find elements within Buy Packages page containers only (not EasyMining alerts)
+                // Try team container first, then single container
+                let input = teamContainer.querySelector(`#${inputId}`);
+                if (!input) {
+                    input = singleContainer.querySelector(`#${inputId}`);
+                }
+
                 if (input) {
                     input.value = value;
                     console.log(`✅ Restored ${packageName} = ${value}`);
 
                     // Update reward and price displays based on restored value
                     const packageId = packageName.replace(/\s+/g, '-');
-                    const rewardValueElement = document.getElementById(`reward-value-${packageId}`);
-                    const priceElement = document.getElementById(`price-${packageId}`);
-                    const mainRewardElement = document.getElementById(`main-reward-${packageId}`);
-                    const mergeRewardElement = document.getElementById(`merge-reward-${packageId}`);
+
+                    // CRITICAL: Find elements in the same container as the input
+                    const container = input.closest('.buy-package-card');
+                    const rewardValueElement = container ? container.querySelector(`#reward-value-${packageId}`) : null;
+                    const priceElement = container ? container.querySelector(`#price-${packageId}`) : null;
+                    const mainRewardElement = container ? container.querySelector(`#main-reward-${packageId}`) : null;
+                    const mergeRewardElement = container ? container.querySelector(`#merge-reward-${packageId}`) : null;
 
                     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
                         const baseValues = window.packageBaseValues[packageName];
@@ -11374,11 +11384,20 @@ function adjustShares(packageName, delta, buttonElement) {
         console.log(`🔓 Removed readonly attribute temporarily`);
     }
 
+    // Set value using BOTH methods to force visual update
     input.value = newValue;
+    input.setAttribute('value', newValue); // Force attribute update for visual rendering
+
     console.log(`📝 Verifying: input.value is now ${input.value}`);
     console.log(`👀 Visual check: input.value = "${input.value}", displayed value should be ${newValue}`);
 
-    // Restore readonly attribute
+    // Force browser repaint by temporarily hiding/showing
+    const originalDisplay = input.style.display;
+    input.style.display = 'none';
+    input.offsetHeight; // Force reflow
+    input.style.display = originalDisplay;
+
+    // Restore readonly attribute AFTER forcing repaint
     if (wasReadonly) {
         input.setAttribute('readonly', true);
         console.log(`🔒 Restored readonly attribute`);
