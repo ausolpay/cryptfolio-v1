@@ -11094,17 +11094,9 @@ Do you want to continue?
         });
 
         // Create order payload for team mining package
-        // Use shares object - put user's shares in "small" field
+        // IMPORTANT: Empty body purchases 1 share per request
+        // We'll loop to purchase multiple shares
         const orderData = {
-            shares: {
-                small: shares,      // User's share count goes here
-                medium: 0,
-                large: 0,
-                couponSmall: 0,
-                couponMedium: 0,
-                couponLarge: 0,
-                massBuy: 0
-            },
             soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address
         };
 
@@ -11113,93 +11105,154 @@ Do you want to continue?
             orderData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
         }
 
-        console.log('📦 Team order payload:', {
+        console.log('📦 Team package purchase:', {
             endpoint: `/main/api/v2/hashpower/shared/ticket/${packageId}`,
             method: 'POST',
-            shares: orderData.shares,
-            sharesBreakdown: `small=${orderData.shares.small}, medium=${orderData.shares.medium}, large=${orderData.shares.large}`,
+            totalShares: shares,
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
             mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr || '(not set)',
             isDualCrypto: isDualCrypto,
-            packageId: packageId
+            packageId: packageId,
+            note: 'Each POST request purchases 1 share - will loop ' + shares + ' times'
         });
 
         // Log the actual JSON that will be sent
-        console.log('📄 Stringified orderData:', JSON.stringify(orderData, null, 2));
+        console.log('📄 Request body (per share):', JSON.stringify(orderData, null, 2));
 
-        // Call NiceHash API to create team order
+        // Loop to purchase shares (each request buys 1 share)
         // Endpoint: POST /main/api/v2/hashpower/shared/ticket/{id}
         const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
-        const body = JSON.stringify(orderData);
-        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        let response;
+        console.log(`🔄 Starting purchase loop for ${shares} shares...`);
 
-        if (USE_VERCEL_PROXY) {
-            // Use Vercel serverless function as proxy
-            console.log('✅ Using Vercel proxy to create team order');
+        const successfulPurchases = [];
+        const failedPurchases = [];
 
-            const proxyPayload = {
-                endpoint: endpoint,
-                method: 'POST',
-                headers: headers,
-                body: orderData
-            };
+        for (let i = 1; i <= shares; i++) {
+            console.log(`\n📦 Purchasing share ${i} of ${shares}...`);
 
-            console.log('📡 Full proxy payload:', JSON.stringify(proxyPayload, null, 2));
-
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(proxyPayload)
-            });
-        } else {
-            // Direct call to NiceHash
-            console.log('📡 Direct call to NiceHash API');
-            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                method: 'POST',
-                headers: headers,
-                body: body
-            });
-        }
-
-        console.log('📡 Response status:', response.status);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ API Error Response (raw):', errorText);
-            console.error('❌ Response status:', response.status);
-            console.error('❌ Response headers:', Object.fromEntries(response.headers.entries()));
-
-            let errorMessage = `API Error: ${response.status}`;
             try {
-                const errorData = JSON.parse(errorText);
-                console.error('❌ Parsed error data:', errorData);
-                errorMessage = errorData.message || errorData.error_message || errorData.error || errorData.details || errorMessage;
-            } catch (e) {
-                console.error('❌ Could not parse error as JSON:', e.message);
-                errorMessage = errorText || errorMessage;
+                // Generate fresh auth headers for each request
+                const body = JSON.stringify(orderData);
+                const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+                let response;
+
+                if (USE_VERCEL_PROXY) {
+                    // Use Vercel serverless function as proxy
+                    console.log('✅ Using Vercel proxy');
+
+                    const proxyPayload = {
+                        endpoint: endpoint,
+                        method: 'POST',
+                        headers: headers,
+                        body: orderData
+                    };
+
+                    response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(proxyPayload)
+                    });
+                } else {
+                    // Direct call to NiceHash
+                    response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                        method: 'POST',
+                        headers: headers,
+                        body: body
+                    });
+                }
+
+                console.log(`📡 Share ${i} response status:`, response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`❌ Share ${i} failed:`, errorText);
+
+                    let errorMessage = `API Error: ${response.status}`;
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.message || errorData.error_message || errorData.error || errorData.details || errorMessage;
+                    } catch (e) {
+                        errorMessage = errorText || errorMessage;
+                    }
+
+                    failedPurchases.push({ shareNumber: i, error: errorMessage });
+
+                    // Ask user if they want to continue after a failure
+                    if (i < shares) {
+                        const continueWithRest = confirm(`❌ Failed to purchase share ${i} of ${shares}\nError: ${errorMessage}\n\nContinue with remaining ${shares - i} shares?`);
+                        if (!continueWithRest) {
+                            console.log('⚠️ User cancelled remaining purchases');
+                            break;
+                        }
+                    }
+                } else {
+                    const result = await response.json();
+                    console.log(`✅ Share ${i} purchased successfully:`, result);
+                    successfulPurchases.push({ shareNumber: i, orderId: result.id || result.orderId || 'N/A' });
+                }
+
+                // Add delay between requests (except after the last one)
+                if (i < shares) {
+                    console.log('⏳ Waiting 500ms before next purchase...');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+            } catch (error) {
+                console.error(`❌ Error purchasing share ${i}:`, error);
+                failedPurchases.push({ shareNumber: i, error: error.message });
+
+                // Ask user if they want to continue after an error
+                if (i < shares) {
+                    const continueWithRest = confirm(`❌ Error purchasing share ${i} of ${shares}\nError: ${error.message}\n\nContinue with remaining ${shares - i} shares?`);
+                    if (!continueWithRest) {
+                        console.log('⚠️ User cancelled remaining purchases');
+                        break;
+                    }
+                }
             }
-            throw new Error(errorMessage);
         }
 
-        const result = await response.json();
-        console.log('✅ Team order created successfully:', result);
+        // Report final results
+        console.log('\n📊 Purchase Summary:');
+        console.log(`✅ Successful: ${successfulPurchases.length} shares`);
+        console.log(`❌ Failed: ${failedPurchases.length} shares`);
 
-        const successMessage = `✅ Team package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\nShares: ${shares}\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}${!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress) ? '\n\n💡 Tip: Save these addresses in EasyMining Settings → Manage Withdrawal Addresses for faster purchases!' : ''}`;
+        if (successfulPurchases.length === 0) {
+            throw new Error('All share purchases failed. Please check your API credentials and try again.');
+        }
+
+        // Build success message with purchase summary
+        let successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
+        successMessage += `✅ Successfully purchased: ${successfulPurchases.length} ${successfulPurchases.length === 1 ? 'share' : 'shares'}\n`;
+
+        if (failedPurchases.length > 0) {
+            successMessage += `❌ Failed purchases: ${failedPurchases.length}\n`;
+        }
+
+        successMessage += `\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}`;
+
+        if (!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress)) {
+            successMessage += '\n\n💡 Tip: Save these addresses in EasyMining Settings → Manage Withdrawal Addresses for faster purchases!';
+        }
 
         alert(successMessage);
 
-        // Update stats
-        const pricePaid = parseFloat(priceAUD) || 0;
-        easyMiningData.allTimeStats.totalSpent += pricePaid;
-        easyMiningData.todayStats.totalSpent += pricePaid;
+        // Update stats based on successful purchases only
+        const sharesPurchased = successfulPurchases.length;
+        const totalPricePaid = sharesPurchased * sharePrice; // sharePrice is per share in BTC
+        const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+        const totalPriceAUD = totalPricePaid * btcPrice;
+
+        easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
+        easyMiningData.todayStats.totalSpent += totalPriceAUD;
 
         // Calculate P&L
         easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
-        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - pricePaid;
+        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - totalPriceAUD;
 
         localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
