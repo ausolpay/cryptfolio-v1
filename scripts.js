@@ -11391,10 +11391,15 @@ function adjustShares(packageName, delta, buttonElement) {
 
     // Update reward value and price based on shares
     const packageId = packageName.replace(/\s+/g, '-');
-    const rewardValueElement = document.getElementById(`reward-value-${packageId}`);
-    const priceElement = document.getElementById(`price-${packageId}`);
-    const mainRewardElement = document.getElementById(`main-reward-${packageId}`);
-    const mergeRewardElement = document.getElementById(`merge-reward-${packageId}`);
+
+    // CRITICAL: Find elements in the same container to avoid duplicate ID conflicts
+    const container = input.closest('.share-adjuster, .easymining-alert-card, .buy-package-card') || document;
+    const rewardValueElement = container.querySelector(`#reward-value-${packageId}`) || document.getElementById(`reward-value-${packageId}`);
+    const priceElement = container.querySelector(`#price-${packageId}`) || document.getElementById(`price-${packageId}`);
+    const mainRewardElement = container.querySelector(`#main-reward-${packageId}`) || document.getElementById(`main-reward-${packageId}`);
+    const mergeRewardElement = container.querySelector(`#merge-reward-${packageId}`) || document.getElementById(`merge-reward-${packageId}`);
+
+    console.log(`🎨 Found price element in same container:`, !!priceElement, priceElement?.textContent);
 
     if (window.packageBaseValues && window.packageBaseValues[packageName]) {
         const baseValues = window.packageBaseValues[packageName];
@@ -11421,9 +11426,14 @@ function adjustShares(packageName, delta, buttonElement) {
         // Update AUD displays
         if (rewardValueElement) {
             rewardValueElement.textContent = `$${myRewardAUD} AUD`;
+            console.log(`✅ Updated reward value: $${myRewardAUD} AUD`);
         }
         if (priceElement) {
+            const oldPrice = priceElement.textContent;
             priceElement.textContent = `$${newPriceAUD} AUD`;
+            console.log(`✅ Updated price: ${oldPrice} → $${newPriceAUD} AUD`);
+        } else {
+            console.warn(`⚠️ Price element not found for package: ${packageName}`);
         }
 
         // Update crypto reward amounts with CORRECT formula
