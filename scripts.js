@@ -8283,15 +8283,15 @@ async function updateRecommendations() {
 
                 console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`, teamRecommendations);
 
-                // Display each recommended team package using the same card format as solo packages
+                // Display each recommended team package using dedicated team alert card function
                 teamRecommendations.forEach((pkg, index) => {
-                    console.log(`🔍 Creating team card ${index + 1}/${teamRecommendations.length} for:`, pkg.name);
-                    const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
+                    console.log(`🔍 Creating team alert card ${index + 1}/${teamRecommendations.length} for:`, pkg.name);
+                    const card = createTeamPackageRecommendationCard(pkg);
                     if (card) {
                         teamAlertsContainer.appendChild(card);
-                        console.log(`✅ Team card ${index + 1} added to container`);
+                        console.log(`✅ Team alert card ${index + 1} added to container`);
                     } else {
-                        console.error(`❌ Failed to create team card ${index + 1} for:`, pkg.name);
+                        console.error(`❌ Failed to create team alert card ${index + 1} for:`, pkg.name);
                     }
                 });
             }
@@ -8339,9 +8339,13 @@ function createTeamPackageRecommendationCard(pkg) {
     const totalShares = pkg.fullAmount ? Math.round(pkg.fullAmount / sharePrice) : 0;
     const shareCount = (sharesBought > 0 || totalShares > 0) ? ` (${sharesBought}/${totalShares})` : '';
 
+    // Get current share count for this package
+    const currentShares = window.easyMiningAlertShares?.[pkg.name] || 1;
+
     // ✅ FIX: Use convertBTCtoAUD() to get LIVE BTC price (same as Buy Packages page)
-    // This prevents showing incorrect fallback price (140000) until user presses +/-
+    // Calculate total price based on current shares
     const pricePerShareAUD = convertBTCtoAUD(sharePrice);
+    const totalPriceAUD = pricePerShareAUD * currentShares;
 
     const teamInfo = `
         <div class="buy-package-stat">
@@ -8361,15 +8365,15 @@ function createTeamPackageRecommendationCard(pkg) {
     // ✅ FIX: Add balance checking for team alert buttons (same as Buy Packages page)
     const availableBalance = window.niceHashBalance?.available || 0;
 
-    // Calculate initial affordability for Buy button
-    const canAffordFirstShare = availableBalance >= sharePrice;
-    const buyButtonDisabled = canAffordFirstShare ? '' : 'disabled';
-    const buyButtonStyle = canAffordFirstShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    // Calculate initial affordability for Buy button (based on current shares)
+    const canAffordCurrentShares = availableBalance >= (sharePrice * currentShares);
+    const buyButtonDisabled = canAffordCurrentShares ? '' : 'disabled';
+    const buyButtonStyle = canAffordCurrentShares ? '' : 'opacity: 0.5; cursor: not-allowed;';
 
-    // Calculate initial affordability for + button (can afford 2 shares = 1 current + 1 next)
-    const canAffordSecondShare = availableBalance >= (sharePrice * 2);
-    const plusButtonDisabled = canAffordSecondShare ? '' : 'disabled';
-    const plusButtonStyle = canAffordSecondShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    // Calculate initial affordability for + button (can afford current + 1 more)
+    const canAffordNextShare = availableBalance >= (sharePrice * (currentShares + 1));
+    const plusButtonDisabled = canAffordNextShare ? '' : 'disabled';
+    const plusButtonStyle = canAffordNextShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
 
     // Create a unique card ID for share controls
     const cardId = `team-alert-${pkg.id || pkg.name.replace(/\s+/g, '-')}`;
@@ -8401,12 +8405,12 @@ function createTeamPackageRecommendationCard(pkg) {
             </label>
             <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
                 <button onclick="adjustShares('${pkg.name}', -1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer;">-</button>
-                <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="1" min="1" max="${maxShares}"
+                <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${window.easyMiningAlertShares?.[pkg.name] || 1}" min="1" max="${maxShares}"
                     style="width: 80px; text-align: center; padding: 8px; font-size: 16px; border: 1px solid #555; background-color: #2a2a2a; color: white; border-radius: 5px;" readonly>
                 <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" style="width: 40px; height: 40px; font-size: 20px; background-color: #555; border: none; color: white; border-radius: 5px; cursor: pointer; ${plusButtonStyle}" ${plusButtonDisabled}>+</button>
             </div>
             <div style="margin-top: 8px; font-size: 12px; color: #888;">
-                Cost: <span id="price-${pkg.name.replace(/\s+/g, '-')}">$${pricePerShareAUD.toFixed(2)}</span> AUD
+                Cost: <span id="price-${pkg.name.replace(/\s+/g, '-')}">$${totalPriceAUD.toFixed(2)}</span> AUD
             </div>
         </div>
 
@@ -8443,11 +8447,11 @@ function createTeamPackageRecommendationCard(pkg) {
         isDualCrypto: false
     };
 
-    // Initialize share value
-    if (!window.packageShareValues) {
-        window.packageShareValues = {};
+    // Initialize share value for EasyMining alerts separately
+    if (!window.easyMiningAlertShares) {
+        window.easyMiningAlertShares = {};
     }
-    window.packageShareValues[pkg.name] = 1;
+    window.easyMiningAlertShares[pkg.name] = 1;
 
     console.log(`📦 Initialized team alert package base values for ${pkg.name}:`, window.packageBaseValues[pkg.name]);
 
@@ -11463,12 +11467,25 @@ function adjustShares(packageName, delta, buttonElement) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
-    // Immediately save to persistent storage
-    if (!window.packageShareValues) {
-        window.packageShareValues = {};
+    // Immediately save to persistent storage - use separate storage for EasyMining alerts
+    const isEasyMiningContext = input.closest('.easymining-section') !== null ||
+                                input.closest('#easymining-alerts-container') !== null;
+
+    if (isEasyMiningContext) {
+        // Store EasyMining alert shares separately
+        if (!window.easyMiningAlertShares) {
+            window.easyMiningAlertShares = {};
+        }
+        window.easyMiningAlertShares[packageName] = newValue;
+        console.log(`💾 Saved EasyMining alert ${packageName} = ${newValue}`);
+    } else {
+        // Store Buy Packages page shares
+        if (!window.packageShareValues) {
+            window.packageShareValues = {};
+        }
+        window.packageShareValues[packageName] = newValue;
+        console.log(`💾 Saved Buy Package ${packageName} = ${newValue}`);
     }
-    window.packageShareValues[packageName] = newValue;
-    console.log(`💾 Saved ${packageName} = ${newValue}`);
 
     // Pause polling for 10 seconds when adjusting shares
     pauseBuyPackagesPolling();
@@ -11481,11 +11498,16 @@ function adjustShares(packageName, delta, buttonElement) {
     const isBuyPackagePage = container.classList?.contains('buy-package-card');
     const isRecommended = container.classList?.contains('recommended');
 
+    // Check if this is an EasyMining alert (in the easymining-section)
+    const isEasyMiningAlert = container.closest('.easymining-section') !== null ||
+                              container.closest('#easymining-alerts-container') !== null;
+
     console.log(`📦 Package detection for "${packageName}":`, {
         containerFound: !!container,
         containerClass: container?.className,
         isBuyPackagePage: isBuyPackagePage,
-        isRecommended: isRecommended
+        isRecommended: isRecommended,
+        isEasyMiningAlert: isEasyMiningAlert
     });
 
     // Update reward value and price based on shares (works for both highlighted and non-highlighted packages)
