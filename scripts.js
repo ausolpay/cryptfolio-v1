@@ -1115,17 +1115,20 @@ async function loadTeamAlerts() {
         const savedSmallPackageLTCProbability = savedSettings.smallPackageProbability_LTC || '';
 
         if (isDualCrypto) {
-            // For Palladium, find both DOGE and LTC small packages
-            const dogeSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium DOGE S');
-            const ltcSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium LTC S');
+            // For Palladium, find the small package (has both LTC and DOGE probabilities)
+            const palladiumSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium S' || sp.name === 'Palladium DOGE S' || sp.name === 'Palladium LTC S');
 
-            if (dogeSmallPkg && dogeSmallPkg.probability) {
-                const match = dogeSmallPkg.probability.match(/1:(\d+)/);
-                if (match) smallPackageDOGEProb = match[1];
-            }
-            if (ltcSmallPkg && ltcSmallPkg.probability) {
-                const match = ltcSmallPkg.probability.match(/1:(\d+)/);
-                if (match) smallPackageLTCProb = match[1];
+            if (palladiumSmallPkg) {
+                // LTC probability comes from "probability" field
+                if (palladiumSmallPkg.probability) {
+                    const match = palladiumSmallPkg.probability.match(/1:(\d+)/);
+                    if (match) smallPackageLTCProb = match[1];
+                }
+                // DOGE probability comes from "mergeProbability" field
+                if (palladiumSmallPkg.mergeProbability) {
+                    const match = palladiumSmallPkg.mergeProbability.match(/1:(\d+)/);
+                    if (match) smallPackageDOGEProb = match[1];
+                }
             }
         } else {
             // Single crypto package
@@ -1903,62 +1906,56 @@ async function checkTeamRecommendations() {
         const isDualCryptoPackage = pkg.name === 'Team Palladium';
 
         if (isDualCryptoPackage && (alert.smallPackageProbability_DOGE || alert.smallPackageProbability_LTC) && soloPackages && soloPackages.length > 0) {
-            // Dual-crypto: Check both Palladium DOGE S and Palladium LTC S
-            const dogeSmallPackage = soloPackages.find(sp => sp.name === 'Palladium DOGE S');
-            const ltcSmallPackage = soloPackages.find(sp => sp.name === 'Palladium LTC S');
+            // Dual-crypto: Find Palladium S package (has both LTC and DOGE probabilities)
+            const palladiumSmallPackage = soloPackages.find(sp => sp.name === 'Palladium S' || sp.name === 'Palladium DOGE S' || sp.name === 'Palladium LTC S');
 
             let meetsAllSmallPackageThresholds = true;
 
-            // Check DOGE small package if threshold is set
-            if (alert.smallPackageProbability_DOGE) {
-                if (dogeSmallPackage) {
+            if (palladiumSmallPackage) {
+                // Check DOGE small package if threshold is set (from mergeProbability)
+                if (alert.smallPackageProbability_DOGE) {
                     let dogeProb = null;
-                    if (dogeSmallPackage.probability) {
-                        const match = dogeSmallPackage.probability.match(/1:(\d+)/);
+                    if (palladiumSmallPackage.mergeProbability) {
+                        const match = palladiumSmallPackage.mergeProbability.match(/1:(\d+)/);
                         if (match) dogeProb = parseInt(match[1]);
                     }
 
-                    console.log(`📦 ${pkg.name}: Checking DOGE small package probability = 1:${dogeProb}, Threshold = 1:${alert.smallPackageProbability_DOGE}`);
+                    console.log(`📦 ${pkg.name}: Checking DOGE small package probability (mergeProbability) = 1:${dogeProb}, Threshold = 1:${alert.smallPackageProbability_DOGE}`);
 
                     const meetsDOGEThreshold = dogeProb !== null && dogeProb <= alert.smallPackageProbability_DOGE;
 
                     if (meetsDOGEThreshold) {
-                        reasons.push(`📦 Palladium DOGE S 1:${dogeProb} (≤ 1:${alert.smallPackageProbability_DOGE})`);
+                        reasons.push(`📦 DOGE 1:${dogeProb} (≤ 1:${alert.smallPackageProbability_DOGE})`);
                         console.log(`✅ ${pkg.name}: DOGE small package meets threshold`);
                     } else {
                         meetsAllSmallPackageThresholds = false;
                         console.log(`❌ ${pkg.name}: DOGE small package does NOT meet threshold (1:${dogeProb} > 1:${alert.smallPackageProbability_DOGE})`);
                     }
-                } else {
-                    meetsAllSmallPackageThresholds = false;
-                    console.log(`⚠️ ${pkg.name}: DOGE small package threshold set but "Palladium DOGE S" not found`);
                 }
-            }
 
-            // Check LTC small package if threshold is set
-            if (alert.smallPackageProbability_LTC) {
-                if (ltcSmallPackage) {
+                // Check LTC small package if threshold is set (from probability)
+                if (alert.smallPackageProbability_LTC) {
                     let ltcProb = null;
-                    if (ltcSmallPackage.probability) {
-                        const match = ltcSmallPackage.probability.match(/1:(\d+)/);
+                    if (palladiumSmallPackage.probability) {
+                        const match = palladiumSmallPackage.probability.match(/1:(\d+)/);
                         if (match) ltcProb = parseInt(match[1]);
                     }
 
-                    console.log(`📦 ${pkg.name}: Checking LTC small package probability = 1:${ltcProb}, Threshold = 1:${alert.smallPackageProbability_LTC}`);
+                    console.log(`📦 ${pkg.name}: Checking LTC small package probability (probability) = 1:${ltcProb}, Threshold = 1:${alert.smallPackageProbability_LTC}`);
 
                     const meetsLTCThreshold = ltcProb !== null && ltcProb <= alert.smallPackageProbability_LTC;
 
                     if (meetsLTCThreshold) {
-                        reasons.push(`📦 Palladium LTC S 1:${ltcProb} (≤ 1:${alert.smallPackageProbability_LTC})`);
+                        reasons.push(`📦 LTC 1:${ltcProb} (≤ 1:${alert.smallPackageProbability_LTC})`);
                         console.log(`✅ ${pkg.name}: LTC small package meets threshold`);
                     } else {
                         meetsAllSmallPackageThresholds = false;
                         console.log(`❌ ${pkg.name}: LTC small package does NOT meet threshold (1:${ltcProb} > 1:${alert.smallPackageProbability_LTC})`);
                     }
-                } else {
-                    meetsAllSmallPackageThresholds = false;
-                    console.log(`⚠️ ${pkg.name}: LTC small package threshold set but "Palladium LTC S" not found`);
                 }
+            } else {
+                meetsAllSmallPackageThresholds = false;
+                console.log(`⚠️ ${pkg.name}: Small package threshold set but Palladium S package not found`);
             }
 
             // Override shouldRecommend if small package thresholds not met
