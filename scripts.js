@@ -1107,16 +1107,37 @@ async function loadTeamAlerts() {
         const savedMainProb = savedSettings[`probability_${pkg.mainCrypto}`] || '';
         const savedMergeProb = savedSettings[`probability_${pkg.mergeCrypto}`] || '';
 
-        // Find corresponding small package and get its current probability
-        const smallPackageName = pkg.name.replace('Team ', '') + ' S';
-        const smallPackage = soloPackages?.find(sp => sp.name === smallPackageName);
+        // Find corresponding small package(s) and get current probability
         let smallPackageCurrentProb = '';
-        if (smallPackage && smallPackage.probability) {
-            const match = smallPackage.probability.match(/1:(\d+)/);
-            if (match) smallPackageCurrentProb = match[1];
+        let smallPackageDOGEProb = '';
+        let smallPackageLTCProb = '';
+        const savedSmallPackageDOGEProbability = savedSettings.smallPackageProbability_DOGE || '';
+        const savedSmallPackageLTCProbability = savedSettings.smallPackageProbability_LTC || '';
+
+        if (isDualCrypto) {
+            // For Palladium, find both DOGE and LTC small packages
+            const dogeSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium DOGE S');
+            const ltcSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium LTC S');
+
+            if (dogeSmallPkg && dogeSmallPkg.probability) {
+                const match = dogeSmallPkg.probability.match(/1:(\d+)/);
+                if (match) smallPackageDOGEProb = match[1];
+            }
+            if (ltcSmallPkg && ltcSmallPkg.probability) {
+                const match = ltcSmallPkg.probability.match(/1:(\d+)/);
+                if (match) smallPackageLTCProb = match[1];
+            }
+        } else {
+            // Single crypto package
+            const smallPackageName = pkg.name.replace('Team ', '') + ' S';
+            const smallPackage = soloPackages?.find(sp => sp.name === smallPackageName);
+            if (smallPackage && smallPackage.probability) {
+                const match = smallPackage.probability.match(/1:(\d+)/);
+                if (match) smallPackageCurrentProb = match[1];
+            }
         }
 
-        const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb || savedTimeUntilStart || savedSmallPackageProbability;
+        const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb || savedTimeUntilStart || savedSmallPackageProbability || savedSmallPackageDOGEProbability || savedSmallPackageLTCProbability;
 
         // Get auto-buy settings
         const autoBuySettings = savedAutoBuy[pkg.name] || {};
@@ -1180,6 +1201,62 @@ async function loadTeamAlerts() {
             `;
         }
 
+        // Create small package probability inputs (dual for Palladium, single for others)
+        let smallPackageProbabilityInputs = '';
+
+        if (isDualCrypto) {
+            // Show both small package probability inputs for Palladium (DOGE S + LTC S)
+            smallPackageProbabilityInputs = `
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #F7931A; font-weight: bold;">📦 DOGE Small Package Probability (Palladium DOGE S)</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageDOGEProb || 'N/A'}</span>
+                    </div>
+                    <input type="number"
+                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability-DOGE"
+                           value="${savedSmallPackageDOGEProbability}"
+                           placeholder="e.g., 130 (means 1:≤130)"
+                           min="1"
+                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                </div>
+
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #C3A634; font-weight: bold;">📦 LTC Small Package Probability (Palladium LTC S)</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageLTCProb || 'N/A'}</span>
+                    </div>
+                    <input type="number"
+                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability-LTC"
+                           value="${savedSmallPackageLTCProbability}"
+                           placeholder="e.g., 150 (means 1:≤150)"
+                           min="1"
+                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                    <div style="color: #888; font-size: 12px; margin-top: 5px;">
+                        ⚠️ If set, both small packages must meet their probability thresholds AND one of the other thresholds
+                    </div>
+                </div>
+            `;
+        } else {
+            // Single crypto package - single small package probability input
+            smallPackageProbabilityInputs = `
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <label style="color: #aaa; font-size: 14px;">📦 Small Package Probability Threshold (${pkg.name.replace('Team ', '')} S)</label>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageCurrentProb || 'N/A'}</span>
+                    </div>
+                    <input type="number"
+                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability"
+                           value="${savedSmallPackageProbability}"
+                           placeholder="e.g., 130 (means 1:≤130)"
+                           min="1"
+                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                    <div style="color: #888; font-size: 12px; margin-top: 5px;">
+                        ⚠️ If set, corresponding small package must meet this probability AND one of the other thresholds
+                    </div>
+                </div>
+            `;
+        }
+
         alertDiv.innerHTML = `
             <div style="margin-bottom: 12px;">
                 <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
@@ -1227,21 +1304,7 @@ async function loadTeamAlerts() {
                 </div>
             </div>
 
-            <div style="margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                    <label style="color: #aaa; font-size: 14px;">📦 Small Package Probability Threshold (${pkg.name.replace('Team ', '')} S)</label>
-                    <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageCurrentProb || 'N/A'}</span>
-                </div>
-                <input type="number"
-                       id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability"
-                       value="${savedSmallPackageProbability}"
-                       placeholder="e.g., 130 (means 1:≤130)"
-                       min="1"
-                       style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
-                <div style="color: #888; font-size: 12px; margin-top: 5px;">
-                    ⚠️ If set, corresponding small package must meet this probability AND one of the other thresholds
-                </div>
-            </div>
+            ${smallPackageProbabilityInputs}
 
             <!-- Auto-Buy Section -->
             <div style="margin-top: 15px; padding: 15px; background-color: #2a2a2a; border-radius: 8px; border: 1px solid #444;">
@@ -1505,8 +1568,19 @@ function saveTeamAlerts() {
             if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
                 packageData[packageName].timeUntilStart = parseInt(threshold);
             }
+        } else if (id.includes('-smallPackageProbability-')) {
+            // Dual-crypto small package probability (e.g., "Team-Palladium-smallPackageProbability-LTC")
+            const crypto = parts[parts.length - 1]; // LTC or DOGE
+            const packageName = parts.slice(0, -2).join(' '); // Everything before "-smallPackageProbability-CRYPTO"
+
+            if (!packageData[packageName]) packageData[packageName] = {};
+
+            const threshold = input.value.trim();
+            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
+                packageData[packageName][`smallPackageProbability_${crypto}`] = parseInt(threshold);
+            }
         } else if (id.endsWith('-smallPackageProbability')) {
-            // Small package probability threshold
+            // Single crypto small package probability threshold
             const packageName = parts.slice(0, -1).join(' ');
 
             if (!packageData[packageName]) packageData[packageName] = {};
@@ -1825,8 +1899,77 @@ async function checkTeamRecommendations() {
         }
 
         // 5. Check SMALL PACKAGE PROBABILITY threshold (if set, this becomes a required AND condition)
-        if (alert.smallPackageProbability && soloPackages && soloPackages.length > 0) {
-            // Map team package name to small package name (e.g., "Team Gold" → "Gold S")
+        // For dual-crypto packages (Palladium), check BOTH DOGE and LTC small packages
+        const isDualCryptoPackage = pkg.name === 'Team Palladium';
+
+        if (isDualCryptoPackage && (alert.smallPackageProbability_DOGE || alert.smallPackageProbability_LTC) && soloPackages && soloPackages.length > 0) {
+            // Dual-crypto: Check both Palladium DOGE S and Palladium LTC S
+            const dogeSmallPackage = soloPackages.find(sp => sp.name === 'Palladium DOGE S');
+            const ltcSmallPackage = soloPackages.find(sp => sp.name === 'Palladium LTC S');
+
+            let meetsAllSmallPackageThresholds = true;
+
+            // Check DOGE small package if threshold is set
+            if (alert.smallPackageProbability_DOGE) {
+                if (dogeSmallPackage) {
+                    let dogeProb = null;
+                    if (dogeSmallPackage.probability) {
+                        const match = dogeSmallPackage.probability.match(/1:(\d+)/);
+                        if (match) dogeProb = parseInt(match[1]);
+                    }
+
+                    console.log(`📦 ${pkg.name}: Checking DOGE small package probability = 1:${dogeProb}, Threshold = 1:${alert.smallPackageProbability_DOGE}`);
+
+                    const meetsDOGEThreshold = dogeProb !== null && dogeProb <= alert.smallPackageProbability_DOGE;
+
+                    if (meetsDOGEThreshold) {
+                        reasons.push(`📦 Palladium DOGE S 1:${dogeProb} (≤ 1:${alert.smallPackageProbability_DOGE})`);
+                        console.log(`✅ ${pkg.name}: DOGE small package meets threshold`);
+                    } else {
+                        meetsAllSmallPackageThresholds = false;
+                        console.log(`❌ ${pkg.name}: DOGE small package does NOT meet threshold (1:${dogeProb} > 1:${alert.smallPackageProbability_DOGE})`);
+                    }
+                } else {
+                    meetsAllSmallPackageThresholds = false;
+                    console.log(`⚠️ ${pkg.name}: DOGE small package threshold set but "Palladium DOGE S" not found`);
+                }
+            }
+
+            // Check LTC small package if threshold is set
+            if (alert.smallPackageProbability_LTC) {
+                if (ltcSmallPackage) {
+                    let ltcProb = null;
+                    if (ltcSmallPackage.probability) {
+                        const match = ltcSmallPackage.probability.match(/1:(\d+)/);
+                        if (match) ltcProb = parseInt(match[1]);
+                    }
+
+                    console.log(`📦 ${pkg.name}: Checking LTC small package probability = 1:${ltcProb}, Threshold = 1:${alert.smallPackageProbability_LTC}`);
+
+                    const meetsLTCThreshold = ltcProb !== null && ltcProb <= alert.smallPackageProbability_LTC;
+
+                    if (meetsLTCThreshold) {
+                        reasons.push(`📦 Palladium LTC S 1:${ltcProb} (≤ 1:${alert.smallPackageProbability_LTC})`);
+                        console.log(`✅ ${pkg.name}: LTC small package meets threshold`);
+                    } else {
+                        meetsAllSmallPackageThresholds = false;
+                        console.log(`❌ ${pkg.name}: LTC small package does NOT meet threshold (1:${ltcProb} > 1:${alert.smallPackageProbability_LTC})`);
+                    }
+                } else {
+                    meetsAllSmallPackageThresholds = false;
+                    console.log(`⚠️ ${pkg.name}: LTC small package threshold set but "Palladium LTC S" not found`);
+                }
+            }
+
+            // Override shouldRecommend if small package thresholds not met
+            if (!meetsAllSmallPackageThresholds && shouldRecommend) {
+                shouldRecommend = false;
+                console.log(`❌ ${pkg.name}: One or more small package thresholds NOT met`);
+            } else if (meetsAllSmallPackageThresholds && shouldRecommend) {
+                console.log(`✅ ${pkg.name}: All small package thresholds met AND other conditions met`);
+            }
+        } else if (!isDualCryptoPackage && alert.smallPackageProbability && soloPackages && soloPackages.length > 0) {
+            // Single crypto package - check single small package
             const smallPackageName = pkg.name.replace('Team ', '') + ' S';
 
             // Find the corresponding small package
