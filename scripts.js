@@ -11436,11 +11436,28 @@ function adjustShares(packageName, delta, buttonElement) {
     // CRITICAL: Detect if we're on the buy packages page vs EasyMining alerts
     const container = input.closest('.share-adjuster, .easymining-alert-card, .buy-package-card') || document;
     const isBuyPackagePage = container.classList?.contains('buy-package-card');
+    const isRecommendedPackage = container.classList?.contains('recommended');
 
-    if (isBuyPackagePage) {
-        // BUY PACKAGES PAGE: Use the dedicated updateShareCost function
-        console.log(`🛒 Buy packages page detected - calling updateShareCost('${packageName}')`);
-        updateShareCost(packageName);
+    // CRITICAL FIX: Recommended (highlighted/alerted) packages use different element IDs than buy packages modal
+    // - Buy packages modal: uses updateShareCost() which expects team-UUID-shares, team-UUID-cost, etc.
+    // - Recommended packages: use shares-Package-Name, reward-value-Package-Name, price-Package-Name, etc.
+    if (isBuyPackagePage && !isRecommendedPackage) {
+        // BUY PACKAGES MODAL (non-highlighted): Use the dedicated updateShareCost function
+        // CRITICAL FIX: Extract cardId from the actual input element ID
+        // Input ID can be: "shares-Package-Name" (alert format) or "cardId-shares" (buy page format)
+        let cardId;
+        if (input.id.startsWith('shares-')) {
+            // Alert format: "shares-Package-Name" → cardId is "Package-Name"
+            cardId = input.id.replace('shares-', '');
+        } else if (input.id.endsWith('-shares')) {
+            // Buy page format: "team-UUID-shares" → cardId is "team-UUID"
+            cardId = input.id.replace('-shares', '');
+        } else {
+            // Fallback: use normalized package name
+            cardId = normalizedName;
+        }
+        console.log(`🛒 Buy packages modal detected - calling updateShareCost('${cardId}') [input.id: ${input.id}]`);
+        updateShareCost(cardId);
 
         // Check balance and update + button state
         const availableBalance = window.niceHashBalance?.available || 0;
