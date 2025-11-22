@@ -3820,7 +3820,7 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
 
                     // Update candlestick chart with the new live price
                     if (currentCryptoId === coingeckoId) {
-                        updateCandlestickChart(priceInAud); // Also update live price text
+                        updateCandlestickChart(priceInAud, priceInUsd); // Also update live price text
                     }
                 }
             }
@@ -4275,6 +4275,16 @@ function updatePriceInChart(priceInUsd) {
             console.log(`Created new candle at ${now} with price: AUD $${priceInAud}`);
         }
 
+        // ✅ FIX: Remove any bad candles from the chart data before updating y-axis
+        const originalLength = candlestickChart.data.datasets[0].data.length;
+        candlestickChart.data.datasets[0].data = candlestickChart.data.datasets[0].data.filter(candle => {
+            return candle && candle.o > 0 && candle.h > 0 && candle.l > 0 && candle.c > 0 &&
+                   !isNaN(candle.o) && !isNaN(candle.h) && !isNaN(candle.l) && !isNaN(candle.c);
+        });
+        if (candlestickChart.data.datasets[0].data.length !== originalLength) {
+            console.warn(`🧹 Removed ${originalLength - candlestickChart.data.datasets[0].data.length} invalid candles from chart`);
+        }
+
         // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
         const allPrices = candlestickChart.data.datasets[0].data.flatMap(candle => [candle.h, candle.l]).filter(p => p > 0);
         if (allPrices.length > 0) {
@@ -4411,14 +4421,30 @@ function updateCandlestickChart(priceInAud, priceInUsd) {
         console.log(`Created new candle at ${now} with price: AUD $${priceInAud}`);
     }
 
-    // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
-    const allPrices = candlestickChart.data.datasets[0].data.flatMap(candle => [candle.h, candle.l]);
-    const minPrice = Math.min(...allPrices);
-    const maxPrice = Math.max(...allPrices);
-    const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+    // ✅ FIX: Remove any bad candles from the chart data before updating y-axis
+    const originalLength = candlestickChart.data.datasets[0].data.length;
+    candlestickChart.data.datasets[0].data = candlestickChart.data.datasets[0].data.filter(candle => {
+        return candle && candle.o > 0 && candle.h > 0 && candle.l > 0 && candle.c > 0 &&
+               !isNaN(candle.o) && !isNaN(candle.h) && !isNaN(candle.l) && !isNaN(candle.c);
+    });
+    if (candlestickChart.data.datasets[0].data.length !== originalLength) {
+        console.warn(`🧹 Removed ${originalLength - candlestickChart.data.datasets[0].data.length} invalid candles from chart`);
+    }
 
-    candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
-    candlestickChart.options.scales.y.max = maxPrice + padding;
+    // ✅ FIX: Update y-axis scale to ensure bars sit at correct price level
+    // Filter out 0 and invalid values to prevent chart from dropping to 0
+    const allPrices = candlestickChart.data.datasets[0].data
+        .flatMap(candle => [candle.h, candle.l])
+        .filter(p => p && p > 0 && !isNaN(p));
+
+    if (allPrices.length > 0) {
+        const minPrice = Math.min(...allPrices);
+        const maxPrice = Math.max(...allPrices);
+        const padding = (maxPrice - minPrice) * 0.1; // 10% padding
+
+        candlestickChart.options.scales.y.min = Math.max(0, minPrice - padding);
+        candlestickChart.options.scales.y.max = maxPrice + padding;
+    }
 
     // Adjust the chart's x-axis time range to zoom out slightly and leave room on the right
     const paddingTime = 10 * 60 * 1000; // Add 10 minutes of padding to the right
@@ -4821,7 +4847,24 @@ async function openCandlestickModal(cryptoId) {
 
         // Fetch historical data and render the chart
         const historicalData = await fetchHistoricalData(cryptoId);
-        const savedData = JSON.parse(localStorage.getItem(`${cryptoId}_candlestickData`)) || [];
+        const savedDataRaw = JSON.parse(localStorage.getItem(`${cryptoId}_candlestickData`)) || [];
+
+        // ✅ FIX: Filter out any bad data from localStorage (0 values or invalid candles)
+        const savedData = savedDataRaw.filter(d => {
+            const isValid = d && d.o > 0 && d.h > 0 && d.l > 0 && d.c > 0 &&
+                           !isNaN(d.o) && !isNaN(d.h) && !isNaN(d.l) && !isNaN(d.c);
+            if (!isValid) {
+                console.warn(`⚠️ Removing bad data from localStorage:`, d);
+            }
+            return isValid;
+        });
+
+        // Clean up localStorage if bad data was found
+        if (savedData.length !== savedDataRaw.length) {
+            console.log(`🧹 Cleaned ${savedDataRaw.length - savedData.length} invalid candles from localStorage`);
+            localStorage.setItem(`${cryptoId}_candlestickData`, JSON.stringify(savedData));
+        }
+
         const combinedData = [...historicalData, ...savedData];
 
         const chartData = formatCandlestickData(combinedData);
