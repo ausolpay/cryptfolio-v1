@@ -8265,6 +8265,22 @@ async function executeAutoBuyTeam(recommendations) {
 
             // Refresh package data
             await fetchEasyMiningData();
+
+            // Force UI refresh in both Buy Packages page and Team Alerts
+            console.log('🔄 Forcing UI refresh after auto-buy...');
+
+            // 1. Refresh Buy Packages modal if it's currently open
+            const buyPackagesModal = document.getElementById('buy-packages-modal');
+            if (buyPackagesModal && buyPackagesModal.style.display === 'block') {
+                console.log('📦 Refreshing Buy Packages modal...');
+                await loadBuyPackagesData();
+            }
+
+            // 2. Refresh Team Alerts in EasyMining section
+            console.log('📊 Refreshing team alerts in EasyMining section...');
+            await updateRecommendations();
+
+            console.log('✅ UI refresh complete - share counts updated everywhere');
         } catch (error) {
             console.error(`❌ Auto-buy failed for ${pkg.name}:`, error.message, error);
         }
