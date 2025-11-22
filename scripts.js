@@ -7771,7 +7771,9 @@ function displayActivePackages() {
 
         // Robot icon for auto-bought packages
         const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
-        const isAutoBought = autoBoughtPackages[pkg.id];
+        // Use consistent package ID logic (same as when saving)
+        const packageIdForRobot = pkg.apiData?.id || pkg.id;
+        const isAutoBought = autoBoughtPackages[packageIdForRobot];
         let robotHtml = '';
         if (isAutoBought) {
             robotHtml = '<div class="auto-buy-indicator" title="Auto-bought by bot" style="position: absolute; left: 5px; top: 5px; font-size: 20px;">🤖</div>';
@@ -8040,15 +8042,24 @@ async function executeAutoBuySolo(recommendations) {
             }
 
             const result = await response.json();
-            console.log('✅ Solo package auto-purchased successfully:', result);
+            console.log('📦 Solo auto-buy response:', result);
 
+            // Validate response indicates success (check for order ID or success indicators)
+            if (!result || (!result.id && !result.orderId && !result.success)) {
+                throw new Error(`Purchase failed: Invalid response from NiceHash (no order ID returned)`);
+            }
+
+            console.log(`✅ Solo package auto-purchased successfully - Order ID: ${result.id || result.orderId || 'N/A'}`);
+
+            // ✅ ONLY save data after confirming purchase was successful
             // Mark this package as auto-bought
             const packageId = result.id || result.orderId || ticketId;
             const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
             autoBoughtPackages[packageId] = {
                 type: 'solo',
                 timestamp: Date.now(),
-                price: parseFloat(pkg.price) || 0
+                price: parseFloat(pkg.price) || 0,
+                orderId: result.id || result.orderId
             };
             localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
 
@@ -8167,7 +8178,16 @@ async function executeAutoBuyTeam(recommendations) {
             }
 
             const result = await response.json();
+            console.log('📦 Team auto-buy response:', result);
 
+            // Validate response indicates success (check for order ID or success indicators)
+            if (!result || (!result.id && !result.orderId && !result.success)) {
+                throw new Error(`Purchase failed: Invalid response from NiceHash (no order ID returned)`);
+            }
+
+            console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} with ${shares} share(s). Order ID: ${result.id || result.orderId || 'N/A'}`);
+
+            // ✅ ONLY save data after confirming purchase was successful
             // Save bought shares (add to existing)
             const currentShares = getMyTeamShares(packageId) || 0;
             const newTotalShares = currentShares + shares;
@@ -8180,7 +8200,8 @@ async function executeAutoBuyTeam(recommendations) {
                 type: 'team',
                 timestamp: Date.now(),
                 shares: shares,
-                amount: totalAmount
+                amount: totalAmount,
+                orderId: result.id || result.orderId
             };
             localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
 
@@ -8195,7 +8216,7 @@ async function executeAutoBuyTeam(recommendations) {
             easyMiningData.todayStats.totalSpent += totalPriceAUD;
             localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-            console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} with ${shares} share(s). Order ID: ${result.id || result.orderId || 'N/A'}. Next auto-buy available in 1 hour.`);
+            console.log(`⏳ Next auto-buy available in 1 hour`);
 
             // Refresh package data
             await fetchEasyMiningData();
