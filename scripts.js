@@ -12035,15 +12035,33 @@ window.adjustShares = adjustShares;
 async function buyTeamPackage(pkg, packageId) {
     console.log('🛒 Purchasing team package:', pkg.name);
 
-    // Get shares from input field
+    // Get desired total shares from input field
     const inputId = `shares-${pkg.name.replace(/\s+/g, '-')}`;
     const sharesInput = document.getElementById(inputId);
-    const shares = sharesInput ? parseInt(sharesInput.value) || 0 : 0;
+    const desiredTotalShares = sharesInput ? parseInt(sharesInput.value) || 0 : 0;
 
-    if (shares <= 0) {
+    if (desiredTotalShares <= 0) {
         alert('Please select number of shares to purchase (use +/- buttons)');
         return;
     }
+
+    // Calculate how many NEW shares to purchase (not total)
+    const currentShares = getMyTeamShares(packageId) || 0;
+    const sharesToPurchase = desiredTotalShares - currentShares;
+
+    console.log(`📊 Share calculation:`, {
+        currentShares: currentShares,
+        desiredTotal: desiredTotalShares,
+        willPurchase: sharesToPurchase
+    });
+
+    if (sharesToPurchase <= 0) {
+        alert(`You already own ${currentShares} share(s) in this package.\n\nIncrease the number in the input to buy more shares.`);
+        return;
+    }
+
+    // Use sharesToPurchase for the actual purchase
+    const shares = sharesToPurchase;
 
     // Standard share price for team packages
     const sharePrice = 0.0001; // 1 share = 0.0001 BTC
@@ -12236,16 +12254,14 @@ Do you want to continue?
         const result = await response.json();
         console.log(`✅ Purchase successful:`, result);
 
-        // Save bought shares (add to existing shares)
-        const currentShares = getMyTeamShares(packageId) || 0;
-        const newTotalShares = currentShares + shares;
-        saveMyTeamShares(packageId, newTotalShares);
-        console.log(`💾 Saved team shares for package ${packageId}: ${newTotalShares} shares (was ${currentShares}, added ${shares})`);
+        // Save the new total shares (input value = desired total)
+        saveMyTeamShares(packageId, desiredTotalShares);
+        console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${shares})`);
 
         // Build success message
         let successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
         successMessage += `✅ Purchased: ${shares} ${shares === 1 ? 'share' : 'shares'}\n`;
-        successMessage += `📊 Your total shares: ${newTotalShares}\n`;
+        successMessage += `📊 Your total shares: ${desiredTotalShares}\n`;
         successMessage += `💰 Amount paid: ${totalAmount} BTC\n`;
         successMessage += `\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}`;
 
