@@ -10074,6 +10074,8 @@ async function fetchNiceHashTeamPackages() {
                 }
 
                 console.log(`📦 Mapping team package ${ticket.name}:`, {
+                    ticket_id: ticket.id, // ← Correct ID for POST endpoint
+                    package_id: pkg.id, // ← Wrong ID (not used)
                     participants: pkg.numberOfParticipants,
                     fullAmount: pkg.fullAmount,
                     addedAmount: pkg.addedAmount,
@@ -10088,7 +10090,7 @@ async function fetchNiceHashTeamPackages() {
                 });
 
                 return {
-                    id: pkg.id,
+                    id: ticket.id, // Use currencyAlgoTicket.id for the POST endpoint
                     name: ticket.name,
                     crypto: cryptoDisplay,
                     mainCrypto: mainCrypto,
