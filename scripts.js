@@ -1097,12 +1097,13 @@ async function loadTeamAlerts() {
         const savedShares = savedSettings.shares || '';
         const savedParticipants = savedSettings.participants || '';
         const savedTimeUntilStart = savedSettings.timeUntilStart || '';
+        const savedSmallPackageProbability = savedSettings.smallPackageProbability || '';
 
         // For dual-crypto, get separate thresholds
         const savedMainProb = savedSettings[`probability_${pkg.mainCrypto}`] || '';
         const savedMergeProb = savedSettings[`probability_${pkg.mergeCrypto}`] || '';
 
-        const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb || savedTimeUntilStart;
+        const isAnyActive = savedProbability || savedShares || savedParticipants || savedMainProb || savedMergeProb || savedTimeUntilStart || savedSmallPackageProbability;
 
         // Get auto-buy settings
         const autoBuySettings = savedAutoBuy[pkg.name] || {};
@@ -1210,6 +1211,19 @@ async function loadTeamAlerts() {
                        style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                 <div style="color: #888; font-size: 12px; margin-top: 5px;">
                     ⚠️ If set, package must be within this many minutes of start AND meet one of the other thresholds
+                </div>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 5px;">📦 Small Package Probability Threshold (${pkg.name.replace('Team ', '')} S)</label>
+                <input type="number"
+                       id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability"
+                       value="${savedSmallPackageProbability}"
+                       placeholder="e.g., 130 (means 1:≤130)"
+                       min="1"
+                       style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                <div style="color: #888; font-size: 12px; margin-top: 5px;">
+                    ⚠️ If set, corresponding small package must meet this probability AND one of the other thresholds
                 </div>
             </div>
 
@@ -1475,6 +1489,16 @@ function saveTeamAlerts() {
             if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
                 packageData[packageName].timeUntilStart = parseInt(threshold);
             }
+        } else if (id.endsWith('-smallPackageProbability')) {
+            // Small package probability threshold
+            const packageName = parts.slice(0, -1).join(' ');
+
+            if (!packageData[packageName]) packageData[packageName] = {};
+
+            const threshold = input.value.trim();
+            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
+                packageData[packageName].smallPackageProbability = parseInt(threshold);
+            }
         }
     });
 
@@ -1646,6 +1670,10 @@ async function checkTeamRecommendations() {
         return [];
     }
 
+    // Fetch solo/small packages (for checking small package probability thresholds)
+    const soloPackages = await fetchNiceHashSoloPackages();
+    console.log(`📦 Fetched ${soloPackages?.length || 0} solo/small packages for threshold checking`);
+
     const recommendations = [];
 
     // Check each package against alert thresholds
@@ -1777,6 +1805,44 @@ async function checkTeamRecommendations() {
                 console.log(`✅ ${pkg.name}: Meets at least one threshold (no time restriction)`);
             } else {
                 console.log(`❌ ${pkg.name}: Does not meet any threshold`);
+            }
+        }
+
+        // 5. Check SMALL PACKAGE PROBABILITY threshold (if set, this becomes a required AND condition)
+        if (alert.smallPackageProbability && soloPackages && soloPackages.length > 0) {
+            // Map team package name to small package name (e.g., "Team Gold" → "Gold S")
+            const smallPackageName = pkg.name.replace('Team ', '') + ' S';
+
+            // Find the corresponding small package
+            const smallPackage = soloPackages.find(sp => sp.name === smallPackageName);
+
+            if (smallPackage) {
+                // Extract small package probability value
+                let smallPackageProbability = null;
+                if (smallPackage.probability) {
+                    const match = smallPackage.probability.match(/1:(\d+)/);
+                    if (match) smallPackageProbability = parseInt(match[1]);
+                }
+
+                console.log(`📦 ${pkg.name}: Checking small package "${smallPackageName}" probability = 1:${smallPackageProbability}, Threshold = 1:${alert.smallPackageProbability}`);
+
+                const meetsSmallPackageThreshold = smallPackageProbability !== null && smallPackageProbability <= alert.smallPackageProbability;
+
+                if (meetsSmallPackageThreshold && shouldRecommend) {
+                    // Both conditions met: small package meets threshold AND other conditions passed
+                    reasons.push(`📦 ${smallPackageName} 1:${smallPackageProbability} (≤ 1:${alert.smallPackageProbability})`);
+                    console.log(`✅ ${pkg.name}: Small package "${smallPackageName}" meets threshold AND other conditions met`);
+                } else if (!meetsSmallPackageThreshold && shouldRecommend) {
+                    // Small package threshold not met - override shouldRecommend
+                    shouldRecommend = false;
+                    console.log(`❌ ${pkg.name}: Small package "${smallPackageName}" does NOT meet threshold (1:${smallPackageProbability} > 1:${alert.smallPackageProbability})`);
+                } else if (meetsSmallPackageThreshold && !shouldRecommend) {
+                    console.log(`❌ ${pkg.name}: Small package "${smallPackageName}" meets threshold but other conditions NOT met`);
+                } else {
+                    console.log(`❌ ${pkg.name}: Small package "${smallPackageName}" does NOT meet threshold AND other conditions NOT met`);
+                }
+            } else {
+                console.log(`⚠️ ${pkg.name}: Small package threshold set but "${smallPackageName}" not found in solo packages`);
             }
         }
 
