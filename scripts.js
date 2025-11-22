@@ -4913,8 +4913,19 @@ async function openCandlestickModal(cryptoId) {
         const priceInAud = parseFloat(document.getElementById(`${cryptoId}-price-aud`).textContent.replace(/,/g, '').replace('$', '')) || 0;
         const holdingsValueAud = holdings * priceInAud;
         const holdingsElement = document.getElementById('holdings-info');
+
+        // Format holdings and AUD value with commas and 3 decimals
+        const formattedHoldings = holdings.toLocaleString('en-US', {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3
+        });
+        const formattedAudValue = holdingsValueAud.toLocaleString('en-US', {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3
+        });
+
         holdingsElement.innerHTML = `
-            <p><strong>${holdings.toFixed(3)}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${holdingsValueAud.toFixed(2)}</strong> AUD</p>
+            <p><strong>${formattedHoldings}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${formattedAudValue}</strong> AUD</p>
         `;
 
         // Initialize conversion calculator with current price
