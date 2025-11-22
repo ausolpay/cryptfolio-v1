@@ -8239,9 +8239,9 @@ async function updateRecommendations() {
             const hasAlerts = Object.keys(savedAlerts).length > 0;
 
             if (!hasAlerts) {
-                bestPackagesContainer.innerHTML = '<p style="color: #aaa;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure solo alerts</a> to get package recommendations.</p>';
+                bestPackagesContainer.innerHTML = '<p style="color: #aaa; text-align: center;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure solo alerts</a> to get package recommendations.</p>';
             } else {
-                bestPackagesContainer.innerHTML = '<p style="color: #aaa;">No solo packages currently meet your alert thresholds.</p>';
+                bestPackagesContainer.innerHTML = '<p style="color: #aaa; text-align: center;">No solo packages currently meet your alert thresholds.</p>';
             }
         } else {
             // Fetch crypto prices for the recommendations
@@ -8269,9 +8269,9 @@ async function updateRecommendations() {
                 const hasTeamAlerts = Object.keys(savedTeamAlerts).length > 0;
 
                 if (!hasTeamAlerts) {
-                    teamAlertsContainer.innerHTML = '<p style="color: #aaa;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure team alerts</a> to get package recommendations.</p>';
+                    teamAlertsContainer.innerHTML = '<p style="color: #aaa; text-align: center;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure team alerts</a> to get package recommendations.</p>';
                 } else {
-                    teamAlertsContainer.innerHTML = '<p style="color: #aaa;">No team packages currently meet your alert thresholds.</p>';
+                    teamAlertsContainer.innerHTML = '<p style="color: #aaa; text-align: center;">No team packages currently meet your alert thresholds.</p>';
                 }
             } else {
                 // Fetch crypto prices for team recommendations
@@ -10471,6 +10471,17 @@ async function fetchNiceHashTeamPackages() {
         console.log(`✅ Fetched ${packages.length} team packages from API`);
         console.log('📦 Raw team API data (first 2):', packages.slice(0, 2));
 
+        // Get current BTC price in AUD for price conversion
+        let btcPriceAUD = 100000; // Default fallback
+        const btcPriceElement = document.getElementById('bitcoin-price-aud');
+        if (btcPriceElement) {
+            const parsedBtcPrice = parseFloat(btcPriceElement.textContent.replace(/,/g, '').replace('$', ''));
+            if (parsedBtcPrice > 0) {
+                btcPriceAUD = parsedBtcPrice;
+                console.log(`💰 Current BTC price in AUD for team packages: $${btcPriceAUD.toLocaleString()}`);
+            }
+        }
+
         // Transform API data to our package format
         const transformedPackages = packages
             .filter(pkg => pkg.currencyAlgoTicket && pkg.currencyAlgoTicket.available && pkg.currencyAlgoTicket.status === 'A') // Only available packages
@@ -10513,6 +10524,9 @@ async function fetchNiceHashTeamPackages() {
                         : `${Math.round(1/pkg.mergeProbabilityPrecision)}:1`;
                 }
 
+                // Calculate AUD price from BTC price
+                const calculatedPriceAUD = ticket.price * btcPriceAUD;
+
                 console.log(`📦 Mapping team package ${ticket.name}:`, {
                     ticket_id: ticket.id, // ← Correct ID for POST endpoint
                     package_id: pkg.id, // ← Wrong ID (not used)
@@ -10520,6 +10534,7 @@ async function fetchNiceHashTeamPackages() {
                     fullAmount: pkg.fullAmount,
                     addedAmount: pkg.addedAmount,
                     price_from_ticket: ticket.price,
+                    price_in_aud: calculatedPriceAUD.toFixed(2),
                     duration_in_hours: durationHours,
                     mainCurrency: mainCrypto,
                     mainBlockReward: mainBlockReward,
@@ -10539,11 +10554,11 @@ async function fetchNiceHashTeamPackages() {
                     mainProbability: mainProbability,
                     mergeProbability: mergeProbability,
                     priceBTC: ticket.price,
-                    priceAUD: '0.00', // Will be calculated dynamically
+                    priceAUD: calculatedPriceAUD.toFixed(2), // Calculated from BTC price
                     duration: `${durationHours}h`,
                     algorithm: ticket.currencyAlgo.miningAlgorithm,
-                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`,
-                    blockReward: mainBlockReward,
+                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // From projectedSpeed
+                    blockReward: mainBlockReward, // From currencyAlgo.blockReward
                     mergeBlockReward: mergeBlockReward,
                     isDualCrypto: hasMergeCurrency,
                     numberOfParticipants: pkg.numberOfParticipants, // TEAM SPECIFIC
