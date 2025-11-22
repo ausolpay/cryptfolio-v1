@@ -3800,19 +3800,11 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                             <p><strong>${holdings.toFixed(3)}</strong> ${crypto.symbol.toUpperCase()} = <strong id="holdings-value">$${holdingsValueAud.toFixed(2)}</strong> AUD</p>
                         `;
 
-                        // Update the live price and holdings amounts in the chart modal with flash and color change
-                        const livePriceElement = document.getElementById('live-price');
-                        livePriceElement.innerHTML = `
-                            <span style="color: white; font-weight: normal;"></span>
-                            <b id="live-price-amount" style="color: ${isPriceUp ? '#00FF00' : 'red'};">$${priceInAud.toFixed(8)}</b> 
-                            <span style="color: white; font-weight: normal;">AUD</span>
-                            (<b id="live-price-usd" style="color: ${isPriceUp ? '#00FF00' : 'red'};">$${priceInUsd.toFixed(8)}</b> <span style="color: white; font-weight: normal;">USD</span>)
-                        `;
+                        // ✅ FIX: Live price is now updated by syncModalLivePrice() interval only
+                        // This prevents flashing between old and new formats
 
-                        // Flash live price amounts only, not the holdings value in the chart modal
-                        flashColor('live-price-amount', flashClass);
-                        flashColor('live-price-usd', flashClass);
-                        document.getElementById('holdings-value').style.color = isPriceUp ? '#00FF00' : 'red'; // Keep color after the flash for holdings value
+                        // Update holdings value color
+                        document.getElementById('holdings-value').style.color = isPriceUp ? '#00FF00' : 'red';
                     }
 
                     updateTotalHoldings(); // Update total holdings on the main page
@@ -5050,21 +5042,22 @@ async function openCandlestickModal(cryptoId) {
 
 
 
-// New function to fetch and display live price with USD
+// ✅ DEPRECATED: Live price is now updated by syncModalLivePrice() interval only
+// This function is no longer used but kept for reference
 async function fetchLivePrice(symbol) {
-    const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=aud,usd`; // Fetch both AUD and USD prices
-    
+    const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=aud,usd`;
+
     try {
         const response = await fetch(apiUrl);
         const data = await response.json();
-        
+
         // Retrieve both live prices for AUD and USD
-        const audPrice = data[symbol].aud;  
+        const audPrice = data[symbol].aud;
         const usdPrice = data[symbol].usd;
 
-        // Update the modal with the live price in AUD and the USD equivalent in brackets
-        document.getElementById('live-price').textContent = `$${audPrice.toFixed(2)} (USD: $${usdPrice.toFixed(2)})`;
-        
+        // ✅ FIX: Removed live price update - now handled by syncModalLivePrice() interval
+        // This prevents format inconsistencies and flashing
+
     } catch (error) {
         console.error('Error fetching live price:', error);
     }
