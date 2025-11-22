@@ -8416,12 +8416,28 @@ function createTeamPackageRecommendationCard(pkg) {
 
 // ✅ NEW: Helper function for adjusting shares in team alert cards
 function adjustShares(cardId, delta) {
-    const input = document.getElementById(`${cardId}-shares`);
+    // Sanitize the package name for use in element IDs (replace spaces with hyphens)
+    const sanitizedId = cardId.replace(/\s+/g, '-');
+    const input = document.getElementById(`shares-${sanitizedId}`);
     if (!input) return;
 
     const currentValue = parseInt(input.value) || 1;
     const newValue = Math.max(1, Math.min(currentValue + delta, parseInt(input.max) || 1000));
     input.value = newValue;
+
+    // Update price display for team packages
+    const priceElement = document.getElementById(`price-${sanitizedId}`);
+    if (priceElement) {
+        // Calculate new price: shares × 0.0001 BTC × live BTC price AUD
+        const sharePrice = 0.0001; // Each share costs 0.0001 BTC
+        const totalBTC = newValue * sharePrice;
+        const priceAUD = convertBTCtoAUD(totalBTC);
+
+        console.log(`💰 Updated price for ${cardId}: ${newValue} shares × ${sharePrice} BTC = ${totalBTC} BTC = $${priceAUD.toFixed(2)} AUD`);
+
+        // Update the price display
+        priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
+    }
 
     // Trigger input event to update cost display
     input.dispatchEvent(new Event('input'));
