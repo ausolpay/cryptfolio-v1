@@ -2403,12 +2403,21 @@ body.light-mode .easymining-settings-form input[type="password"] {
         scroll-snap-type: x mandatory; /* Snap to cards when scrolling */
         scroll-behavior: smooth;
         gap: 15px;
-        padding: 20px;
+        padding: 20px 0 20px 20px; /* Left padding only, right gap added via ::after */
         margin: 0;
         width: 100%;
         max-width: 100%;
         cursor: grab; /* Show grab cursor for drag scrolling */
         -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        box-sizing: border-box; /* Include padding in width calculation */
+    }
+
+    /* Add space after last card to match left gap */
+    .buy-packages-container-page::after {
+        content: '';
+        display: block;
+        min-width: 20px; /* Match left padding */
+        height: 1px;
     }
 
     .buy-packages-container-page:active {
