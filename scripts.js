@@ -7225,6 +7225,8 @@ async function fetchNiceHashOrders() {
 
             // Track rewards by coin type for dual mining packages
             const rewardsByCoin = {};
+            // ✅ FIX: Track block counts PER COIN for Palladium dual-mining packages
+            const blockCountByCoin = {}; // Separate block counts for each coin (DOGE, LTC, etc.)
 
             soloRewards.forEach((reward, idx) => {
                 const btcReward = parseFloat(reward.payoutRewardBtc || 0);
@@ -7250,11 +7252,18 @@ async function fetchNiceHashOrders() {
                     }
                     rewardsByCoin[rewardCoin] += cryptoRewardAmount;
 
+                    // ✅ FIX: Track block counts separately for each coin
+                    if (!blockCountByCoin[rewardCoin]) {
+                        blockCountByCoin[rewardCoin] = { confirmed: 0, pending: 0 };
+                    }
+
                     if (isConfirmed) {
                         confirmedBlockCount++;
+                        blockCountByCoin[rewardCoin].confirmed++;
                         console.log(`   ✅ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${rewardCoin} (Confirmed)${reward.shared ? ' [SHARED]' : ''}`);
                     } else {
                         pendingBlockCount++;
+                        blockCountByCoin[rewardCoin].pending++;
                         console.log(`   ⏳ Block #${idx + 1}: ${btcReward.toFixed(8)} BTC, ${cryptoRewardAmount} ${rewardCoin} (Pending ${reward.confirmations || 0}/${reward.minConfirmations || 0})${reward.shared ? ' [SHARED]' : ''}`);
                     }
                 }
@@ -7282,6 +7291,7 @@ async function fetchNiceHashOrders() {
             console.log(`      Secondary coin (${order.soloMiningMergeCoin}): ${hasSecondaryReward ? '✅ WON' : '❌ NOT WON'}`);
             console.log(`      isDualMining: ${isDualMining}`);
             console.log(`   💎 Rewards by coin:`, rewardsByCoin);
+            console.log(`   📊 Block counts by coin:`, blockCountByCoin); // ✅ FIX: Show individual block counts
             console.log(`   💎 Primary (${order.soloMiningCoin}): ${totalPackageCryptoReward}`);
             console.log(`   💎 Secondary (${order.soloMiningMergeCoin}): ${totalPackageSecondaryCryptoReward}`);
 
@@ -7301,10 +7311,12 @@ async function fetchNiceHashOrders() {
                 cryptoReward = totalPackageCryptoReward;
                 console.log(`   💎 Using payoutReward: ${cryptoReward} ${order.soloMiningCoin}`);
             } else {
-                // Fallback to standard block reward
+                // ✅ FIX: Fallback to standard block reward using INDIVIDUAL coin's block count
                 const blockReward = getBlockReward(order.soloMiningCoin);
-                cryptoReward = totalBlocks > 0 ? blockReward * totalBlocks : 0;
-                console.log(`   💎 Using standard block reward: ${cryptoReward} ${order.soloMiningCoin}`);
+                const primaryCoinBlocks = blockCountByCoin[order.soloMiningCoin];
+                const primaryBlockCount = primaryCoinBlocks ? (primaryCoinBlocks.confirmed + primaryCoinBlocks.pending) : 0;
+                cryptoReward = primaryBlockCount > 0 ? blockReward * primaryBlockCount : 0;
+                console.log(`   💎 Using standard block reward: ${blockReward} × ${primaryBlockCount} blocks = ${cryptoReward} ${order.soloMiningCoin}`);
             }
 
             // For team packages, calculate user's share of costs and rewards
