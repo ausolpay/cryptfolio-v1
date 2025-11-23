@@ -1773,7 +1773,7 @@ async function fetchNiceHashDepositAddress(amount, endpointConfig) {
 }
 
 /**
- * Generate QR code from address
+ * Generate QR code from address (via Vercel proxy to avoid CORS)
  */
 async function generateQrCode(lightningAddress) {
     console.log('📱 Generating QR code...');
@@ -1783,7 +1783,6 @@ async function generateQrCode(lightningAddress) {
 
     // Get current token
     const token = QR_CODE_TOKENS[currentQrTokenIndex];
-    const url = `https://api.qr-code-generator.com/v1/create?access-token=${token}`;
 
     const requestBody = {
         frame_name: 'no-frame',
@@ -1792,18 +1791,27 @@ async function generateQrCode(lightningAddress) {
         qr_code_logo: 'scan-me-square'
     };
 
-    console.log('📤 QR code POST request to:', url);
+    console.log('📤 QR code POST request (via Vercel proxy)');
     console.log('📤 QR code text:', addressOnly.substring(0, 50) + '...');
+    console.log('📤 Using token index:', currentQrTokenIndex);
 
     try {
-        // Call QR code API directly
-        const response = await fetch(url, {
+        // Use Vercel proxy to avoid CORS
+        // Send full URL as endpoint since QR API is external (not NiceHash)
+        const fullUrl = `https://api.qr-code-generator.com/v1/create?access-token=${token}`;
+
+        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: fullUrl,  // Full URL for external API
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: requestBody
+            })
         });
+
+        console.log('📥 QR code proxy response status:', response.status);
 
         if (!response.ok) {
             // Try fallback token
@@ -1813,16 +1821,17 @@ async function generateQrCode(lightningAddress) {
                 return await generateQrCode(lightningAddress); // Retry with next token
             }
             const errorText = await response.text();
-            console.error('❌ QR code API error:', errorText);
+            console.error('❌ QR code API error response:', errorText);
             throw new Error(`QR code API error: ${response.status} ${response.statusText}`);
         }
 
         const svgText = await response.text();
-        console.log('✅ QR code generated successfully');
+        console.log('✅ QR code generated successfully, SVG length:', svgText.length);
         return svgText;
 
     } catch (error) {
-        console.error('❌ Error generating QR code:', error);
+        console.error('❌ Error generating QR code:', error.message);
+        console.error('❌ Full error:', error);
         return null; // Return null if QR code generation fails (non-critical)
     }
 }
