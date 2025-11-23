@@ -1917,6 +1917,15 @@ body.light-mode .package-card.block-confirmed {
     border-bottom: 2px solid #555;
 }
 
+/* Buy packages page tabs - match width of sections below */
+#buy-packages-page .buy-packages-tabs {
+    width: 1038px; /* Match balance section and packages container on desktop */
+    max-width: 1038px;
+    margin: 0 auto 20px auto; /* Center and add bottom margin */
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
 .tab-button {
     padding: 10px 20px;
     background-color: transparent;
@@ -2366,6 +2375,11 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 /* Narrow Tablet - 2 columns with smaller boxes */
 @media (max-width: 1040px) {
+    #buy-packages-page .buy-packages-tabs {
+        width: 640px; /* Match balance section and packages container on tablet */
+        max-width: 640px;
+    }
+
     #buy-packages-balance-section {
         width: 640px; /* Match 2 cards (300px * 2) + gap (15px) + padding (20px * 2) */
         max-width: 640px;
@@ -2384,6 +2398,12 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 /* Mobile - 1 column with scaled down boxes */
 @media (max-width: 700px) {
+    #buy-packages-page .buy-packages-tabs {
+        width: 300px; /* Match balance section and packages container on mobile */
+        max-width: 300px;
+        padding: 0 10px;
+    }
+
     #buy-packages-balance-section {
         width: 300px; /* Match 1 card (280px) + padding (10px * 2) */
         max-width: 300px;
