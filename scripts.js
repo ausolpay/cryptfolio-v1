@@ -5749,6 +5749,7 @@ function showEasyMiningSettingsModal() {
     document.getElementById('auto-update-holdings-toggle').checked = savedSettings.autoUpdateHoldings || false;
     document.getElementById('include-available-btc-toggle').checked = savedSettings.includeAvailableBTC || false;
     document.getElementById('include-pending-btc-toggle').checked = savedSettings.includePendingBTC || false;
+    document.getElementById('auto-buy-cooldown-toggle').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
 
     // Show modal
     console.log('Setting modal display to block...');
@@ -5787,6 +5788,7 @@ function activateEasyMining() {
     easyMiningSettings.autoUpdateHoldings = document.getElementById('auto-update-holdings-toggle').checked;
     easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle').checked;
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle').checked;
+    easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle').checked;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -8352,6 +8354,10 @@ async function executeAutoBuySolo(recommendations) {
 
     const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
+    // Check if smart cooldowns are enabled (default: true)
+    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const smartCooldownsEnabled = easyMiningSettings.autoBuyCooldown !== undefined ? easyMiningSettings.autoBuyCooldown : true;
+
     for (const pkg of recommendations) {
         const autoBuy = autoBuySettings[pkg.name];
 
@@ -8359,10 +8365,16 @@ async function executeAutoBuySolo(recommendations) {
             continue; // Auto-buy not enabled for this package
         }
 
-        // ✅ FIX: Use package duration as cooldown (per-package cooldown based on package duration)
-        // packageDuration is in seconds, convert to milliseconds
-        const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
-        const cooldownMs = packageDurationMs;
+        // ✅ Smart Cooldown Toggle Logic
+        let cooldownMs;
+        if (smartCooldownsEnabled) {
+            // When smart cooldowns are ON: Use package duration as cooldown
+            const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
+            cooldownMs = packageDurationMs;
+        } else {
+            // When smart cooldowns are OFF: Use 10-minute cooldown
+            cooldownMs = 10 * 60 * 1000; // 10 minutes
+        }
 
         // Check cooldown
         if (autoBuy.lastBuyTime) {
@@ -8370,7 +8382,8 @@ async function executeAutoBuySolo(recommendations) {
             if (timeSinceLastBuy < cooldownMs) {
                 const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
                 const cooldownHours = (cooldownMs / 3600000).toFixed(1);
-                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr cooldown)`);
+                const cooldownType = smartCooldownsEnabled ? 'package duration' : '10min default';
+                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr ${cooldownType} cooldown)`);
                 continue;
             }
         }
@@ -8458,7 +8471,8 @@ async function executeAutoBuySolo(recommendations) {
             console.log(`   Crypto: ${pkg.crypto}`);
             console.log(`   Price: ${pkg.price} BTC`);
             const cooldownHours = (cooldownMs / 3600000).toFixed(1);
-            console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (package duration cooldown)`);
+            const cooldownType = smartCooldownsEnabled ? 'package duration' : '10min default';
+            console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (${cooldownType} cooldown)`);
 
             // ✅ Update stats (same as manual buy)
             const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
@@ -8481,6 +8495,10 @@ async function executeAutoBuyTeam(recommendations) {
 
     const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
 
+    // Check if smart cooldowns are enabled (default: true)
+    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const smartCooldownsEnabled = easyMiningSettings.autoBuyCooldown !== undefined ? easyMiningSettings.autoBuyCooldown : true;
+
     for (const pkg of recommendations) {
         const autoBuy = autoBuySettings[pkg.name];
 
@@ -8488,44 +8506,59 @@ async function executeAutoBuyTeam(recommendations) {
             continue; // Auto-buy not enabled for this package
         }
 
-        // ✅ FIX: Team package cooldown = packageDuration + startingCountdown (or +1hr if no starting countdown)
-        // packageDuration is in seconds, convert to milliseconds
-        const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
+        // Get package ID for tracking
+        const packageId = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
 
-        // Calculate time until package starts (starting countdown)
-        let startingCountdownMs = 0;
-        if (pkg.lifeTimeTill) {
-            const startTime = new Date(pkg.lifeTimeTill);
-            const now = new Date();
-            const timeUntilStart = startTime - now;
+        // ✅ Smart Cooldown Toggle Logic
+        if (!smartCooldownsEnabled) {
+            // When smart cooldowns are OFF: Track by package ID (one buy per package ID)
+            const boughtPackageIds = JSON.parse(localStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
 
-            if (timeUntilStart > 0) {
-                // Package hasn't started yet - use actual countdown time
-                startingCountdownMs = timeUntilStart;
-                console.log(`📅 ${pkg.name}: Starting in ${Math.ceil(timeUntilStart / 60000)} minutes`);
-            } else {
-                // Package already started or no countdown - use 1hr fallback
-                startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
-                console.log(`📅 ${pkg.name}: Already started or no countdown, using 1hr fallback`);
+            if (boughtPackageIds[packageId]) {
+                console.log(`⏸️ ${pkg.name}: Already bought this package ID (${packageId}), skipping (smart cooldowns OFF)`);
+                continue;
             }
         } else {
-            // No lifeTimeTill field - use 1hr fallback
-            startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
-            console.log(`📅 ${pkg.name}: No starting countdown available, using 1hr fallback`);
-        }
+            // When smart cooldowns are ON: Use duration + starting countdown logic
+            // ✅ FIX: Team package cooldown = packageDuration + startingCountdown (or +1hr if no starting countdown)
+            // packageDuration is in seconds, convert to milliseconds
+            const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
 
-        // Total cooldown = package duration + starting countdown (or fallback)
-        const cooldownMs = packageDurationMs + startingCountdownMs;
+            // Calculate time until package starts (starting countdown)
+            let startingCountdownMs = 0;
+            if (pkg.lifeTimeTill) {
+                const startTime = new Date(pkg.lifeTimeTill);
+                const now = new Date();
+                const timeUntilStart = startTime - now;
 
-        // Check cooldown
-        if (autoBuy.lastBuyTime) {
-            const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
-            if (timeSinceLastBuy < cooldownMs) {
-                const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
-                const cooldownHours = (cooldownMs / 3600000).toFixed(1);
-                const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
-                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr total cooldown = duration + ${startingCountdownHours}hr starting countdown)`);
-                continue;
+                if (timeUntilStart > 0) {
+                    // Package hasn't started yet - use actual countdown time
+                    startingCountdownMs = timeUntilStart;
+                    console.log(`📅 ${pkg.name}: Starting in ${Math.ceil(timeUntilStart / 60000)} minutes`);
+                } else {
+                    // Package already started or no countdown - use 1hr fallback
+                    startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
+                    console.log(`📅 ${pkg.name}: Already started or no countdown, using 1hr fallback`);
+                }
+            } else {
+                // No lifeTimeTill field - use 1hr fallback
+                startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
+                console.log(`📅 ${pkg.name}: No starting countdown available, using 1hr fallback`);
+            }
+
+            // Total cooldown = package duration + starting countdown (or fallback)
+            const cooldownMs = packageDurationMs + startingCountdownMs;
+
+            // Check cooldown
+            if (autoBuy.lastBuyTime) {
+                const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
+                if (timeSinceLastBuy < cooldownMs) {
+                    const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
+                    const cooldownHours = (cooldownMs / 3600000).toFixed(1);
+                    const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
+                    console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr total cooldown = duration + ${startingCountdownHours}hr starting countdown)`);
+                    continue;
+                }
             }
         }
 
@@ -8680,6 +8713,18 @@ async function executeAutoBuyTeam(recommendations) {
             autoBuy.lastBuyTime = Date.now();
             localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
 
+            // ✅ If smart cooldowns are OFF, mark this package ID as bought
+            if (!smartCooldownsEnabled) {
+                const boughtPackageIds = JSON.parse(localStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
+                boughtPackageIds[packageId] = {
+                    name: pkg.name,
+                    timestamp: Date.now(),
+                    shares: shares
+                };
+                localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
+                console.log(`   ✅ Marked package ID ${packageId} as bought (smart cooldowns OFF - one buy per package ID)`);
+            }
+
             // Update stats
             const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
             const totalPriceAUD = totalAmount * btcPrice;
@@ -8687,10 +8732,13 @@ async function executeAutoBuyTeam(recommendations) {
             easyMiningData.todayStats.totalSpent += totalPriceAUD;
             localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-            const cooldownHours = (cooldownMs / 3600000).toFixed(1);
-            const durationHours = (packageDurationMs / 3600000).toFixed(1);
-            const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
-            console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (${durationHours}hr duration + ${startingCountdownHours}hr starting countdown)`);
+            // Show cooldown message (only when smart cooldowns are ON)
+            if (smartCooldownsEnabled) {
+                const cooldownHours = (cooldownMs / 3600000).toFixed(1);
+                const durationHours = (packageDurationMs / 3600000).toFixed(1);
+                const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
+                console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (${durationHours}hr duration + ${startingCountdownHours}hr starting countdown)`);
+            }
 
             // Refresh package data
             await fetchEasyMiningData();
