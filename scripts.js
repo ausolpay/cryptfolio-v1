@@ -487,6 +487,8 @@ function showAppPage() {
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('travel-data-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
 
     // Start EasyMining alerts polling if enabled
     if (easyMiningSettings && easyMiningSettings.enabled) {
@@ -1478,7 +1480,7 @@ function loadDepositTravelDataDropdown() {
 }
 
 /**
- * Convert BTC amount to AUD (using current BTC price)
+ * Convert BTC amount to AUD (using current BTC price from DOM)
  */
 function convertBtcToAud() {
     const btcInput = document.getElementById('deposit-amount-btc');
@@ -1486,9 +1488,11 @@ function convertBtcToAud() {
 
     const btcAmount = parseFloat(btcInput.value) || 0;
 
-    // Get current BTC price in AUD from users array (same as rest of app)
-    const bitcoinCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === 'bitcoin');
-    const btcPriceAud = bitcoinCrypto?.priceAud || 0;
+    // Get current BTC price in AUD from DOM element (same as fetchPrices function)
+    const priceElement = document.getElementById('bitcoin-price-aud');
+    const btcPriceAud = priceElement
+        ? parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0
+        : 0;
 
     if (btcPriceAud > 0) {
         const audAmount = btcAmount * btcPriceAud;
@@ -1500,7 +1504,7 @@ function convertBtcToAud() {
 }
 
 /**
- * Convert AUD amount to BTC (using current BTC price)
+ * Convert AUD amount to BTC (using current BTC price from DOM)
  */
 function convertAudToBtc() {
     const btcInput = document.getElementById('deposit-amount-btc');
@@ -1508,9 +1512,11 @@ function convertAudToBtc() {
 
     const audAmount = parseFloat(audInput.value) || 0;
 
-    // Get current BTC price in AUD from users array (same as rest of app)
-    const bitcoinCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === 'bitcoin');
-    const btcPriceAud = bitcoinCrypto?.priceAud || 0;
+    // Get current BTC price in AUD from DOM element (same as fetchPrices function)
+    const priceElement = document.getElementById('bitcoin-price-aud');
+    const btcPriceAud = priceElement
+        ? parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0
+        : 0;
 
     if (btcPriceAud > 0) {
         const btcAmount = audAmount / btcPriceAud;
