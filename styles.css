@@ -1812,6 +1812,26 @@ body.light-mode .package-card.block-confirmed {
     }
 }
 
+/* ===== TABLET STYLES (768px - 1024px) ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    /* Recommendations container for alerts - 2 cards per row on tablet */
+    .recommendations-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        justify-content: center;
+        max-width: 750px;
+        margin: 0 auto;
+    }
+
+    /* Ensure cards fit nicely in 2-column layout */
+    .recommendations-container .buy-package-card {
+        width: 100%;
+        max-width: 350px;
+        margin: 0 auto;
+    }
+}
+
 .block-animation-section {
     margin-top: 30px;
     padding: 20px;
