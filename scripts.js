@@ -8168,8 +8168,8 @@ function displayActivePackages() {
 
         // Robot icon for auto-bought packages (flashing, same style as rocket)
         const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
-        // Use consistent package ID logic (same as when saving)
-        const packageIdForRobot = pkg.apiData?.id || pkg.id;
+        // ✅ Use consistent package ID logic (MUST match auto-buy save logic exactly)
+        const packageIdForRobot = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
         const isAutoBought = autoBoughtPackages[packageIdForRobot];
         let robotHtml = '';
         if (isAutoBought && pkg.active) {
