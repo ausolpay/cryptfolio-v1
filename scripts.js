@@ -8488,10 +8488,34 @@ async function executeAutoBuyTeam(recommendations) {
             continue; // Auto-buy not enabled for this package
         }
 
-        // ✅ FIX: Use package duration as cooldown (per-package cooldown based on package duration)
+        // ✅ FIX: Team package cooldown = packageDuration + startingCountdown (or +1hr if no starting countdown)
         // packageDuration is in seconds, convert to milliseconds
         const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
-        const cooldownMs = packageDurationMs;
+
+        // Calculate time until package starts (starting countdown)
+        let startingCountdownMs = 0;
+        if (pkg.lifeTimeTill) {
+            const startTime = new Date(pkg.lifeTimeTill);
+            const now = new Date();
+            const timeUntilStart = startTime - now;
+
+            if (timeUntilStart > 0) {
+                // Package hasn't started yet - use actual countdown time
+                startingCountdownMs = timeUntilStart;
+                console.log(`📅 ${pkg.name}: Starting in ${Math.ceil(timeUntilStart / 60000)} minutes`);
+            } else {
+                // Package already started or no countdown - use 1hr fallback
+                startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
+                console.log(`📅 ${pkg.name}: Already started or no countdown, using 1hr fallback`);
+            }
+        } else {
+            // No lifeTimeTill field - use 1hr fallback
+            startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
+            console.log(`📅 ${pkg.name}: No starting countdown available, using 1hr fallback`);
+        }
+
+        // Total cooldown = package duration + starting countdown (or fallback)
+        const cooldownMs = packageDurationMs + startingCountdownMs;
 
         // Check cooldown
         if (autoBuy.lastBuyTime) {
@@ -8499,7 +8523,8 @@ async function executeAutoBuyTeam(recommendations) {
             if (timeSinceLastBuy < cooldownMs) {
                 const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
                 const cooldownHours = (cooldownMs / 3600000).toFixed(1);
-                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr cooldown)`);
+                const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
+                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr total cooldown = duration + ${startingCountdownHours}hr starting countdown)`);
                 continue;
             }
         }
@@ -8663,7 +8688,9 @@ async function executeAutoBuyTeam(recommendations) {
             localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
             const cooldownHours = (cooldownMs / 3600000).toFixed(1);
-            console.log(`⏳ Next auto-buy available in ${cooldownHours} hours (package duration cooldown)`);
+            const durationHours = (packageDurationMs / 3600000).toFixed(1);
+            const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
+            console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (${durationHours}hr duration + ${startingCountdownHours}hr starting countdown)`);
 
             // Refresh package data
             await fetchEasyMiningData();
