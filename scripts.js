@@ -1486,14 +1486,16 @@ function convertBtcToAud() {
 
     const btcAmount = parseFloat(btcInput.value) || 0;
 
-    // Get current BTC price in AUD
-    const btcPriceAud = window.cryptoPrices?.bitcoin?.aud || 0;
+    // Get current BTC price in AUD from users array (same as rest of app)
+    const bitcoinCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === 'bitcoin');
+    const btcPriceAud = bitcoinCrypto?.priceAud || 0;
 
     if (btcPriceAud > 0) {
         const audAmount = btcAmount * btcPriceAud;
         audInput.value = audAmount.toFixed(2);
+        console.log(`💱 Converted ${btcAmount} BTC to $${audAmount.toFixed(2)} AUD (price: $${btcPriceAud})`);
     } else {
-        console.warn('⚠️ BTC price not available for conversion');
+        console.warn('⚠️ BTC price not available for conversion. Add Bitcoin to your portfolio first.');
     }
 }
 
@@ -1506,14 +1508,16 @@ function convertAudToBtc() {
 
     const audAmount = parseFloat(audInput.value) || 0;
 
-    // Get current BTC price in AUD
-    const btcPriceAud = window.cryptoPrices?.bitcoin?.aud || 0;
+    // Get current BTC price in AUD from users array (same as rest of app)
+    const bitcoinCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === 'bitcoin');
+    const btcPriceAud = bitcoinCrypto?.priceAud || 0;
 
     if (btcPriceAud > 0) {
         const btcAmount = audAmount / btcPriceAud;
         btcInput.value = btcAmount.toFixed(8);
+        console.log(`💱 Converted $${audAmount} AUD to ${btcAmount.toFixed(8)} BTC (price: $${btcPriceAud})`);
     } else {
-        console.warn('⚠️ BTC price not available for conversion');
+        console.warn('⚠️ BTC price not available for conversion. Add Bitcoin to your portfolio first.');
     }
 }
 
@@ -1594,7 +1598,7 @@ async function generateLightningAddress() {
 }
 
 /**
- * Fetch deposit address from NiceHash API
+ * Fetch deposit address from NiceHash API (via Vercel proxy to avoid CORS)
  */
 async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret, orgId) {
     console.log('📡 Fetching deposit address from NiceHash API...');
@@ -1605,7 +1609,6 @@ async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret
         amount: amount.toString(),
         isVasp: 'true'
     });
-    const url = `https://api2.nicehash.com${endpoint}?${params}`;
 
     // Build request body
     const requestBody = {
@@ -1635,14 +1638,21 @@ async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret
         'Content-Type': 'application/json'
     };
 
-    console.log('📤 POST request to:', url);
+    console.log('📤 POST request to NiceHash (via Vercel proxy)');
+    console.log('📤 Endpoint:', endpoint + '?' + params.toString());
     console.log('📤 Request body:', requestBody);
 
     try {
-        const response = await fetch(url, {
+        // Use Vercel proxy to avoid CORS issues
+        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
-            headers: headers,
-            body: bodyString
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint: endpoint + '?' + params.toString(),
+                method: 'POST',
+                headers: headers,
+                body: requestBody
+            })
         });
 
         if (!response.ok) {
@@ -1665,7 +1675,7 @@ async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret
 }
 
 /**
- * Generate QR code from address
+ * Generate QR code from address (via Vercel proxy to avoid CORS)
  */
 async function generateQrCode(lightningAddress) {
     console.log('📱 Generating QR code...');
@@ -1675,7 +1685,7 @@ async function generateQrCode(lightningAddress) {
 
     // Get current token
     const token = QR_CODE_TOKENS[currentQrTokenIndex];
-    const url = `https://api.qr-code-generator.com/v1/create?access-token=${token}`;
+    const endpoint = `/v1/create?access-token=${token}`;
 
     const requestBody = {
         frame_name: 'no-frame',
@@ -1684,15 +1694,21 @@ async function generateQrCode(lightningAddress) {
         qr_code_logo: 'scan-me-square'
     };
 
-    console.log('📤 QR code POST request to:', url);
+    console.log('📤 QR code POST request (via Vercel proxy)');
+    console.log('📤 Endpoint:', endpoint);
 
     try {
-        const response = await fetch(url, {
+        // Use Vercel proxy to avoid CORS issues
+        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint: endpoint,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: requestBody,
+                baseUrl: 'https://api.qr-code-generator.com'
+            })
         });
 
         if (!response.ok) {
@@ -1702,7 +1718,9 @@ async function generateQrCode(lightningAddress) {
                 currentQrTokenIndex++;
                 return await generateQrCode(lightningAddress); // Retry with next token
             }
-            throw new Error(`QR code API error: ${response.status}`);
+            const errorText = await response.text();
+            console.error('❌ QR code API error:', errorText);
+            throw new Error(`QR code API error: ${response.status} ${response.statusText}`);
         }
 
         const svgText = await response.text();
