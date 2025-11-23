@@ -2748,3 +2748,17 @@ body.light-mode .easymining-settings-form input[type="password"] {
         gap: 3px;
     }
 }
+
+/* Remove spinner arrows from invoice amount number inputs */
+#deposit-amount-btc::-webkit-outer-spin-button,
+#deposit-amount-btc::-webkit-inner-spin-button,
+#deposit-amount-aud::-webkit-outer-spin-button,
+#deposit-amount-aud::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#deposit-amount-btc,
+#deposit-amount-aud {
+    -moz-appearance: textfield; /* Firefox */
+}
