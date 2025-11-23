@@ -8034,6 +8034,12 @@ function switchPackageTab(tab) {
     });
     event.target.closest('.package-tab').classList.add('active');
 
+    // Reset "Show More" button text to default
+    const showMoreBtn = document.getElementById('show-more-packages');
+    if (showMoreBtn) {
+        showMoreBtn.textContent = 'Show More';
+    }
+
     // Refresh display
     displayActivePackages();
 }
@@ -8225,10 +8231,14 @@ function displayActivePackages() {
 
     // Show/hide "Show More" button - only show if current tab has more than 6 packages
     const showMoreBtn = document.getElementById('show-more-packages');
-    if (filteredPackages.length > 6) {
-        showMoreBtn.style.display = 'block';
-    } else {
-        showMoreBtn.style.display = 'none';
+    if (showMoreBtn) {
+        if (filteredPackages.length > 6) {
+            showMoreBtn.style.display = 'block';
+            console.log(`✓ Show More button visible (${filteredPackages.length} packages in ${currentPackageTab} tab)`);
+        } else {
+            showMoreBtn.style.display = 'none';
+            console.log(`✗ Show More button hidden (${filteredPackages.length} packages in ${currentPackageTab} tab)`);
+        }
     }
 }
 
