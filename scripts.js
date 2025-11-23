@@ -12235,11 +12235,12 @@ function updateShareCost(cardId) {
     // Calculate NEW shares to buy (input shows TOTAL shares I'll own)
     const newShares = shares - myBoughtShares;
 
-    if (sharePriceMatch && newShares > 0) {
+    if (sharePriceMatch && shares > 0) {
         const sharePrice = parseFloat(sharePriceMatch[1]);
-        const totalBTC = (sharePrice * newShares).toFixed(8);
+        // Price display shows TOTAL cost of ALL shares in input (not just new shares)
+        const totalBTC = (sharePrice * shares).toFixed(8);
         const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
-        const totalAUD = (sharePrice * newShares * btcPrice).toFixed(2);
+        const totalAUD = (sharePrice * shares * btcPrice).toFixed(2);
 
         costDisplay.textContent = `Total: ${totalBTC} BTC ($${totalAUD} AUD)`;
         costDisplay.style.color = '#4CAF50';
@@ -14174,18 +14175,17 @@ function adjustShares(packageName, delta, buttonElement) {
     // Find Buy button in the same container
     const buyButton = container?.querySelector('.buy-now-btn');
     if (buyButton) {
-        if (availableBalance < currentShareCost) {
-            // Disable Buy button if can't afford current shares
+        // Buy button only disables if balance < 0.0001 (minimum 1 share)
+        if (availableBalance < sharePrice) {
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
-            console.log(`🛒 Buy button DISABLED - balance: ${availableBalance}, current cost: ${currentShareCost}`);
+            console.log(`🛒 Buy button DISABLED - balance: ${availableBalance} < ${sharePrice} (min 1 share)`);
         } else {
-            // Enable Buy button if can afford current shares
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
-            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance}, current cost: ${currentShareCost}`);
+            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance} >= ${sharePrice}`);
         }
     }
 }
