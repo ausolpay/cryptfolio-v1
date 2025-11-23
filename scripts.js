@@ -888,8 +888,18 @@ async function fetchNiceHashVasps() {
 
         const data = await response.json();
 
+        console.log('🔍 API Response structure:', data);
+
+        // NiceHash API returns { vasps: [...] }
+        if (!data.vasps || !Array.isArray(data.vasps)) {
+            console.error('❌ Unexpected response structure:', data);
+            throw new Error('Invalid response: expected { vasps: [...] }');
+        }
+
+        console.log(`🔍 Found ${data.vasps.length} VASPs in response`);
+
         // Transform API response to our format: { name, id }
-        VASP_LIST = data.map(vasp => ({
+        VASP_LIST = data.vasps.map(vasp => ({
             name: vasp.name,
             id: vasp.id
         }));
