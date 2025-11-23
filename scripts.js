@@ -12699,8 +12699,19 @@ Do you want to continue?
         // Calculate total amount (shares × 0.0001 BTC per share)
         const totalAmount = shares * sharePrice;
 
+        // ✅ FIX: Use same POST structure as buy packages page (buyTeamPackageUpdated)
+        // Include shares object breakdown for NiceHash API
         const orderData = {
             amount: totalAmount,
+            shares: {
+                small: shares,
+                medium: 0,
+                large: 0,
+                couponSmall: 0,
+                couponMedium: 0,
+                couponLarge: 0,
+                massBuy: 0
+            },
             soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address
         };
 
