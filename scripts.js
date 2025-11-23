@@ -1708,10 +1708,19 @@ async function fetchNiceHashDepositAddress(amount, endpointConfig) {
     const endpoint = `${path}?${params.toString()}`;
 
     // Build request body based on configuration
-    let requestBody = {};
+    // Initialize with empty fields (used for both-unchecked and self-custodial modes)
+    let requestBody = {
+        emailVASPId: '',
+        firstName: '',
+        lastName: '',
+        legalName: '',
+        postalCode: '',
+        town: '',
+        country: ''
+    };
 
     if (endpointConfig.useTravel && endpointConfig.travelData) {
-        // VASP travel data mode: include travel data
+        // VASP travel data mode (DEFAULT - travel rule checked): include travel data from dropdown
         requestBody = {
             emailVASPId: endpointConfig.travelData.emailVASPId,
             firstName: endpointConfig.travelData.firstName,
@@ -1721,18 +1730,8 @@ async function fetchNiceHashDepositAddress(amount, endpointConfig) {
             town: endpointConfig.travelData.town,
             country: endpointConfig.travelData.country
         };
-    } else {
-        // Self-custodial or default mode: empty body (or empty travel data)
-        requestBody = {
-            emailVASPId: '',
-            firstName: '',
-            lastName: '',
-            legalName: '',
-            postalCode: '',
-            town: '',
-            country: ''
-        };
     }
+    // Self-custodial mode or both unchecked: empty body fields (already initialized above)
 
     console.log('📤 POST request to NiceHash (via Vercel proxy)');
     console.log('📤 Endpoint:', endpoint);
@@ -1774,17 +1773,17 @@ async function fetchNiceHashDepositAddress(amount, endpointConfig) {
 }
 
 /**
- * Generate QR code from address (via Vercel proxy to avoid CORS)
+ * Generate QR code from address
  */
 async function generateQrCode(lightningAddress) {
     console.log('📱 Generating QR code...');
 
-    // Remove "lightning:" prefix for QR code
+    // Remove "lightning:" prefix for QR code (only use the address part)
     const addressOnly = lightningAddress.replace(/^lightning:/i, '');
 
     // Get current token
     const token = QR_CODE_TOKENS[currentQrTokenIndex];
-    const endpoint = `/v1/create?access-token=${token}`;
+    const url = `https://api.qr-code-generator.com/v1/create?access-token=${token}`;
 
     const requestBody = {
         frame_name: 'no-frame',
@@ -1793,21 +1792,17 @@ async function generateQrCode(lightningAddress) {
         qr_code_logo: 'scan-me-square'
     };
 
-    console.log('📤 QR code POST request (via Vercel proxy)');
-    console.log('📤 Endpoint:', endpoint);
+    console.log('📤 QR code POST request to:', url);
+    console.log('📤 QR code text:', addressOnly.substring(0, 50) + '...');
 
     try {
-        // Use Vercel proxy to avoid CORS issues
-        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+        // Call QR code API directly
+        const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                endpoint: endpoint,
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: requestBody,
-                baseUrl: 'https://api.qr-code-generator.com'
-            })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
