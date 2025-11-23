@@ -489,6 +489,7 @@ function showAppPage() {
     document.getElementById('package-alerts-page').style.display = 'none';
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('withdraw-page').style.display = 'none';
 
     // Start EasyMining alerts polling if enabled
     if (easyMiningSettings && easyMiningSettings.enabled) {
@@ -1770,8 +1771,6 @@ function showWithdrawPage() {
     document.getElementById('withdraw-amount-btc').value = '';
     document.getElementById('withdraw-amount-aud').value = '';
     document.getElementById('withdraw-note').value = '';
-    document.getElementById('withdraw-qr-code-container').innerHTML = '';
-    document.getElementById('withdraw-address-output').value = '';
     document.getElementById('withdraw-transaction-result').innerHTML = '';
 }
 
@@ -1931,6 +1930,31 @@ function convertAudToBtcWithdraw() {
 }
 
 /**
+ * Add maximum BTC amount (minus transaction fee) to withdraw input
+ */
+function addMaxAmountWithdraw() {
+    const TRANSACTION_FEE = 0.00001;
+
+    // Get available BTC from EasyMining balance
+    const availableBtcElement = document.getElementById('easymining-available-btc');
+    const availableBtc = availableBtcElement
+        ? parseFloat(availableBtcElement.textContent) || 0
+        : 0;
+
+    // Calculate max amount (available balance minus transaction fee)
+    const maxAmount = Math.max(0, availableBtc - TRANSACTION_FEE);
+
+    // Set BTC input to max amount
+    const btcInput = document.getElementById('withdraw-amount-btc');
+    btcInput.value = maxAmount.toFixed(8);
+
+    // Trigger conversion to update AUD field
+    convertBtcToAudWithdraw();
+
+    console.log(`➕ Added max amount: ${maxAmount.toFixed(8)} BTC (${availableBtc.toFixed(8)} - ${TRANSACTION_FEE} fee)`);
+}
+
+/**
  * Execute BTC withdrawal
  */
 async function executeWithdrawal() {
@@ -2011,9 +2035,6 @@ async function executeWithdrawal() {
 
         console.log('✅ Withdrawal successful:', result);
 
-        // Generate QR code of destination address
-        await generateWithdrawQrCode(addressData.address);
-
         // Display success message
         displayWithdrawSuccess(result, addressData);
 
@@ -2090,58 +2111,6 @@ async function callNiceHashWithdrawal(amount, addressData, note) {
 }
 
 /**
- * Generate QR code for withdrawal address
- */
-async function generateWithdrawQrCode(address) {
-    console.log('📱 Generating QR code for withdrawal address...');
-
-    const qrContainer = document.getElementById('withdraw-qr-code-container');
-
-    try {
-        // Call QR code generation proxy
-        const response = await fetch('/api/qrcode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                url: 'https://api.qr-code-generator.com/v1/create',
-                body: {
-                    frame_name: 'no-frame',
-                    qr_code_text: address,
-                    image_format: 'SVG',
-                    image_width: 300,
-                    foreground_color: '#000000',
-                    background_color: '#FFFFFF'
-                }
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`QR code API error: ${response.status}`);
-        }
-
-        const qrCodeSvg = await response.text();
-        console.log('✅ QR code generated successfully');
-
-        // Insert QR code SVG
-        qrContainer.innerHTML = qrCodeSvg;
-
-        // Ensure SVG displays correctly
-        const svgElement = qrContainer.querySelector('svg');
-        if (svgElement) {
-            svgElement.setAttribute('width', '300');
-            svgElement.setAttribute('height', '300');
-            svgElement.style.display = 'block';
-            svgElement.style.maxWidth = '100%';
-            svgElement.style.height = 'auto';
-        }
-
-    } catch (error) {
-        console.error('❌ Error generating QR code:', error);
-        qrContainer.innerHTML = '<p style="color: #f44336;">Failed to generate QR code</p>';
-    }
-}
-
-/**
  * Display withdrawal success message
  */
 function displayWithdrawSuccess(result, addressData) {
@@ -2150,9 +2119,6 @@ function displayWithdrawSuccess(result, addressData) {
     // Show output section
     document.getElementById('withdraw-output-section').style.display = 'block';
 
-    // Display address in output field
-    document.getElementById('withdraw-address-output').value = addressData.address;
-
     // Display transaction result
     const resultDiv = document.getElementById('withdraw-transaction-result');
     resultDiv.innerHTML = `
@@ -2160,6 +2126,7 @@ function displayWithdrawSuccess(result, addressData) {
             <h3 style="color: #4CAF50; margin: 0 0 15px 0;">✅ Withdrawal Successful!</h3>
             <p style="margin: 5px 0;">Your withdrawal has been initiated.</p>
             <p style="margin: 5px 0;"><strong>Destination:</strong> ${addressData.name}</p>
+            <p style="margin: 5px 0;"><strong>Address:</strong> ${addressData.address}</p>
             ${result.id ? `<p style="margin: 5px 0;"><strong>Transaction ID:</strong> ${result.id}</p>` : ''}
             ${result.status ? `<p style="margin: 5px 0;"><strong>Status:</strong> ${result.status}</p>` : ''}
             <p style="color: #aaa; font-size: 14px; margin-top: 15px;">
@@ -2169,24 +2136,6 @@ function displayWithdrawSuccess(result, addressData) {
     `;
 
     console.log('✅ Withdrawal success displayed');
-}
-
-/**
- * Copy withdrawal address to clipboard
- */
-function copyWithdrawAddress() {
-    const addressOutput = document.getElementById('withdraw-address-output');
-    addressOutput.select();
-    document.execCommand('copy');
-
-    // Visual feedback
-    const originalBg = addressOutput.style.backgroundColor;
-    addressOutput.style.backgroundColor = '#4CAF50';
-    setTimeout(() => {
-        addressOutput.style.backgroundColor = originalBg;
-    }, 300);
-
-    console.log('📋 Withdrawal address copied to clipboard');
 }
 
 // ========================================

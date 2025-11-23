@@ -713,6 +713,11 @@
                     <input type="number" id="withdraw-amount-aud" placeholder="0.00" step="0.01" min="0" oninput="convertAudToBtcWithdraw()">
                 </div>
 
+                <!-- Add Max Amount Button -->
+                <div style="margin: 10px 0;">
+                    <button onclick="addMaxAmountWithdraw()" style="background-color: #2196F3; width: 100%; padding: 8px; font-size: 14px;">➕ Add Max Amount (minus tx fee)</button>
+                </div>
+
                 <!-- Note Input -->
                 <div class="input-group">
                     <label for="withdraw-note">Add Note (Optional):</label>
@@ -735,29 +740,8 @@
                 <div id="withdraw-output-section" style="display: none;">
                     <hr style="border: 1px solid #333; margin: 20px 0;">
 
-                    <!-- QR Code Container -->
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div id="withdraw-qr-code-container" style="display: inline-block; background-color: #fff; padding: 20px; border-radius: 10px;">
-                            <!-- QR code SVG will be inserted here -->
-                        </div>
-                    </div>
-
-                    <!-- Withdrawal Address Output -->
-                    <div class="input-group">
-                        <label for="withdraw-address-output" style="display: flex; align-items: center; gap: 10px;">
-                            <span style="color: #ffa500; font-weight: bold;">BTC ADDRESS:</span>
-                            <span style="flex: 1;"></span>
-                        </label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" id="withdraw-address-output" readonly style="flex: 1; background-color: #1a1a1a; color: #4CAF50; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #4CAF50; border-radius: 5px;">
-                            <button onclick="copyWithdrawAddress()" style="background-color: #2196F3; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; color: white; font-size: 16px;" title="Copy address to clipboard">
-                                📋
-                            </button>
-                        </div>
-                    </div>
-
                     <!-- Transaction Result -->
-                    <div id="withdraw-transaction-result" style="margin-top: 20px;">
+                    <div id="withdraw-transaction-result">
                         <!-- Success/error message will be inserted here -->
                     </div>
                 </div>
