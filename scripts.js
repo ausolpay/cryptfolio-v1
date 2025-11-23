@@ -12146,7 +12146,7 @@ function createTeamPackageCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Share Distribution:</span>
-                <span style="color: #4CAF50;" id="${cardId}-share-dist">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
+                <span style="color: #4CAF50;" id="${cardId}-share-dist">(${myBoughtShares}/${myBoughtShares}/${totalAvailableShares})</span>
             </div>
             <div class="buy-package-stat">
                 <span>Your Potential Reward:</span>
@@ -12167,7 +12167,7 @@ function createTeamPackageCard(pkg) {
                 type="number"
                 id="${cardId}-shares"
                 class="share-input"
-                value="${myBoughtShares}"
+                value="0"
                 min="0"
                 max="${availableShares}"
                 oninput="updateShareCost('${cardId}')"
@@ -12247,9 +12247,10 @@ function updateShareCost(cardId) {
             rewardDisplay.textContent = `${potentialReward.toFixed(8)} ${crypto}`;
         }
 
-        // Update share distribution display
+        // Update share distribution display (owned/willOwn/total)
         if (shareDistDisplay) {
-            shareDistDisplay.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+            const willOwn = myBoughtShares + shares; // owned + new shares in input
+            shareDistDisplay.textContent = `(${myBoughtShares}/${willOwn}/${totalAvailableShares})`;
         }
     } else {
         costDisplay.textContent = 'Total: 0 BTC ($0.00 AUD)';
@@ -12260,9 +12261,9 @@ function updateShareCost(cardId) {
             rewardDisplay.textContent = `0.00000000 ${crypto}`;
         }
 
-        // Keep share distribution display
+        // Keep share distribution display (owned/owned/total when no new shares)
         if (shareDistDisplay) {
-            shareDistDisplay.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+            shareDistDisplay.textContent = `(${myBoughtShares}/${myBoughtShares}/${totalAvailableShares})`;
         }
     }
 }
@@ -13933,9 +13934,10 @@ function adjustShares(packageName, delta, buttonElement) {
     }
     console.log(`✅ Input element FOUND! Current value: ${input.value}`);
 
-    const currentValue = parseInt(input.value) || 1;
+    const currentValue = parseInt(input.value) || 0;
+    const min = parseInt(input.min) || 0;
     const max = parseInt(input.max) || 9999;
-    const newValue = Math.max(1, Math.min(max, currentValue + delta)); // Minimum is 1, not 0
+    const newValue = Math.max(min, Math.min(max, currentValue + delta)); // Respect min attribute (0 for new shares)
 
     console.log(`📝 Setting input.value from ${currentValue} to ${newValue}`);
     console.log(`🔍 Input element details:`, {
