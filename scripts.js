@@ -12430,9 +12430,19 @@ function initializeDragScrolling() {
             const walk = (x - startX) * 2; // Scroll speed multiplier
             container.scrollLeft = scrollLeft - walk;
         });
+
+        // Add mouse wheel horizontal scrolling
+        container.addEventListener('wheel', (e) => {
+            // Only enable wheel scrolling on tablet/mobile (when flex layout is active)
+            const isFlexLayout = window.getComputedStyle(container).display === 'flex';
+            if (!isFlexLayout) return;
+
+            e.preventDefault();
+            container.scrollLeft += e.deltaY; // Convert vertical scroll to horizontal
+        });
     });
 
-    console.log('✅ Drag scrolling initialized for buy packages containers');
+    console.log('✅ Drag scrolling and wheel scrolling initialized for buy packages containers');
 }
 
 function getRecommendedPackages() {
