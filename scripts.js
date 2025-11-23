@@ -9136,9 +9136,28 @@ function displayActivePackages() {
 
         // Robot icon for auto-bought packages (flashing, same style as rocket)
         const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
-        // Use pkg.id (order ID from active packages) - matches what auto-buy saves
-        const packageIdForRobot = pkg.id;
-        const isAutoBought = autoBoughtPackages[packageIdForRobot];
+
+        // ✅ FIX: Check by pkg.id (order ID) AND fallback to ticketId/orderId matching
+        let isAutoBought = autoBoughtPackages[pkg.id];
+
+        // Fallback: Check if any auto-bought package has this pkg.id as orderId or ticketId
+        if (!isAutoBought) {
+            isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                entry.orderId === pkg.id || entry.ticketId === pkg.id
+            );
+        }
+
+        // Debug logging to track ID matching
+        if (Object.keys(autoBoughtPackages).length > 0) {
+            console.log('🤖 ROBOT ICON CHECK:', {
+                pkgId: pkg.id,
+                pkgName: pkg.name,
+                foundInAutoBought: !!isAutoBought,
+                autoBoughtKeys: Object.keys(autoBoughtPackages),
+                pkgActive: pkg.active
+            });
+        }
+
         let robotHtml = '';
         if (isAutoBought && pkg.active) {
             // Active auto-bought package: flashing robot on top left (matches rocket style)
