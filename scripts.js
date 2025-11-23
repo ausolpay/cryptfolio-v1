@@ -1609,12 +1609,13 @@ async function generateLightningAddress() {
 async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret, orgId) {
     console.log('📡 Fetching deposit address from NiceHash API...');
 
-    // Build request URL
-    const endpoint = '/main/api/v2/accounting/depositAddress/ln';
+    // Build request URL with query parameters
+    const path = '/main/api/v2/accounting/depositAddress/ln';
     const params = new URLSearchParams({
         amount: amount.toString(),
         isVasp: 'true'
     });
+    const endpoint = `${path}?${params.toString()}`;
 
     // Build request body
     const requestBody = {
@@ -1627,26 +1628,12 @@ async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret
         country: travelData.country
     };
 
-    // Generate NiceHash authentication headers
-    const timestamp = Date.now().toString();
-    const nonce = uuidv4();
-    const bodyString = JSON.stringify(requestBody);
-
-    const message = apiKey + '\x00' + timestamp + '\x00' + nonce + '\x00' + '\x00' + orgId + '\x00' + '\x00' + 'POST' + '\x00' + endpoint + '?' + params.toString() + '\x00' + bodyString;
-    const signature = CryptoJS.HmacSHA256(message, apiSecret).toString(CryptoJS.enc.Hex);
-
-    const headers = {
-        'X-Time': timestamp,
-        'X-Nonce': nonce,
-        'X-Organization-Id': orgId,
-        'X-Request-Id': uuidv4(),
-        'X-Auth': `${apiKey}:${signature}`,
-        'Content-Type': 'application/json'
-    };
-
     console.log('📤 POST request to NiceHash (via Vercel proxy)');
-    console.log('📤 Endpoint:', endpoint + '?' + params.toString());
+    console.log('📤 Endpoint:', endpoint);
     console.log('📤 Request body:', requestBody);
+
+    // Generate NiceHash authentication headers using the standard function
+    const headers = generateNiceHashAuthHeaders('POST', endpoint, requestBody);
 
     try {
         // Use Vercel proxy to avoid CORS issues
@@ -1654,7 +1641,7 @@ async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                endpoint: endpoint + '?' + params.toString(),
+                endpoint: endpoint,
                 method: 'POST',
                 headers: headers,
                 body: requestBody
