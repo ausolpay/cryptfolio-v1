@@ -1394,7 +1394,8 @@ body.light-mode .package-tab.active {
     grid-column: 1 / -1; /* Span all columns */
     text-align: center;
     width: 100%;
-    margin: 40px auto;
+    margin: 40px 0; /* Remove auto horizontal margin */
+    padding: 0; /* Remove any inherited padding */
 }
 
 /* Single column on mobile */
@@ -2345,6 +2346,15 @@ body.light-mode .easymining-settings-form input[type="password"] {
     color: #000000;
 }
 
+/* Buy Packages Balance Section - Match width of packages container */
+#buy-packages-balance-section {
+    width: 1038px; /* Match 3 cards (336px * 3) + gaps (15px * 2) + padding (20px * 2) */
+    max-width: 1038px;
+    margin: 0 auto 20px auto; /* Center and add bottom margin */
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
 .buy-packages-container-page {
     display: grid;
     grid-template-columns: repeat(3, 336px); /* 3 fixed square boxes per row on desktop */
@@ -2356,6 +2366,11 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 /* Narrow Tablet - 2 columns with smaller boxes */
 @media (max-width: 1040px) {
+    #buy-packages-balance-section {
+        width: 640px; /* Match 2 cards (300px * 2) + gap (15px) + padding (20px * 2) */
+        max-width: 640px;
+    }
+
     .buy-packages-container-page {
         grid-template-columns: repeat(2, 300px);
     }
@@ -2369,6 +2384,12 @@ body.light-mode .easymining-settings-form input[type="password"] {
 
 /* Mobile - 1 column with scaled down boxes */
 @media (max-width: 700px) {
+    #buy-packages-balance-section {
+        width: 300px; /* Match 1 card (280px) + padding (10px * 2) */
+        max-width: 300px;
+        padding: 0 10px;
+    }
+
     .buy-packages-container-page {
         grid-template-columns: 280px;
         padding: 0 10px; /* Less padding on mobile */
