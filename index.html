@@ -335,6 +335,7 @@
                 <div style="margin-top: 30px;">
                     <button onclick="showWithdrawalAddressesPage()" style="background-color: #4CAF50; margin-bottom: 10px;">📍 Manage Withdrawal Addresses</button>
                     <button onclick="showPackageAlertsPage()" style="background-color: #FF9800; margin-bottom: 10px;">🔔 Package Alerts</button>
+                    <button onclick="showTravelDataPage()" style="background-color: #2196F3; margin-bottom: 10px;">✈️ Manage Saved Travel Data</button>
                     <button onclick="clearAPICredentials()" class="delete-button">Clear API Credentials</button>
                 </div>
             </div>
@@ -453,6 +454,126 @@
             <p>Data by CoinGecko / MEXC</p>
         </div>
     </div>
+
+    <!-- Travel Data Page -->
+    <div id="travel-data-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>Manage Saved Travel Data</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">✈️ Manage Saved Travel Data</h3>
+                <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
+                    Save travel rule data for quick access when creating Lightning deposit addresses.
+                </p>
+
+                <!-- Saved Travel Data Dropdown -->
+                <div class="input-group">
+                    <label for="saved-travel-data-select">Saved Travel Data:</label>
+                    <select id="saved-travel-data-select" onchange="loadSelectedTravelData()" style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%;">
+                        <option value="">Select saved travel data...</option>
+                    </select>
+                </div>
+
+                <!-- Add New Address Button -->
+                <div style="margin: 20px 0;">
+                    <button onclick="toggleTravelDataForm()" id="add-travel-data-btn" style="background-color: #4CAF50; width: 100%;">➕ Add New Address</button>
+                </div>
+
+                <!-- Travel Data Form (Hidden by default) -->
+                <div id="travel-data-form" style="display: none;">
+                    <hr style="border: 1px solid #333; margin: 20px 0;">
+
+                    <!-- VASP Dropdown -->
+                    <div class="input-group">
+                        <label for="travel-vasp-select">Select Sender VASP: *</label>
+                        <select id="travel-vasp-select" required style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%;">
+                            <option value="">Select VASP...</option>
+                        </select>
+                    </div>
+
+                    <!-- Legal Entity Checkbox -->
+                    <div class="setting-item" style="margin: 20px 0;">
+                        <label class="switch">
+                            <input type="checkbox" id="travel-legal-entity-checkbox" onchange="toggleLegalEntityFields()">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="travel-legal-entity-checkbox">The sender is a legal entity</label>
+                    </div>
+
+                    <!-- Individual Name Fields (shown by default) -->
+                    <div id="individual-name-fields">
+                        <div class="input-group">
+                            <label for="travel-first-name">First Name: *</label>
+                            <input type="text" id="travel-first-name" placeholder="Enter first name">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="travel-last-name">Last Name: *</label>
+                            <input type="text" id="travel-last-name" placeholder="Enter last name">
+                        </div>
+                    </div>
+
+                    <!-- Legal Entity Name Field (hidden by default) -->
+                    <div id="legal-entity-name-field" style="display: none;">
+                        <div class="input-group">
+                            <label for="travel-legal-name">Legal Entity Name: *</label>
+                            <input type="text" id="travel-legal-name" placeholder="Enter legal entity name">
+                        </div>
+                    </div>
+
+                    <!-- Post Code -->
+                    <div class="input-group">
+                        <label for="travel-postal-code">Post Code: *</label>
+                        <input type="text" id="travel-postal-code" placeholder="Enter post/zip code">
+                    </div>
+
+                    <!-- Town/City -->
+                    <div class="input-group">
+                        <label for="travel-town">Town / City: *</label>
+                        <input type="text" id="travel-town" placeholder="Enter town or city">
+                    </div>
+
+                    <!-- Country Dropdown -->
+                    <div class="input-group">
+                        <label for="travel-country-select">Select Country: *</label>
+                        <select id="travel-country-select" required style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%;">
+                            <option value="">Select country...</option>
+                        </select>
+                    </div>
+
+                    <!-- Saved Name -->
+                    <div class="input-group">
+                        <label for="travel-saved-name">Saved Name (Nickname): *</label>
+                        <input type="text" id="travel-saved-name" placeholder="e.g., My Binance Account">
+                    </div>
+
+                    <!-- Save Button -->
+                    <div style="margin-top: 20px;">
+                        <button onclick="saveTravelData()" style="background-color: #4CAF50; width: 100%;">💾 Save Travel Data</button>
+                    </div>
+                </div>
+
+                <!-- Delete Button (shown when travel data selected) -->
+                <div id="delete-travel-data-section" style="display: none; margin-top: 20px;">
+                    <button onclick="deleteTravelData()" class="delete-button" style="width: 100%;">🗑️ Delete Selected Travel Data</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showEasyMiningSettingsPage()">← Back to EasyMining Settings</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
 
     <!-- CoinGecko API Settings Page -->
     <div id="coingecko-settings-page" class="container" style="display: none;">
