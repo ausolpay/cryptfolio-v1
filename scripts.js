@@ -517,6 +517,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('package-alerts-page').style.display = 'none';
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('withdraw-page').style.display = 'none';
 
     // Show EasyMining settings page
     document.getElementById('easymining-settings-page').style.display = 'block';
@@ -1254,6 +1255,8 @@ function showDepositsPage() {
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
     document.getElementById('travel-data-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('withdraw-page').style.display = 'none';
 
     // Show deposits page
     document.getElementById('deposits-page').style.display = 'block';
@@ -1734,6 +1737,456 @@ function uuidv4() {
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
+}
+
+// ========================================
+// BTC WITHDRAW FUNCTIONS
+// ========================================
+
+/**
+ * Show the BTC Withdraw page
+ */
+function showWithdrawPage() {
+    console.log('💸 Showing BTC Withdraw Page');
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('travel-data-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
+
+    // Show withdraw page
+    document.getElementById('withdraw-page').style.display = 'block';
+
+    // Load withdrawal addresses and update balance
+    fetchWithdrawalAddresses();
+    updateWithdrawBalance();
+
+    // Clear previous outputs
+    document.getElementById('withdraw-output-section').style.display = 'none';
+    document.getElementById('withdraw-amount-btc').value = '';
+    document.getElementById('withdraw-amount-aud').value = '';
+    document.getElementById('withdraw-note').value = '';
+    document.getElementById('withdraw-qr-code-container').innerHTML = '';
+    document.getElementById('withdraw-address-output').value = '';
+    document.getElementById('withdraw-transaction-result').innerHTML = '';
+}
+
+/**
+ * Fetch withdrawal addresses from NiceHash API and populate dropdown
+ */
+async function fetchWithdrawalAddresses() {
+    console.log('🔄 Fetching withdrawal addresses from NiceHash...');
+
+    const dropdown = document.getElementById('withdraw-address-select');
+
+    // Clear existing options
+    dropdown.innerHTML = '<option value="">Loading...</option>';
+
+    try {
+        const endpoint = '/main/api/v2/accounting/withdrawalAddresses?currency=BTC';
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        let response;
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint, method: 'GET', headers })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers
+            });
+        }
+
+        if (!response.ok) {
+            throw new Error(`NiceHash API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Withdrawal addresses fetched:', data);
+
+        // Populate dropdown
+        populateWithdrawAddressDropdown(data.list || []);
+
+    } catch (error) {
+        console.error('❌ Error fetching withdrawal addresses:', error);
+        dropdown.innerHTML = '<option value="">Error loading addresses</option>';
+        alert('⚠️ Failed to load withdrawal addresses. Please check your API credentials.');
+    }
+}
+
+/**
+ * Populate withdrawal address dropdown
+ */
+function populateWithdrawAddressDropdown(addresses) {
+    const dropdown = document.getElementById('withdraw-address-select');
+
+    // Clear existing options
+    dropdown.innerHTML = '<option value="">Select withdrawal address...</option>';
+
+    if (addresses.length === 0) {
+        const noAddressOption = document.createElement('option');
+        noAddressOption.value = '';
+        noAddressOption.textContent = 'No withdrawal addresses found';
+        noAddressOption.disabled = true;
+        dropdown.appendChild(noAddressOption);
+        return;
+    }
+
+    // Add each address
+    addresses.forEach(addr => {
+        if (addr.status.code !== 'ACTIVE') {
+            return; // Skip inactive addresses
+        }
+
+        const option = document.createElement('option');
+        // Store full address data as JSON in value
+        option.value = JSON.stringify({
+            id: addr.id,
+            address: addr.address,
+            name: addr.name,
+            walletType: addr.type.code
+        });
+
+        // Format display: Name on line 1, address preview on line 2
+        const addressPreview = addr.address.substring(0, 4) + '...' + addr.address.substring(addr.address.length - 4);
+        option.textContent = `${addr.name} (${addressPreview})`;
+
+        dropdown.appendChild(option);
+    });
+
+    console.log(`✅ Populated dropdown with ${addresses.length} withdrawal addresses`);
+}
+
+/**
+ * Update available BTC balance display
+ */
+function updateWithdrawBalance() {
+    // Get available BTC from EasyMining balance
+    const availableBtcElement = document.getElementById('easymining-available-btc');
+    const availableBtc = availableBtcElement
+        ? parseFloat(availableBtcElement.textContent) || 0
+        : 0;
+
+    // Display in withdraw page
+    const balanceDisplay = document.getElementById('withdraw-available-balance');
+    if (balanceDisplay) {
+        balanceDisplay.textContent = availableBtc.toFixed(8);
+    }
+
+    console.log(`💰 Available BTC for withdrawal: ${availableBtc.toFixed(8)}`);
+}
+
+/**
+ * Convert BTC input to AUD for withdraw
+ */
+function convertBtcToAudWithdraw() {
+    const btcInput = document.getElementById('withdraw-amount-btc');
+    const audInput = document.getElementById('withdraw-amount-aud');
+
+    const btcAmount = parseFloat(btcInput.value) || 0;
+
+    // Get current BTC price in AUD from DOM element
+    const priceElement = document.getElementById('bitcoin-price-aud');
+    const btcPriceAud = priceElement
+        ? parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0
+        : 0;
+
+    if (btcPriceAud > 0) {
+        const audAmount = btcAmount * btcPriceAud;
+        audInput.value = audAmount.toFixed(2);
+        console.log(`💱 Converted ${btcAmount} BTC to $${audAmount.toFixed(2)} AUD`);
+    } else {
+        console.warn('⚠️ BTC price not available. Add Bitcoin to portfolio first.');
+    }
+}
+
+/**
+ * Convert AUD input to BTC for withdraw
+ */
+function convertAudToBtcWithdraw() {
+    const btcInput = document.getElementById('withdraw-amount-btc');
+    const audInput = document.getElementById('withdraw-amount-aud');
+
+    const audAmount = parseFloat(audInput.value) || 0;
+
+    const priceElement = document.getElementById('bitcoin-price-aud');
+    const btcPriceAud = priceElement
+        ? parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0
+        : 0;
+
+    if (btcPriceAud > 0) {
+        const btcAmount = audAmount / btcPriceAud;
+        btcInput.value = btcAmount.toFixed(8);
+        console.log(`💱 Converted $${audAmount} AUD to ${btcAmount.toFixed(8)} BTC`);
+    } else {
+        console.warn('⚠️ BTC price not available. Add Bitcoin to portfolio first.');
+    }
+}
+
+/**
+ * Execute BTC withdrawal
+ */
+async function executeWithdrawal() {
+    console.log('💸 Initiating BTC withdrawal...');
+
+    // Get form values
+    const btcAmount = parseFloat(document.getElementById('withdraw-amount-btc').value);
+    const selectedAddressJson = document.getElementById('withdraw-address-select').value;
+    const note = document.getElementById('withdraw-note').value || '';
+
+    // Validate amount
+    if (!btcAmount || btcAmount <= 0) {
+        alert('⚠️ Please enter a valid BTC amount');
+        return;
+    }
+
+    // Validate address selection
+    if (!selectedAddressJson) {
+        alert('⚠️ Please select a withdrawal address');
+        return;
+    }
+
+    // Parse selected address data
+    let addressData;
+    try {
+        addressData = JSON.parse(selectedAddressJson);
+    } catch (e) {
+        console.error('❌ Error parsing address data:', e);
+        alert('⚠️ Invalid address selection');
+        return;
+    }
+
+    // Check available balance
+    const availableBtcElement = document.getElementById('easymining-available-btc');
+    const availableBtc = availableBtcElement
+        ? parseFloat(availableBtcElement.textContent) || 0
+        : 0;
+
+    if (btcAmount > availableBtc) {
+        alert(`⚠️ Insufficient balance. You have ${availableBtc.toFixed(8)} BTC available.`);
+        return;
+    }
+
+    // Get NiceHash API credentials
+    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const apiKey = easyMiningSettings.apiKey;
+    const apiSecret = easyMiningSettings.apiSecret;
+    const orgId = easyMiningSettings.orgId;
+
+    if (!apiKey || !apiSecret || !orgId) {
+        alert('⚠️ NiceHash API credentials not configured. Please set them in EasyMining Settings.');
+        return;
+    }
+
+    // Confirm withdrawal
+    const confirmed = confirm(
+        `⚠️ CONFIRM WITHDRAWAL\n\n` +
+        `Amount: ${btcAmount.toFixed(8)} BTC\n` +
+        `Address: ${addressData.name}\n` +
+        `Destination: ${addressData.address}\n` +
+        `Note: ${note || '(none)'}\n\n` +
+        `This action cannot be undone. Continue?`
+    );
+
+    if (!confirmed) {
+        console.log('❌ Withdrawal cancelled by user');
+        return;
+    }
+
+    // Disable withdraw button
+    const withdrawBtn = document.getElementById('execute-withdraw-btn');
+    withdrawBtn.disabled = true;
+    withdrawBtn.textContent = '⏳ Processing...';
+
+    try {
+        // Execute withdrawal via NiceHash API
+        const result = await callNiceHashWithdrawal(btcAmount, addressData, note);
+
+        console.log('✅ Withdrawal successful:', result);
+
+        // Generate QR code of destination address
+        await generateWithdrawQrCode(addressData.address);
+
+        // Display success message
+        displayWithdrawSuccess(result, addressData);
+
+        // Refresh EasyMining balances
+        if (easyMiningActive) {
+            fetchEasyMiningData();
+        }
+
+    } catch (error) {
+        console.error('❌ Error processing withdrawal:', error);
+        alert(`❌ Withdrawal failed: ${error.message}`);
+
+        // Hide output section on error
+        document.getElementById('withdraw-output-section').style.display = 'none';
+    } finally {
+        // Re-enable withdraw button
+        withdrawBtn.disabled = false;
+        withdrawBtn.textContent = '💸 Execute Withdrawal';
+    }
+}
+
+/**
+ * Call NiceHash withdrawal API
+ */
+async function callNiceHashWithdrawal(amount, addressData, note) {
+    console.log('📡 Calling NiceHash withdrawal API...');
+
+    const endpoint = '/main/api/v2/accounting/withdrawal';
+
+    // Build request body
+    const requestBody = {
+        currency: 'BTC',
+        amount: amount.toString(),
+        withdrawalAddressId: addressData.id,
+        userNote: note,
+        walletType: addressData.walletType
+    };
+
+    console.log('📤 POST request to NiceHash (via Vercel proxy)');
+    console.log('📤 Endpoint:', endpoint);
+    console.log('📤 Request body:', requestBody);
+
+    // Generate NiceHash authentication headers
+    const headers = generateNiceHashAuthHeaders('POST', endpoint, requestBody);
+
+    try {
+        // Use Vercel proxy to avoid CORS issues
+        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint: endpoint,
+                method: 'POST',
+                headers: headers,
+                body: requestBody
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ NiceHash API error:', errorText);
+            throw new Error(`NiceHash API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ NiceHash API response:', data);
+
+        return data;
+
+    } catch (error) {
+        console.error('❌ Error calling withdrawal API:', error);
+        throw error;
+    }
+}
+
+/**
+ * Generate QR code for withdrawal address
+ */
+async function generateWithdrawQrCode(address) {
+    console.log('📱 Generating QR code for withdrawal address...');
+
+    const qrContainer = document.getElementById('withdraw-qr-code-container');
+
+    try {
+        // Call QR code generation proxy
+        const response = await fetch('/api/qrcode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: 'https://api.qr-code-generator.com/v1/create',
+                body: {
+                    frame_name: 'no-frame',
+                    qr_code_text: address,
+                    image_format: 'SVG',
+                    image_width: 300,
+                    foreground_color: '#000000',
+                    background_color: '#FFFFFF'
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`QR code API error: ${response.status}`);
+        }
+
+        const qrCodeSvg = await response.text();
+        console.log('✅ QR code generated successfully');
+
+        // Insert QR code SVG
+        qrContainer.innerHTML = qrCodeSvg;
+
+        // Ensure SVG displays correctly
+        const svgElement = qrContainer.querySelector('svg');
+        if (svgElement) {
+            svgElement.setAttribute('width', '300');
+            svgElement.setAttribute('height', '300');
+            svgElement.style.display = 'block';
+            svgElement.style.maxWidth = '100%';
+            svgElement.style.height = 'auto';
+        }
+
+    } catch (error) {
+        console.error('❌ Error generating QR code:', error);
+        qrContainer.innerHTML = '<p style="color: #f44336;">Failed to generate QR code</p>';
+    }
+}
+
+/**
+ * Display withdrawal success message
+ */
+function displayWithdrawSuccess(result, addressData) {
+    console.log('📺 Displaying withdrawal success...');
+
+    // Show output section
+    document.getElementById('withdraw-output-section').style.display = 'block';
+
+    // Display address in output field
+    document.getElementById('withdraw-address-output').value = addressData.address;
+
+    // Display transaction result
+    const resultDiv = document.getElementById('withdraw-transaction-result');
+    resultDiv.innerHTML = `
+        <div style="text-align: center; padding: 20px; background-color: rgba(76, 175, 80, 0.1); border-radius: 5px; border-left: 4px solid #4CAF50;">
+            <h3 style="color: #4CAF50; margin: 0 0 15px 0;">✅ Withdrawal Successful!</h3>
+            <p style="margin: 5px 0;">Your withdrawal has been initiated.</p>
+            <p style="margin: 5px 0;"><strong>Destination:</strong> ${addressData.name}</p>
+            ${result.id ? `<p style="margin: 5px 0;"><strong>Transaction ID:</strong> ${result.id}</p>` : ''}
+            ${result.status ? `<p style="margin: 5px 0;"><strong>Status:</strong> ${result.status}</p>` : ''}
+            <p style="color: #aaa; font-size: 14px; margin-top: 15px;">
+                Please check your NiceHash account for transaction details.
+            </p>
+        </div>
+    `;
+
+    console.log('✅ Withdrawal success displayed');
+}
+
+/**
+ * Copy withdrawal address to clipboard
+ */
+function copyWithdrawAddress() {
+    const addressOutput = document.getElementById('withdraw-address-output');
+    addressOutput.select();
+    document.execCommand('copy');
+
+    // Visual feedback
+    const originalBg = addressOutput.style.backgroundColor;
+    addressOutput.style.backgroundColor = '#4CAF50';
+    setTimeout(() => {
+        addressOutput.style.backgroundColor = originalBg;
+    }, 300);
+
+    console.log('📋 Withdrawal address copied to clipboard');
 }
 
 // ========================================

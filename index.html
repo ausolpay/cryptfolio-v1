@@ -148,6 +148,7 @@
                     </div>
                     <button onclick="showBuyPackagesPage()" class="buy-packages-btn">Buy Packages</button>
                     <button onclick="showDepositsPage()" class="deposit-btn">💰 Deposit</button>
+                    <button onclick="showWithdrawPage()" class="withdraw-btn">💸 Withdraw BTC</button>
                     <button onclick="clearRockets()" class="clear-rockets-btn">🧹 Clear Rockets</button>
                 </div>
                 
@@ -669,6 +670,109 @@
         </div>
     </div>
 
+    <!-- BTC Withdraw Page -->
+    <div id="withdraw-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>Withdraw BTC from NH Balance</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">💸 BTC Withdrawal</h3>
+                <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
+                    Withdraw Bitcoin from your NiceHash available balance to your saved withdrawal address.
+                </p>
+
+                <!-- Available Balance Display -->
+                <div class="input-group" style="background-color: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <label style="color: #4CAF50; font-weight: bold;">Available Balance:</label>
+                    <div style="font-size: 24px; color: #4CAF50; font-family: monospace;">
+                        <span id="withdraw-available-balance">0.00000000</span> BTC
+                    </div>
+                </div>
+
+                <!-- Withdrawal Address Dropdown -->
+                <div class="input-group">
+                    <label for="withdraw-address-select">Withdrawal Address: *</label>
+                    <select id="withdraw-address-select" style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%; font-size: 14px;">
+                        <option value="">Select withdrawal address...</option>
+                    </select>
+                </div>
+
+                <!-- Withdraw Amount BTC -->
+                <div class="input-group">
+                    <label for="withdraw-amount-btc">Withdraw Amount (BTC): *</label>
+                    <input type="number" id="withdraw-amount-btc" placeholder="0.00000000" step="0.00000001" min="0" oninput="convertBtcToAudWithdraw()">
+                </div>
+
+                <!-- Withdraw Amount AUD -->
+                <div class="input-group">
+                    <label for="withdraw-amount-aud">Withdraw Amount (AUD): *</label>
+                    <input type="number" id="withdraw-amount-aud" placeholder="0.00" step="0.01" min="0" oninput="convertAudToBtcWithdraw()">
+                </div>
+
+                <!-- Note Input -->
+                <div class="input-group">
+                    <label for="withdraw-note">Add Note (Optional):</label>
+                    <input type="text" id="withdraw-note" placeholder="Optional note for this withdrawal" maxlength="200" style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%;">
+                </div>
+
+                <!-- Execute Withdrawal Button -->
+                <div style="margin: 20px 0;">
+                    <button onclick="executeWithdrawal()" id="execute-withdraw-btn" style="background-color: #FF5722; width: 100%;">💸 Execute Withdrawal</button>
+                </div>
+
+                <!-- Warning Notice -->
+                <div style="background-color: rgba(255, 87, 34, 0.1); padding: 15px; border-radius: 5px; border-left: 4px solid #FF5722;">
+                    <p style="margin: 0; color: #FF5722; font-size: 14px;">
+                        <strong>⚠️ Warning:</strong> Double-check the withdrawal address before confirming. Cryptocurrency transactions cannot be reversed.
+                    </p>
+                </div>
+
+                <!-- Output Section (Hidden by default) -->
+                <div id="withdraw-output-section" style="display: none;">
+                    <hr style="border: 1px solid #333; margin: 20px 0;">
+
+                    <!-- QR Code Container -->
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div id="withdraw-qr-code-container" style="display: inline-block; background-color: #fff; padding: 20px; border-radius: 10px;">
+                            <!-- QR code SVG will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Withdrawal Address Output -->
+                    <div class="input-group">
+                        <label for="withdraw-address-output" style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #ffa500; font-weight: bold;">BTC ADDRESS:</span>
+                            <span style="flex: 1;"></span>
+                        </label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="withdraw-address-output" readonly style="flex: 1; background-color: #1a1a1a; color: #4CAF50; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #4CAF50; border-radius: 5px;">
+                            <button onclick="copyWithdrawAddress()" style="background-color: #2196F3; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; color: white; font-size: 16px;" title="Copy address to clipboard">
+                                📋
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Transaction Result -->
+                    <div id="withdraw-transaction-result" style="margin-top: 20px;">
+                        <!-- Success/error message will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showAppPage()">← Back to Portfolio</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
 
     <!-- CoinGecko API Settings Page -->
     <div id="coingecko-settings-page" class="container" style="display: none;">

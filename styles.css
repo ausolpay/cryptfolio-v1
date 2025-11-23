@@ -2773,3 +2773,17 @@ body.light-mode .easymining-settings-form input[type="number"] {
 #deposit-amount-aud {
     -moz-appearance: textfield; /* Firefox */
 }
+
+/* Hide spinner arrows for withdraw amount inputs */
+#withdraw-amount-btc::-webkit-outer-spin-button,
+#withdraw-amount-btc::-webkit-inner-spin-button,
+#withdraw-amount-aud::-webkit-outer-spin-button,
+#withdraw-amount-aud::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#withdraw-amount-btc,
+#withdraw-amount-aud {
+    -moz-appearance: textfield; /* Firefox */
+}
