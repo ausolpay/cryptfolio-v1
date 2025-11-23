@@ -1679,7 +1679,15 @@ body.light-mode .stat-label {
     padding: 0 20px;
     width: fit-content; /* Section fits the boxes exactly */
     justify-content: center;
+    justify-items: center; /* Center cards within grid cells */
     height: auto; /* ✅ Fit content, especially important on mobile */
+}
+
+/* Center alert messages inside recommendations containers */
+.recommendations-container p {
+    text-align: center;
+    width: 100%;
+    grid-column: 1 / -1; /* Span all columns */
 }
 
 /* Tablet - 2 columns */

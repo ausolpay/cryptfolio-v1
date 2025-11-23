@@ -8089,6 +8089,13 @@ function displayActivePackages() {
 
     if (packagesToShow.length === 0) {
         container.innerHTML = `<p style="text-align: center; color: #888; padding: 20px;">No ${currentPackageTab} packages</p>`;
+
+        // Hide Show More button when no packages to display
+        const showMoreBtn = document.getElementById('show-more-packages');
+        if (showMoreBtn) {
+            showMoreBtn.style.display = 'none';
+            console.log(`✗ Show More button hidden (0 packages in ${currentPackageTab} tab)`);
+        }
         return;
     }
 
