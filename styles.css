@@ -1673,12 +1673,13 @@ body.light-mode .stat-label {
 
 .recommendations-container {
     display: grid;
-    grid-template-columns: repeat(3, 336px); /* Same as buy packages - 3 columns */
+    grid-template-columns: repeat(auto-fit, 336px); /* Auto-fit: creates columns as cards are added, max 3 on desktop */
     gap: 15px;
     margin: 20px auto;
     padding: 0 20px;
-    width: fit-content; /* Section fits the boxes exactly */
-    justify-content: center;
+    max-width: 1100px; /* Max width for 3 cards (336px * 3) + gaps */
+    width: 100%;
+    justify-content: center; /* Center the grid columns */
     justify-items: center; /* Center cards within grid cells */
     height: auto; /* ✅ Fit content, especially important on mobile */
 }
@@ -1690,10 +1691,11 @@ body.light-mode .stat-label {
     grid-column: 1 / -1; /* Span all columns */
 }
 
-/* Tablet - 2 columns */
+/* Tablet - 2 columns max, centered */
 @media (max-width: 1040px) {
     .recommendations-container {
-        grid-template-columns: repeat(2, 300px);
+        grid-template-columns: repeat(auto-fit, 300px); /* Auto-fit: max 2 cards on tablet */
+        max-width: 650px; /* Max width for 2 cards (300px * 2) + gap */
     }
 }
 
