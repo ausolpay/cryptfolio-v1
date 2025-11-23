@@ -1595,6 +1595,12 @@ body.light-mode .package-progress-bar {
     animation: flash 0.5s infinite;
 }
 
+/* Auto-buy robot indicator - positioned on left (rocket is on right) */
+.block-found-indicator.auto-buy-robot {
+    left: 5px;
+    right: auto;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }

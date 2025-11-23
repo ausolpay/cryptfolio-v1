@@ -8145,14 +8145,15 @@ function displayActivePackages() {
             }
         }
 
-        // Robot icon for auto-bought packages
+        // Robot icon for auto-bought packages (flashing, same style as rocket)
         const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
         // Use consistent package ID logic (same as when saving)
         const packageIdForRobot = pkg.apiData?.id || pkg.id;
         const isAutoBought = autoBoughtPackages[packageIdForRobot];
         let robotHtml = '';
-        if (isAutoBought) {
-            robotHtml = '<div class="auto-buy-indicator" title="Auto-bought by bot" style="position: absolute; left: 5px; top: 5px; font-size: 20px;">🤖</div>';
+        if (isAutoBought && pkg.active) {
+            // Active auto-bought package: flashing robot on top left (matches rocket style)
+            robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
         }
 
         // Rocket icon logic:
