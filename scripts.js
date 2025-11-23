@@ -529,6 +529,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('auto-update-holdings-toggle-page').checked = savedSettings.autoUpdateHoldings || false;
     document.getElementById('include-available-btc-toggle-page').checked = savedSettings.includeAvailableBTC || false;
     document.getElementById('include-pending-btc-toggle-page').checked = savedSettings.includePendingBTC || false;
+    document.getElementById('auto-buy-cooldown-toggle-page').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
 }
 
 // =============================================================================
@@ -5834,6 +5835,7 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.autoUpdateHoldings = document.getElementById('auto-update-holdings-toggle-page').checked;
     easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle-page').checked;
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle-page').checked;
+    easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle-page').checked;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
