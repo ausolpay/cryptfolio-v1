@@ -8876,32 +8876,38 @@ async function updateRecommendations() {
         });
     }
 
-    // Update solo recommendations if changed
-    if (soloChanged) {
+    // Update solo recommendations if changed OR if container is empty (first load)
+    const isSoloContainerEmpty = bestPackagesContainer && bestPackagesContainer.innerHTML.trim() === '';
+    console.log(`🔍 Solo update check: soloChanged=${soloChanged}, isSoloContainerEmpty=${isSoloContainerEmpty}, recommendations.length=${recommendations.length}`);
+
+    if (soloChanged || isSoloContainerEmpty) {
         currentRecommendations = recommendations;
-        bestPackagesContainer.innerHTML = '';
+        if (bestPackagesContainer) {
+            console.log(`🔍 Updating solo alerts container, recommendations: ${recommendations.length}`);
+            bestPackagesContainer.innerHTML = '';
 
-        if (recommendations.length === 0) {
-            // Check if any alerts are configured
-            const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
-            const hasAlerts = Object.keys(savedAlerts).length > 0;
+            if (recommendations.length === 0) {
+                // Check if any alerts are configured
+                const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+                const hasAlerts = Object.keys(savedAlerts).length > 0;
 
-            if (!hasAlerts) {
-                bestPackagesContainer.innerHTML = '<p style="color: #aaa; text-align: center;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure solo alerts</a> to get package recommendations.</p>';
+                if (!hasAlerts) {
+                    bestPackagesContainer.innerHTML = '<p style="color: #aaa; text-align: center;"><a href="#" onclick="showPackageAlertsPage(); return false;" style="color: #ffa500;">Configure solo alerts</a> to get package recommendations.</p>';
+                } else {
+                    bestPackagesContainer.innerHTML = '<p style="color: #aaa; text-align: center;">No solo packages currently meet your alert thresholds.</p>';
+                }
             } else {
-                bestPackagesContainer.innerHTML = '<p style="color: #aaa; text-align: center;">No solo packages currently meet your alert thresholds.</p>';
+                // Fetch crypto prices for the recommendations
+                window.packageCryptoPrices = await fetchPackageCryptoPrices(recommendations);
+
+                console.log(`✅ Displaying ${recommendations.length} recommended solo package(s)`);
+
+                // Display each recommended package using the same card format as buy packages
+                recommendations.forEach(pkg => {
+                    const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
+                    bestPackagesContainer.appendChild(card);
+                });
             }
-        } else {
-            // Fetch crypto prices for the recommendations
-            window.packageCryptoPrices = await fetchPackageCryptoPrices(recommendations);
-
-            console.log(`✅ Displaying ${recommendations.length} recommended solo package(s)`);
-
-            // Display each recommended package using the same card format as buy packages
-            recommendations.forEach(pkg => {
-                const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
-                bestPackagesContainer.appendChild(card);
-            });
         }
     }
 
