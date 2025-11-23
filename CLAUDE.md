@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CryptFolio v1.6 is a client-side web application for tracking cryptocurrency holdings with real-time price updates, charts, and NiceHash EasyMining integration. The application is built with vanilla HTML/CSS/JavaScript and runs entirely in the browser using localStorage for data persistence.
+CryptFolio v2 is a client-side web application for tracking cryptocurrency holdings with real-time price updates, charts, and NiceHash EasyMining integration. The application is built with vanilla HTML/CSS/JavaScript and runs entirely in the browser using localStorage for data persistence.
 
 ## Architecture
 
