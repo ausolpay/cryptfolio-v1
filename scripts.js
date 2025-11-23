@@ -774,6 +774,630 @@ function saveWithdrawalAddress(crypto, address) {
 }
 
 // ========================================
+// TRAVEL DATA MANAGEMENT FUNCTIONS
+// ========================================
+
+// All 242 VASPs from VASP-ID.md
+const VASP_LIST = [
+    { name: "1 Money", id: "2d59da78-a298-48eb-a176-8de569f93b14" },
+    { name: "Amber", id: "536fbe59-38da-4b99-be4b-5ecf865e78d8" },
+    { name: "Amina Bank", id: "a94d3e82-170a-40e7-b08e-429f8b0dc8bf" },
+    { name: "Anchorage Digital Bank", id: "a541304b-9f37-4a25-89e7-2ce26bd423c7" },
+    { name: "Anchorage Digital Singapore", id: "87142d96-2607-4077-ae88-c8d0fc5a966a" },
+    { name: "Apex network", id: "65a1cf51-4947-429d-a908-376bc2c7977c" },
+    { name: "Aplo", id: "63c4adf6-1dab-472f-bfbf-b3a2721e6f10" },
+    { name: "Aquanow", id: "ba88b153-a8f6-4d77-9b70-7c169a1de3d9" },
+    { name: "Archax", id: "6d94dc67-3d8e-415f-ba9f-8e646157a596" },
+    { name: "Ari10", id: "ff5207d1-0541-475b-addf-dd1ab7fb3578" },
+    { name: "B2C2", id: "27bb3586-b34a-4ac7-b09f-d3bd1139bc63" },
+    { name: "Baanx Group Ltd", id: "036581f2-d0a9-4f72-a928-01e79d028f5a" },
+    { name: "Bake", id: "f26df7de-6fcd-411a-a3c4-4399f806c631" },
+    { name: "BankFrick", id: "6ca0ac2a-258f-4e9f-9948-38abac15c5eb" },
+    { name: "Bare Bitcoin AS", id: "ade51da9-75fa-483b-92e6-15100d35bae3" },
+    { name: "BBVA", id: "df9c121c-f39a-4345-9155-8cc513f7b9cb" },
+    { name: "BCB Group", id: "594db4da-940e-463b-bb59-77db4034ceec" },
+    { name: "BDACS", id: "2398ac44-4134-47a4-80fd-dfd5844d1141" },
+    { name: "Bequant", id: "95d5a270-1fab-42b1-959b-4178d85eb4a6" },
+    { name: "Bi2Me", id: "9d68819c-6f4e-4451-9e8f-219820efcb4b" },
+    { name: "Binance.US", id: "d14066aa-1583-476f-acde-2365644b5dcc" },
+    { name: "Binance", id: "f154f695-af70-4c96-814b-c6cc308b9b0f" },
+    { name: "Bit.plus", id: "67f333fa-c1f9-439a-b41c-9da53802c38d" },
+    { name: "Bit2C", id: "b6c8c4d6-81a2-4f39-a8a6-e543eb10614b" },
+    { name: "Bit2Me", id: "fde72937-ad48-46e5-9ba9-ac7b21e7dce2" },
+    { name: "BitBank", id: "a7019d2f-9453-4034-8ba1-d5f5c4b83bdd" },
+    { name: "Bitbns", id: "d1f51694-c5af-4e11-8f4a-b1fbba802398" },
+    { name: "Bitcoin Suisse", id: "b9653bfb-2b71-4e4b-bff7-990936eabc79" },
+    { name: "Bitcoin.de", id: "2f2e0ad4-e565-4e2b-9329-913a10b84723" },
+    { name: "Bitcoin4U", id: "f39e07a7-d532-4a59-a68b-b9892ebb1fc9" },
+    { name: "BitcoinPoint", id: "4b749fac-265b-4588-b7a4-fdc3720220a3" },
+    { name: "Bitcove", id: "c0e13453-4a19-42b3-9bbd-40c4841b569e" },
+    { name: "Bitfinex", id: "43a93fc0-c2ea-49b5-b253-9908980a78e0" },
+    { name: "bitFlyer, Inc.", id: "43f3996e-ad55-46c7-856f-522042043f3b" },
+    { name: "BitGet", id: "442f46fd-b16c-4e45-8570-4f4ad828d203" },
+    { name: "BitGo Custody Mena FZE", id: "6d814cd8-fbf0-4437-af5c-91cc5b578d7b" },
+    { name: "BitGo Europe ApS", id: "7628d2c9-e3b9-4608-8884-9b80e6288356" },
+    { name: "BitGo Europe GmbH", id: "efa00fbc-c198-4cd6-a603-8a3269c6e997" },
+    { name: "BitGo New York Trust Company, LLC", id: "c427af19-8ddb-4b21-a8c5-4088a62d9f2a" },
+    { name: "BitGo Singapore Pte. Ltd.", id: "00a85254-010e-4b0b-abd7-8fea284e95ac" },
+    { name: "BitGo Trust Company, Inc.", id: "3054d8d4-0fa0-4351-b9b9-fbb3d83fc3bd" },
+    { name: "Bitkub Online", id: "1ffa9385-e783-4faf-b690-007cb361c195" },
+    { name: "Bitlocus", id: "bd754684-3741-467b-9645-2c54a37ec8c2" },
+    { name: "Bitmart", id: "982a332d-7a0c-462a-bbfa-62e3dc00c0d4" },
+    { name: "Bitmex", id: "5c551af9-8954-4ac8-92fc-66d6fb9b3b13" },
+    { name: "Bitpanda", id: "c48851d6-5d33-44c4-b0b6-18e27d62b106" },
+    { name: "BitPay", id: "206dd129-11fc-4eef-9730-0e46a3603dd6" },
+    { name: "Bitrue", id: "5f7d6e9f-67f1-4aa9-8288-a063192958bb" },
+    { name: "Bits of Gold", id: "30c63ae8-068c-4e9a-bd6c-f2d46c4f04d1" },
+    { name: "Bitstamp", id: "094e85a9-b841-4e2f-add1-0830c7597d78" },
+    { name: "Bittrex", id: "0f378f25-41ee-41dc-8078-8c8116cccb43" },
+    { name: "Bitvavo", id: "8e57f024-6f2e-4007-94b4-057f5bd22b2b" },
+    { name: "Bleap", id: "1ae4fc1f-dd78-4b62-9b8f-6d3b742ceafb" },
+    { name: "BlockBee", id: "a3600595-f5a1-4d57-b66c-1d8b3ec246ea" },
+    { name: "Blockchain.com", id: "f49aaf65-bb02-44ff-a9d7-cd1ccd9071a8" },
+    { name: "BlockFi", id: "e4c23d9b-731e-4f92-a6bd-0a70567ce0ba" },
+    { name: "Boerse Stuttgart Digital Custody", id: "32a13434-4c33-43fa-a56f-476261408018" },
+    { name: "Boku", id: "a7cacfd9-cca7-4a01-8100-e120f6b6ccc6" },
+    { name: "BoomFi", id: "af71fc8f-098b-4677-9f10-73ab5472441f" },
+    { name: "Brane", id: "ae880928-a82f-46d4-9c6e-942f265463b9" },
+    { name: "Bright Point International Futures", id: "7f1be389-ffaf-4018-8559-05f8e5c53551" },
+    { name: "Brighty", id: "dcf81d57-36a1-473b-ad6e-5c5b5d07e122" },
+    { name: "BTC Direct", id: "8d384575-dfa3-456b-b362-efd89ea0cf53" },
+    { name: "BTCBOX", id: "a8da46e1-9407-4193-a35c-826e488d924f" },
+    { name: "BTCC", id: "27b97499-6097-47c0-a552-261cb453cf2a" },
+    { name: "BtcTurk", id: "a5a7d73c-89a7-4c45-bfca-f72caf2f4c26" },
+    { name: "BTCX", id: "cdac6636-23d1-460d-b26e-2753879cdf2b" },
+    { name: "Bullish", id: "11c47f42-e01f-498b-9a1d-c4a4fa6434e0" },
+    { name: "Bybit", id: "45b4eb05-cc34-49e5-90dd-1675a27a3670" },
+    { name: "Cape Crypto", id: "8187981b-52fe-49c4-900b-7ea8f614d655" },
+    { name: "Carret", id: "014d69ee-e645-4da5-a8a8-160cd3d89e0d" },
+    { name: "Casa", id: "c4928a1d-1ed3-4398-9b54-6d017f02f64d" },
+    { name: "CEX.io", id: "54857d3d-a4c8-41b1-92ef-19a2665f2340" },
+    { name: "ChangeNOW", id: "f6d64a8c-a9c4-4446-8b65-d8cc8681313e" },
+    { name: "CheckSig", id: "f3b9a5d4-7c2e-4a6a-b9b6-9d8f3e2c1f97" },
+    { name: "Chipper Cash", id: "40c90b1f-aa00-45d3-a70c-ce621f7a24bb" },
+    { name: "Circle Internet Financial, LLC", id: "f0ddd116-db0f-4576-9395-39b75500ddd5" },
+    { name: "Cofinex", id: "1641446f-b73f-4970-891c-56638bf0ac71" },
+    { name: "Coinbase", id: "7f877755-ccf8-46a3-88cd-dd60415842ea" },
+    { name: "CoinCafe", id: "9d1cf021-6618-4289-aac8-7135c62fdfe9" },
+    { name: "Coincheck", id: "9e526696-9dd0-4f04-b745-5c2add4a8491" },
+    { name: "Coinex", id: "c06cc9b0-e0ab-4b05-a24a-dc1b9c727d90" },
+    { name: "Coingate", id: "66e357ec-bc8d-48b7-a935-ab71923d3750" },
+    { name: "Coinhako", id: "103312cb-bf32-470c-9395-90803d88c203" },
+    { name: "Coinify", id: "d1c1f4ab-2394-44fc-967e-f93825b6e2df" },
+    { name: "COINMATE", id: "ded83940-307c-4fc8-8469-f25f35876d97" },
+    { name: "Coinmetro", id: "6013ecf0-7ab8-4263-9204-cb9345861173" },
+    { name: "Coinmotion", id: "0d56cbba-aec2-457d-b197-35ff25b14a62" },
+    { name: "Coinone", id: "a2da0e55-d6b6-483d-a376-81a020c29d85" },
+    { name: "Coinpayments", id: "997a8d6c-2fdc-4681-ae97-c3248f380e97" },
+    { name: "Coins.ph", id: "4463681d-39a5-4f36-ae9b-ec759d14570f" },
+    { name: "CoinSwitch", id: "9921c441-a24a-4236-b114-14a121e05d01" },
+    { name: "Conio", id: "e7b1ec22-eddf-432f-9c93-3b3135173577" },
+    { name: "Copper", id: "060eb7f7-e45e-4681-b627-347762f0b54f" },
+    { name: "Crescendo Capital", id: "adf53486-d0b9-407f-886d-8c34d7abc253" },
+    { name: "Criptan", id: "09a25371-40e2-4d1d-a577-9ca74453cfe7" },
+    { name: "Crossmint", id: "bf01e9ad-7025-43b7-b713-f1ffb147f104" },
+    { name: "Crypto Finance", id: "994537db-724a-431d-b8a5-dd6e01fa4a63" },
+    { name: "Crypto.com", id: "df9bbf17-6212-42d3-955e-aa5b24d5fb56" },
+    { name: "CryptoMarket", id: "fbdcc8a6-ec26-4dac-a2df-dba7fe28458a" },
+    { name: "Cryptowallet", id: "cf88fb80-40f1-42b1-a2b6-5361d45ec180" },
+    { name: "Cube Exchange", id: "7e737568-fc4e-4baa-b092-ad984f62ad7e" },
+    { name: "Custodia Bank", id: "bede7ca4-8a96-4f7f-876b-995b33212c83" },
+    { name: "CYBAVO", id: "2cd3a1d4-4e5f-4003-896a-814d76903210" },
+    { name: "DBS Digital Exchange", id: "77b8865f-8b2b-4d85-b487-ecfff2fad85c" },
+    { name: "Depasify", id: "4ab48234-182e-431b-bb7a-fa5652aa2ff6" },
+    { name: "Deribit", id: "822492db-af00-4fb6-a5f2-ce85530d5a70" },
+    { name: "DFX", id: "b88a075d-c07d-4cb2-b763-3743e99a1248" },
+    { name: "DIGTL", id: "2d69022a-e950-43e9-a6fc-4901b5463e84" },
+    { name: "DLT Custody", id: "72320886-f127-4383-9801-16667fda7bb9" },
+    { name: "Easy Crypto", id: "24fbadb0-e05b-46eb-9f01-c2734a9030c4" },
+    { name: "ECD.rs", id: "7f44eae0-74f9-41eb-b304-cdec0c88953e" },
+    { name: "Enclave Markets", id: "9f14f4f6-127a-4473-be2c-a047d1bd2587" },
+    { name: "Enigma", id: "6454f0f6-9022-4c40-8848-ec5b822faedc" },
+    { name: "eToro", id: "6c79c265-fe29-412d-834c-b31a4360f6a7" },
+    { name: "FalconX", id: "b9b5072d-9a5b-4cd7-922c-475493c9aef4" },
+    { name: "Fazz", id: "269415ff-e921-4f1c-a092-992864fa67da" },
+    { name: "Fidelity Digital Asset Services, LLC", id: "9f27dde8-01aa-4ba9-a2b8-e0ba035745d0" },
+    { name: "Fincryptou", id: "0a13180b-9b4d-47c1-9c36-3679f9a9b74a" },
+    { name: "Finoa", id: "2b1817c2-d40f-4f5a-a348-7dd1bfa84f89" },
+    { name: "Finst", id: "7b3e82ff-3d90-4b07-9570-eaf5e136a07b" },
+    { name: "Firi", id: "13d60362-75b9-448b-b1d4-b0b893f31a50" },
+    { name: "Flow Traders", id: "1e1e736c-4930-49f5-9fac-5e541101f55c" },
+    { name: "Flowdesk SAS", id: "ccce67ce-534c-4526-9094-d6abbd928ea6" },
+    { name: "Fortuna Digital Custody", id: "842d8508-60f6-44df-9822-2aaebfe99d8d" },
+    { name: "Futu", id: "d1dfe10a-2db8-4f9d-b989-4d38e9f9e638" },
+    { name: "FV Bank", id: "f6283d66-f4d6-4b8d-a1d3-bf8c9d682436" },
+    { name: "Galaxy Digital", id: "db7ff487-578b-4b13-ac30-51557bb961af" },
+    { name: "Garanti BBVA Kripto", id: "2ad07178-2996-4751-a373-61f05d69ac63" },
+    { name: "GARANTI BBVA", id: "73b57dc6-561d-4a46-9186-3c9068659140" },
+    { name: "Gate.io", id: "d8639730-e725-4bb5-a0b7-8817a862a8ad" },
+    { name: "GateHub", id: "ccd42629-2dd4-44d1-a21c-14f2982339c8" },
+    { name: "Gemini Trust Company", id: "c1f10465-58b4-4d33-a04d-222e77a3f5fd" },
+    { name: "Giottus", id: "bc3eb31c-f7cc-4642-944e-d11947be3a10" },
+    { name: "GMO Trust", id: "626e9ed2-9946-4341-b3a4-2b7c5701fe9d" },
+    { name: "GOin", id: "486a7a4c-143e-4f2c-9d1f-2f580711f191" },
+    { name: "Great South Gate", id: "e3974b25-3a42-4ec5-ae16-2d418576b715" },
+    { name: "Greenmerc", id: "e4ed2b45-6390-4c0d-9be7-0e9e2daac2bb" },
+    { name: "H-Finance", id: "0693b59f-7558-4e16-8fc3-e58fb6656291" },
+    { name: "Hex Trust", id: "2c34a7d3-4a33-445d-bd5d-0f02ea9ee2de" },
+    { name: "Hidden Road Partners", id: "999787dc-b539-40e5-85c5-1ef55bee60de" },
+    { name: "HTX", id: "188d9e59-5fe9-4b94-b048-c7346960b1b5" },
+    { name: "Iconomi", id: "8221ab04-e174-4b33-9dfc-af81b61e5ce7" },
+    { name: "Independent Reserve", id: "0daf6642-fc53-4604-8cec-90e5a95cabea" },
+    { name: "Itbit", id: "6d98ceeb-6dd4-4a25-aada-5fefaca3185e" },
+    { name: "IXFI", id: "aafd5386-fa06-4c55-a363-aa7427d373ae" },
+    { name: "Januar", id: "fe97311b-2c7d-45d6-a51a-b977287beb0b" },
+    { name: "JuJu", id: "6e27fe35-1f1e-44d7-a28e-defea464c0ea" },
+    { name: "Juno", id: "7a4f3475-afaf-439b-bef8-15bfc6c9a2ab" },
+    { name: "Konto.com", id: "7d5a010c-320e-4de3-8844-25d61937e20c" },
+    { name: "Kraken", id: "b87b7a01-7972-4e8c-a783-3b7ffdf8c016" },
+    { name: "Kriptomat", id: "5bfd12db-786f-490f-aa28-a9fc801d1e5e" },
+    { name: "Kucoin", id: "b7e50fed-2b2f-4f37-bf41-a47266805f55" },
+    { name: "Kun", id: "e3260646-5790-42c5-b588-9f116691c106" },
+    { name: "Kyrrex", id: "0503ae7f-b25f-454a-9030-1f0ae5565d6d" },
+    { name: "LCX", id: "2bb0805b-599e-4aac-a5e9-c51e68473c9d" },
+    { name: "Legend Trading", id: "e2480fe5-dbf4-4c61-8054-c882b0c7688c" },
+    { name: "Lemon", id: "e1b78cc1-1a99-46cf-a7e0-c072120976a6" },
+    { name: "Lmax Digital", id: "4e8bca34-5453-4ae5-a8dd-dcdc8eadcbcb" },
+    { name: "LTP", id: "e11e1759-31ab-44ca-80a1-8b14b3151fae" },
+    { name: "Luso Digital Assets", id: "737aac52-c995-4059-b63e-6580d52410ae" },
+    { name: "M2", id: "666e5cc0-55cc-4b91-b3b0-0c6668a3f2f6" },
+    { name: "Match2pay", id: "18212098-3107-4198-a032-a65e594943f7" },
+    { name: "Mercado Bitcoin", id: "833c90d1-9493-4367-9df0-33ff1cb62348" },
+    { name: "Mercuryo", id: "0ae07dc0-b805-4f51-bbdd-08886363d16c" },
+    { name: "Mexc", id: "5093cfbe-dfd8-427b-8851-2a10f1a0c684" },
+    { name: "Mobee", id: "98d5df3a-b244-4202-9f6f-4c8250a7e905" },
+    { name: "Moneybrain", id: "bdfaa7b0-13a3-4a9e-8ab6-be562d10170d" },
+    { name: "NBX", id: "7944cb18-5a2a-4ad4-b150-5edf05cb991c" },
+    { name: "NDAX", id: "a40f8663-6ccf-4cf4-b82c-0931c6d6e01d" },
+    { name: "Newton", id: "a6bd9d8e-3070-461b-90ce-87df6c65adfb" },
+    { name: "Nexdesk", id: "d3a6ee3c-a499-4989-9d8a-91b300662e2a" },
+    { name: "Nexo", id: "b4500c1c-3e57-4501-b6bb-16956a5a4964" },
+    { name: "Nicehash", id: "cae72a21-0bc6-4506-980a-79698be18056" },
+    { name: "Nilos", id: "ce2d8508-5956-43e5-a808-7bb0ae07c517" },
+    { name: "Nordark", id: "79cbada8-df36-4917-8888-af91549594ef" },
+    { name: "Northcrypto", id: "d6629fe4-b9c3-44f7-8952-f25c7fca0d23" },
+    { name: "NYDIG", id: "8b0ea804-5a35-4586-971b-1832535faf7e" },
+    { name: "OKX Europe LTD", id: "023d9944-3e48-4256-bc4f-fef915f80d8b" },
+    { name: "OKX Global", id: "5be252d8-9ce4-451b-b36e-18ee52ee916f" },
+    { name: "OKX", id: "4f82d369-5274-483d-9d0d-f1c1536b3300" },
+    { name: "OKX", id: "756f0c10-35c1-4f34-b413-03667f4ae526" },
+    { name: "OSL Digital Securities Ltd", id: "dc5d8f81-766a-4c21-a6fe-fd3221cd34dc" },
+    { name: "OSL Digital Securities", id: "4d014c7a-7c43-409d-9b1f-17d43ebe9b48" },
+    { name: "OTCIS LLC", id: "023d9944-42d3-856f-b36e-9b80e6288356" },
+    { name: "Palisade Financial", id: "aab93e33-e525-427f-a770-02355d9c7e8d" },
+    { name: "PARADISO VENTURES INC. O/A Balance", id: "8187aeec-e4a0-495d-ab31-476ad1044e8c" },
+    { name: "Parfin", id: "2dda8609-6161-4a55-bb89-4d05f667d3c0" },
+    { name: "Paxos PTC", id: "2324bd0f-1ca8-44ea-a84f-798a198cc98f" },
+    { name: "PayPal, Inc.", id: "facc3efa-ad53-40f8-99b1-d56ad5136c72" },
+    { name: "Paysafe Payments Solutions Limited", id: "d27aff36-3257-4f57-845a-b0aec1fe38da" },
+    { name: "Paytrie", id: "b1bbf4f1-4c80-40ac-9e05-a1840462d2f1" },
+    { name: "PDAX", id: "5aa72da8-6d14-46b3-82bd-2fb11c3c3b84" },
+    { name: "Phemex", id: "0eac6581-0daf-41b6-bfde-ec2ebabc0b6f" },
+    { name: "Pionex", id: "3d113816-cef4-4564-aa7c-853e9f661c6d" },
+    { name: "Quantfury", id: "185617ed-4c65-4c31-a18b-91f01124a23f" },
+    { name: "Revolut", id: "54ed677a-e032-4b6b-889b-da29c990ca19" },
+    { name: "Rise", id: "9b5cc692-dd48-4513-ad52-0dedf9f61236" },
+    { name: "Robinhood Crypto, LLC", id: "7fc9ecb5-ba4c-41b4-bdee-c0d8cd769064" },
+    { name: "RocketFuel", id: "fa154ddd-08f6-4700-b2e6-f26b7d71a844" },
+    { name: "Roma", id: "0b0dec55-99cd-4fed-9941-52e5757c44da" },
+    { name: "Safello", id: "ce97c783-eb6a-4edd-b2a1-44d853c25ac5" },
+    { name: "SBI VC Trade", id: "4a1a71e0-eec4-45c7-808f-39af5c1355dc" },
+    { name: "SBI Zodia Custody", id: "d77a1576-6627-48a8-a3b6-6f7cf56c558e" },
+    { name: "Shakepay Inc.", id: "d0fef6ef-3cd0-4217-bf30-d45d5d36ecdd" },
+    { name: "SKRILL_LIMITED", id: "50df8a16-ff22-4622-8c96-e39e2feaa081" },
+    { name: "Standard Custody and Trust Company, LLC", id: "fb515c53-b036-4289-96a6-6062fab4ddef" },
+    { name: "SwissBorg", id: "6ca5db21-434e-4bad-8fed-a1b5b8ca804c" },
+    { name: "SwissQuote Bank", id: "6c8de587-330b-4259-8a85-ff24b260b64d" },
+    { name: "Swyftx", id: "fcb08d4d-e9fc-4757-ba24-0622d5a73f3c" },
+    { name: "Sygnum", id: "4b735466-5208-4c43-b40c-33524fdce2de" },
+    { name: "T4trade", id: "17e00dae-5792-43cc-9290-bcde34bd5c1f" },
+    { name: "Tangany", id: "5030ce1f-5ff6-4910-b19d-563181de2f17" },
+    { name: "Tap", id: "e0cadeea-3b0f-4aa6-ad64-53690a5593bf" },
+    { name: "Taurus", id: "cef5fdd8-1fad-48ac-a2da-ab990eeee1a0" },
+    { name: "Tilvest", id: "4434d97c-a8ad-4b33-8fc0-ff7dae662a7a" },
+    { name: "Tokyo Hash", id: "8d33bda9-df6b-4e5a-9ec9-8ce543be9410" },
+    { name: "TorumPay", id: "1d8fad4d-fabe-40f2-954f-4c32e734aadb" },
+    { name: "TradeStation Crypto, Inc.", id: "4db38a1a-3dd7-41a9-8826-cd3cd9054022" },
+    { name: "TradeStation", id: "e41385e2-931e-45d6-ac1d-32f6d4572946" },
+    { name: "Trillion Digital Assets", id: "6fe2a014-89e6-4c7e-9cda-3d915b8c4ad6" },
+    { name: "Triple A Technologies Pte. Ltd.", id: "3796e0b8-23ed-44d5-9d77-500da2942102" },
+    { name: "Union Block", id: "1de07d19-1de1-4730-a279-159aa793430f" },
+    { name: "Upbit", id: "93b78cda-7d61-4f7e-b944-245ea3ce96db" },
+    { name: "Uphold", id: "feb0a6bf-2200-4c78-94c2-690dab603738" },
+    { name: "Upvest", id: "4b2851d2-96ba-4f9c-a795-bf19b4e5e74a" },
+    { name: "VALR", id: "3e847e35-999d-4b70-af4f-9fcab544fd9b" },
+    { name: "VAX", id: "c4995ea9-30b3-4be9-8728-610440c63987" },
+    { name: "Wallet.tg", id: "5b1b996e-47e3-4fb5-8e49-8198b601c2ca" },
+    { name: "Wealthsimple Investments Inc.", id: "8b861a13-da3a-478c-84e4-a4ff16363257" },
+    { name: "WhiteBIT", id: "17878215-353f-4a4b-a352-336a0abb7eff" },
+    { name: "Wirex", id: "74d502e3-66a0-40f8-9020-6cc09886d9ca" },
+    { name: "Woo X", id: "802a32de-802c-490b-bf06-da5f4758ff50" },
+    { name: "Xapo Bank", id: "8c8a4e10-f91e-4b83-8172-3a346d4404af" },
+    { name: "xMoney", id: "bb8d2323-58e9-454d-91e2-b3f8f4751676" },
+    { name: "XREX", id: "7f7ad515-78b5-4bd5-b1bb-35e87e9213b4" },
+    { name: "xWhale", id: "941e41a7-87e9-4ad5-86b1-4d4551681487" },
+    { name: "Yellow Card", id: "22a6babf-e87f-43e8-bb24-9e5ee76322a5" },
+    { name: "Young Platform", id: "6f6a37eb-ed33-41a9-a957-5b91f4e55d2f" },
+    { name: "Zero Hash LLC", id: "c65e3227-2089-4d8b-ba76-5e2aec4715b3" },
+    { name: "ZondaCrypto", id: "fd3a00fb-9614-4004-8cae-62e10cc40439" },
+    { name: "Zoomex", id: "77623b4d-aff0-4823-b80f-87c0b91503c6" }
+];
+
+// Country codes for dropdown
+const COUNTRY_LIST = [
+    { code: "AU", name: "Australia" },
+    { code: "US", name: "United States" },
+    { code: "GB", name: "United Kingdom" },
+    { code: "CA", name: "Canada" },
+    { code: "NZ", name: "New Zealand" },
+    { code: "SG", name: "Singapore" },
+    { code: "HK", name: "Hong Kong" },
+    { code: "JP", name: "Japan" },
+    { code: "KR", name: "South Korea" },
+    { code: "CN", name: "China" },
+    { code: "IN", name: "India" },
+    { code: "DE", name: "Germany" },
+    { code: "FR", name: "France" },
+    { code: "IT", name: "Italy" },
+    { code: "ES", name: "Spain" },
+    { code: "NL", name: "Netherlands" },
+    { code: "BE", name: "Belgium" },
+    { code: "CH", name: "Switzerland" },
+    { code: "AT", name: "Austria" },
+    { code: "SE", name: "Sweden" },
+    { code: "NO", name: "Norway" },
+    { code: "DK", name: "Denmark" },
+    { code: "FI", name: "Finland" },
+    { code: "PL", name: "Poland" },
+    { code: "PT", name: "Portugal" },
+    { code: "IE", name: "Ireland" },
+    { code: "GR", name: "Greece" },
+    { code: "CZ", name: "Czech Republic" },
+    { code: "RO", name: "Romania" },
+    { code: "HU", name: "Hungary" },
+    { code: "BG", name: "Bulgaria" },
+    { code: "HR", name: "Croatia" },
+    { code: "SK", name: "Slovakia" },
+    { code: "SI", name: "Slovenia" },
+    { code: "LT", name: "Lithuania" },
+    { code: "LV", name: "Latvia" },
+    { code: "EE", name: "Estonia" },
+    { code: "MT", name: "Malta" },
+    { code: "CY", name: "Cyprus" },
+    { code: "LU", name: "Luxembourg" },
+    { code: "IS", name: "Iceland" },
+    { code: "RU", name: "Russia" },
+    { code: "UA", name: "Ukraine" },
+    { code: "TR", name: "Turkey" },
+    { code: "IL", name: "Israel" },
+    { code: "AE", name: "United Arab Emirates" },
+    { code: "SA", name: "Saudi Arabia" },
+    { code: "ZA", name: "South Africa" },
+    { code: "NG", name: "Nigeria" },
+    { code: "KE", name: "Kenya" },
+    { code: "EG", name: "Egypt" },
+    { code: "BR", name: "Brazil" },
+    { code: "AR", name: "Argentina" },
+    { code: "MX", name: "Mexico" },
+    { code: "CL", name: "Chile" },
+    { code: "CO", name: "Colombia" },
+    { code: "PE", name: "Peru" },
+    { code: "VE", name: "Venezuela" },
+    { code: "TH", name: "Thailand" },
+    { code: "MY", name: "Malaysia" },
+    { code: "ID", name: "Indonesia" },
+    { code: "PH", name: "Philippines" },
+    { code: "VN", name: "Vietnam" },
+    { code: "TW", name: "Taiwan" },
+    { code: "BD", name: "Bangladesh" },
+    { code: "PK", name: "Pakistan" }
+];
+
+/**
+ * Show the Travel Data management page
+ */
+function showTravelDataPage() {
+    console.log('📍 Showing Travel Data Management Page');
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+
+    // Show travel data page
+    document.getElementById('travel-data-page').style.display = 'block';
+
+    // Populate dropdowns
+    populateVaspDropdown();
+    populateCountryDropdown();
+    loadTravelDataDropdown();
+}
+
+/**
+ * Populate VASP dropdown with all 242 VASPs
+ */
+function populateVaspDropdown() {
+    const vaspSelect = document.getElementById('travel-vasp-select');
+
+    // Clear existing options except first one
+    vaspSelect.innerHTML = '<option value="">Select VASP...</option>';
+
+    // Add all VASPs
+    VASP_LIST.forEach(vasp => {
+        const option = document.createElement('option');
+        option.value = vasp.id; // Store UUID as value
+        option.textContent = vasp.name;
+        vaspSelect.appendChild(option);
+    });
+
+    console.log('✅ Populated VASP dropdown with', VASP_LIST.length, 'VASPs');
+}
+
+/**
+ * Populate country dropdown with country codes
+ */
+function populateCountryDropdown() {
+    const countrySelect = document.getElementById('travel-country-select');
+
+    // Clear existing options except first one
+    countrySelect.innerHTML = '<option value="">Select country...</option>';
+
+    // Add all countries
+    COUNTRY_LIST.forEach(country => {
+        const option = document.createElement('option');
+        option.value = country.code; // Store code as value (e.g., "AU")
+        option.textContent = `${country.name} (${country.code})`;
+        countrySelect.appendChild(option);
+    });
+
+    console.log('✅ Populated country dropdown with', COUNTRY_LIST.length, 'countries');
+}
+
+/**
+ * Toggle the travel data form visibility
+ */
+function toggleTravelDataForm() {
+    const form = document.getElementById('travel-data-form');
+    const button = document.getElementById('add-travel-data-btn');
+
+    if (form.style.display === 'none') {
+        // Show form
+        form.style.display = 'block';
+        button.textContent = '❌ Cancel';
+        button.style.backgroundColor = '#f44336';
+
+        // Clear form fields
+        clearTravelDataForm();
+    } else {
+        // Hide form
+        form.style.display = 'none';
+        button.textContent = '➕ Add New Address';
+        button.style.backgroundColor = '#4CAF50';
+    }
+}
+
+/**
+ * Toggle between individual and legal entity name fields
+ */
+function toggleLegalEntityFields() {
+    const isLegalEntity = document.getElementById('travel-legal-entity-checkbox').checked;
+    const individualFields = document.getElementById('individual-name-fields');
+    const legalEntityField = document.getElementById('legal-entity-name-field');
+
+    if (isLegalEntity) {
+        // Show legal entity field, hide individual fields
+        individualFields.style.display = 'none';
+        legalEntityField.style.display = 'block';
+
+        // Clear individual name fields
+        document.getElementById('travel-first-name').value = '';
+        document.getElementById('travel-last-name').value = '';
+    } else {
+        // Show individual fields, hide legal entity field
+        individualFields.style.display = 'block';
+        legalEntityField.style.display = 'none';
+
+        // Clear legal entity field
+        document.getElementById('travel-legal-name').value = '';
+    }
+}
+
+/**
+ * Clear all travel data form fields
+ */
+function clearTravelDataForm() {
+    document.getElementById('travel-vasp-select').value = '';
+    document.getElementById('travel-legal-entity-checkbox').checked = false;
+    document.getElementById('travel-first-name').value = '';
+    document.getElementById('travel-last-name').value = '';
+    document.getElementById('travel-legal-name').value = '';
+    document.getElementById('travel-postal-code').value = '';
+    document.getElementById('travel-town').value = '';
+    document.getElementById('travel-country-select').value = '';
+    document.getElementById('travel-saved-name').value = '';
+
+    // Reset to individual name fields
+    toggleLegalEntityFields();
+}
+
+/**
+ * Save travel data to localStorage
+ */
+function saveTravelData() {
+    console.log('💾 Saving travel data...');
+
+    // Get form values
+    const vaspId = document.getElementById('travel-vasp-select').value;
+    const isLegalEntity = document.getElementById('travel-legal-entity-checkbox').checked;
+    const firstName = document.getElementById('travel-first-name').value.trim();
+    const lastName = document.getElementById('travel-last-name').value.trim();
+    const legalName = document.getElementById('travel-legal-name').value.trim();
+    const postalCode = document.getElementById('travel-postal-code').value.trim();
+    const town = document.getElementById('travel-town').value.trim();
+    const country = document.getElementById('travel-country-select').value;
+    const savedName = document.getElementById('travel-saved-name').value.trim();
+
+    // Validation
+    if (!vaspId) {
+        alert('Please select a VASP');
+        return;
+    }
+
+    if (!isLegalEntity && (!firstName || !lastName)) {
+        alert('Please enter first and last name');
+        return;
+    }
+
+    if (isLegalEntity && !legalName) {
+        alert('Please enter legal entity name');
+        return;
+    }
+
+    if (!postalCode || !town || !country || !savedName) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    // Get VASP name from ID
+    const vasp = VASP_LIST.find(v => v.id === vaspId);
+    const vaspName = vasp ? vasp.name : '';
+
+    // Create travel data object with exact field names for API mapping
+    const travelData = {
+        vaspName: vaspName,          // VASP name (string)
+        emailVASPId: vaspId,         // VASP UUID (string)
+        firstName: isLegalEntity ? '' : firstName,    // First name (empty if legal entity)
+        lastName: isLegalEntity ? '' : lastName,      // Last name (empty if legal entity)
+        legalName: isLegalEntity ? legalName : '',    // Legal entity name (empty if individual)
+        postalCode: postalCode,      // Post/zip code (string)
+        town: town,                  // Town/city (string)
+        country: country,            // Country code (e.g., "AU")
+        savedName: savedName         // Nickname for this entry
+    };
+
+    // Get existing travel data
+    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+
+    // Add new entry
+    allTravelData.push(travelData);
+
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_travelData`, JSON.stringify(allTravelData));
+
+    console.log('✅ Travel data saved:', travelData);
+
+    // Refresh dropdown and hide form
+    loadTravelDataDropdown();
+    toggleTravelDataForm();
+
+    alert(`✅ Travel data "${savedName}" saved successfully!`);
+}
+
+/**
+ * Load saved travel data into dropdown
+ */
+function loadTravelDataDropdown() {
+    const dropdown = document.getElementById('saved-travel-data-select');
+
+    // Clear existing options except first one
+    dropdown.innerHTML = '<option value="">Select saved travel data...</option>';
+
+    // Get saved travel data
+    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+
+    // Add each saved entry to dropdown
+    allTravelData.forEach((data, index) => {
+        const option = document.createElement('option');
+        option.value = index; // Store index as value
+        option.textContent = data.savedName;
+        dropdown.appendChild(option);
+    });
+
+    console.log('✅ Loaded', allTravelData.length, 'saved travel data entries');
+}
+
+/**
+ * Load selected travel data into form for viewing/editing
+ */
+function loadSelectedTravelData() {
+    const dropdown = document.getElementById('saved-travel-data-select');
+    const selectedIndex = dropdown.value;
+
+    if (!selectedIndex) {
+        // No selection, hide delete button
+        document.getElementById('delete-travel-data-section').style.display = 'none';
+        return;
+    }
+
+    // Show delete button
+    document.getElementById('delete-travel-data-section').style.display = 'block';
+
+    // Get saved travel data
+    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const data = allTravelData[selectedIndex];
+
+    if (!data) {
+        console.error('❌ Travel data not found at index:', selectedIndex);
+        return;
+    }
+
+    console.log('📖 Loading travel data:', data);
+
+    // Display data as read-only info (not editable)
+    // You can expand this to show in a modal or dedicated section
+    alert(`
+✈️ Saved Travel Data: ${data.savedName}
+
+VASP: ${data.vaspName}
+${data.legalName ? 'Legal Entity: ' + data.legalName : 'Name: ' + data.firstName + ' ' + data.lastName}
+Address: ${data.town}, ${data.postalCode}, ${data.country}
+    `.trim());
+}
+
+/**
+ * Delete selected travel data
+ */
+function deleteTravelData() {
+    const dropdown = document.getElementById('saved-travel-data-select');
+    const selectedIndex = dropdown.value;
+
+    if (!selectedIndex) {
+        alert('Please select a travel data entry to delete');
+        return;
+    }
+
+    // Get saved travel data
+    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const data = allTravelData[selectedIndex];
+
+    if (!data) {
+        console.error('❌ Travel data not found at index:', selectedIndex);
+        return;
+    }
+
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete "${data.savedName}"?`)) {
+        return;
+    }
+
+    // Remove from array
+    allTravelData.splice(selectedIndex, 1);
+
+    // Save back to localStorage
+    localStorage.setItem(`${loggedInUser}_travelData`, JSON.stringify(allTravelData));
+
+    console.log('🗑️ Deleted travel data:', data.savedName);
+
+    // Refresh dropdown and hide delete button
+    loadTravelDataDropdown();
+    document.getElementById('delete-travel-data-section').style.display = 'none';
+
+    alert(`✅ "${data.savedName}" deleted successfully!`);
+}
+
+// ========================================
 // PACKAGE ALERTS FUNCTIONS
 // ========================================
 
