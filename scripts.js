@@ -1798,21 +1798,18 @@ async function generateQrCode(lightningAddress) {
     console.log('📤 Request body:', requestBody);
 
     try {
-        // Use Vercel proxy to avoid CORS
-        // Build URL with access token and download param
+        // Call QR code API directly (separate from NiceHash)
         const fullUrl = `https://api.qr-code-generator.com/v1/create?access-token=${token}&download=0`;
 
         console.log('📤 Full URL:', fullUrl);
+        console.log('📤 Calling QR API directly (not via NiceHash proxy)');
 
-        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+        const response = await fetch(fullUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                url: fullUrl,  // Full URL for external API
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: requestBody
-            })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
         });
 
         console.log('📥 QR code proxy response status:', response.status);
