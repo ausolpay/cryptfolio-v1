@@ -1398,6 +1398,378 @@ function deleteTravelData() {
 }
 
 // ========================================
+// BTC LIGHTNING DEPOSITS FUNCTIONS
+// ========================================
+
+// QR Code API access tokens with fallback
+const QR_CODE_TOKENS = [
+    'nsn_vaCZZqkTcsunCUGEfwuAxf1fCHnYNiss9MssnU3FZjevECqIJuVqiYBCOkHE',
+    'S6ZkdQDcroQGAQKQgsttFLf2JnSAt-7j2E9_ITE6DHwa9WKDr3BQWTusnOrJ0PVS'
+];
+let currentQrTokenIndex = 0;
+
+/**
+ * Show the Deposits page
+ */
+function showDepositsPage() {
+    console.log('💰 Showing BTC Lightning Deposits Page');
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('travel-data-page').style.display = 'none';
+
+    // Show deposits page
+    document.getElementById('deposits-page').style.display = 'block';
+
+    // Populate travel data dropdown
+    loadDepositTravelDataDropdown();
+
+    // Clear previous outputs
+    document.getElementById('deposit-output-section').style.display = 'none';
+    document.getElementById('deposit-address-output').value = '';
+    document.getElementById('qr-code-container').innerHTML = '';
+    document.getElementById('deposit-amount-btc').value = '';
+    document.getElementById('deposit-amount-aud').value = '';
+}
+
+/**
+ * Load travel data into deposits dropdown (with "Add New" option)
+ */
+function loadDepositTravelDataDropdown() {
+    const dropdown = document.getElementById('deposit-travel-data-select');
+
+    // Clear existing options
+    dropdown.innerHTML = '<option value="">Select travel data...</option>';
+
+    // Get saved travel data
+    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+
+    // Add each saved entry
+    allTravelData.forEach((data, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = data.savedName;
+        dropdown.appendChild(option);
+    });
+
+    // Add "Add New Travel Data" option at the end
+    const addNewOption = document.createElement('option');
+    addNewOption.value = 'add-new';
+    addNewOption.textContent = '➕ Add New Travel Data';
+    addNewOption.style.color = '#4CAF50';
+    addNewOption.style.fontWeight = 'bold';
+    dropdown.appendChild(addNewOption);
+
+    // Listen for "Add New" selection
+    dropdown.addEventListener('change', function() {
+        if (this.value === 'add-new') {
+            showTravelDataPage();
+        }
+    });
+
+    console.log('✅ Loaded', allTravelData.length, 'travel data entries for deposits');
+}
+
+/**
+ * Convert BTC amount to AUD (using current BTC price)
+ */
+function convertBtcToAud() {
+    const btcInput = document.getElementById('deposit-amount-btc');
+    const audInput = document.getElementById('deposit-amount-aud');
+
+    const btcAmount = parseFloat(btcInput.value) || 0;
+
+    // Get current BTC price in AUD
+    const btcPriceAud = window.cryptoPrices?.bitcoin?.aud || 0;
+
+    if (btcPriceAud > 0) {
+        const audAmount = btcAmount * btcPriceAud;
+        audInput.value = audAmount.toFixed(2);
+    } else {
+        console.warn('⚠️ BTC price not available for conversion');
+    }
+}
+
+/**
+ * Convert AUD amount to BTC (using current BTC price)
+ */
+function convertAudToBtc() {
+    const btcInput = document.getElementById('deposit-amount-btc');
+    const audInput = document.getElementById('deposit-amount-aud');
+
+    const audAmount = parseFloat(audInput.value) || 0;
+
+    // Get current BTC price in AUD
+    const btcPriceAud = window.cryptoPrices?.bitcoin?.aud || 0;
+
+    if (btcPriceAud > 0) {
+        const btcAmount = audAmount / btcPriceAud;
+        btcInput.value = btcAmount.toFixed(8);
+    } else {
+        console.warn('⚠️ BTC price not available for conversion');
+    }
+}
+
+/**
+ * Generate Lightning Network deposit address
+ */
+async function generateLightningAddress() {
+    console.log('⚡ Generating Lightning deposit address...');
+
+    // Get form values
+    const travelDataIndex = document.getElementById('deposit-travel-data-select').value;
+    const btcAmount = parseFloat(document.getElementById('deposit-amount-btc').value);
+
+    // Validation
+    if (!travelDataIndex || travelDataIndex === 'add-new') {
+        alert('Please select saved travel data');
+        return;
+    }
+
+    if (!btcAmount || btcAmount <= 0) {
+        alert('Please enter a valid BTC amount');
+        return;
+    }
+
+    // Get travel data
+    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const travelData = allTravelData[travelDataIndex];
+
+    if (!travelData) {
+        alert('Selected travel data not found');
+        return;
+    }
+
+    // Get NiceHash API credentials
+    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const apiKey = easyMiningSettings.apiKey;
+    const apiSecret = easyMiningSettings.apiSecret;
+    const orgId = easyMiningSettings.orgId;
+
+    if (!apiKey || !apiSecret || !orgId) {
+        alert('NiceHash API credentials not configured. Please set them in EasyMining Settings.');
+        return;
+    }
+
+    // Disable generate button
+    const generateBtn = document.getElementById('generate-deposit-btn');
+    generateBtn.disabled = true;
+    generateBtn.textContent = '⏳ Generating...';
+
+    try {
+        // Step 1: Generate deposit address from NiceHash API
+        const depositAddress = await fetchNiceHashDepositAddress(btcAmount, travelData, apiKey, apiSecret, orgId);
+
+        if (!depositAddress) {
+            throw new Error('Failed to generate deposit address');
+        }
+
+        console.log('✅ Deposit address generated:', depositAddress);
+
+        // Step 2: Generate QR code
+        const qrCodeSvg = await generateQrCode(depositAddress);
+
+        if (!qrCodeSvg) {
+            console.warn('⚠️ Failed to generate QR code, but address is valid');
+        }
+
+        // Display results
+        displayDepositResults(depositAddress, qrCodeSvg);
+
+    } catch (error) {
+        console.error('❌ Error generating deposit address:', error);
+        alert(`Error generating deposit address: ${error.message}`);
+    } finally {
+        // Re-enable generate button
+        generateBtn.disabled = false;
+        generateBtn.textContent = '⚡ Generate Deposit Address';
+    }
+}
+
+/**
+ * Fetch deposit address from NiceHash API
+ */
+async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret, orgId) {
+    console.log('📡 Fetching deposit address from NiceHash API...');
+
+    // Build request URL
+    const endpoint = '/main/api/v2/accounting/depositAddress/ln';
+    const params = new URLSearchParams({
+        amount: amount.toString(),
+        isVasp: 'true'
+    });
+    const url = `https://api2.nicehash.com${endpoint}?${params}`;
+
+    // Build request body
+    const requestBody = {
+        emailVASPId: travelData.emailVASPId,
+        firstName: travelData.firstName,
+        lastName: travelData.lastName,
+        legalName: travelData.legalName,
+        postalCode: travelData.postalCode,
+        town: travelData.town,
+        country: travelData.country
+    };
+
+    // Generate NiceHash authentication headers
+    const timestamp = Date.now().toString();
+    const nonce = uuidv4();
+    const bodyString = JSON.stringify(requestBody);
+
+    const message = apiKey + '\x00' + timestamp + '\x00' + nonce + '\x00' + '\x00' + orgId + '\x00' + '\x00' + 'POST' + '\x00' + endpoint + '?' + params.toString() + '\x00' + bodyString;
+    const signature = CryptoJS.HmacSHA256(message, apiSecret).toString(CryptoJS.enc.Hex);
+
+    const headers = {
+        'X-Time': timestamp,
+        'X-Nonce': nonce,
+        'X-Organization-Id': orgId,
+        'X-Request-Id': uuidv4(),
+        'X-Auth': `${apiKey}:${signature}`,
+        'Content-Type': 'application/json'
+    };
+
+    console.log('📤 POST request to:', url);
+    console.log('📤 Request body:', requestBody);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: bodyString
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ NiceHash API error:', errorText);
+            throw new Error(`NiceHash API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ NiceHash API response:', data);
+
+        // Extract address from response
+        // Response format: { type: { code: "LIGHTNING" }, address: "lightning:lnbc...", currency: "BTC" }
+        return data.address;
+
+    } catch (error) {
+        console.error('❌ Error fetching deposit address:', error);
+        throw error;
+    }
+}
+
+/**
+ * Generate QR code from address
+ */
+async function generateQrCode(lightningAddress) {
+    console.log('📱 Generating QR code...');
+
+    // Remove "lightning:" prefix for QR code
+    const addressOnly = lightningAddress.replace(/^lightning:/i, '');
+
+    // Get current token
+    const token = QR_CODE_TOKENS[currentQrTokenIndex];
+    const url = `https://api.qr-code-generator.com/v1/create?access-token=${token}`;
+
+    const requestBody = {
+        frame_name: 'no-frame',
+        qr_code_text: addressOnly,
+        image_format: 'SVG',
+        qr_code_logo: 'scan-me-square'
+    };
+
+    console.log('📤 QR code POST request to:', url);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            // Try fallback token
+            if (currentQrTokenIndex < QR_CODE_TOKENS.length - 1) {
+                console.warn('⚠️ QR code API token failed, trying fallback...');
+                currentQrTokenIndex++;
+                return await generateQrCode(lightningAddress); // Retry with next token
+            }
+            throw new Error(`QR code API error: ${response.status}`);
+        }
+
+        const svgText = await response.text();
+        console.log('✅ QR code generated successfully');
+        return svgText;
+
+    } catch (error) {
+        console.error('❌ Error generating QR code:', error);
+        return null; // Return null if QR code generation fails (non-critical)
+    }
+}
+
+/**
+ * Display deposit results (address + QR code)
+ */
+function displayDepositResults(lightningAddress, qrCodeSvg) {
+    console.log('📺 Displaying deposit results...');
+
+    // Remove "lightning:" prefix from address for display
+    const addressOnly = lightningAddress.replace(/^lightning:/i, '');
+
+    // Show output section
+    document.getElementById('deposit-output-section').style.display = 'block';
+
+    // Display address (without "lightning:" prefix, it's shown as a label)
+    document.getElementById('deposit-address-output').value = addressOnly;
+
+    // Display QR code (if available)
+    const qrContainer = document.getElementById('qr-code-container');
+    if (qrCodeSvg) {
+        qrContainer.innerHTML = qrCodeSvg;
+    } else {
+        qrContainer.innerHTML = '<p style="color: #f44336;">QR code generation failed</p>';
+    }
+
+    console.log('✅ Deposit address displayed successfully');
+}
+
+/**
+ * Copy deposit address to clipboard
+ */
+function copyDepositAddress() {
+    const addressInput = document.getElementById('deposit-address-output');
+    const address = addressInput.value;
+
+    if (!address) {
+        alert('No address to copy');
+        return;
+    }
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(address).then(() => {
+        console.log('📋 Address copied to clipboard');
+        alert('✅ Address copied to clipboard!');
+    }).catch(err => {
+        console.error('❌ Failed to copy address:', err);
+        alert('Failed to copy address');
+    });
+}
+
+// Helper function to generate UUID v4 (for NiceHash API)
+function uuidv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+// ========================================
 // PACKAGE ALERTS FUNCTIONS
 // ========================================
 
