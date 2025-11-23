@@ -5800,7 +5800,7 @@ function activateEasyMining() {
     isFirstEasyMiningLoad = true;
 
     // Update BTC holdings display with new settings
-    updateBTCHoldingsDisplay();
+    updateBTCHoldings();
 
     // Start polling (section will be shown automatically after loading bar completes)
     startEasyMiningPolling();
@@ -5846,7 +5846,7 @@ function activateEasyMiningFromPage() {
     isFirstEasyMiningLoad = true;
 
     // Update BTC holdings display with new settings
-    updateBTCHoldingsDisplay();
+    updateBTCHoldings();
 
     // Start polling (section will be shown automatically after loading bar completes)
     startEasyMiningPolling();
