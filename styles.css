@@ -1981,7 +1981,7 @@ body.light-mode .buy-package-card {
 }
 
 .buy-package-card.team-package {
-    height: auto;
+    height: 336px; /* Keep team packages square on desktop, matching solo packages */
 }
 
 .buy-package-card h4 {
