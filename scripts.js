@@ -513,6 +513,8 @@ function showEasyMiningSettingsPage() {
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('travel-data-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
 
     // Show EasyMining settings page
     document.getElementById('easymining-settings-page').style.display = 'block';
@@ -1105,6 +1107,7 @@ function showTravelDataPage() {
     document.getElementById('app-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
 
     // Show travel data page
     document.getElementById('travel-data-page').style.display = 'block';
