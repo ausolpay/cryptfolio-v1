@@ -1859,6 +1859,17 @@ function displayDepositResults(lightningAddress, qrCodeSvg) {
     const qrContainer = document.getElementById('qr-code-container');
     if (qrCodeSvg) {
         qrContainer.innerHTML = qrCodeSvg;
+
+        // Ensure SVG is properly sized
+        const svgElement = qrContainer.querySelector('svg');
+        if (svgElement) {
+            svgElement.setAttribute('width', '300');
+            svgElement.setAttribute('height', '300');
+            svgElement.style.display = 'block';
+            svgElement.style.maxWidth = '100%';
+            svgElement.style.height = 'auto';
+            console.log('📐 SVG sized to 300x300px');
+        }
     } else {
         qrContainer.innerHTML = '<p style="color: #f44336;">QR code generation failed</p>';
     }
