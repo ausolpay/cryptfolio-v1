@@ -7314,6 +7314,11 @@ async function fetchEasyMiningData() {
         return;
     }
 
+    // Clean up old auto-bought package entries (run occasionally, not every poll)
+    if (Math.random() < 0.01) {  // ~1% chance per poll (~every 8 minutes at 5s intervals)
+        cleanupAutoBoughtPackages();
+    }
+
     // Prevent overlapping fetches (5-second polling vs longer API calls)
     if (isFetchingEasyMiningData) {
         console.log('⏭️ Skipping fetch - previous fetch still in progress');
@@ -9313,8 +9318,8 @@ function displayActivePackages() {
 
         // Robot icon for auto-bought packages (flashing, same style as rocket)
         const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
-        // ✅ Use consistent package ID logic (MUST match auto-buy save logic exactly)
-        const packageIdForRobot = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
+        // Use pkg.id (order ID from active packages) - matches what auto-buy saves
+        const packageIdForRobot = pkg.id;
         const isAutoBought = autoBoughtPackages[packageIdForRobot];
         let robotHtml = '';
         if (isAutoBought && pkg.active) {
@@ -9684,8 +9689,8 @@ async function executeAutoBuySolo(recommendations) {
             console.log(`✅ Solo package auto-purchased successfully - Order ID: ${result.id || result.orderId || 'N/A'}`);
 
             // ✅ ONLY save data after confirming purchase was successful
-            // Mark this package as auto-bought
-            const packageId = result.id || result.orderId || ticketId;
+            // Mark this package as auto-bought (use order ID from API response, not ticket ID)
+            const packageId = result.id || result.orderId;
             const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
             autoBoughtPackages[packageId] = {
                 type: 'solo',
@@ -9936,14 +9941,16 @@ async function executeAutoBuyTeam(recommendations) {
             saveMyTeamShares(packageId, newTotalShares);
             console.log(`💾 Saved team shares: ${newTotalShares} (was ${currentShares}, added ${shares})`);
 
-            // Mark this package as auto-bought
+            // Mark this package as auto-bought (use order ID from API response, not ticket ID)
+            const orderIdReturned = result.id || result.orderId;
             const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
-            autoBoughtPackages[packageId] = {
+            autoBoughtPackages[orderIdReturned] = {
                 type: 'team',
                 timestamp: Date.now(),
                 shares: shares,
                 amount: totalAmount,
-                orderId: result.id || result.orderId
+                orderId: orderIdReturned,
+                ticketId: packageId  // Store ticket ID for reference but use order ID as key
             };
             localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
 
@@ -11767,6 +11774,32 @@ function saveMyTeamShares(packageId, shares) {
 
     sharesObj[packageId] = shares;
     setStorageItem(storageKey, JSON.stringify(sharesObj));
+}
+
+/**
+ * Clean up old auto-bought package entries (older than 30 days)
+ * Prevents localStorage from growing indefinitely
+ */
+function cleanupAutoBoughtPackages() {
+    if (!loggedInUser) return;
+
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    let cleaned = false;
+
+    // Remove entries older than 30 days
+    Object.keys(autoBoughtPackages).forEach(packageId => {
+        const entry = autoBoughtPackages[packageId];
+        if (entry.timestamp < thirtyDaysAgo) {
+            delete autoBoughtPackages[packageId];
+            cleaned = true;
+        }
+    });
+
+    if (cleaned) {
+        localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+        console.log('🧹 Cleaned up old auto-bought package entries');
+    }
 }
 
 // Helper function to calculate team reward based on participation
