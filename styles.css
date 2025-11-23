@@ -1981,7 +1981,8 @@ body.light-mode .buy-package-card {
 }
 
 .buy-package-card.team-package {
-    height: 336px; /* Keep team packages square on desktop, matching solo packages */
+    height: auto; /* Allow team packages to expand to fit content */
+    min-height: 336px; /* Minimum height to maintain visual consistency */
 }
 
 .buy-package-card h4 {
@@ -2431,6 +2432,11 @@ body.light-mode .easymining-settings-form input[type="password"] {
         height: 300px;
         font-size: 13px; /* Slightly smaller font for smaller boxes */
     }
+
+    .buy-package-card.team-package {
+        height: auto; /* Team packages expand to fit content on tablet */
+        min-height: 300px; /* Minimum height matches solo packages */
+    }
 }
 
 /* Mobile - Horizontal slider */
@@ -2485,6 +2491,11 @@ body.light-mode .easymining-settings-form input[type="password"] {
         height: 280px;
         font-size: 12px; /* Smaller font for mobile boxes */
         padding: 12px;
+    }
+
+    .buy-package-card.team-package {
+        height: auto; /* Team packages expand to fit content on mobile */
+        min-height: 280px; /* Minimum height matches solo packages */
     }
 }
 
