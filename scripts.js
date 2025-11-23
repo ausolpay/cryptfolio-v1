@@ -1430,6 +1430,14 @@ function showDepositsPage() {
     // Show deposits page
     document.getElementById('deposits-page').style.display = 'block';
 
+    // Initialize checkbox states (travel rule checked by default, self-custodial unchecked)
+    document.getElementById('deposit-travel-rule-checkbox').checked = true;
+    document.getElementById('deposit-self-custodial-checkbox').checked = false;
+
+    // Set initial visibility based on default state
+    document.getElementById('deposit-self-custodial-group').style.display = 'block';
+    document.getElementById('deposit-travel-data-group').style.display = 'block';
+
     // Populate travel data dropdown
     loadDepositTravelDataDropdown();
 
@@ -1439,6 +1447,49 @@ function showDepositsPage() {
     document.getElementById('qr-code-container').innerHTML = '';
     document.getElementById('deposit-amount-btc').value = '';
     document.getElementById('deposit-amount-aud').value = '';
+}
+
+/**
+ * Toggle visibility of travel rule options (VASP dropdown and self-custodial checkbox)
+ */
+function toggleTravelRuleOptions() {
+    const travelRuleChecked = document.getElementById('deposit-travel-rule-checkbox').checked;
+    const selfCustodialGroup = document.getElementById('deposit-self-custodial-group');
+    const selfCustodialCheckbox = document.getElementById('deposit-self-custodial-checkbox');
+    const travelDataGroup = document.getElementById('deposit-travel-data-group');
+
+    console.log('🔄 Travel rule checkbox changed:', travelRuleChecked);
+
+    if (travelRuleChecked) {
+        // Show self-custodial checkbox and VASP dropdown
+        selfCustodialGroup.style.display = 'block';
+        travelDataGroup.style.display = 'block';
+    } else {
+        // Hide both self-custodial checkbox and VASP dropdown
+        selfCustodialGroup.style.display = 'none';
+        travelDataGroup.style.display = 'none';
+
+        // Auto-uncheck self-custodial if travel rule is unchecked
+        selfCustodialCheckbox.checked = false;
+    }
+}
+
+/**
+ * Toggle visibility of VASP dropdown when self-custodial is checked/unchecked
+ */
+function toggleSelfCustodialOptions() {
+    const selfCustodialChecked = document.getElementById('deposit-self-custodial-checkbox').checked;
+    const travelDataGroup = document.getElementById('deposit-travel-data-group');
+
+    console.log('🔄 Self-custodial checkbox changed:', selfCustodialChecked);
+
+    if (selfCustodialChecked) {
+        // Hide VASP dropdown when using self-custodial wallet
+        travelDataGroup.style.display = 'none';
+    } else {
+        // Show VASP dropdown when not using self-custodial wallet
+        travelDataGroup.style.display = 'block';
+    }
 }
 
 /**
@@ -1533,28 +1584,57 @@ function convertAudToBtc() {
 async function generateLightningAddress() {
     console.log('⚡ Generating Lightning deposit address...');
 
+    // Get checkbox states
+    const travelRuleChecked = document.getElementById('deposit-travel-rule-checkbox').checked;
+    const selfCustodialChecked = document.getElementById('deposit-self-custodial-checkbox').checked;
+
     // Get form values
-    const travelDataIndex = document.getElementById('deposit-travel-data-select').value;
     const btcAmount = parseFloat(document.getElementById('deposit-amount-btc').value);
 
-    // Validation
-    if (!travelDataIndex || travelDataIndex === 'add-new') {
-        alert('Please select saved travel data');
-        return;
-    }
-
+    // Validate BTC amount
     if (!btcAmount || btcAmount <= 0) {
         alert('Please enter a valid BTC amount');
         return;
     }
 
-    // Get travel data
-    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
-    const travelData = allTravelData[travelDataIndex];
+    // Determine which endpoint configuration to use
+    let endpointConfig = {
+        useTravel: false,
+        useSelfCustodial: false,
+        travelData: null
+    };
 
-    if (!travelData) {
-        alert('Selected travel data not found');
-        return;
+    if (travelRuleChecked) {
+        if (selfCustodialChecked) {
+            // Self-custodial: isSelfHosted=true, empty travel data
+            endpointConfig.useSelfCustodial = true;
+            console.log('📋 Mode: Self-custodial wallet (isSelfHosted=true)');
+        } else {
+            // VASP travel data: isVasp=true, with travel data
+            endpointConfig.useTravel = true;
+
+            // Validate travel data selection
+            const travelDataIndex = document.getElementById('deposit-travel-data-select').value;
+            if (!travelDataIndex || travelDataIndex === 'add-new') {
+                alert('Please select saved travel data');
+                return;
+            }
+
+            // Get travel data
+            const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+            const travelData = allTravelData[travelDataIndex];
+
+            if (!travelData) {
+                alert('Selected travel data not found');
+                return;
+            }
+
+            endpointConfig.travelData = travelData;
+            console.log('📋 Mode: VASP travel data (isVasp=true)');
+        }
+    } else {
+        // Default: no travel data, no special params
+        console.log('📋 Mode: Default (no travel data)');
     }
 
     // Get NiceHash API credentials
@@ -1575,7 +1655,7 @@ async function generateLightningAddress() {
 
     try {
         // Step 1: Generate deposit address from NiceHash API
-        const depositAddress = await fetchNiceHashDepositAddress(btcAmount, travelData, apiKey, apiSecret, orgId);
+        const depositAddress = await fetchNiceHashDepositAddress(btcAmount, endpointConfig);
 
         if (!depositAddress) {
             throw new Error('Failed to generate deposit address');
@@ -1606,27 +1686,53 @@ async function generateLightningAddress() {
 /**
  * Fetch deposit address from NiceHash API (via Vercel proxy to avoid CORS)
  */
-async function fetchNiceHashDepositAddress(amount, travelData, apiKey, apiSecret, orgId) {
+async function fetchNiceHashDepositAddress(amount, endpointConfig) {
     console.log('📡 Fetching deposit address from NiceHash API...');
 
-    // Build request URL with query parameters
+    // Build request URL with query parameters based on configuration
     const path = '/main/api/v2/accounting/depositAddress/ln';
     const params = new URLSearchParams({
-        amount: amount.toString(),
-        isVasp: 'true'
+        amount: amount.toString()
     });
+
+    // Add endpoint-specific parameters based on mode
+    if (endpointConfig.useSelfCustodial) {
+        // Self-custodial mode: isSelfHosted=true
+        params.append('isSelfHosted', 'true');
+    } else if (endpointConfig.useTravel) {
+        // VASP travel data mode: isVasp=true
+        params.append('isVasp', 'true');
+    }
+    // Default mode: no additional params
+
     const endpoint = `${path}?${params.toString()}`;
 
-    // Build request body
-    const requestBody = {
-        emailVASPId: travelData.emailVASPId,
-        firstName: travelData.firstName,
-        lastName: travelData.lastName,
-        legalName: travelData.legalName,
-        postalCode: travelData.postalCode,
-        town: travelData.town,
-        country: travelData.country
-    };
+    // Build request body based on configuration
+    let requestBody = {};
+
+    if (endpointConfig.useTravel && endpointConfig.travelData) {
+        // VASP travel data mode: include travel data
+        requestBody = {
+            emailVASPId: endpointConfig.travelData.emailVASPId,
+            firstName: endpointConfig.travelData.firstName,
+            lastName: endpointConfig.travelData.lastName,
+            legalName: endpointConfig.travelData.legalName,
+            postalCode: endpointConfig.travelData.postalCode,
+            town: endpointConfig.travelData.town,
+            country: endpointConfig.travelData.country
+        };
+    } else {
+        // Self-custodial or default mode: empty body (or empty travel data)
+        requestBody = {
+            emailVASPId: '',
+            firstName: '',
+            lastName: '',
+            legalName: '',
+            postalCode: '',
+            town: '',
+            country: ''
+        };
+    }
 
     console.log('📤 POST request to NiceHash (via Vercel proxy)');
     console.log('📤 Endpoint:', endpoint);

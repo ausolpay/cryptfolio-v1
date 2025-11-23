@@ -590,8 +590,24 @@
                     Generate a Lightning Network deposit address with travel rule data.
                 </p>
 
-                <!-- Travel Data Dropdown -->
-                <div class="input-group">
+                <!-- Travel Rule Checkbox -->
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="deposit-travel-rule-checkbox" checked onchange="toggleTravelRuleOptions()" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span>I want to fill sender travel rule data</span>
+                    </label>
+                </div>
+
+                <!-- Self-Custodial Checkbox (Hidden by default, shown when travel rule is checked) -->
+                <div class="input-group" id="deposit-self-custodial-group" style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="deposit-self-custodial-checkbox" onchange="toggleSelfCustodialOptions()" style="cursor: pointer; width: 18px; height: 18px;">
+                        <span>I'm using a self-custodial wallet</span>
+                    </label>
+                </div>
+
+                <!-- Travel Data Dropdown (Shown when travel rule is checked and self-custodial is unchecked) -->
+                <div class="input-group" id="deposit-travel-data-group">
                     <label for="deposit-travel-data-select">Select Saved Travel Data: *</label>
                     <select id="deposit-travel-data-select" style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%;">
                         <option value="">Select travel data...</option>
