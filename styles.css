@@ -1389,6 +1389,14 @@ body.light-mode .package-tab.active {
     max-width: 100%; /* Ensure container doesn't overflow */
 }
 
+/* Center "No packages" messages in My Packages section */
+.active-packages-container p {
+    grid-column: 1 / -1; /* Span all columns */
+    text-align: center;
+    width: 100%;
+    margin: 40px auto;
+}
+
 /* Single column on mobile */
 @media (max-width: 768px) {
     .active-packages-container {
