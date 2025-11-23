@@ -1926,6 +1926,12 @@ body.light-mode .package-card.block-confirmed {
     box-sizing: border-box;
 }
 
+/* Make tab buttons expand to fill container width */
+#buy-packages-page .buy-packages-tabs .tab-button {
+    flex: 1; /* Each button takes equal space */
+    text-align: center;
+}
+
 .tab-button {
     padding: 10px 20px;
     background-color: transparent;
