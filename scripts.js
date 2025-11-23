@@ -531,6 +531,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('include-pending-btc-toggle-page').checked = savedSettings.includePendingBTC || false;
     document.getElementById('auto-buy-cooldown-toggle-page').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
     document.getElementById('auto-clear-team-shares-toggle-page').checked = savedSettings.autoClearTeamShares || false; // Default OFF
+    document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked = savedSettings.autoBuyTgSafeHold || false; // Default OFF
 }
 
 // =============================================================================
@@ -5753,6 +5754,7 @@ function showEasyMiningSettingsModal() {
     document.getElementById('include-pending-btc-toggle').checked = savedSettings.includePendingBTC || false;
     document.getElementById('auto-buy-cooldown-toggle').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
     document.getElementById('auto-clear-team-shares-toggle').checked = savedSettings.autoClearTeamShares || false; // Default OFF
+    document.getElementById('auto-buy-tg-safe-hold-toggle').checked = savedSettings.autoBuyTgSafeHold || false; // Default OFF
 
     // Show modal
     console.log('Setting modal display to block...');
@@ -5793,6 +5795,7 @@ function activateEasyMining() {
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle').checked;
     easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle').checked;
     easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle').checked;
+    easyMiningSettings.autoBuyTgSafeHold = document.getElementById('auto-buy-tg-safe-hold-toggle').checked;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -5840,6 +5843,7 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle-page').checked;
     easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle-page').checked;
     easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle-page').checked;
+    easyMiningSettings.autoBuyTgSafeHold = document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -8373,6 +8377,61 @@ let currentTeamRecommendations = [];
 let alertedSoloPackages = new Set();
 let alertedTeamPackages = new Set();
 
+/**
+ * Check if auto-buy should be paused due to TG Safe Hold feature
+ * @param {string} packageName - Name of the package to check
+ * @returns {boolean} - True if auto-buy should be paused, false otherwise
+ */
+function shouldPauseAutoBuyForTgSafeHold(packageName) {
+    // Get TG Safe Hold toggle state
+    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const tgSafeHoldEnabled = easyMiningSettings.autoBuyTgSafeHold || false;
+
+    // If toggle is OFF, allow all auto-buys (no pause)
+    if (!tgSafeHoldEnabled) {
+        return false;
+    }
+
+    // ALWAYS allow Team Gold auto-buy (never pause it)
+    if (packageName === 'Team Gold') {
+        return false;
+    }
+
+    // Get Team Gold auto-buy settings to calculate hold amount
+    const teamAutoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const teamGoldSettings = teamAutoBuySettings['Team Gold'];
+
+    // If Team Gold auto-buy is not configured, no hold amount to protect
+    if (!teamGoldSettings || !teamGoldSettings.enabled || !teamGoldSettings.shares) {
+        console.log('🔓 TG Safe Hold: Team Gold auto-buy not configured, allowing all auto-buys');
+        return false;
+    }
+
+    // Calculate hold amount: Team Gold shares × 0.0001 BTC
+    const teamGoldShares = teamGoldSettings.shares;
+    const sharePrice = 0.0001;
+    const holdAmount = teamGoldShares * sharePrice;
+
+    // Get available balance
+    const availableBalance = window.niceHashBalance?.available || 0;
+
+    // Check if available balance is at or below hold threshold
+    // Using 4th decimal check as per user requirement
+    // Example: 4 shares = 0.0004 hold, trigger when balance reaches 0.00049 (4th decimal is 4)
+    const balanceRounded = parseFloat(availableBalance.toFixed(4));
+    const holdRounded = parseFloat(holdAmount.toFixed(4));
+
+    if (balanceRounded <= holdRounded) {
+        console.log(`🔒 TG Safe Hold ACTIVE: Balance (${balanceRounded} BTC) at/below hold amount (${holdRounded} BTC for ${teamGoldShares} Team Gold shares)`);
+        console.log(`   ⏸️ Pausing auto-buy for: ${packageName}`);
+        console.log(`   ✅ Team Gold auto-buy still active`);
+        return true; // Pause this auto-buy
+    }
+
+    // Balance is above hold threshold, allow auto-buy
+    return false;
+}
+
 async function executeAutoBuySolo(recommendations) {
     console.log('🤖 Checking for solo auto-buy opportunities...');
 
@@ -8387,6 +8446,11 @@ async function executeAutoBuySolo(recommendations) {
 
         if (!autoBuy || !autoBuy.enabled) {
             continue; // Auto-buy not enabled for this package
+        }
+
+        // 🔒 TG Safe Hold: Check if auto-buy should be paused to protect Team Gold balance
+        if (shouldPauseAutoBuyForTgSafeHold(pkg.name)) {
+            continue; // Skip this auto-buy (balance reserved for Team Gold)
         }
 
         // ✅ Smart Cooldown Toggle Logic
@@ -8528,6 +8592,11 @@ async function executeAutoBuyTeam(recommendations) {
 
         if (!autoBuy || !autoBuy.enabled) {
             continue; // Auto-buy not enabled for this package
+        }
+
+        // 🔒 TG Safe Hold: Check if auto-buy should be paused to protect Team Gold balance
+        if (shouldPauseAutoBuyForTgSafeHold(pkg.name)) {
+            continue; // Skip this auto-buy (balance reserved for Team Gold)
         }
 
         // Get package ID for tracking
