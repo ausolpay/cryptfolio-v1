@@ -1788,17 +1788,21 @@ async function generateQrCode(lightningAddress) {
         frame_name: 'no-frame',
         qr_code_text: addressOnly,
         image_format: 'SVG',
-        qr_code_logo: 'scan-me-square'
+        qr_code_logo: 'scan-me-square',
+        download: 0  // Return data (not send to browser)
     };
 
     console.log('📤 QR code POST request (via Vercel proxy)');
     console.log('📤 QR code text:', addressOnly.substring(0, 50) + '...');
     console.log('📤 Using token index:', currentQrTokenIndex);
+    console.log('📤 Request body:', requestBody);
 
     try {
         // Use Vercel proxy to avoid CORS
-        // Send full URL as endpoint since QR API is external (not NiceHash)
-        const fullUrl = `https://api.qr-code-generator.com/v1/create?access-token=${token}`;
+        // Build URL with access token and download param
+        const fullUrl = `https://api.qr-code-generator.com/v1/create?access-token=${token}&download=0`;
+
+        console.log('📤 Full URL:', fullUrl);
 
         const response = await fetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
