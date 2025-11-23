@@ -530,6 +530,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('include-available-btc-toggle-page').checked = savedSettings.includeAvailableBTC || false;
     document.getElementById('include-pending-btc-toggle-page').checked = savedSettings.includePendingBTC || false;
     document.getElementById('auto-buy-cooldown-toggle-page').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
+    document.getElementById('auto-clear-team-shares-toggle-page').checked = savedSettings.autoClearTeamShares || false; // Default OFF
 }
 
 // =============================================================================
@@ -5751,6 +5752,7 @@ function showEasyMiningSettingsModal() {
     document.getElementById('include-available-btc-toggle').checked = savedSettings.includeAvailableBTC || false;
     document.getElementById('include-pending-btc-toggle').checked = savedSettings.includePendingBTC || false;
     document.getElementById('auto-buy-cooldown-toggle').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
+    document.getElementById('auto-clear-team-shares-toggle').checked = savedSettings.autoClearTeamShares || false; // Default OFF
 
     // Show modal
     console.log('Setting modal display to block...');
@@ -5790,6 +5792,7 @@ function activateEasyMining() {
     easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle').checked;
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle').checked;
     easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle').checked;
+    easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle').checked;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -5836,6 +5839,7 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle-page').checked;
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle-page').checked;
     easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle-page').checked;
+    easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle-page').checked;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -11900,6 +11904,13 @@ function updateTeamPackageCountdowns() {
         return;
     }
 
+    // Check if auto-clear is enabled
+    const autoClearEnabled = easyMiningSettings.autoClearTeamShares || false;
+
+    // Get current team recommendations to check if package still meets thresholds
+    const currentRecommendations = currentTeamRecommendations || [];
+    const recommendedPackageIds = currentRecommendations.map(rec => rec.apiData?.id || rec.id);
+
     window.currentTeamPackages.forEach(pkg => {
         if (pkg.lifeTimeTill) {
             const countdownElement = document.getElementById(`countdown-${pkg.id}`);
@@ -11915,6 +11926,39 @@ function updateTeamPackageCountdowns() {
 
                     countdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
                     countdownElement.style.color = '#FFA500';
+
+                    // AUTO-CLEAR LOGIC: Check if countdown <= 2 minutes AND auto-clear is enabled
+                    if (autoClearEnabled && timeUntilStart <= 120000) { // 120000ms = 2 minutes
+                        const packageId = pkg.apiData?.id || pkg.id;
+                        const myShares = getMyTeamShares(packageId) || 0;
+
+                        // Only clear if package has shares AND is NOT in recommendations (no longer meets thresholds)
+                        const isStillRecommended = recommendedPackageIds.includes(packageId);
+
+                        if (myShares > 0 && !isStillRecommended) {
+                            // Check if we haven't already cleared this package (to avoid duplicate clears)
+                            const clearedKey = `${loggedInUser}_autoClearedPackage_${packageId}`;
+                            const alreadyCleared = localStorage.getItem(clearedKey);
+
+                            if (!alreadyCleared) {
+                                console.log(`🤖 Auto-clear triggered for ${pkg.name}:`, {
+                                    timeUntilStart: `${minutes}m ${seconds}s`,
+                                    myShares: myShares,
+                                    isStillRecommended: isStillRecommended
+                                });
+
+                                // Mark as cleared to prevent duplicate clears
+                                localStorage.setItem(clearedKey, 'true');
+
+                                // Call auto-clear function (async, no await to avoid blocking countdown updates)
+                                autoClearTeamShares(packageId, pkg.name).catch(err => {
+                                    console.error('Auto-clear failed:', err);
+                                    // Remove cleared flag if failed, so it can retry
+                                    localStorage.removeItem(clearedKey);
+                                });
+                            }
+                        }
+                    }
                 } else {
                     // Package has started
                     countdownElement.textContent = 'Started!';
@@ -12915,6 +12959,93 @@ Do you want to continue?
     } catch (error) {
         console.error('❌ Error purchasing team package:', error);
         alert(`Failed to purchase team package: ${error.message}\n\nPlease check:\n- Your API credentials are correct\n- You have sufficient BTC balance\n- The wallet addresses are valid`);
+    }
+}
+
+// Auto-clear team shares for packages that no longer meet alert thresholds
+async function autoClearTeamShares(packageId, packageName) {
+    console.log(`🤖 Auto-clearing shares for package: ${packageName} (ID: ${packageId})`);
+
+    try {
+        // Sync time with NiceHash server
+        await syncNiceHashTime();
+
+        // Create clear request payload
+        const clearData = {
+            clear: true
+        };
+
+        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+
+        console.log('📦 Auto-clear team package:', {
+            endpoint: endpoint,
+            method: 'POST',
+            packageId: packageId,
+            packageName: packageName
+        });
+
+        // Generate auth headers
+        const body = JSON.stringify(clearData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        let response;
+
+        if (USE_VERCEL_PROXY) {
+            // Use Vercel serverless function as proxy
+            console.log('✅ Using Vercel proxy for auto-clear');
+
+            const proxyPayload = {
+                endpoint: endpoint,
+                method: 'POST',
+                headers: headers,
+                body: clearData
+            };
+
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(proxyPayload)
+            });
+        } else {
+            // Direct call to NiceHash
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Auto-clear successful:', result);
+
+        // Clear shares from stored data
+        const storageKey = `${loggedInUser}_teamShares_${packageId}`;
+        localStorage.removeItem(storageKey);
+        console.log(`🗑️ Removed stored shares for package ${packageId}`);
+
+        // Update UI - reset input value and share distribution display
+        const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
+        const sharesInput = document.getElementById(inputId);
+        if (sharesInput) {
+            sharesInput.value = '';
+            console.log(`✅ Reset input value for ${packageName}`);
+        }
+
+        // Refresh package data to update UI
+        await fetchEasyMiningData();
+
+        console.log(`✅ Auto-cleared shares for ${packageName}`);
+
+    } catch (error) {
+        console.error('❌ Error auto-clearing team shares:', error);
+        // Don't show alert for auto-clear errors (silent failure)
     }
 }
 
