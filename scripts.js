@@ -12146,7 +12146,7 @@ function createTeamPackageCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Share Distribution:</span>
-                <span style="color: #4CAF50;" id="${cardId}-share-dist">(${myBoughtShares}/${myBoughtShares}/${totalAvailableShares})</span>
+                <span style="color: #4CAF50;" id="${cardId}-share-dist">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
             </div>
             <div class="buy-package-stat">
                 <span>Your Potential Reward:</span>
@@ -12167,11 +12167,11 @@ function createTeamPackageCard(pkg) {
                 type="number"
                 id="${cardId}-shares"
                 class="share-input"
-                value="0"
-                min="0"
-                max="${availableShares}"
+                value="${myBoughtShares}"
+                min="${myBoughtShares}"
+                max="${myBoughtShares + availableShares}"
                 oninput="updateShareCost('${cardId}')"
-                onchange="validateShares('${cardId}', ${availableShares})"
+                onchange="validateShares('${cardId}', ${myBoughtShares + availableShares})"
                 data-block-reward="${blockReward}"
                 data-total-bought="${totalBoughtShares}"
                 data-my-bought="${myBoughtShares}"
@@ -12232,11 +12232,14 @@ function updateShareCost(cardId) {
     const onclickAttr = buyButton.getAttribute('onclick');
     const sharePriceMatch = onclickAttr.match(/buyTeamPackage\('[^']+',\s*'[^']+',\s*([\d.]+)/);
 
-    if (sharePriceMatch && shares > 0) {
+    // Calculate NEW shares to buy (input shows TOTAL shares I'll own)
+    const newShares = shares - myBoughtShares;
+
+    if (sharePriceMatch && newShares > 0) {
         const sharePrice = parseFloat(sharePriceMatch[1]);
-        const totalBTC = (sharePrice * shares).toFixed(8);
+        const totalBTC = (sharePrice * newShares).toFixed(8);
         const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
-        const totalAUD = (sharePrice * shares * btcPrice).toFixed(2);
+        const totalAUD = (sharePrice * newShares * btcPrice).toFixed(2);
 
         costDisplay.textContent = `Total: ${totalBTC} BTC ($${totalAUD} AUD)`;
         costDisplay.style.color = '#4CAF50';
@@ -12247,23 +12250,24 @@ function updateShareCost(cardId) {
             rewardDisplay.textContent = `${potentialReward.toFixed(8)} ${crypto}`;
         }
 
-        // Update share distribution display (owned/willOwn/total)
+        // Update share distribution display (mySharesAfter/totalBoughtAfter/totalAvailable)
         if (shareDistDisplay) {
-            const willOwn = myBoughtShares + shares; // owned + new shares in input
-            shareDistDisplay.textContent = `(${myBoughtShares}/${willOwn}/${totalAvailableShares})`;
+            const newTotalBought = totalBoughtShares + newShares; // Total bought by everyone after my purchase
+            shareDistDisplay.textContent = `(${shares}/${newTotalBought}/${totalAvailableShares})`;
         }
     } else {
         costDisplay.textContent = 'Total: 0 BTC ($0.00 AUD)';
         costDisplay.style.color = '#ffa500';
 
-        // Show 0 reward when no shares selected
+        // Show current reward when no new shares being bought
+        const currentReward = myBoughtShares > 0 ? calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares, myBoughtShares) : 0;
         if (rewardDisplay) {
-            rewardDisplay.textContent = `0.00000000 ${crypto}`;
+            rewardDisplay.textContent = `${currentReward.toFixed(8)} ${crypto}`;
         }
 
-        // Keep share distribution display (owned/owned/total when no new shares)
+        // Keep share distribution display (current state when no new shares)
         if (shareDistDisplay) {
-            shareDistDisplay.textContent = `(${myBoughtShares}/${myBoughtShares}/${totalAvailableShares})`;
+            shareDistDisplay.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
         }
     }
 }
@@ -14140,8 +14144,14 @@ function adjustShares(packageName, delta, buttonElement) {
     // Check balance and update + button and Buy button state for team packages
     const availableBalance = window.niceHashBalance?.available || 0;
     const sharePrice = 0.0001; // Team packages: 0.0001 BTC per share
-    const currentShareCost = newValue * sharePrice;
-    const nextShareCost = (newValue + 1) * sharePrice;
+
+    // Get myBoughtShares from input data attribute (newValue is TOTAL shares I'll own)
+    const myBoughtShares = parseInt(input.dataset?.myBought) || 0;
+    const newShares = newValue - myBoughtShares; // NEW shares to buy
+    const nextNewShares = (newValue + 1) - myBoughtShares; // NEW shares if I increase by 1
+
+    const currentShareCost = newShares * sharePrice; // Cost for NEW shares
+    const nextShareCost = nextNewShares * sharePrice; // Cost if I add 1 more share
 
     // Update + button state
     if (plusButton) {
