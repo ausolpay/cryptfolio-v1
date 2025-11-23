@@ -11166,12 +11166,60 @@ function showBuyTabOnPage(tab) {
     event.target.classList.add('active');
 
     if (tab === 'single') {
-        document.getElementById('buy-single-packages-page').style.display = 'grid';
+        document.getElementById('buy-single-packages-page').style.display = 'block'; // Use block to let CSS handle grid/flex
         document.getElementById('buy-team-packages-page').style.display = 'none';
     } else {
         document.getElementById('buy-single-packages-page').style.display = 'none';
-        document.getElementById('buy-team-packages-page').style.display = 'grid';
+        document.getElementById('buy-team-packages-page').style.display = 'block'; // Use block to let CSS handle grid/flex
     }
+}
+
+// Initialize click-and-drag scrolling for horizontal sliders on tablet/mobile
+function initializeDragScrolling() {
+    const containers = [
+        document.getElementById('buy-single-packages-page'),
+        document.getElementById('buy-team-packages-page')
+    ];
+
+    containers.forEach(container => {
+        if (!container) return;
+
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        container.addEventListener('mousedown', (e) => {
+            // Only enable drag scrolling on tablet/mobile (when flex layout is active)
+            const isFlexLayout = window.getComputedStyle(container).display === 'flex';
+            if (!isFlexLayout) return;
+
+            isDown = true;
+            container.classList.add('active');
+            startX = e.pageX - container.offsetLeft;
+            scrollLeft = container.scrollLeft;
+            container.style.cursor = 'grabbing';
+        });
+
+        container.addEventListener('mouseleave', () => {
+            isDown = false;
+            container.style.cursor = 'grab';
+        });
+
+        container.addEventListener('mouseup', () => {
+            isDown = false;
+            container.style.cursor = 'grab';
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const walk = (x - startX) * 2; // Scroll speed multiplier
+            container.scrollLeft = scrollLeft - walk;
+        });
+    });
+
+    console.log('✅ Drag scrolling initialized for buy packages containers');
 }
 
 function getRecommendedPackages() {
@@ -11741,6 +11789,9 @@ async function loadBuyPackagesDataOnPage() {
 
     // Start countdown updates for team packages
     startCountdownUpdates();
+
+    // Initialize drag scrolling for horizontal sliders on tablet/mobile
+    initializeDragScrolling();
 
     // Restore saved share values after packages are populated
     if (window.packageShareValues && Object.keys(window.packageShareValues).length > 0) {
