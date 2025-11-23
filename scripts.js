@@ -8351,7 +8351,6 @@ async function executeAutoBuySolo(recommendations) {
     console.log('🤖 Checking for solo auto-buy opportunities...');
 
     const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-    const cooldownMs = 60 * 60 * 1000; // 1 hour in milliseconds
 
     for (const pkg of recommendations) {
         const autoBuy = autoBuySettings[pkg.name];
@@ -8360,12 +8359,18 @@ async function executeAutoBuySolo(recommendations) {
             continue; // Auto-buy not enabled for this package
         }
 
+        // ✅ FIX: Use package duration as cooldown (per-package cooldown based on package duration)
+        // packageDuration is in seconds, convert to milliseconds
+        const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
+        const cooldownMs = packageDurationMs;
+
         // Check cooldown
         if (autoBuy.lastBuyTime) {
             const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
             if (timeSinceLastBuy < cooldownMs) {
                 const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
-                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining)`);
+                const cooldownHours = (cooldownMs / 3600000).toFixed(1);
+                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr cooldown)`);
                 continue;
             }
         }
@@ -8452,7 +8457,8 @@ async function executeAutoBuySolo(recommendations) {
             console.log(`   Order ID: ${result.id || result.orderId || 'N/A'}`);
             console.log(`   Crypto: ${pkg.crypto}`);
             console.log(`   Price: ${pkg.price} BTC`);
-            console.log(`   ⏳ Next auto-buy available in 1 hour`);
+            const cooldownHours = (cooldownMs / 3600000).toFixed(1);
+            console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (package duration cooldown)`);
 
             // ✅ Update stats (same as manual buy)
             const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
@@ -8474,7 +8480,6 @@ async function executeAutoBuyTeam(recommendations) {
     console.log('🤖 Checking for team auto-buy opportunities...');
 
     const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-    const cooldownMs = 60 * 60 * 1000; // 1 hour in milliseconds
 
     for (const pkg of recommendations) {
         const autoBuy = autoBuySettings[pkg.name];
@@ -8483,12 +8488,18 @@ async function executeAutoBuyTeam(recommendations) {
             continue; // Auto-buy not enabled for this package
         }
 
+        // ✅ FIX: Use package duration as cooldown (per-package cooldown based on package duration)
+        // packageDuration is in seconds, convert to milliseconds
+        const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
+        const cooldownMs = packageDurationMs;
+
         // Check cooldown
         if (autoBuy.lastBuyTime) {
             const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
             if (timeSinceLastBuy < cooldownMs) {
                 const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
-                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining)`);
+                const cooldownHours = (cooldownMs / 3600000).toFixed(1);
+                console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr cooldown)`);
                 continue;
             }
         }
@@ -8651,7 +8662,8 @@ async function executeAutoBuyTeam(recommendations) {
             easyMiningData.todayStats.totalSpent += totalPriceAUD;
             localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-            console.log(`⏳ Next auto-buy available in 1 hour`);
+            const cooldownHours = (cooldownMs / 3600000).toFixed(1);
+            console.log(`⏳ Next auto-buy available in ${cooldownHours} hours (package duration cooldown)`);
 
             // Refresh package data
             await fetchEasyMiningData();
