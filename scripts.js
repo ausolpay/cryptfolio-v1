@@ -11165,12 +11165,17 @@ function showBuyTabOnPage(tab) {
     buttons.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
 
+    const singleContainer = document.getElementById('buy-single-packages-page');
+    const teamContainer = document.getElementById('buy-team-packages-page');
+
     if (tab === 'single') {
-        document.getElementById('buy-single-packages-page').style.display = 'block'; // Use block to let CSS handle grid/flex
-        document.getElementById('buy-team-packages-page').style.display = 'none';
+        // Remove inline display style to let CSS media queries control the layout
+        singleContainer.style.display = '';
+        teamContainer.style.display = 'none';
     } else {
-        document.getElementById('buy-single-packages-page').style.display = 'none';
-        document.getElementById('buy-team-packages-page').style.display = 'block'; // Use block to let CSS handle grid/flex
+        // Remove inline display style to let CSS media queries control the layout
+        singleContainer.style.display = 'none';
+        teamContainer.style.display = '';
     }
 }
 
