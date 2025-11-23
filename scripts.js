@@ -1351,14 +1351,24 @@ function loadSelectedTravelData() {
     console.log('📖 Loading travel data:', data);
 
     // Display data as read-only info (not editable)
-    // You can expand this to show in a modal or dedicated section
-    alert(`
-✈️ Saved Travel Data: ${data.savedName}
+    // Build alert message with all fields displayed separately
+    let alertMessage = `✈️ Saved Travel Data: ${data.savedName}\n\n`;
+    alertMessage += `VASP Name: ${data.vaspName}\n`;
+    alertMessage += `VASP ID (UUID): ${data.emailVASPId}\n\n`;
 
-VASP: ${data.vaspName}
-${data.legalName ? 'Legal Entity: ' + data.legalName : 'Name: ' + data.firstName + ' ' + data.lastName}
-Address: ${data.town}, ${data.postalCode}, ${data.country}
-    `.trim());
+    // Show individual OR legal entity fields
+    if (data.legalName) {
+        alertMessage += `Legal Entity Name: ${data.legalName}\n`;
+    } else {
+        alertMessage += `First Name: ${data.firstName}\n`;
+        alertMessage += `Last Name: ${data.lastName}\n`;
+    }
+
+    alertMessage += `\nPost Code: ${data.postalCode}\n`;
+    alertMessage += `Town/City: ${data.town}\n`;
+    alertMessage += `Country: ${data.country}`;
+
+    alert(alertMessage.trim());
 }
 
 /**
