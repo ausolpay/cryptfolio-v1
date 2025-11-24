@@ -10456,7 +10456,7 @@ function createTeamPackageRecommendationCard(pkg) {
                 countdownInfo = `
                     <div class="buy-package-stat">
                         <span>Starting:</span>
-                        <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
+                        <span id="countdown-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                     </div>
                 `;
                 console.log(`📅 ${pkg.name} alert - Participants: ${participants} (< 2) → Mining Lobby`);
@@ -10489,7 +10489,7 @@ function createTeamPackageRecommendationCard(pkg) {
         countdownInfo = `
             <div class="buy-package-stat">
                 <span>Starting:</span>
-                <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
+                <span id="countdown-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
             </div>
         `;
         console.log(`📅 ${pkg.name} alert - No lifeTimeTill, Participants: ${participants} (< 2) → Mining Lobby`);
@@ -13561,7 +13561,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     countdownInfo = `
                         <div class="buy-package-stat">
                             <span>Starting:</span>
-                            <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
+                            <span id="countdown-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                         </div>
                     `;
                     console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Mining Lobby`);
@@ -13594,7 +13594,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             countdownInfo = `
                 <div class="buy-package-stat">
                     <span>Starting:</span>
-                    <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
+                    <span id="countdown-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                 </div>
             `;
             console.log(`📅 ${pkg.name} - No lifeTimeTill, Participants: ${participants} (< 2) → Mining Lobby`);

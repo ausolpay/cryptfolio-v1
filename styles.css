@@ -1631,6 +1631,15 @@ body.light-mode .package-progress-bar {
     50% { opacity: 0.3; transform: scale(1.2); }
 }
 
+@keyframes lobby-fade {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.mining-lobby-fade {
+    animation: lobby-fade 2s ease-in-out infinite;
+}
+
 .stats-section {
     background-color: rgba(30, 30, 30, 0.5);
     padding: 20px;
