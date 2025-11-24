@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 11 (Fix Clear Shares Button Visibility After Clearing) - STABLE BUILD
+// CryptFolio v2 - Main Application Script - Stable 12 (Fix Share Count Reset to 0 After Clearing) - STABLE BUILD
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -15246,10 +15246,9 @@ async function autoClearTeamShares(packageId, packageName) {
         const result = await response.json();
         console.log('✅ Auto-clear successful:', result);
 
-        // Clear shares from stored data
-        const storageKey = `${loggedInUser}_teamShares_${packageId}`;
-        localStorage.removeItem(storageKey);
-        console.log(`🗑️ Removed stored shares for package ${packageId}`);
+        // Clear shares from stored data using the correct storage method
+        saveMyTeamShares(packageId, 0);
+        console.log(`🗑️ Reset shares to 0 for package ${packageId}`);
 
         // Update UI - reset input value and share distribution display
         const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
