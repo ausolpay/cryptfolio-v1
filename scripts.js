@@ -9749,16 +9749,14 @@ function displayActivePackages() {
             });
         }
 
-        // Check if auto-buy is active but package not yet purchased (waiting state)
+        // Check if auto-buy is active for this specific package (per-package auto-buy settings)
         const isAutoBuyWaiting = !isAutoBought && pkg.active && (() => {
             if (pkg.isTeam) {
                 const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-                const teamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
-                return teamAutoBuy.enabled === true && teamAlerts[pkg.name];
+                return teamAutoBuy[pkg.name]?.enabled === true;
             } else {
                 const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-                const soloAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
-                return soloAutoBuy.enabled === true && soloAlerts[pkg.name];
+                return soloAutoBuy[pkg.name]?.enabled === true;
             }
         })();
 
@@ -11109,16 +11107,14 @@ function createTeamPackageRecommendationCard(pkg) {
     // Countdown detection - reuse existing countdown detection logic
     const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
 
-    // Check if auto-buy is active but package not yet purchased (waiting state)
+    // Check if auto-buy is active for this specific package (per-package auto-buy settings)
     const isAutoBuyWaiting = !isAutoBought && (() => {
         if (pkg.isTeam) {
             const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-            const teamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
-            return teamAutoBuy.enabled === true && teamAlerts[pkg.name];
+            return teamAutoBuy[pkg.name]?.enabled === true;
         } else {
             const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-            const soloAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
-            return soloAutoBuy.enabled === true && soloAlerts[pkg.name];
+            return soloAutoBuy[pkg.name]?.enabled === true;
         }
     })();
 
@@ -14334,16 +14330,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Countdown detection - reuse existing countdown detection logic (team packages only)
     const isCountdown = pkg.isTeam && pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
 
-    // Check if auto-buy is active but package not yet purchased (waiting state)
+    // Check if auto-buy is active for this specific package (per-package auto-buy settings)
     const isAutoBuyWaiting = !isAutoBought && (() => {
         if (pkg.isTeam) {
             const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-            const teamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
-            return teamAutoBuy.enabled === true && teamAlerts[pkg.name];
+            return teamAutoBuy[pkg.name]?.enabled === true;
         } else {
             const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-            const soloAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
-            return soloAutoBuy.enabled === true && soloAlerts[pkg.name];
+            return soloAutoBuy[pkg.name]?.enabled === true;
         }
     })();
 
