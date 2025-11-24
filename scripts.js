@@ -7775,6 +7775,32 @@ async function fetchEasyMiningData() {
         // ✅ Auto-add crypto boxes for active packages (ensures live prices are used)
         await autoAddCryptoBoxesForActivePackages();
 
+        // Pre-load buy packages data during initialization loading sequence
+        if (isFirstEasyMiningLoad) {
+            setEasyMiningLoadingTarget(95); // Update progress bar to 95%
+
+            // Update loading text
+            const loadingText = document.getElementById('loading-bar-text');
+            if (loadingText) {
+                loadingText.textContent = 'Loading buy packages data...';
+            }
+
+            // Load buy packages data (caches for instant display when user opens page)
+            console.log('📦 Pre-loading buy packages data during initialization...');
+            try {
+                await loadBuyPackagesDataOnPage();
+                console.log('✅ Buy packages data pre-loaded successfully');
+            } catch (error) {
+                console.error('⚠️ Failed to pre-load buy packages data:', error);
+                // Don't block initialization if buy packages loading fails
+            }
+
+            // Reset loading text back to default
+            if (loadingText) {
+                loadingText.textContent = 'Loading EasyMining data...';
+            }
+        }
+
         // Update BTC holdings if toggles are enabled
         updateBTCHoldings();
 
