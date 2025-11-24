@@ -10221,6 +10221,13 @@ async function updateRecommendations() {
     await executeAutoBuySolo(recommendations);
     await executeAutoBuyTeam(teamRecommendations);
 
+    // Fetch crypto prices once for ALL packages (prevents race condition)
+    const allPackages = [...recommendations, ...teamRecommendations];
+    if (allPackages.length > 0) {
+        window.packageCryptoPrices = await fetchPackageCryptoPrices(allPackages);
+        console.log('✅ Fetched crypto prices for all alert packages:', Object.keys(window.packageCryptoPrices));
+    }
+
     // Check if solo recommendations actually changed
     const recommendationNames = recommendations.map(pkg => pkg.name).sort().join(',');
     const currentNames = currentRecommendations.map(pkg => pkg.name).sort().join(',');
@@ -10320,9 +10327,7 @@ async function updateRecommendations() {
                     bestPackagesContainer.innerHTML = '<p style="color: #aaa; text-align: center;">No solo packages currently meet your alert thresholds.</p>';
                 }
             } else {
-                // Fetch crypto prices for the recommendations
-                window.packageCryptoPrices = await fetchPackageCryptoPrices(recommendations);
-
+                // Crypto prices already fetched for all packages above (prevents race condition)
                 console.log(`✅ Displaying ${recommendations.length} recommended solo package(s)`);
 
                 // Display each recommended package using the same card format as buy packages
@@ -10355,9 +10360,7 @@ async function updateRecommendations() {
                     teamAlertsContainer.innerHTML = '<p style="color: #aaa; text-align: center;">No team packages currently meet your alert thresholds.</p>';
                 }
             } else {
-                // Fetch crypto prices for team recommendations
-                window.packageCryptoPrices = await fetchPackageCryptoPrices(teamRecommendations);
-
+                // Crypto prices already fetched for all packages above (prevents race condition)
                 console.log(`✅ Displaying ${teamRecommendations.length} recommended team package(s)`, teamRecommendations);
 
                 // Display each recommended team package using dedicated team alert card function
