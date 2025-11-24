@@ -7135,10 +7135,10 @@ function clearAPICredentials() {
         return;
     }
     
-    // Clear input fields
-    document.getElementById('nicehash-api-key').value = '';
-    document.getElementById('nicehash-api-secret').value = '';
-    document.getElementById('nicehash-org-id').value = '';
+    // Clear input fields (page version)
+    document.getElementById('nicehash-api-key-page').value = '';
+    document.getElementById('nicehash-api-secret-page').value = '';
+    document.getElementById('nicehash-org-id-page').value = '';
     
     // Reset settings
     easyMiningSettings.apiKey = '';
@@ -7162,7 +7162,7 @@ function clearAPICredentials() {
 }
 
 // Make functions globally accessible
-window.activateEasyMining = activateEasyMining;
+window.activateEasyMining = activateEasyMiningFromPage;  // Fixed: point to page version
 window.clearAPICredentials = clearAPICredentials;
 
 // =============================================================================
