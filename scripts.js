@@ -10448,12 +10448,14 @@ function createTeamPackageRecommendationCard(pkg) {
             let countdownDuration = 60 * 60 * 1000; // Default: 1 hour in milliseconds
 
             if (pkg.duration) {
-                // Extract hours from duration string (e.g., "2 hrs" → 2, "4 hrs" → 4)
-                const durationMatch = pkg.duration.match(/(\d+)\s*hrs?/i);
+                // Extract hours from duration string (e.g., "2h" → 2, "4h" → 4, "2 hrs" → 2)
+                const durationMatch = pkg.duration.match(/(\d+)\s*h(?:rs?)?/i);
                 if (durationMatch) {
                     const durationHours = parseInt(durationMatch[1]);
                     countdownDuration = durationHours * 60 * 60 * 1000; // Convert to milliseconds
-                    console.log(`📅 ${pkg.name} - Duration: ${durationHours}hrs, Countdown threshold: ${countdownDuration}ms`);
+                    console.log(`📅 ${pkg.name} - Duration: ${pkg.duration}, Parsed: ${durationHours}h, Threshold: ${countdownDuration}ms`);
+                } else {
+                    console.log(`⚠️ ${pkg.name} - Could not parse duration: "${pkg.duration}"`);
                 }
             }
 
@@ -13540,12 +13542,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             let countdownDuration = 60 * 60 * 1000; // Default: 1 hour in milliseconds
 
             if (pkg.duration) {
-                // Extract hours from duration string (e.g., "2 hrs" → 2, "4 hrs" → 4)
-                const durationMatch = pkg.duration.match(/(\d+)\s*hrs?/i);
+                // Extract hours from duration string (e.g., "2h" → 2, "4h" → 4, "2 hrs" → 2)
+                const durationMatch = pkg.duration.match(/(\d+)\s*h(?:rs?)?/i);
                 if (durationMatch) {
                     const durationHours = parseInt(durationMatch[1]);
                     countdownDuration = durationHours * 60 * 60 * 1000; // Convert to milliseconds
-                    console.log(`📅 ${pkg.name} - Duration: ${durationHours}hrs, Countdown threshold: ${countdownDuration}ms`);
+                    console.log(`📅 ${pkg.name} - Duration: ${pkg.duration}, Parsed: ${durationHours}h, Threshold: ${countdownDuration}ms`);
+                } else {
+                    console.log(`⚠️ ${pkg.name} - Could not parse duration: "${pkg.duration}"`);
                 }
             }
 
