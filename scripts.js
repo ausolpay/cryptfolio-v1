@@ -9749,8 +9749,8 @@ function displayActivePackages() {
             });
         }
 
-        // Check if auto-buy is active for this specific package (per-package auto-buy settings)
-        const isAutoBuyWaiting = !isAutoBought && pkg.active && (() => {
+        // Check if auto-buy is active for this specific package
+        const isAutoBuyActive = (() => {
             if (pkg.isTeam) {
                 const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
                 return teamAutoBuy[pkg.name]?.enabled === true;
@@ -9761,12 +9761,31 @@ function displayActivePackages() {
         })();
 
         let robotHtml = '';
-        if (isAutoBuyWaiting) {
-            // Auto-buy enabled but not purchased yet: spinning robot (waiting state)
-            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-        } else if (isAutoBought && pkg.active) {
-            // Active auto-bought package: solid robot (no animation)
-            robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+
+        // Robot icon logic with share detection and cleanup
+        if (pkg.isTeam) {
+            // TEAM packages: check for owned shares
+            const packageId = pkg.id || pkg.apiData?.id;
+            const myShares = getMyTeamShares(packageId) || 0;
+
+            if (isAutoBuyActive && myShares === 0 && !isAutoBought && pkg.active) {
+                // Auto-buy active but no shares yet: spinning robot (waiting)
+                robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+            } else if (isAutoBuyActive && myShares > 0) {
+                // Has shares and auto-buy enabled: solid robot (not flashing)
+                robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+            }
+            // Else: no shares and no auto-buy = no robot (automatic cleanup)
+        } else {
+            // SOLO packages
+            if (isAutoBuyActive && !isAutoBought && pkg.active) {
+                // Auto-buy active but not purchased: spinning robot (waiting)
+                robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+            } else if (isAutoBought && pkg.active) {
+                // Active auto-bought solo package: FLASHING robot
+                robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+            }
+            // Else: no auto-buy or completed = no robot (automatic cleanup)
         }
 
         // Rocket icon logic:
@@ -11107,8 +11126,8 @@ function createTeamPackageRecommendationCard(pkg) {
     // Countdown detection - reuse existing countdown detection logic
     const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
 
-    // Check if auto-buy is active for this specific package (per-package auto-buy settings)
-    const isAutoBuyWaiting = !isAutoBought && (() => {
+    // Check if auto-buy is active for this specific package
+    const isAutoBuyActive = (() => {
         if (pkg.isTeam) {
             const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
             return teamAutoBuy[pkg.name]?.enabled === true;
@@ -11118,20 +11137,45 @@ function createTeamPackageRecommendationCard(pkg) {
         }
     })();
 
-    // Robot icon HTML
+    // Robot icon HTML - with share detection and cleanup
     let robotHtml = '';
-    if (isAutoBuyWaiting) {
-        // Auto-buy enabled but not purchased yet: spinning robot (waiting state)
-        robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-        console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Auto-buy enabled`);
-    } else if (isAutoBought) {
-        if (isCountdown) {
-            robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
-            console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - Match: ${matchMethod}`);
-        } else {
-            robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
-            console.log(`🤖 Robot icon (purchased) added to ${pkg.name} alert - Match: ${matchMethod}`);
+    if (pkg.isTeam) {
+        // TEAM packages: check for owned shares
+        const packageId = pkg.apiData?.id || pkg.id;
+        const myShares = getMyTeamShares(packageId) || 0;
+
+        if (isAutoBuyActive && myShares === 0 && !isAutoBought) {
+            // Auto-buy active but no shares yet: spinning robot (waiting)
+            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Auto-buy enabled, no shares`);
+        } else if (isAutoBuyActive && myShares > 0) {
+            // Has shares and auto-buy enabled: solid robot
+            if (isCountdown) {
+                robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-buy active (starting soon)">🤖</div>';
+                console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - ${myShares} shares owned`);
+            } else {
+                robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+                console.log(`🤖 Robot icon (solid) added to ${pkg.name} alert - ${myShares} shares owned`);
+            }
         }
+        // Else: no shares and no auto-buy = no robot (automatic cleanup)
+    } else {
+        // SOLO packages
+        if (isAutoBuyActive && !isAutoBought) {
+            // Auto-buy active but not purchased: spinning robot (waiting)
+            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Auto-buy enabled`);
+        } else if (isAutoBought) {
+            // Solo packages: solid robot when purchased
+            if (isCountdown) {
+                robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
+                console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - Match: ${matchMethod}`);
+            } else {
+                robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+                console.log(`🤖 Robot icon (purchased) added to ${pkg.name} alert - Match: ${matchMethod}`);
+            }
+        }
+        // Else: no auto-buy or not purchased = no robot (automatic cleanup)
     }
 
     // Hashrate info - add if available
@@ -14330,8 +14374,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Countdown detection - reuse existing countdown detection logic (team packages only)
     const isCountdown = pkg.isTeam && pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
 
-    // Check if auto-buy is active for this specific package (per-package auto-buy settings)
-    const isAutoBuyWaiting = !isAutoBought && (() => {
+    // Check if auto-buy is active for this specific package
+    const isAutoBuyActive = (() => {
         if (pkg.isTeam) {
             const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
             return teamAutoBuy[pkg.name]?.enabled === true;
@@ -14341,19 +14385,39 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
     })();
 
-    // Robot icon HTML - for both team and solo packages with auto-buy
-    if (isAutoBuyWaiting) {
-        // Auto-buy enabled but not purchased yet: spinning robot (waiting state)
-        robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-        console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Auto-buy enabled`);
-    } else if (isAutoBought) {
-        if (isCountdown) {
-            robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
-            console.log(`🤖 Robot icon (countdown) added to ${pkg.name} - Match: ${matchMethod}`);
-        } else {
+    // Robot icon HTML - with share detection and cleanup
+    if (pkg.isTeam) {
+        // TEAM packages: check for owned shares
+        const packageId = pkg.apiData?.id || pkg.id;
+        const myShares = getMyTeamShares(packageId) || 0;
+
+        if (isAutoBuyActive && myShares === 0 && !isAutoBought) {
+            // Auto-buy active but no shares yet: spinning robot (waiting)
+            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Auto-buy enabled, no shares`);
+        } else if (isAutoBuyActive && myShares > 0) {
+            // Has shares and auto-buy enabled: solid robot
+            if (isCountdown) {
+                robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-buy active (starting soon)">🤖</div>';
+                console.log(`🤖 Robot icon (countdown) added to ${pkg.name} - ${myShares} shares owned`);
+            } else {
+                robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+                console.log(`🤖 Robot icon (solid) added to ${pkg.name} - ${myShares} shares owned`);
+            }
+        }
+        // Else: no shares and no auto-buy = no robot (automatic cleanup)
+    } else {
+        // SOLO packages
+        if (isAutoBuyActive && !isAutoBought) {
+            // Auto-buy active but not purchased: spinning robot (waiting)
+            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Auto-buy enabled`);
+        } else if (isAutoBought) {
+            // Solo packages: solid robot when purchased (not active yet on buy page)
             robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
             console.log(`🤖 Robot icon (purchased) added to ${pkg.name} - Match: ${matchMethod}`);
         }
+        // Else: no auto-buy or not purchased = no robot (automatic cleanup)
     }
 
     card.innerHTML = `
