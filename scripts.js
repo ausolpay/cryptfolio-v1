@@ -10444,11 +10444,23 @@ function createTeamPackageRecommendationCard(pkg) {
 
         if (timeUntilStart > 0) {
             // Package hasn't started yet
-            // If more than 1 hour away, show "Starting Soon!", otherwise show countdown timer
-            const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+            // Parse package duration to determine countdown threshold (2 hrs or 4 hrs for Team Gold)
+            let countdownDuration = 60 * 60 * 1000; // Default: 1 hour in milliseconds
 
-            if (timeUntilStart > oneHour) {
-                // Show "Starting Soon!" when countdown hasn't kicked in yet
+            if (pkg.duration) {
+                // Extract hours from duration string (e.g., "2 hrs" → 2, "4 hrs" → 4)
+                const durationMatch = pkg.duration.match(/(\d+)\s*hrs?/i);
+                if (durationMatch) {
+                    const durationHours = parseInt(durationMatch[1]);
+                    countdownDuration = durationHours * 60 * 60 * 1000; // Convert to milliseconds
+                    console.log(`📅 ${pkg.name} - Duration: ${durationHours}hrs, Countdown threshold: ${countdownDuration}ms`);
+                }
+            }
+
+            // Show "Starting Soon!" when package has participants but countdown hasn't kicked in yet
+            // Show timer when countdown is active (within the package duration timeframe)
+            if (timeUntilStart > countdownDuration) {
+                // Countdown hasn't kicked in yet - show "Starting Soon!"
                 countdownInfo = `
                     <div class="buy-package-stat">
                         <span>Starting:</span>
@@ -10456,7 +10468,7 @@ function createTeamPackageRecommendationCard(pkg) {
                     </div>
                 `;
             } else {
-                // Show actual countdown timer when within 1 hour
+                // Countdown is active - show timer
                 const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
                 const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
@@ -13524,11 +13536,23 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
         if (timeUntilStart > 0) {
             // Package hasn't started yet
-            // If more than 1 hour away, show "Starting Soon!", otherwise show countdown timer
-            const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+            // Parse package duration to determine countdown threshold (2 hrs or 4 hrs for Team Gold)
+            let countdownDuration = 60 * 60 * 1000; // Default: 1 hour in milliseconds
 
-            if (timeUntilStart > oneHour) {
-                // Show "Starting Soon!" when countdown hasn't kicked in yet
+            if (pkg.duration) {
+                // Extract hours from duration string (e.g., "2 hrs" → 2, "4 hrs" → 4)
+                const durationMatch = pkg.duration.match(/(\d+)\s*hrs?/i);
+                if (durationMatch) {
+                    const durationHours = parseInt(durationMatch[1]);
+                    countdownDuration = durationHours * 60 * 60 * 1000; // Convert to milliseconds
+                    console.log(`📅 ${pkg.name} - Duration: ${durationHours}hrs, Countdown threshold: ${countdownDuration}ms`);
+                }
+            }
+
+            // Show "Starting Soon!" when package has participants but countdown hasn't kicked in yet
+            // Show timer when countdown is active (within the package duration timeframe)
+            if (timeUntilStart > countdownDuration) {
+                // Countdown hasn't kicked in yet - show "Starting Soon!"
                 countdownInfo = `
                     <div class="buy-package-stat">
                         <span>Starting:</span>
@@ -13536,7 +13560,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     </div>
                 `;
             } else {
-                // Show actual countdown timer when within 1 hour
+                // Countdown is active - show timer
                 const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
                 const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
