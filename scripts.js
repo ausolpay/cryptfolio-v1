@@ -9753,10 +9753,12 @@ function displayActivePackages() {
         const isAutoBuyWaiting = !isAutoBought && pkg.active && (() => {
             if (pkg.isTeam) {
                 const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-                return teamAutoBuy.enabled === true;
+                const teamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+                return teamAutoBuy.enabled === true && teamAlerts[pkg.name];
             } else {
                 const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-                return soloAutoBuy.enabled === true;
+                const soloAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+                return soloAutoBuy.enabled === true && soloAlerts[pkg.name];
             }
         })();
 
@@ -11111,10 +11113,12 @@ function createTeamPackageRecommendationCard(pkg) {
     const isAutoBuyWaiting = !isAutoBought && (() => {
         if (pkg.isTeam) {
             const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-            return teamAutoBuy.enabled === true;
+            const teamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+            return teamAutoBuy.enabled === true && teamAlerts[pkg.name];
         } else {
             const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-            return soloAutoBuy.enabled === true;
+            const soloAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+            return soloAutoBuy.enabled === true && soloAlerts[pkg.name];
         }
     })();
 
@@ -14334,10 +14338,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const isAutoBuyWaiting = !isAutoBought && (() => {
         if (pkg.isTeam) {
             const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-            return teamAutoBuy.enabled === true;
+            const teamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+            return teamAutoBuy.enabled === true && teamAlerts[pkg.name];
         } else {
             const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-            return soloAutoBuy.enabled === true;
+            const soloAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+            return soloAutoBuy.enabled === true && soloAlerts[pkg.name];
         }
     })();
 
