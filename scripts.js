@@ -10448,17 +10448,27 @@ function createTeamPackageRecommendationCard(pkg) {
             // Package hasn't started yet
             // Countdown kicks in when numberOfParticipants reaches 2
 
-            // Show "Starting Soon!" when package has < 2 participants (countdown hasn't kicked in)
-            // Show timer when participants >= 2 (countdown is active)
+            // Show "Mining Lobby" when package has < 2 participants (waiting for players)
+            // Show "Starting Soon!" when countdown is ending (< 60 seconds)
+            // Show timer when participants >= 2 and countdown is active (>= 60 seconds)
             if (participants < 2) {
-                // Countdown hasn't kicked in yet - show "Starting Soon!"
+                // Waiting in lobby - show "Mining Lobby"
                 countdownInfo = `
                     <div class="buy-package-stat">
                         <span>Starting:</span>
-                        <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                        <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                     </div>
                 `;
-                console.log(`📅 ${pkg.name} alert - Participants: ${participants} (< 2) → Starting Soon!`);
+                console.log(`📅 ${pkg.name} alert - Participants: ${participants} (< 2) → Mining Lobby`);
+            } else if (timeUntilStart < 60000) {
+                // Countdown ending (< 60 seconds) - show "Starting Soon!"
+                countdownInfo = `
+                    <div class="buy-package-stat">
+                        <span>Starting:</span>
+                        <span id="countdown-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
+                    </div>
+                `;
+                console.log(`📅 ${pkg.name} alert - Participants: ${participants}, Time: ${Math.floor(timeUntilStart/1000)}s → Starting Soon!`);
             } else {
                 // Countdown is active - show timer
                 const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
@@ -10475,14 +10485,14 @@ function createTeamPackageRecommendationCard(pkg) {
             }
         }
     } else if (participants < 2) {
-        // No lifeTimeTill set yet, but show "Starting Soon!" if < 2 participants
+        // No lifeTimeTill set yet, but show "Mining Lobby" if < 2 participants
         countdownInfo = `
             <div class="buy-package-stat">
                 <span>Starting:</span>
-                <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
             </div>
         `;
-        console.log(`📅 ${pkg.name} alert - No lifeTimeTill, Participants: ${participants} (< 2) → Starting Soon!`);
+        console.log(`📅 ${pkg.name} alert - No lifeTimeTill, Participants: ${participants} (< 2) → Mining Lobby`);
     }
 
     const sharesInfo = `
@@ -13543,17 +13553,27 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 // Package hasn't started yet
                 // Countdown kicks in when numberOfParticipants reaches 2
 
-                // Show "Starting Soon!" when package has < 2 participants (countdown hasn't kicked in)
-                // Show timer when participants >= 2 (countdown is active)
+                // Show "Mining Lobby" when package has < 2 participants (waiting for players)
+                // Show "Starting Soon!" when countdown is ending (< 60 seconds)
+                // Show timer when participants >= 2 and countdown is active (>= 60 seconds)
                 if (participants < 2) {
-                    // Countdown hasn't kicked in yet - show "Starting Soon!"
+                    // Waiting in lobby - show "Mining Lobby"
                     countdownInfo = `
                         <div class="buy-package-stat">
                             <span>Starting:</span>
-                            <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                            <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                         </div>
                     `;
-                    console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Starting Soon!`);
+                    console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Mining Lobby`);
+                } else if (timeUntilStart < 60000) {
+                    // Countdown ending (< 60 seconds) - show "Starting Soon!"
+                    countdownInfo = `
+                        <div class="buy-package-stat">
+                            <span>Starting:</span>
+                            <span id="countdown-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
+                        </div>
+                    `;
+                    console.log(`📅 ${pkg.name} - Participants: ${participants}, Time: ${Math.floor(timeUntilStart/1000)}s → Starting Soon!`);
                 } else {
                     // Countdown is active - show timer
                     const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
