@@ -7012,6 +7012,9 @@ let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 let showAllPackages = false;
+let currentPackagePage = 1; // Desktop carousel pagination
+const packagesPerPage = 6; // Cards per page/group
+let mobileVisibleCount = 6; // Mobile progressive reveal count
 let missedRewardsCheckInterval = null; // For checking missed rewards every 30 seconds
 
 // Error alert throttling with delayed alerts (prevent spam during reconnection)
@@ -7296,10 +7299,55 @@ function toggleEasyMining() {
     }
 }
 
-function toggleShowMorePackages() {
-    showAllPackages = !showAllPackages;
+// DESKTOP: Navigate to next page of packages
+function nextPackagePage() {
+    const filtered = getFilteredPackages(); // Get current filtered packages
+    const totalPages = Math.ceil(filtered.length / packagesPerPage);
+
+    if (currentPackagePage < totalPages) {
+        currentPackagePage++;
+        displayActivePackages();
+    }
+}
+
+// DESKTOP: Navigate to previous page of packages
+function prevPackagePage() {
+    if (currentPackagePage > 1) {
+        currentPackagePage--;
+        displayActivePackages();
+    }
+}
+
+// MOBILE: Show 6 more packages
+function showMorePackages() {
+    const filtered = getFilteredPackages();
+    mobileVisibleCount = Math.min(mobileVisibleCount + 6, filtered.length);
     displayActivePackages();
-    document.getElementById('show-more-packages').textContent = showAllPackages ? 'Show Less' : 'Show More';
+}
+
+// MOBILE: Collapse back to 6 packages
+function showLessPackages() {
+    mobileVisibleCount = 6;
+    displayActivePackages();
+}
+
+// Helper function to get currently filtered packages
+function getFilteredPackages() {
+    const allPackages = [
+        ...users[loggedInUser].soloPackages,
+        ...users[loggedInUser].teamPackages
+    ];
+
+    return allPackages.filter(pkg => {
+        if (currentPackageTab === 'active') {
+            return !pkg.completed && !pkg.cancelled;
+        } else if (currentPackageTab === 'completed') {
+            return pkg.completed || pkg.cancelled;
+        } else if (currentPackageTab === 'rewards') {
+            return pkg.blockFound === true;
+        }
+        return false;
+    });
 }
 
 function clearRockets() {
@@ -7325,7 +7373,10 @@ function restoreRockets() {
 
 // Make UI functions globally accessible
 window.toggleEasyMining = toggleEasyMining;
-window.toggleShowMorePackages = toggleShowMorePackages;
+window.showMorePackages = showMorePackages;
+window.showLessPackages = showLessPackages;
+window.nextPackagePage = nextPackagePage;
+window.prevPackagePage = prevPackagePage;
 window.clearRockets = clearRockets;
 
 // =============================================================================
@@ -9304,17 +9355,15 @@ function switchPackageTab(tab) {
     currentPackageTab = tab;
     showAllPackages = false; // Reset to collapsed view when switching tabs
 
+    // Reset pagination states
+    currentPackagePage = 1; // Reset to first page
+    mobileVisibleCount = 6; // Reset mobile count
+
     // Update tab UI
     document.querySelectorAll('.package-tab').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.closest('.package-tab').classList.add('active');
-
-    // Reset "Show More" button text to default
-    const showMoreBtn = document.getElementById('show-more-packages');
-    if (showMoreBtn) {
-        showMoreBtn.textContent = 'Show More';
-    }
 
     // Refresh display
     displayActivePackages();
@@ -9361,7 +9410,20 @@ function displayActivePackages() {
     document.getElementById('completed-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.active === false).length;
     document.getElementById('rewards-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true).length;
 
-    const packagesToShow = showAllPackages ? filteredPackages : filteredPackages.slice(0, 6);
+    // Detect desktop vs mobile (768px breakpoint)
+    const isDesktop = window.innerWidth > 768;
+
+    // Slice packages based on desktop/mobile mode
+    let packagesToShow;
+    if (isDesktop) {
+        // DESKTOP: Paginate in groups of 6
+        const startIndex = (currentPackagePage - 1) * packagesPerPage;
+        const endIndex = startIndex + packagesPerPage;
+        packagesToShow = filteredPackages.slice(startIndex, endIndex);
+    } else {
+        // MOBILE: Progressive reveal (first N packages based on mobileVisibleCount)
+        packagesToShow = filteredPackages.slice(0, mobileVisibleCount);
+    }
 
     if (packagesToShow.length === 0) {
         container.innerHTML = `<p style="text-align: center; color: #888; padding: 20px;">No ${currentPackageTab} packages</p>`;
@@ -9567,15 +9629,68 @@ function displayActivePackages() {
         container.appendChild(card);
     });
 
-    // Show/hide "Show More" button - only show if current tab has more than 6 packages
-    const showMoreBtn = document.getElementById('show-more-packages');
-    if (showMoreBtn) {
+    // Update desktop/mobile controls visibility and states
+    if (isDesktop) {
+        // DESKTOP: Update carousel controls
+        const carouselControls = document.getElementById('package-carousel-controls');
+        const mobileControls = document.getElementById('package-mobile-controls');
+        const totalPages = Math.ceil(filteredPackages.length / packagesPerPage);
+
         if (filteredPackages.length > 6) {
-            showMoreBtn.style.display = 'block';
-            console.log(`✓ Show More button visible (${filteredPackages.length} packages in ${currentPackageTab} tab)`);
+            // Show carousel controls
+            if (carouselControls) carouselControls.style.display = 'flex';
+            if (mobileControls) mobileControls.style.display = 'none';
+
+            // Update page counter
+            const pageCounter = document.getElementById('package-page-count');
+            if (pageCounter) {
+                pageCounter.textContent = `${currentPackagePage} of ${totalPages}`;
+            }
+
+            // Update arrow button states
+            const leftArrow = document.getElementById('package-arrow-left');
+            const rightArrow = document.getElementById('package-arrow-right');
+
+            if (leftArrow) {
+                leftArrow.disabled = currentPackagePage === 1;
+            }
+            if (rightArrow) {
+                rightArrow.disabled = currentPackagePage >= totalPages;
+            }
+
+            console.log(`✓ Desktop carousel: Page ${currentPackagePage} of ${totalPages}`);
         } else {
-            showMoreBtn.style.display = 'none';
-            console.log(`✗ Show More button hidden (${filteredPackages.length} packages in ${currentPackageTab} tab)`);
+            // Hide both controls if 6 or fewer packages
+            if (carouselControls) carouselControls.style.display = 'none';
+            if (mobileControls) mobileControls.style.display = 'none';
+        }
+    } else {
+        // MOBILE: Update show more/less buttons
+        const carouselControls = document.getElementById('package-carousel-controls');
+        const mobileControls = document.getElementById('package-mobile-controls');
+        const showMoreBtn = document.getElementById('show-more-packages');
+        const showLessBtn = document.getElementById('show-less-packages');
+
+        if (filteredPackages.length > 6) {
+            // Show mobile controls
+            if (carouselControls) carouselControls.style.display = 'none';
+            if (mobileControls) mobileControls.style.display = 'flex';
+
+            // Show "Show More" if there are more packages to reveal
+            if (showMoreBtn) {
+                showMoreBtn.style.display = mobileVisibleCount < filteredPackages.length ? 'block' : 'none';
+            }
+
+            // Show "Show Less" if we're viewing more than 6
+            if (showLessBtn) {
+                showLessBtn.style.display = mobileVisibleCount > 6 ? 'block' : 'none';
+            }
+
+            console.log(`✓ Mobile controls: Showing ${mobileVisibleCount} of ${filteredPackages.length} packages`);
+        } else {
+            // Hide both controls if 6 or fewer packages
+            if (carouselControls) carouselControls.style.display = 'none';
+            if (mobileControls) mobileControls.style.display = 'none';
         }
     }
 }
