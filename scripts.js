@@ -13492,9 +13492,10 @@ function updateTeamPackageCountdowns() {
                         }
                     }
                 } else {
-                    // Package has started
-                    countdownElement.textContent = 'Started!';
+                    // Countdown ended - show "Starting Soon!" until package goes active
+                    countdownElement.textContent = 'Starting Soon!';
                     countdownElement.style.color = '#4CAF50';
+                    countdownElement.style.fontWeight = 'bold';
                 }
             }
         }
