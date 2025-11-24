@@ -10657,30 +10657,35 @@ function createTeamPackageRecommendationCard(pkg) {
     const initialShareValue = myCurrentShares || 1; // Input starts at owned shares, or 1 if none owned
     console.log(`📊 Team alert "${pkg.name}" - ID: ${alertPackageId}, My shares: ${myCurrentShares}, Initial value: ${initialShareValue}`);
 
+    // Calculate share data for team packages (matching buy packages page)
+    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
+    const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 9999;
+    const blockReward = pkg.blockReward || 0;
+
     // Recalculate initial price to show cost of all shares in input (total, not new)
-    priceAUD = convertBTCtoAUD(initialShareValue * sharePrice);
-
-    // Calculate affordability for team package
-    // Buy button only disables when balance < 0.0001 (minimum 1 share)
-    const canAfford = availableBalance >= sharePrice;
-    const buyButtonDisabled = canAfford ? '' : 'disabled';
-    const buyButtonStyle = canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;';
-
-    // For team packages: calculate initial + button state
-    // + button disables when can't afford ONE MORE share
-    const newSharesForNext = (initialShareValue + 1) - myCurrentShares; // NEW shares if we increase by 1
-    const nextShareCost = newSharesForNext * sharePrice;
-    const canAffordNextShare = availableBalance >= nextShareCost;
-    const plusButtonDisabled = canAffordNextShare ? '' : 'disabled';
-    const plusButtonStyle = canAffordNextShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+    priceAUD = convertBTCtoAUD(initialShareValue * sharePrice).toFixed(2);
 
     // For team packages: add share selector with buy button on same row
+    // NO initial disabled states - let adjustShares() handle button states dynamically
     const teamShareSelector = `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myCurrentShares || 1}" max="9999" class="share-adjuster-input" readonly>
-            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
-            <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
+            <input
+                type="number"
+                id="shares-${pkg.name.replace(/\s+/g, '-')}"
+                value="${initialShareValue}"
+                min="${myCurrentShares || 1}"
+                max="9999"
+                class="share-adjuster-input"
+                readonly
+                data-block-reward="${blockReward}"
+                data-total-bought="${totalBoughtShares}"
+                data-my-bought="${myCurrentShares}"
+                data-total-available="${totalAvailableShares}"
+                data-crypto="${pkg.crypto}"
+            >
+            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn">+</button>
+            <button class="buy-now-btn" style="margin-left: 10px;" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
     `;
 
@@ -13779,6 +13784,9 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // For team packages: get user's current bought shares
     let myBoughtShares = 0;
     let initialShareValue = 1;
+    let totalBoughtShares = 0;
+    let totalAvailableShares = 9999;
+    let blockReward = 0;
     if (pkg.isTeam) {
         // Use same ID logic as when saving shares
         const packageId = pkg.apiData?.id || pkg.id;
@@ -13787,29 +13795,36 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Input starts at owned shares, or 1 if none owned
         initialShareValue = myBoughtShares || 1;
 
-        // Recalculate initial price to show cost of all shares in input (total, not new)
-        priceAUD = convertBTCtoAUD(initialShareValue * sharePrice);
-    }
+        // Calculate share data for team packages (matching buy packages page)
+        totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
+        totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 9999;
+        blockReward = pkg.blockReward || 0;
 
-    // For team packages: calculate initial + button state
-    let plusButtonDisabled = '';
-    let plusButtonStyle = '';
-    if (pkg.isTeam) {
-        // + button disables when can't afford ONE MORE share
-        const newSharesForNext = (initialShareValue + 1) - myBoughtShares; // NEW shares if we increase by 1
-        const nextShareCost = newSharesForNext * sharePrice;
-        const canAffordNextShare = availableBalance >= nextShareCost;
-        plusButtonDisabled = canAffordNextShare ? '' : 'disabled';
-        plusButtonStyle = canAffordNextShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
+        // Recalculate initial price to show cost of all shares in input (total, not new)
+        priceAUD = convertBTCtoAUD(initialShareValue * sharePrice).toFixed(2);
     }
 
     // For team packages: add share selector with buy button on same row
+    // NO initial disabled states - let adjustShares() handle button states dynamically
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myBoughtShares || 1}" max="9999" class="share-adjuster-input" readonly>
-            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
-            <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
+            <input
+                type="number"
+                id="shares-${pkg.name.replace(/\s+/g, '-')}"
+                value="${initialShareValue}"
+                min="${myBoughtShares || 1}"
+                max="9999"
+                class="share-adjuster-input"
+                readonly
+                data-block-reward="${blockReward}"
+                data-total-bought="${totalBoughtShares}"
+                data-my-bought="${myBoughtShares}"
+                data-total-available="${totalAvailableShares}"
+                data-crypto="${pkg.crypto}"
+            >
+            <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn">+</button>
+            <button class="buy-now-btn" style="margin-left: 10px;" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
     ` : '';
 
