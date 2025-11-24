@@ -12659,6 +12659,16 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
     }
 
     try {
+        // Get withdrawal address for the crypto (matches auto-buy implementation)
+        const mainWalletAddress = getWithdrawalAddress(crypto);
+
+        if (!mainWalletAddress) {
+            showModal(`❌ No withdrawal address configured for ${crypto}!\n\nPlease configure your ${crypto} withdrawal address in Settings before purchasing.`);
+            return;
+        }
+
+        console.log(`✓ Using ${crypto} withdrawal address:`, mainWalletAddress.substring(0, 10) + '...');
+
         // Sync time with NiceHash server before purchase
         console.log('⏰ Syncing time with NiceHash server...');
         await syncNiceHashTime();
@@ -12668,12 +12678,18 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
         console.log('   Crypto:', crypto);
         console.log('   Price:', packagePrice, 'BTC');
 
-        // POST /main/api/v2/hashpower/solo/order with ticketId as URL parameter
-        const endpoint = `/main/api/v2/hashpower/solo/order?ticketId=${ticketId}`;
-        const body = JSON.stringify({});
+        // POST /main/api/v2/hashpower/solo/order (matches auto-buy & API docs)
+        const endpoint = '/main/api/v2/hashpower/solo/order';
+        const bodyData = {
+            ticketId: ticketId,
+            soloMiningRewardAddr: mainWalletAddress.trim()
+        };
+
+        const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
         console.log('📡 Endpoint:', endpoint);
+        console.log('📡 Body:', { ticketId, soloMiningRewardAddr: mainWalletAddress.substring(0, 10) + '...' });
 
         let response;
 
@@ -12687,7 +12703,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
                     endpoint: endpoint,
                     method: 'POST',
                     headers: headers,
-                    body: {}
+                    body: bodyData
                 })
             });
         } else {
