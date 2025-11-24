@@ -4845,15 +4845,9 @@ window.onclick = function(event) {
     const totalHoldingsModal = document.getElementById('total-holdings-modal');
     const settingsModal = document.getElementById('settings-modal');
     const candlestickModal = document.getElementById('candlestick-modal');
-    const easyMiningSettingsModal = document.getElementById('easymining-settings-modal');
-    
+
     if (event.target === popupModal || event.target === totalHoldingsModal || event.target === settingsModal || event.target === candlestickModal) {
         closeModal();
-    }
-    
-    // Close EasyMining settings modal when clicking outside
-    if (event.target === easyMiningSettingsModal) {
-        closeEasyMiningSettingsModal();
     }
 };
 
@@ -7086,102 +7080,6 @@ function clearEasyMiningErrorAlert() {
 // =============================================================================
 // EASYMINING SETTINGS MODAL FUNCTIONS
 // =============================================================================
-
-function showEasyMiningSettingsModal() {
-    console.log('🔵 showEasyMiningSettingsModal called');
-
-    // Close settings modal first
-    const settingsModal = document.getElementById('settings-modal');
-    if (settingsModal) {
-        settingsModal.style.display = 'none';
-    }
-
-    // Check if modal exists
-    const modal = document.getElementById('easymining-settings-modal');
-    console.log('Modal element:', modal);
-
-    if (!modal) {
-        console.error('❌ EasyMining modal not found in DOM!');
-        return;
-    }
-
-    // Load saved settings
-    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || easyMiningSettings;
-
-    // Load API credentials
-    document.getElementById('nicehash-api-key').value = savedSettings.apiKey || '';
-    document.getElementById('nicehash-api-secret').value = savedSettings.apiSecret || '';
-    document.getElementById('nicehash-org-id').value = savedSettings.orgId || '';
-
-    // Load toggle settings
-    document.getElementById('auto-update-holdings-toggle').checked = savedSettings.autoUpdateHoldings || false;
-    document.getElementById('include-available-btc-toggle').checked = savedSettings.includeAvailableBTC || false;
-    document.getElementById('include-pending-btc-toggle').checked = savedSettings.includePendingBTC || false;
-    document.getElementById('auto-buy-cooldown-toggle').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
-    document.getElementById('auto-clear-team-shares-toggle').checked = savedSettings.autoClearTeamShares || false; // Default OFF
-    document.getElementById('auto-buy-tg-safe-hold-toggle').checked = savedSettings.autoBuyTgSafeHold || false; // Default OFF
-
-    // Show modal
-    console.log('Setting modal display to block...');
-    modal.style.display = 'block';
-    console.log('✅ Modal display set to:', modal.style.display);
-}
-
-function closeEasyMiningSettingsModal() {
-    const modal = document.getElementById('easymining-settings-modal');
-    modal.style.display = 'none';
-}
-
-// Make functions globally accessible
-window.showEasyMiningSettingsModal = showEasyMiningSettingsModal;
-window.closeEasyMiningSettingsModal = closeEasyMiningSettingsModal;
-
-function activateEasyMining() {
-    // Get API credentials
-    const apiKey = document.getElementById('nicehash-api-key').value.trim();
-    const apiSecret = document.getElementById('nicehash-api-secret').value.trim();
-    const orgId = document.getElementById('nicehash-org-id').value.trim();
-    
-    // Validate credentials
-    if (!apiKey || !apiSecret || !orgId) {
-        showModal('Please enter all API credentials to activate EasyMining.');
-        return;
-    }
-    
-    // Save API credentials
-    easyMiningSettings.apiKey = apiKey;
-    easyMiningSettings.apiSecret = apiSecret;
-    easyMiningSettings.orgId = orgId;
-    easyMiningSettings.enabled = true;
-    
-    // Save toggle settings
-    easyMiningSettings.autoUpdateHoldings = document.getElementById('auto-update-holdings-toggle').checked;
-    easyMiningSettings.includeAvailableBTC = document.getElementById('include-available-btc-toggle').checked;
-    easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle').checked;
-    easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle').checked;
-    easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle').checked;
-    easyMiningSettings.autoBuyTgSafeHold = document.getElementById('auto-buy-tg-safe-hold-toggle').checked;
-
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
-
-    console.log('EasyMining activated with credentials');
-
-    // Reset first load flag to show loading bar on next data fetch
-    isFirstEasyMiningLoad = true;
-
-    // Update BTC holdings display with new settings
-    updateBTCHoldings();
-
-    // Start polling (section will be shown automatically after loading bar completes)
-    startEasyMiningPolling();
-
-    // Start missed rewards check
-    startMissedRewardsCheck();
-
-    closeEasyMiningSettingsModal();
-    showModal('✅ EasyMining activated successfully!\n\nThe EasyMining section will appear after loading completes.');
-}
 
 // Page-based version of activateEasyMining
 function activateEasyMiningFromPage() {
@@ -11691,87 +11589,10 @@ function closePackageDetailModal() {
 // BUY PACKAGES MODAL
 // =============================================================================
 
-function showBuyPackagesModal() {
-    loadBuyPackagesData();
-    document.getElementById('buy-packages-modal').style.display = 'block';
-}
-
-function closeBuyPackagesModal() {
-    document.getElementById('buy-packages-modal').style.display = 'none';
-}
-
-function showBuyTab(tab) {
-    const buttons = document.querySelectorAll('.tab-button');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-
-    if (tab === 'single') {
-        document.getElementById('buy-single-packages').style.display = 'grid';
-        document.getElementById('buy-team-packages').style.display = 'none';
-    } else {
-        document.getElementById('buy-single-packages').style.display = 'none';
-        document.getElementById('buy-team-packages').style.display = 'grid';
-    }
-}
-
 // Make modal functions globally accessible
 window.showPackageDetailModal = showPackageDetailModal;
 window.closePackageDetailModal = closePackageDetailModal;
-window.showBuyPackagesModal = showBuyPackagesModal;
-window.closeBuyPackagesModal = closeBuyPackagesModal;
-window.showBuyTab = showBuyTab;
 window.buyPackage = buyPackage;
-
-async function loadBuyPackagesData() {
-    console.log('\n🛒 Loading available packages from NiceHash API...\n');
-
-    const singleContainer = document.getElementById('buy-single-packages');
-    const teamContainer = document.getElementById('buy-team-packages');
-
-    // Show loading state
-    singleContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ffa500;">Loading packages...</div>';
-    teamContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ffa500;">Loading packages...</div>';
-
-    try {
-        // Fetch both solo and team packages in parallel
-        const [soloPackages, teamPackages] = await Promise.all([
-            fetchAvailableSoloPackages(),
-            fetchAvailableTeamPackages()
-        ]);
-
-        console.log('📦 Solo packages loaded:', soloPackages.length);
-        console.log('👥 Team packages loaded:', teamPackages.length);
-
-        // Clear containers
-        singleContainer.innerHTML = '';
-        teamContainer.innerHTML = '';
-
-        // Display solo packages
-        if (soloPackages.length > 0) {
-            soloPackages.forEach(pkg => {
-                const card = createSoloPackageCard(pkg);
-                singleContainer.appendChild(card);
-            });
-        } else {
-            singleContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No solo packages available</div>';
-        }
-
-        // Display team packages
-        if (teamPackages.length > 0) {
-            teamPackages.forEach(pkg => {
-                const card = createTeamPackageCard(pkg);
-                teamContainer.appendChild(card);
-            });
-        } else {
-            teamContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No team packages available</div>';
-        }
-
-    } catch (error) {
-        console.error('❌ Error loading packages:', error);
-        singleContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff4444;">Error loading packages. Please check your API credentials.</div>';
-        teamContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff4444;">Error loading packages. Please check your API credentials.</div>';
-    }
-}
 
 // Fetch available solo packages from NiceHash API
 async function fetchAvailableSoloPackages() {
@@ -12339,8 +12160,7 @@ window.calculateTeamReward = calculateTeamReward;
 async function buySoloPackage(ticketId, crypto, packagePrice) {
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
         showModal('Please configure EasyMining API settings first!');
-        closeBuyPackagesModal();
-        showEasyMiningSettingsModal();
+        showEasyMiningSettingsPage();
         return;
     }
 
@@ -12410,8 +12230,6 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
         // Refresh package data
         await fetchEasyMiningData();
 
-        closeBuyPackagesModal();
-
     } catch (error) {
         console.error('❌ Error purchasing solo package:', error);
         showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
@@ -12424,8 +12242,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     // 1. Validate API settings
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
         showModal('Please configure EasyMining API settings first!');
-        closeBuyPackagesModal();
-        showEasyMiningSettingsModal();
+        showEasyMiningSettingsPage();
         return;
     }
 
@@ -12568,8 +12385,6 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         // Refresh data
         await fetchEasyMiningData();
 
-        closeBuyPackagesModal();
-
     } catch (error) {
         console.error('❌ Error purchasing team package:', error);
         showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
@@ -12583,8 +12398,7 @@ window.buyTeamPackageUpdated = buyTeamPackageUpdated;
 async function buyPackage(pkg) {
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
         showModal('Please configure EasyMining API settings first!');
-        closeBuyPackagesModal();
-        showEasyMiningSettingsModal();
+        showEasyMiningSettingsPage();
         return;
     }
 
@@ -12689,8 +12503,6 @@ async function buyPackage(pkg) {
 
         // Refresh package data immediately to show the new order
         await fetchEasyMiningData();
-
-        closeBuyPackagesModal();
 
     } catch (error) {
         console.error('Error purchasing package:', error);

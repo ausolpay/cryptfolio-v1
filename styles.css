@@ -1898,10 +1898,7 @@ body.light-mode .package-card.block-confirmed {
     white-space: nowrap;
 }
 
-/* Buy Packages Modal Styles */
-#buy-packages-modal {
-    z-index: 10000;
-}
+/* Buy Packages Modal Styles - REMOVED (using page version only) */
 
 .buy-packages-content {
     max-width: 1600px; /* Wider on desktop to fit 3 cards comfortably */
@@ -2199,10 +2196,7 @@ body.light-mode .team-package-card {
     border: 2px solid #4CAF50;
 }
 
-/* EasyMining Settings Modal Styles */
-#easymining-settings-modal {
-    z-index: 10000;
-}
+/* EasyMining Settings Modal Styles - REMOVED (using page version only) */
 
 .easymining-settings-content {
     max-width: 550px;
