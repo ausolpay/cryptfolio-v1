@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 12 (Fix Share Count Reset to 0 After Clearing) - STABLE BUILD
+// CryptFolio v2 - Main Application Script - Stable 13 (Fix Robot Icons for New Team Package Instances) - STABLE BUILD
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -11098,7 +11098,8 @@ function createTeamPackageRecommendationCard(pkg) {
     }
 
     // Level 3: For team packages - match by package name + recent purchase (within 7 days)
-    if (!isAutoBought) {
+    // IMPORTANT: Only match if pkg.active is true to avoid matching NEW countdown instances with old completed packages
+    if (!isAutoBought && pkg.isTeam && pkg.active) {
         const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
         isAutoBought = Object.values(autoBoughtPackages).find(entry =>
             entry.type === 'team' &&
@@ -14451,7 +14452,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     }
 
     // Level 3: For team packages - match by package name + recent purchase (within 7 days)
-    if (!isAutoBought && pkg.isTeam) {
+    // IMPORTANT: Only match if pkg.active is true to avoid matching NEW countdown instances with old completed packages
+    if (!isAutoBought && pkg.isTeam && pkg.active) {
         const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
         isAutoBought = Object.values(autoBoughtPackages).find(entry =>
             entry.type === 'team' &&
@@ -14484,6 +14486,17 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
     })();
 
+    // Debug logging for robot icon decision
+    if (pkg.isTeam) {
+        console.log(`🔍 Robot Icon Decision for "${pkg.name}":`, {
+            isAutoBuyActive,
+            isAutoBought: !!isAutoBought,
+            matchMethod,
+            pkgActive: pkg.active,
+            isCountdown
+        });
+    }
+
     // Robot icon HTML - with share detection and cleanup
     if (pkg.isTeam) {
         // TEAM packages: check for owned shares
@@ -14503,8 +14516,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
                 console.log(`🤖 Robot icon (solid) added to ${pkg.name} - ${myShares} shares owned`);
             }
+        } else {
+            // No robot shown - log why
+            console.log(`❌ No robot icon for ${pkg.name} - Reason: ${!isAutoBuyActive ? 'Auto-buy disabled' : isAutoBought ? `Already bought (${matchMethod})` : `Has ${myShares} shares but no auto-buy`}`);
         }
-        // Else: no shares and no auto-buy = no robot (automatic cleanup)
     } else {
         // SOLO packages
         if (isAutoBuyActive && !isAutoBought) {
