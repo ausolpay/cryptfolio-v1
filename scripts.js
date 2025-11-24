@@ -1279,6 +1279,99 @@ function showDepositsPage() {
     document.getElementById('qr-code-container').innerHTML = '';
     document.getElementById('deposit-amount-btc').value = '';
     document.getElementById('deposit-amount-aud').value = '';
+
+    // Load and display balance section
+    updateDepositsBalance();
+}
+
+/**
+ * Update and display balance section on deposits page
+ * Reuses window.niceHashBalance and window.packageCryptoPrices if available
+ */
+async function updateDepositsBalance() {
+    console.log('💰 Updating deposits page balance section...');
+
+    try {
+        // Check if we need to fetch balance data
+        if (!window.niceHashBalance) {
+            console.log('📡 Fetching NiceHash balance...');
+            try {
+                const balanceData = await fetchNiceHashBalances();
+                window.niceHashBalance = {
+                    available: balanceData.available || 0,
+                    pending: balanceData.pending || 0
+                };
+                console.log(`✅ Balance fetched: ${window.niceHashBalance.available.toFixed(8)} BTC available`);
+            } catch (error) {
+                console.error('❌ Failed to fetch balance, using fallback from easyMiningData:', error);
+                window.niceHashBalance = {
+                    available: easyMiningData?.availableBTC || 0,
+                    pending: easyMiningData?.pendingBTC || 0
+                };
+            }
+        } else {
+            console.log('✓ Using cached balance data');
+        }
+
+        // Check if we need to fetch BTC price
+        if (!window.packageCryptoPrices?.['btc']?.aud) {
+            console.log('📡 Fetching BTC price...');
+            try {
+                const btcPrices = await fetchPackageCryptoPrices([{ crypto: 'BTC' }]);
+                if (!window.packageCryptoPrices) {
+                    window.packageCryptoPrices = {};
+                }
+                window.packageCryptoPrices['btc'] = btcPrices['btc'];
+                console.log(`✅ BTC price fetched: $${window.packageCryptoPrices['btc'].aud.toLocaleString()} AUD`);
+            } catch (error) {
+                console.error('❌ Failed to fetch BTC price:', error);
+                // Initialize with empty object to prevent errors
+                if (!window.packageCryptoPrices) {
+                    window.packageCryptoPrices = {};
+                }
+            }
+        } else {
+            console.log('✓ Using cached BTC price');
+        }
+
+        // Populate balance section
+        const balanceSection = document.getElementById('deposits-balance-section');
+        if (!balanceSection) {
+            console.error('❌ Could not find deposits-balance-section container!');
+            return;
+        }
+
+        const availableBalance = window.niceHashBalance?.available || 0;
+        const pendingBalance = window.niceHashBalance?.pending || 0;
+        const availableAUD = window.packageCryptoPrices?.['btc']?.aud
+            ? (availableBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
+            : '0.00';
+        const pendingAUD = window.packageCryptoPrices?.['btc']?.aud
+            ? (pendingBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
+            : '0.00';
+
+        balanceSection.innerHTML = `
+            <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                <div style="display: flex; justify-content: space-around; align-items: center; gap: 40px;">
+                    <div style="flex: 1; text-align: center;">
+                        <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
+                        <div style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
+                        <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
+                    </div>
+                    <div style="flex: 1; text-align: center;">
+                        <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
+                        <div style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
+                        <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        console.log('✅ Deposits balance section updated');
+
+    } catch (error) {
+        console.error('❌ Error updating deposits balance:', error);
+    }
 }
 
 /**
