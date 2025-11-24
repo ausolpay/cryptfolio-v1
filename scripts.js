@@ -495,9 +495,8 @@ function showAppPage() {
     if (easyMiningSettings && easyMiningSettings.enabled) {
         startEasyMiningAlertsPolling();
 
-        // Preload buy packages data in background for faster page loading
-        console.log('📦 Preloading buy packages data...');
-        loadBuyPackagesDataOnPage();
+        // Buy packages data will load when user opens buy packages page
+        // Removed pre-loading to prevent race condition with EasyMining polling
     }
 }
 
@@ -1288,61 +1287,34 @@ function showDepositsPage() {
  * Update and display balance section on deposits page
  * Reuses window.niceHashBalance and window.packageCryptoPrices if available
  */
-async function updateDepositsBalance() {
+function updateDepositsBalance() {
     console.log('💰 Updating deposits page balance section...');
 
     try {
-        // Check if we need to fetch balance data
-        if (!window.niceHashBalance) {
-            console.log('📡 Fetching NiceHash balance...');
-            try {
-                const balanceData = await fetchNiceHashBalances();
-                window.niceHashBalance = {
-                    available: balanceData.available || 0,
-                    pending: balanceData.pending || 0
-                };
-                console.log(`✅ Balance fetched: ${window.niceHashBalance.available.toFixed(8)} BTC available`);
-            } catch (error) {
-                console.error('❌ Failed to fetch balance, using fallback from easyMiningData:', error);
-                window.niceHashBalance = {
-                    available: easyMiningData?.availableBTC || 0,
-                    pending: easyMiningData?.pendingBTC || 0
-                };
-            }
-        } else {
-            console.log('✓ Using cached balance data');
-        }
-
-        // Check if we need to fetch BTC price
-        if (!window.packageCryptoPrices?.['btc']?.aud) {
-            console.log('📡 Fetching BTC price...');
-            try {
-                const btcPrices = await fetchPackageCryptoPrices([{ crypto: 'BTC' }]);
-                if (!window.packageCryptoPrices) {
-                    window.packageCryptoPrices = {};
-                }
-                window.packageCryptoPrices['btc'] = btcPrices['btc'];
-                console.log(`✅ BTC price fetched: $${window.packageCryptoPrices['btc'].aud.toLocaleString()} AUD`);
-            } catch (error) {
-                console.error('❌ Failed to fetch BTC price:', error);
-                // Initialize with empty object to prevent errors
-                if (!window.packageCryptoPrices) {
-                    window.packageCryptoPrices = {};
-                }
-            }
-        } else {
-            console.log('✓ Using cached BTC price');
-        }
-
-        // Populate balance section
+        // Populate balance section (uses cached data only - no independent fetching)
         const balanceSection = document.getElementById('deposits-balance-section');
         if (!balanceSection) {
             console.error('❌ Could not find deposits-balance-section container!');
             return;
         }
 
-        const availableBalance = window.niceHashBalance?.available || 0;
-        const pendingBalance = window.niceHashBalance?.pending || 0;
+        // Check if balance data is available from EasyMining polling
+        if (!window.niceHashBalance && !easyMiningData?.availableBTC) {
+            console.log('⏳ Balance data not yet available, showing placeholder');
+            balanceSection.innerHTML = `
+                <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #ffa500; text-align: center;">
+                    <div style="color: #aaa; font-size: 14px;">⏳ Loading balance data...</div>
+                    <div style="color: #888; font-size: 12px; margin-top: 5px;">Balance will appear when EasyMining data loads</div>
+                </div>
+            `;
+            return;
+        }
+
+        // Use cached balance data (from EasyMining polling or buy packages page)
+        const availableBalance = window.niceHashBalance?.available || easyMiningData?.availableBTC || 0;
+        const pendingBalance = window.niceHashBalance?.pending || easyMiningData?.pendingBTC || 0;
+        console.log('✓ Using cached balance data:', { availableBalance, pendingBalance });
+
         const availableAUD = window.packageCryptoPrices?.['btc']?.aud
             ? (availableBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
             : '0.00';
@@ -8137,8 +8109,19 @@ async function fetchCurrencyBalanceExtended(currency) {
     }
 }
 
+// Track pending balance fetch to prevent concurrent API calls (race condition prevention)
+let pendingBalanceFetch = null;
+
 async function fetchNiceHashBalances() {
-    try {
+    // Request deduplication: if a fetch is already in progress, return the same promise
+    if (pendingBalanceFetch) {
+        console.log('⏭️ Balance fetch already in progress, reusing pending request');
+        return pendingBalanceFetch;
+    }
+
+    // Create new fetch promise and store it
+    pendingBalanceFetch = (async () => {
+        try {
         const endpoint = '/main/api/v2/accounting/accounts2';
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
@@ -8202,10 +8185,20 @@ async function fetchNiceHashBalances() {
         }
 
         return { available, pending };
-    } catch (error) {
-        console.error('❌ Error fetching NiceHash balances:', error);
-        // Re-throw the error so the parent function can handle CORS fallback
-        throw error;
+        } catch (error) {
+            console.error('❌ Error fetching NiceHash balances:', error);
+            // Re-throw the error so the parent function can handle CORS fallback
+            throw error;
+        }
+    })();
+
+    try {
+        // Wait for the fetch to complete
+        const result = await pendingBalanceFetch;
+        return result;
+    } finally {
+        // Clear the pending fetch reference so future calls can create a new one
+        pendingBalanceFetch = null;
     }
 }
 
