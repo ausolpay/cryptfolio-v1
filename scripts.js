@@ -10091,15 +10091,63 @@ async function executeAutoBuySolo(recommendations) {
             console.log('⏰ Syncing time with NiceHash server...');
             await syncNiceHashTime();
 
-            const ticketId = pkg.ticketId || pkg.id;
+            const ticketId = pkg.apiData?.id || pkg.ticketId || pkg.id;
+
+            // Get withdrawal addresses (like team auto-buy does)
+            const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCrypto && pkg.mainCrypto);
+            let mainWalletAddress, mergeWalletAddress;
+            let mainCrypto, mergeCrypto;
+
+            if (isDualCrypto) {
+                mainCrypto = pkg.mainCrypto || 'LTC';
+                mergeCrypto = pkg.mergeCrypto || 'DOGE';
+                mainWalletAddress = getWithdrawalAddress(mainCrypto);
+                mergeWalletAddress = getWithdrawalAddress(mergeCrypto);
+
+                if (!mainWalletAddress) {
+                    console.error(`❌ No withdrawal address configured for ${mainCrypto}`);
+                    continue;
+                }
+                if (!mergeWalletAddress) {
+                    console.error(`❌ No withdrawal address configured for ${mergeCrypto}`);
+                    continue;
+                }
+            } else {
+                mainCrypto = pkg.crypto || pkg.mainCrypto || 'BTC';
+                mainWalletAddress = getWithdrawalAddress(mainCrypto);
+
+                if (!mainWalletAddress) {
+                    console.error(`❌ No withdrawal address configured for ${mainCrypto}`);
+                    continue;
+                }
+            }
+
             console.log('🛒 Creating NiceHash solo order...');
             console.log('   Ticket ID:', ticketId);
+            console.log('   Main Crypto:', mainCrypto);
+            console.log('   Merge Crypto:', mergeCrypto || 'N/A');
 
-            const endpoint = `/main/api/v2/hashpower/solo/order?ticketId=${ticketId}`;
-            const body = JSON.stringify({});
+            // Use correct endpoint and body format (no query parameter)
+            const endpoint = '/main/api/v2/hashpower/solo/order';
+            const bodyData = {
+                ticketId: ticketId,
+                soloMiningRewardAddr: mainWalletAddress.trim()
+            };
+
+            // Add merge address for dual-crypto packages
+            if (isDualCrypto && mergeWalletAddress) {
+                bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
+            }
+
+            const body = JSON.stringify(bodyData);
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
             console.log('📡 Auto-buy endpoint:', endpoint);
+            console.log('📡 Auto-buy body:', {
+                ticketId: ticketId,
+                soloMiningRewardAddr: mainWalletAddress.substring(0, 10) + '...',
+                mergeSoloMiningRewardAddr: mergeWalletAddress ? mergeWalletAddress.substring(0, 10) + '...' : 'N/A'
+            });
 
             let response;
             if (USE_VERCEL_PROXY) {
@@ -10110,7 +10158,7 @@ async function executeAutoBuySolo(recommendations) {
                         endpoint: endpoint,
                         method: 'POST',
                         headers: headers,
-                        body: {}
+                        body: bodyData // Pass bodyData instead of {}
                     })
                 });
             } else {
@@ -13187,15 +13235,19 @@ async function fetchNiceHashSoloPackages() {
 
                 return {
                     name: pkg.name,
+                    id: pkg.id, // Required for auto-buy
+                    ticketId: pkg.id, // Required for auto-buy
                     crypto: cryptoDisplay,
                     mainCrypto: mainCrypto,
                     mergeCrypto: mergeCrypto,
                     probability: hasMergeCurrency ? mainProbability : probabilityRatio,
                     mainProbability: mainProbability,
                     mergeProbability: mergeProbability,
+                    price: pkg.price, // Required for auto-buy (in BTC)
                     priceBTC: pkg.price,
                     priceAUD: calculatedPriceAUD.toFixed(2), // Calculated from BTC price
                     duration: `${durationHours}h`,
+                    packageDuration: pkg.duration, // Required for auto-buy (in seconds)
                     algorithm: pkg.currencyAlgo.miningAlgorithm,
                     hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // From projectedSpeed
                     blockReward: mainBlockReward, // From currencyAlgo.blockReward
