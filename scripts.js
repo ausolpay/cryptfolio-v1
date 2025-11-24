@@ -10436,6 +10436,8 @@ function createTeamPackageRecommendationCard(pkg) {
 
     // For team packages: show shares, participants, and countdown
     let countdownInfo = '';
+    const participants = pkg.numberOfParticipants || 0;
+
     if (pkg.lifeTimeTill) {
         // Calculate time until start
         const startTime = new Date(pkg.lifeTimeTill);
@@ -10445,7 +10447,6 @@ function createTeamPackageRecommendationCard(pkg) {
         if (timeUntilStart > 0) {
             // Package hasn't started yet
             // Countdown kicks in when numberOfParticipants reaches 2
-            const participants = pkg.numberOfParticipants || 0;
 
             // Show "Starting Soon!" when package has < 2 participants (countdown hasn't kicked in)
             // Show timer when participants >= 2 (countdown is active)
@@ -10457,7 +10458,7 @@ function createTeamPackageRecommendationCard(pkg) {
                         <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
                     </div>
                 `;
-                console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Starting Soon!`);
+                console.log(`📅 ${pkg.name} alert - Participants: ${participants} (< 2) → Starting Soon!`);
             } else {
                 // Countdown is active - show timer
                 const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
@@ -10470,9 +10471,18 @@ function createTeamPackageRecommendationCard(pkg) {
                         <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
                     </div>
                 `;
-                console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
+                console.log(`📅 ${pkg.name} alert - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
             }
         }
+    } else if (participants < 2) {
+        // No lifeTimeTill set yet, but show "Starting Soon!" if < 2 participants
+        countdownInfo = `
+            <div class="buy-package-stat">
+                <span>Starting:</span>
+                <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+            </div>
+        `;
+        console.log(`📅 ${pkg.name} alert - No lifeTimeTill, Participants: ${participants} (< 2) → Starting Soon!`);
     }
 
     const sharesInfo = `
@@ -13520,42 +13530,54 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // For team packages: show shares, participants, and countdown
     let countdownInfo = '';
-    if (pkg.isTeam && pkg.lifeTimeTill) {
-        // Calculate time until start
-        const startTime = new Date(pkg.lifeTimeTill);
-        const now = new Date();
-        const timeUntilStart = startTime - now;
+    if (pkg.isTeam) {
+        const participants = pkg.numberOfParticipants || 0;
 
-        if (timeUntilStart > 0) {
-            // Package hasn't started yet
-            // Countdown kicks in when numberOfParticipants reaches 2
-            const participants = pkg.numberOfParticipants || 0;
+        if (pkg.lifeTimeTill) {
+            // Calculate time until start
+            const startTime = new Date(pkg.lifeTimeTill);
+            const now = new Date();
+            const timeUntilStart = startTime - now;
 
-            // Show "Starting Soon!" when package has < 2 participants (countdown hasn't kicked in)
-            // Show timer when participants >= 2 (countdown is active)
-            if (participants < 2) {
-                // Countdown hasn't kicked in yet - show "Starting Soon!"
-                countdownInfo = `
-                    <div class="buy-package-stat">
-                        <span>Starting:</span>
-                        <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
-                    </div>
-                `;
-                console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Starting Soon!`);
-            } else {
-                // Countdown is active - show timer
-                const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
-                const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+            if (timeUntilStart > 0) {
+                // Package hasn't started yet
+                // Countdown kicks in when numberOfParticipants reaches 2
 
-                countdownInfo = `
-                    <div class="buy-package-stat">
-                        <span>Starting:</span>
-                        <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
-                    </div>
-                `;
-                console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
+                // Show "Starting Soon!" when package has < 2 participants (countdown hasn't kicked in)
+                // Show timer when participants >= 2 (countdown is active)
+                if (participants < 2) {
+                    // Countdown hasn't kicked in yet - show "Starting Soon!"
+                    countdownInfo = `
+                        <div class="buy-package-stat">
+                            <span>Starting:</span>
+                            <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                        </div>
+                    `;
+                    console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Starting Soon!`);
+                } else {
+                    // Countdown is active - show timer
+                    const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+
+                    countdownInfo = `
+                        <div class="buy-package-stat">
+                            <span>Starting:</span>
+                            <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                        </div>
+                    `;
+                    console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
+                }
             }
+        } else if (participants < 2) {
+            // No lifeTimeTill set yet, but show "Starting Soon!" if < 2 participants
+            countdownInfo = `
+                <div class="buy-package-stat">
+                    <span>Starting:</span>
+                    <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                </div>
+            `;
+            console.log(`📅 ${pkg.name} - No lifeTimeTill, Participants: ${participants} (< 2) → Starting Soon!`);
         }
     }
 
