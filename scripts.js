@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 8 (Spinning Robot Auto-Buy Indicator) - Stable version
+// CryptFolio v2 - Main Application Script - Stable 9 (Auto-Buy Robot Icon Validation & Navigation Fix) - Stable version
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -13847,6 +13847,111 @@ async function loadBuyPackagesDataOnPage() {
             }
         }
     }
+
+    // Validate and fix auto-buy robot icons after page load
+    console.log('🤖 Running robot icon validation...');
+    validateAndFixAutoBuyRobotIcons();
+}
+
+// Validate and fix auto-buy robot icons on Buy Packages page
+function validateAndFixAutoBuyRobotIcons() {
+    console.log('🤖 Validating auto-buy robot icons...');
+
+    // Read auto-buy settings from localStorage
+    const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+    const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+
+    // Query all package cards on the Buy Packages page
+    const singleContainer = document.getElementById('buy-packages-single');
+    const teamContainer = document.getElementById('buy-packages-team');
+
+    if (!singleContainer || !teamContainer) {
+        console.warn('⚠️ Could not find package containers for validation');
+        return;
+    }
+
+    let fixedCount = 0;
+    let removedCount = 0;
+
+    // Validate solo packages
+    const soloCards = singleContainer.querySelectorAll('.buy-package-card');
+    soloCards.forEach(card => {
+        const packageNameElement = card.querySelector('.buy-package-title');
+        if (!packageNameElement) return;
+
+        const packageName = packageNameElement.textContent.trim();
+        const isAutoBuyActive = soloAutoBuy[packageName]?.enabled === true;
+        const robotIcon = card.querySelector('.auto-buy-robot');
+
+        if (isAutoBuyActive && !robotIcon) {
+            // Auto-buy enabled but no robot icon - add spinning robot
+            const titleDiv = card.querySelector('.buy-package-title').parentElement;
+            const spinningRobot = document.createElement('div');
+            spinningRobot.className = 'block-found-indicator auto-buy-robot waiting';
+            spinningRobot.title = 'Auto-buy active (waiting)';
+            spinningRobot.textContent = '🤖';
+            titleDiv.insertBefore(spinningRobot, titleDiv.firstChild);
+            fixedCount++;
+            console.log(`✅ Added spinning robot to ${packageName}`);
+        } else if (!isAutoBuyActive && robotIcon) {
+            // Auto-buy disabled but robot icon exists - remove it
+            robotIcon.remove();
+            removedCount++;
+            console.log(`🗑️ Removed robot from ${packageName} (auto-buy disabled)`);
+        }
+    });
+
+    // Validate team packages
+    const teamCards = teamContainer.querySelectorAll('.buy-package-card');
+    teamCards.forEach(card => {
+        const packageNameElement = card.querySelector('.buy-package-title');
+        if (!packageNameElement) return;
+
+        const packageName = packageNameElement.textContent.trim();
+        const isAutoBuyActive = teamAutoBuy[packageName]?.enabled === true;
+        const robotIcon = card.querySelector('.auto-buy-robot');
+
+        // Get package ID to check shares
+        const packageId = card.dataset.packageId || card.id;
+        const myShares = getMyTeamShares(packageId) || 0;
+
+        if (isAutoBuyActive && !robotIcon) {
+            // Auto-buy enabled but no robot icon - add appropriate robot
+            const titleDiv = card.querySelector('.buy-package-title').parentElement;
+            const robot = document.createElement('div');
+            robot.className = 'block-found-indicator auto-buy-robot';
+            robot.textContent = '🤖';
+
+            if (myShares === 0) {
+                // No shares yet - spinning robot (waiting)
+                robot.classList.add('waiting');
+                robot.title = 'Auto-buy active (waiting)';
+                console.log(`✅ Added spinning robot to ${packageName} (no shares)`);
+            } else {
+                // Has shares - solid robot
+                robot.title = 'Auto-buy active (shares owned)';
+                console.log(`✅ Added solid robot to ${packageName} (${myShares} shares)`);
+            }
+
+            titleDiv.insertBefore(robot, titleDiv.firstChild);
+            fixedCount++;
+        } else if (isAutoBuyActive && robotIcon && myShares > 0) {
+            // Has shares but robot is spinning - fix to solid
+            if (robotIcon.classList.contains('waiting')) {
+                robotIcon.classList.remove('waiting');
+                robotIcon.title = 'Auto-buy active (shares owned)';
+                fixedCount++;
+                console.log(`✅ Fixed robot icon for ${packageName} (${myShares} shares - changed to solid)`);
+            }
+        } else if (!isAutoBuyActive && robotIcon) {
+            // Auto-buy disabled but robot icon exists - remove it
+            robotIcon.remove();
+            removedCount++;
+            console.log(`🗑️ Removed robot from ${packageName} (auto-buy disabled)`);
+        }
+    });
+
+    console.log(`🤖 Validation complete: ${fixedCount} icons added/fixed, ${removedCount} icons removed`);
 }
 
 // Update countdown timers for team packages
