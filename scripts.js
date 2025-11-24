@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 10 (Add Clear Shares Button to Buy Packages Team Cards) - STABLE BUILD
+// CryptFolio v2 - Main Application Script - Stable 11 (Fix Clear Shares Button Visibility After Clearing) - STABLE BUILD
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -15334,6 +15334,13 @@ async function clearTeamSharesManual(packageId, packageName) {
         alert(`Successfully cleared ${myBoughtShares} shares from ${packageName}!`);
 
         console.log(`✅ Manual clear successful for ${packageName}`);
+
+        // Refresh Buy Packages page to hide the clear button
+        const buyPackagesPage = document.getElementById('buy-packages-page');
+        if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+            console.log('🔄 Refreshing Buy Packages page to update clear button visibility');
+            loadBuyPackagesDataOnPage();
+        }
     } catch (error) {
         console.error('❌ Error manually clearing shares:', error);
         alert(`Failed to clear shares: ${error.message}`);
