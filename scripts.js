@@ -14652,6 +14652,42 @@ async function clearTeamSharesManual(packageId, packageName) {
         // Call the same auto-clear function
         await autoClearTeamShares(packageId, packageName);
 
+        // Clear auto-buy tracking to remove robot icon
+        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        let removedEntries = 0;
+
+        // Remove all matching entries for this package
+        Object.keys(autoBoughtPackages).forEach(key => {
+            const entry = autoBoughtPackages[key];
+
+            // Match by direct ID
+            if (key === packageId) {
+                delete autoBoughtPackages[key];
+                removedEntries++;
+                console.log(`🗑️ Removed auto-buy entry (direct ID): ${key}`);
+            }
+            // Match by orderId or ticketId
+            else if (entry.orderId === packageId || entry.ticketId === packageId) {
+                delete autoBoughtPackages[key];
+                removedEntries++;
+                console.log(`🗑️ Removed auto-buy entry (orderId/ticketId match): ${key}`);
+            }
+            // Match by package name for team packages (within 7 days)
+            else if (entry.type === 'team' && entry.packageName === packageName) {
+                delete autoBoughtPackages[key];
+                removedEntries++;
+                console.log(`🗑️ Removed auto-buy entry (name match): ${key}`);
+            }
+        });
+
+        // Save updated auto-buy tracking
+        if (removedEntries > 0) {
+            localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+            console.log(`✅ Removed ${removedEntries} auto-buy tracking entries for ${packageName}`);
+        } else {
+            console.log(`ℹ️ No auto-buy tracking entries found for ${packageName}`);
+        }
+
         // Show success message
         alert(`Successfully cleared ${myBoughtShares} shares from ${packageName}!`);
 
