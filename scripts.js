@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 14 (Change Auto-Clear Timing to 30 Seconds) - STABLE BUILD
+// CryptFolio v2 - Main Application Script - Stable 15 (Fix Auto-Clear to Only Work on Auto-Bought Packages) - STABLE BUILD
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -13994,6 +13994,52 @@ function updateTeamPackageCountdowns() {
                         const isStillRecommended = recommendedPackageIds.includes(packageId);
 
                         if (myShares > 0 && !isStillRecommended) {
+                            // CHECK: Was this package auto-bought? (Only clear auto-bought packages)
+                            const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+                            let wasAutoBought = null;
+                            let matchMethod = 'none';
+
+                            // Level 1: Direct ID match
+                            wasAutoBought = autoBoughtPackages[packageId];
+                            if (wasAutoBought) matchMethod = 'direct-id';
+
+                            // Level 2: Check orderId/ticketId fields in stored entries
+                            if (!wasAutoBought) {
+                                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                                    entry.orderId === packageId || entry.ticketId === packageId
+                                );
+                                if (wasAutoBought) matchMethod = 'orderId-ticketId';
+                            }
+
+                            // Level 3: For team packages - match by package name + recent purchase (within 7 days)
+                            // Only match if pkg.active is true to avoid matching NEW countdown instances
+                            if (!wasAutoBought && pkg.isTeam && pkg.active) {
+                                const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+                                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                                    entry.type === 'team' &&
+                                    entry.packageName === pkg.name &&
+                                    entry.timestamp > sevenDaysAgo
+                                );
+                                if (wasAutoBought) matchMethod = 'name-timestamp';
+                            }
+
+                            // Level 4: Check sharedTicket.id (team packages use shared ticket system)
+                            if (!wasAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+                                const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+                                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                                    entry.ticketId === sharedTicketId
+                                );
+                                if (wasAutoBought) matchMethod = 'sharedTicket-id';
+                            }
+
+                            // Only proceed with auto-clear if package was auto-bought
+                            if (!wasAutoBought) {
+                                console.log(`⏭️ Skipping auto-clear for ${pkg.name} - shares were manually bought (no auto-buy record)`);
+                                return; // Skip this package
+                            }
+
+                            console.log(`✅ Auto-clear eligible for ${pkg.name} - was auto-bought (${matchMethod})`);
+
                             // Check if we haven't already cleared this package (to avoid duplicate clears)
                             const clearedKey = `${loggedInUser}_autoClearedPackage_${packageId}`;
                             const alreadyCleared = localStorage.getItem(clearedKey);
