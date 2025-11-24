@@ -10443,17 +10443,31 @@ function createTeamPackageRecommendationCard(pkg) {
         const timeUntilStart = startTime - now;
 
         if (timeUntilStart > 0) {
-            // Package hasn't started yet - show countdown
-            const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
-            const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+            // Package hasn't started yet
+            // If more than 1 hour away, show "Starting Soon!", otherwise show countdown timer
+            const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
 
-            countdownInfo = `
-                <div class="buy-package-stat">
-                    <span>Starting:</span>
-                    <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
-                </div>
-            `;
+            if (timeUntilStart > oneHour) {
+                // Show "Starting Soon!" when countdown hasn't kicked in yet
+                countdownInfo = `
+                    <div class="buy-package-stat">
+                        <span>Starting:</span>
+                        <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                    </div>
+                `;
+            } else {
+                // Show actual countdown timer when within 1 hour
+                const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+                const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+
+                countdownInfo = `
+                    <div class="buy-package-stat">
+                        <span>Starting:</span>
+                        <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -10633,7 +10647,60 @@ function createTeamPackageRecommendationCard(pkg) {
         </div>
     `;
 
+    // Auto-buy robot icon logic
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    let isAutoBought = null;
+    let matchMethod = 'none';
+
+    // Level 1: Direct ID match (pkg.id = order ID)
+    isAutoBought = autoBoughtPackages[pkg.id];
+    if (isAutoBought) matchMethod = 'direct-id';
+
+    // Level 2: Check orderId/ticketId fields in stored entries
+    if (!isAutoBought) {
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.orderId === pkg.id || entry.ticketId === pkg.id
+        );
+        if (isAutoBought) matchMethod = 'orderId-ticketId';
+    }
+
+    // Level 3: For team packages - match by package name + recent purchase (within 7 days)
+    if (!isAutoBought) {
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.type === 'team' &&
+            entry.packageName === pkg.name &&
+            entry.timestamp > sevenDaysAgo
+        );
+        if (isAutoBought) matchMethod = 'name-timestamp';
+    }
+
+    // Level 4: Check sharedTicket.id (team packages use shared ticket system)
+    if (!isAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+        const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.ticketId === sharedTicketId
+        );
+        if (isAutoBought) matchMethod = 'sharedTicket-id';
+    }
+
+    // Countdown detection - reuse existing countdown detection logic
+    const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
+
+    // Robot icon HTML
+    let robotHtml = '';
+    if (isAutoBought) {
+        if (isCountdown) {
+            robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
+            console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - Match: ${matchMethod}`);
+        } else {
+            robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+            console.log(`🤖 Robot icon (active) added to ${pkg.name} alert - Match: ${matchMethod}`);
+        }
+    }
+
     card.innerHTML = `
+        ${robotHtml}
         <h4>${pkg.name} ⭐</h4>
         <div class="buy-package-stats">
             ${probabilityInfo}
@@ -13456,17 +13523,31 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         const timeUntilStart = startTime - now;
 
         if (timeUntilStart > 0) {
-            // Package hasn't started yet - show countdown
-            const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
-            const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+            // Package hasn't started yet
+            // If more than 1 hour away, show "Starting Soon!", otherwise show countdown timer
+            const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
 
-            countdownInfo = `
-                <div class="buy-package-stat">
-                    <span>Starting:</span>
-                    <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
-                </div>
-            `;
+            if (timeUntilStart > oneHour) {
+                // Show "Starting Soon!" when countdown hasn't kicked in yet
+                countdownInfo = `
+                    <div class="buy-package-stat">
+                        <span>Starting:</span>
+                        <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                    </div>
+                `;
+            } else {
+                // Show actual countdown timer when within 1 hour
+                const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+                const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+
+                countdownInfo = `
+                    <div class="buy-package-stat">
+                        <span>Starting:</span>
+                        <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -13689,7 +13770,60 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </button>
     ` : '';
 
+    // Auto-buy robot icon logic
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    let isAutoBought = null;
+    let matchMethod = 'none';
+
+    // Level 1: Direct ID match (pkg.id = order ID)
+    isAutoBought = autoBoughtPackages[pkg.id];
+    if (isAutoBought) matchMethod = 'direct-id';
+
+    // Level 2: Check orderId/ticketId fields in stored entries
+    if (!isAutoBought) {
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.orderId === pkg.id || entry.ticketId === pkg.id
+        );
+        if (isAutoBought) matchMethod = 'orderId-ticketId';
+    }
+
+    // Level 3: For team packages - match by package name + recent purchase (within 7 days)
+    if (!isAutoBought && pkg.isTeam) {
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.type === 'team' &&
+            entry.packageName === pkg.name &&
+            entry.timestamp > sevenDaysAgo
+        );
+        if (isAutoBought) matchMethod = 'name-timestamp';
+    }
+
+    // Level 4: Check sharedTicket.id (team packages use shared ticket system)
+    if (!isAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+        const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.ticketId === sharedTicketId
+        );
+        if (isAutoBought) matchMethod = 'sharedTicket-id';
+    }
+
+    // Countdown detection - reuse existing countdown detection logic
+    const isCountdown = pkg.isTeam && pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
+
+    // Robot icon HTML
+    let robotHtml = '';
+    if (isAutoBought) {
+        if (isCountdown) {
+            robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
+            console.log(`🤖 Robot icon (countdown) added to ${pkg.name} - Match: ${matchMethod}`);
+        } else {
+            robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+            console.log(`🤖 Robot icon (active) added to ${pkg.name} - Match: ${matchMethod}`);
+        }
+    }
+
     card.innerHTML = `
+        ${robotHtml}
         <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
         <div class="buy-package-stats">
             ${probabilityInfo}

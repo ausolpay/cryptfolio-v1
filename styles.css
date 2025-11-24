@@ -1610,6 +1610,17 @@ body.light-mode .package-progress-bar {
     right: auto;
 }
 
+/* Non-flashing robot icon for countdown packages */
+.block-found-indicator.auto-buy-robot.countdown {
+    animation: none;  /* No animation for countdown packages */
+    opacity: 1;
+}
+
+/* Buy package cards need position:relative for robot icon positioning */
+.buy-package-card {
+    position: relative;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
