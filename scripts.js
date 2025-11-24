@@ -9539,24 +9539,60 @@ function displayActivePackages() {
         // Robot icon for auto-bought packages (flashing, same style as rocket)
         const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
 
-        // ✅ FIX: Check by pkg.id (order ID) AND fallback to ticketId/orderId matching
-        let isAutoBought = autoBoughtPackages[pkg.id];
+        // Multi-level fallback matching for auto-bought packages
+        let isAutoBought = null;
+        let matchMethod = 'none';
 
-        // Fallback: Check if any auto-bought package has this pkg.id as orderId or ticketId
+        // Level 1: Direct ID match (pkg.id = order ID)
+        isAutoBought = autoBoughtPackages[pkg.id];
+        if (isAutoBought) matchMethod = 'direct-id';
+
+        // Level 2: Check orderId/ticketId fields in stored entries
         if (!isAutoBought) {
             isAutoBought = Object.values(autoBoughtPackages).find(entry =>
                 entry.orderId === pkg.id || entry.ticketId === pkg.id
             );
+            if (isAutoBought) matchMethod = 'orderId-ticketId';
         }
 
-        // Debug logging to track ID matching
-        if (Object.keys(autoBoughtPackages).length > 0) {
+        // Level 3: For team packages - match by package name + recent purchase (within 7 days)
+        // This handles team packages that transition from countdown to active with different IDs
+        if (!isAutoBought && pkg.isTeam) {
+            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                entry.type === 'team' &&
+                entry.packageName === pkg.name &&
+                entry.timestamp > sevenDaysAgo
+            );
+            if (isAutoBought) matchMethod = 'name-timestamp';
+        }
+
+        // Level 4: Check sharedTicket.id (team packages use shared ticket system)
+        if (!isAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+            const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+            isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                entry.ticketId === sharedTicketId
+            );
+            if (isAutoBought) matchMethod = 'sharedTicket-id';
+        }
+
+        // Enhanced debug logging for team packages
+        if (Object.keys(autoBoughtPackages).length > 0 && (pkg.isTeam || isAutoBought)) {
             console.log('🤖 ROBOT ICON CHECK:', {
                 pkgId: pkg.id,
                 pkgName: pkg.name,
+                pkgIsTeam: pkg.isTeam,
+                pkgActive: pkg.active,
                 foundInAutoBought: !!isAutoBought,
+                matchMethod: matchMethod,
                 autoBoughtKeys: Object.keys(autoBoughtPackages),
-                pkgActive: pkg.active
+                autoBoughtEntries: Object.values(autoBoughtPackages).map(e => ({
+                    name: e.packageName,
+                    type: e.type,
+                    orderId: e.orderId,
+                    ticketId: e.ticketId
+                })),
+                sharedTicketId: pkg.fullOrderData?.sharedTicket?.id
             });
         }
 
@@ -10185,6 +10221,7 @@ async function executeAutoBuyTeam(recommendations) {
             const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
             autoBoughtPackages[orderIdReturned] = {
                 type: 'team',
+                packageName: pkg.name,  // Store package name for fallback matching when countdown → active
                 timestamp: Date.now(),
                 shares: shares,
                 amount: totalAmount,
@@ -10192,6 +10229,15 @@ async function executeAutoBuyTeam(recommendations) {
                 ticketId: packageId  // Store ticket ID for reference but use order ID as key
             };
             localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+
+            // Log storage for debugging
+            console.log(`🤖 TEAM AUTO-BUY STORED:`, {
+                key: orderIdReturned,
+                packageName: pkg.name,
+                ticketId: packageId,
+                shares: shares,
+                timestamp: new Date().toISOString()
+            });
 
             // Update lastBuyTime
             autoBuy.lastBuyTime = Date.now();
