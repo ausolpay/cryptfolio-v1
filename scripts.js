@@ -10651,27 +10651,34 @@ function createTeamPackageRecommendationCard(pkg) {
     // Get available balance from fetched NiceHash balance
     const availableBalance = window.niceHashBalance?.available || 0;
 
+    // Get user's current bought shares - use same ID logic as when saving
+    const alertPackageId = pkg.apiData?.id || pkg.id;
+    const myCurrentShares = getMyTeamShares(alertPackageId) || 0;
+    const initialShareValue = myCurrentShares; // Input starts at owned shares (can be 0)
+    console.log(`📊 Team alert "${pkg.name}" - ID: ${alertPackageId}, My shares: ${myCurrentShares}, Initial value: ${initialShareValue}`);
+
+    // Recalculate initial price to show cost of all shares in input (total, not new)
+    priceAUD = convertBTCtoAUD(initialShareValue * sharePrice);
+
     // Calculate affordability for team package
+    // Buy button only disables when balance < 0.0001 (minimum 1 share)
     const canAfford = availableBalance >= sharePrice;
     const buyButtonDisabled = canAfford ? '' : 'disabled';
     const buyButtonStyle = canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;';
 
     // For team packages: calculate initial + button state
-    const canAffordSecondShare = availableBalance >= (sharePrice * 2);
-    const plusButtonDisabled = canAffordSecondShare ? '' : 'disabled';
-    const plusButtonStyle = canAffordSecondShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
-
-    // Get user's current bought shares - use same ID logic as when saving
-    const alertPackageId = pkg.apiData?.id || pkg.id;
-    const myCurrentShares = getMyTeamShares(alertPackageId) || 0;
-    const initialShareValue = myCurrentShares > 0 ? myCurrentShares : 1;
-    console.log(`📊 Team alert "${pkg.name}" - ID: ${alertPackageId}, My shares: ${myCurrentShares}, Initial value: ${initialShareValue}`);
+    // + button disables when can't afford ONE MORE share
+    const newSharesForNext = (initialShareValue + 1) - myCurrentShares; // NEW shares if we increase by 1
+    const nextShareCost = newSharesForNext * sharePrice;
+    const canAffordNextShare = availableBalance >= nextShareCost;
+    const plusButtonDisabled = canAffordNextShare ? '' : 'disabled';
+    const plusButtonStyle = canAffordNextShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
 
     // For team packages: add share selector with buy button on same row
     const teamShareSelector = `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="1" max="9999" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myCurrentShares}" max="9999" class="share-adjuster-input" readonly>
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
@@ -13771,22 +13778,26 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // For team packages: get user's current bought shares
     let myBoughtShares = 0;
-    let initialShareValue = 1;
+    let initialShareValue = 0;
     if (pkg.isTeam) {
         // Use same ID logic as when saving shares
         const packageId = pkg.apiData?.id || pkg.id;
         myBoughtShares = getMyTeamShares(packageId) || 0;
         console.log(`📊 Team package "${pkg.name}" - ID: ${packageId}, My shares: ${myBoughtShares}`);
-        // Start with current shares, or 1 if they haven't bought any
-        initialShareValue = myBoughtShares > 0 ? myBoughtShares : 1;
+        // Input starts at owned shares (can be 0)
+        initialShareValue = myBoughtShares;
+
+        // Recalculate initial price to show cost of all shares in input (total, not new)
+        priceAUD = convertBTCtoAUD(initialShareValue * sharePrice);
     }
 
     // For team packages: calculate initial + button state
     let plusButtonDisabled = '';
     let plusButtonStyle = '';
     if (pkg.isTeam) {
-        // Check if user can afford next share (current shares + 1)
-        const nextShareCost = (initialShareValue + 1) * sharePrice;
+        // + button disables when can't afford ONE MORE share
+        const newSharesForNext = (initialShareValue + 1) - myBoughtShares; // NEW shares if we increase by 1
+        const nextShareCost = newSharesForNext * sharePrice;
         const canAffordNextShare = availableBalance >= nextShareCost;
         plusButtonDisabled = canAffordNextShare ? '' : 'disabled';
         plusButtonStyle = canAffordNextShare ? '' : 'opacity: 0.5; cursor: not-allowed;';
@@ -13796,7 +13807,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="1" max="9999" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myBoughtShares}" max="9999" class="share-adjuster-input" readonly>
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
