@@ -1414,7 +1414,7 @@ body.light-mode .package-tab.active {
     border: none;
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: 8px;
     font-size: 24px;
     cursor: pointer;
     transition: all 0.3s ease;

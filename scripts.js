@@ -7333,21 +7333,21 @@ function showLessPackages() {
 
 // Helper function to get currently filtered packages
 function getFilteredPackages() {
-    const allPackages = [
-        ...users[loggedInUser].soloPackages,
-        ...users[loggedInUser].teamPackages
-    ];
+    // Use the same data source as displayActivePackages()
+    if (!easyMiningData || !easyMiningData.activePackages) {
+        return [];
+    }
 
-    return allPackages.filter(pkg => {
-        if (currentPackageTab === 'active') {
-            return !pkg.completed && !pkg.cancelled;
-        } else if (currentPackageTab === 'completed') {
-            return pkg.completed || pkg.cancelled;
-        } else if (currentPackageTab === 'rewards') {
-            return pkg.blockFound === true;
-        }
-        return false;
-    });
+    let filteredPackages = [];
+    if (currentPackageTab === 'active') {
+        filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.active === true);
+    } else if (currentPackageTab === 'completed') {
+        filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.active === false);
+    } else if (currentPackageTab === 'rewards') {
+        filteredPackages = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true);
+    }
+
+    return filteredPackages;
 }
 
 function clearRockets() {
