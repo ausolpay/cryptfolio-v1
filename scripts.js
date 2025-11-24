@@ -10717,10 +10717,7 @@ function createTeamPackageRecommendationCard(pkg) {
     const btcPriceAUD = prices['btc']?.aud || 0;
     const pricePerShareAUD = sharePrice * btcPriceAUD;
 
-    // Calculate total bought shares from addedAmount (NOT fullAmount!)
-    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-    // Use same ID logic as when saving shares (already calculated above as alertPackageId)
-    const myBoughtShares = myCurrentShares;
+    // totalBoughtShares and myBoughtShares already calculated above - no need to redeclare
 
     // Store total block rewards
     const totalRewardAUD = parseFloat(rewardAUD) || 0;
@@ -10732,7 +10729,7 @@ function createTeamPackageRecommendationCard(pkg) {
         addedAmount: pkg.addedAmount,
         fullAmount: pkg.fullAmount,
         totalBoughtShares: totalBoughtShares,
-        myBoughtShares: myBoughtShares,
+        myBoughtShares: myCurrentShares,
         totalRewardAUD: totalRewardAUD,
         totalMainReward: totalMainReward,
         totalMergeReward: totalMergeReward,
@@ -10746,7 +10743,7 @@ function createTeamPackageRecommendationCard(pkg) {
         totalMainReward: totalMainReward,
         totalMergeReward: totalMergeReward,
         totalBoughtShares: totalBoughtShares,
-        myBoughtShares: myBoughtShares,
+        myBoughtShares: myCurrentShares,
         mainCrypto: pkg.mainCrypto || pkg.crypto,
         mergeCrypto: pkg.mergeCrypto,
         isDualCrypto: pkg.isDualCrypto
@@ -13867,9 +13864,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         const btcPriceAUD = prices['btc']?.aud || 0;
         const pricePerShareAUD = sharePrice * btcPriceAUD;
 
-        // Calculate total bought shares from addedAmount (NOT fullAmount!)
-        const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-        const myBoughtShares = getMyTeamShares(pkg.id) || 0;
+        // totalBoughtShares and myBoughtShares already calculated above - no need to redeclare
 
         // Store total block rewards
         const totalRewardAUD = parseFloat(rewardAUD) || 0;
