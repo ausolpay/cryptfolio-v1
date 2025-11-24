@@ -10233,8 +10233,16 @@ async function updateRecommendations() {
     const teamChanged = teamRecommendationNames !== currentTeamNames;
 
     if (!soloChanged && !teamChanged) {
-        console.log('✅ All recommendations unchanged, skipping re-render');
-        return;
+        console.log('✅ Recommendations list unchanged, updating values only...');
+
+        // Update probability and hashrate values without re-rendering cards
+        recommendations.forEach(pkg => {
+            if (!pkg.isTeam) { // Only solo packages
+                updateSoloAlertCardValues(pkg);
+            }
+        });
+
+        return; // Skip full re-render
     }
 
     console.log('🔄 Recommendations changed, updating display...');
@@ -10373,6 +10381,42 @@ async function updateRecommendations() {
     }
 
     console.log('✅ Recommendations updated successfully');
+}
+
+/**
+ * Update probability and hashrate values on solo alert cards without re-rendering the entire card
+ * This prevents card flashing while keeping data fresh
+ */
+function updateSoloAlertCardValues(pkg) {
+    const packageIdForElements = pkg.name.replace(/\s+/g, '-');
+
+    // Update probability values
+    if (pkg.isDualCrypto) {
+        // Dual-crypto package: update both probabilities
+        const mergeProbElement = document.getElementById(`merge-probability-${packageIdForElements}`);
+        const mainProbElement = document.getElementById(`main-probability-${packageIdForElements}`);
+
+        if (mergeProbElement) {
+            mergeProbElement.textContent = `${pkg.mergeProbability} ${pkg.mergeCrypto}`;
+        }
+        if (mainProbElement) {
+            mainProbElement.textContent = `${pkg.mainProbability} ${pkg.mainCrypto}`;
+        }
+    } else if (pkg.probability) {
+        // Single crypto package: update one probability
+        const probElement = document.getElementById(`probability-${packageIdForElements}`);
+        if (probElement) {
+            probElement.textContent = pkg.probability;
+        }
+    }
+
+    // Update hashrate
+    const hashrateElement = document.getElementById(`hashrate-${packageIdForElements}`);
+    if (hashrateElement && pkg.hashrate) {
+        hashrateElement.textContent = pkg.hashrate;
+    }
+
+    console.log(`✅ Updated values for ${pkg.name}: probability=${pkg.probability || `${pkg.mergeProbability}/${pkg.mainProbability}`}, hashrate=${pkg.hashrate}`);
 }
 
 function createTeamPackageRecommendationCard(pkg) {
@@ -13539,10 +13583,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         console.log(`⚠️ ${pkg.name} - No priceBTC field`);
     }
 
+    // Generate package ID for element IDs (used for value updates)
+    const packageIdForElements = pkg.name.replace(/\s+/g, '-');
+
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
             <span>Hashrate:</span>
-            <span>${pkg.hashrate}</span>
+            <span id="hashrate-${packageIdForElements}">${pkg.hashrate}</span>
         </div>
     ` : '';
 
@@ -13632,12 +13679,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Probability section - handle dual-crypto packages
     let probabilityInfo = '';
     if (pkg.isDualCrypto) {
-        // For solo dual-crypto packages (Palladium), show both probabilities on one line
+        // For solo dual-crypto packages (Palladium), show both probabilities on one line with separate spans for updates
         if (!pkg.isTeam) {
             probabilityInfo = `
                 <div class="buy-package-stat">
                     <span>Probability:</span>
-                    <span>${pkg.mergeProbability} ${pkg.mergeCrypto} ${pkg.mainProbability} ${pkg.mainCrypto}</span>
+                    <span id="merge-probability-${packageIdForElements}">${pkg.mergeProbability} ${pkg.mergeCrypto}</span>
+                    <span id="main-probability-${packageIdForElements}">${pkg.mainProbability} ${pkg.mainCrypto}</span>
                 </div>
             `;
         } else {
@@ -13645,11 +13693,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             probabilityInfo = `
                 <div class="buy-package-stat">
                     <span>Probability ${pkg.mergeCrypto}:</span>
-                    <span>${pkg.mergeProbability}</span>
+                    <span id="merge-probability-${packageIdForElements}">${pkg.mergeProbability}</span>
                 </div>
                 <div class="buy-package-stat">
                     <span>Probability ${pkg.mainCrypto}:</span>
-                    <span>${pkg.mainProbability}</span>
+                    <span id="main-probability-${packageIdForElements}">${pkg.mainProbability}</span>
                 </div>
             `;
         }
@@ -13658,7 +13706,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         probabilityInfo = `
             <div class="buy-package-stat">
                 <span>Probability:</span>
-                <span>${pkg.probability}</span>
+                <span id="probability-${packageIdForElements}">${pkg.probability}</span>
             </div>
         `;
     }
