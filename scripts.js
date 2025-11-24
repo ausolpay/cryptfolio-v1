@@ -8728,16 +8728,16 @@ async function fetchNiceHashOrders() {
                     console.log(`      My shares from API: small=${small}, medium=${medium}, large=${large}`);
                     console.log(`      Calculated shares: ${small} + (${medium}×10) + (${large}×100) = ${myShares}`);
                 } else {
-                    // Fallback: Calculate my shares from addedAmount / 0.0001
-                    myShares = addedAmount > 0 ? addedAmount / SHARE_COST : 0;
-                    console.log(`      My shares (calculated): ${addedAmount.toFixed(8)} / ${SHARE_COST} = ${myShares.toFixed(2)}`);
+                    // Fallback: Calculate my shares from addedAmount * 10000
+                    myShares = addedAmount > 0 ? Math.round(addedAmount * 10000) : 0;
+                    console.log(`      My shares (calculated): ${addedAmount.toFixed(8)} * 10000 = ${myShares.toFixed(2)}`);
                 }
 
-                // Calculate total shares: sharedTicket.addedAmount / 0.0001
+                // Calculate total shares: sharedTicket.addedAmount * 10000
                 // Note: This is the TOTAL package cost, not the user's individual contribution
                 const totalPackageCost = parseFloat(order.sharedTicket?.addedAmount || order.packagePrice || 0);
-                totalShares = totalPackageCost > 0 ? totalPackageCost / SHARE_COST : 1;
-                console.log(`      Total shares: ${totalPackageCost.toFixed(8)} / ${SHARE_COST} = ${totalShares.toFixed(2)}`);
+                totalShares = totalPackageCost > 0 ? Math.round(totalPackageCost * 10000) : 1;
+                console.log(`      Total shares: ${totalPackageCost.toFixed(8)} * 10000 = ${totalShares.toFixed(2)}`);
 
                 // SHARES CALCULATION DEBUG
                 console.log(`   📊 SHARES CALCULATION DEBUG:`);
@@ -10503,8 +10503,8 @@ function createTeamPackageRecommendationCard(pkg) {
         <div class="buy-package-stat">
             <span>Share Distribution:</span>
             <span style="color: #ffa500;">${(() => {
-                const totalBoughtShares = pkg.addedAmount ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-                const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 0;
+                const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+                const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
                 // Use same ID logic as when saving shares
                 const packageId = pkg.apiData?.id || pkg.id;
                 const myBoughtShares = getMyTeamShares(packageId) || 0;
@@ -10549,7 +10549,7 @@ function createTeamPackageRecommendationCard(pkg) {
         let myRewardValueAUD = parseFloat(rewardAUD);
 
         if (pkg.addedAmount !== undefined) {
-            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const totalBoughtShares = Math.round((pkg.addedAmount || 0) * 10000); // Total bought by everyone
             // Use same ID logic as when saving shares
             const packageId = pkg.apiData?.id || pkg.id;
             const myBoughtShares = getMyTeamShares(packageId) || 0; // My previously bought shares
@@ -10596,7 +10596,7 @@ function createTeamPackageRecommendationCard(pkg) {
         let myRewardValueAUD = parseFloat(rewardAUD);
 
         if (pkg.addedAmount !== undefined) {
-            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const totalBoughtShares = Math.round((pkg.addedAmount || 0) * 10000); // Total bought by everyone
             // Use same ID logic as when saving shares
             const packageId = pkg.apiData?.id || pkg.id;
             const myBoughtShares = getMyTeamShares(packageId) || 0; // My previously bought shares
@@ -10640,8 +10640,8 @@ function createTeamPackageRecommendationCard(pkg) {
     console.log(`📊 Team alert "${pkg.name}" - ID: ${alertPackageId}, My shares: ${myCurrentShares}, Initial value: ${initialShareValue}`);
 
     // Calculate share data for team packages (matching buy packages page)
-    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-    const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 9999;
+    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.round(pkg.addedAmount * 10000) : 0;
+    const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 9999;
     const blockReward = pkg.blockReward || 0;
 
     // Recalculate initial price to show cost of all shares in input (total, not new)
@@ -12062,9 +12062,9 @@ function createTeamPackageCard(pkg) {
     const addedAmount = pkg.addedAmount || 0;
     const availableAmount = fullAmount - addedAmount;
     const sharePrice = 0.0001; // Standard share price
-    const totalAvailableShares = Math.floor(fullAmount / sharePrice);
-    const totalBoughtShares = Math.floor(addedAmount / sharePrice);
-    const availableShares = Math.floor(availableAmount / sharePrice);
+    const totalAvailableShares = Math.round(fullAmount * 10000);
+    const totalBoughtShares = Math.round(addedAmount * 10000);
+    const availableShares = Math.round(availableAmount * 10000);
     const probability = ticket.probability || 'N/A';
     const blockReward = ticket.currencyAlgo?.blockRewardWithNhFee || ticket.currencyAlgo?.blockReward || 0;
     const participants = pkg.numberOfParticipants || 0;
@@ -13618,8 +13618,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             <span>Share Distribution:</span>
             <span style="color: #ffa500;">${(() => {
                 const sharePrice = 0.0001;
-                const totalBoughtShares = pkg.addedAmount ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-                const totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 0;
+                const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+                const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
                 // Use same ID logic as when saving shares
                 const packageId = pkg.apiData?.id || pkg.id;
                 const myBoughtShares = getMyTeamShares(packageId) || 0;
@@ -13675,7 +13675,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
         if (pkg.isTeam && pkg.addedAmount !== undefined) {
             const sharePrice = 0.0001;
-            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const totalBoughtShares = Math.round((pkg.addedAmount || 0) * 10000); // Total bought by everyone
             const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
             const myShares = 1; // Initial display for 1 share
 
@@ -13721,7 +13721,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
         if (pkg.isTeam && pkg.addedAmount !== undefined) {
             const sharePrice = 0.0001;
-            const totalBoughtShares = Math.floor((pkg.addedAmount || 0) / sharePrice); // Total bought by everyone
+            const totalBoughtShares = Math.round((pkg.addedAmount || 0) * 10000); // Total bought by everyone
             const myBoughtShares = getMyTeamShares(pkg.id) || 0; // My previously bought shares
             const myShares = 1; // Initial display for 1 share
 
@@ -13789,8 +13789,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         initialShareValue = myBoughtShares || 1;
 
         // Calculate share data for team packages (matching buy packages page)
-        totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.floor(pkg.addedAmount / sharePrice) : 0;
-        totalAvailableShares = pkg.fullAmount ? Math.floor(pkg.fullAmount / sharePrice) : 9999;
+        totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.round(pkg.addedAmount * 10000) : 0;
+        totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 9999;
         blockReward = pkg.blockReward || 0;
 
         // Recalculate initial price to show cost of all shares in input (total, not new)
