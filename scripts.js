@@ -10713,9 +10713,8 @@ function createTeamPackageRecommendationCard(pkg) {
     }
 
     // Store total package rewards and calculate shares using addedAmount (total bought)
-    // Price: 1 share = 0.0001 BTC
-    const btcPriceAUD = prices['btc']?.aud || 0;
-    const pricePerShareAUD = sharePrice * btcPriceAUD;
+    // Price: 1 share = 0.0001 BTC - use convertBTCtoAUD for consistency
+    const pricePerShareAUD = convertBTCtoAUD(sharePrice);
 
     // totalBoughtShares and myBoughtShares already calculated above - no need to redeclare
 
@@ -13859,10 +13858,9 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
 
         // Store total package rewards and calculate shares using addedAmount (total bought)
-        // Price: 1 share = 0.0001 BTC
+        // Price: 1 share = 0.0001 BTC - use convertBTCtoAUD for consistency
         const sharePrice = 0.0001;
-        const btcPriceAUD = prices['btc']?.aud || 0;
-        const pricePerShareAUD = sharePrice * btcPriceAUD;
+        const pricePerShareAUD = convertBTCtoAUD(sharePrice);
 
         // totalBoughtShares and myBoughtShares already calculated above - no need to redeclare
 
