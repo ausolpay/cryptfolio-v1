@@ -10669,6 +10669,9 @@ function createTeamPackageRecommendationCard(pkg) {
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn">+</button>
             <button class="buy-now-btn" style="margin-left: 10px;" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
+        ${myCurrentShares > 0 ? `
+        <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${alertPackageId}', '${pkg.name}')">Clear Shares</button>
+        ` : ''}
     `;
 
     // Auto-buy robot icon logic
@@ -12152,6 +12155,11 @@ function createTeamPackageCard(pkg) {
         <button class="buy-package-button" onclick="buyTeamPackageUpdated('${packageId}', '${crypto}', '${cardId}')">
             Buy Shares
         </button>
+        ${myBoughtShares > 0 ? `
+        <button class="buy-package-button" style="background-color: #d32f2f; margin-top: 10px;" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">
+            Clear Shares
+        </button>
+        ` : ''}
     `;
 
     // Trigger initial cost/reward update
@@ -14617,6 +14625,40 @@ async function autoClearTeamShares(packageId, packageName) {
     } catch (error) {
         console.error('❌ Error auto-clearing team shares:', error);
         // Don't show alert for auto-clear errors (silent failure)
+    }
+}
+
+// Manual clear shares function with confirmation
+async function clearTeamSharesManual(packageId, packageName) {
+    // Check if user has shares to clear
+    const myBoughtShares = getMyTeamShares(packageId);
+
+    if (myBoughtShares === 0) {
+        alert('You have no shares to clear for this package.');
+        return;
+    }
+
+    // Show confirmation dialog
+    const confirmed = confirm(`Are you sure you want to clear all ${myBoughtShares} shares from ${packageName}?\n\nThis action cannot be undone.`);
+
+    if (!confirmed) {
+        console.log('❌ User cancelled clear shares');
+        return;
+    }
+
+    console.log(`🗑️ Manually clearing ${myBoughtShares} shares for ${packageName}`);
+
+    try {
+        // Call the same auto-clear function
+        await autoClearTeamShares(packageId, packageName);
+
+        // Show success message
+        alert(`Successfully cleared ${myBoughtShares} shares from ${packageName}!`);
+
+        console.log(`✅ Manual clear successful for ${packageName}`);
+    } catch (error) {
+        console.error('❌ Error manually clearing shares:', error);
+        alert(`Failed to clear shares: ${error.message}`);
     }
 }
 
