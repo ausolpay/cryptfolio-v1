@@ -13394,7 +13394,17 @@ async function loadBuyPackagesDataOnPage() {
 
     // Fetch prices for all package cryptocurrencies before displaying
     const allPackages = [...singlePackages, ...teamPackages];
-    window.packageCryptoPrices = await fetchPackageCryptoPrices(allPackages);
+
+    // Fetch new prices without overwriting existing data (prevents brief $0.00 flash during polling)
+    const newPrices = await fetchPackageCryptoPrices(allPackages);
+
+    // Only update if we got valid data
+    if (newPrices && Object.keys(newPrices).length > 0) {
+        window.packageCryptoPrices = newPrices;
+    } else if (!window.packageCryptoPrices) {
+        // Initialize on first run if API fails
+        window.packageCryptoPrices = {};
+    }
 
     // Load solo recommendations to highlight packages
     console.log('🔔 Loading solo recommendations for package highlighting...');
