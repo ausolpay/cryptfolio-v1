@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 9 (Auto-Buy Robot Icon Validation & Navigation Fix) - STABLE BUILD
+// CryptFolio v2 - Main Application Script - Stable 10 (Add Clear Shares Button to Buy Packages Team Cards) - STABLE BUILD
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -14538,6 +14538,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </div>
         ${teamShareSelector}
         ${soloBuyButton}
+        ${pkg.isTeam && myBoughtShares > 0 ? `
+            <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${pkg.apiData?.id || pkg.id}', '${pkg.name}')">
+                Clear Shares
+            </button>
+        ` : ''}
     `;
 
     // Store base values for team packages to enable dynamic updates
