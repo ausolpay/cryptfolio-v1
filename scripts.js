@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 7 (Arrow Navigation & Withdraw Updates) - Stable version
+// CryptFolio v2 - Main Application Script - Stable 8 (Spinning Robot Auto-Buy Indicator) - Stable version
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -9749,10 +9749,24 @@ function displayActivePackages() {
             });
         }
 
+        // Check if auto-buy is active but package not yet purchased (waiting state)
+        const isAutoBuyWaiting = !isAutoBought && pkg.active && (() => {
+            if (pkg.isTeam) {
+                const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+                return teamAutoBuy.enabled === true;
+            } else {
+                const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+                return soloAutoBuy.enabled === true;
+            }
+        })();
+
         let robotHtml = '';
-        if (isAutoBought && pkg.active) {
-            // Active auto-bought package: flashing robot on top left (matches rocket style)
-            robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+        if (isAutoBuyWaiting) {
+            // Auto-buy enabled but not purchased yet: spinning robot (waiting state)
+            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+        } else if (isAutoBought && pkg.active) {
+            // Active auto-bought package: solid robot (no animation)
+            robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
         }
 
         // Rocket icon logic:
@@ -11093,15 +11107,30 @@ function createTeamPackageRecommendationCard(pkg) {
     // Countdown detection - reuse existing countdown detection logic
     const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
 
+    // Check if auto-buy is active but package not yet purchased (waiting state)
+    const isAutoBuyWaiting = !isAutoBought && (() => {
+        if (pkg.isTeam) {
+            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            return teamAutoBuy.enabled === true;
+        } else {
+            const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+            return soloAutoBuy.enabled === true;
+        }
+    })();
+
     // Robot icon HTML
     let robotHtml = '';
-    if (isAutoBought) {
+    if (isAutoBuyWaiting) {
+        // Auto-buy enabled but not purchased yet: spinning robot (waiting state)
+        robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+        console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Auto-buy enabled`);
+    } else if (isAutoBought) {
         if (isCountdown) {
             robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
             console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - Match: ${matchMethod}`);
         } else {
-            robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
-            console.log(`🤖 Robot icon (active) added to ${pkg.name} alert - Match: ${matchMethod}`);
+            robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+            console.log(`🤖 Robot icon (purchased) added to ${pkg.name} alert - Match: ${matchMethod}`);
         }
     }
 
@@ -14260,57 +14289,70 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         </button>
     ` : '';
 
-    // Auto-buy robot icon logic - ONLY for team packages (solo packages become active immediately)
+    // Auto-buy robot icon logic - for both team and solo packages
     let robotHtml = '';
-    if (pkg.isTeam) {
-        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
-        let isAutoBought = null;
-        let matchMethod = 'none';
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    let isAutoBought = null;
+    let matchMethod = 'none';
 
-        // Level 1: Direct ID match (pkg.id = order ID)
-        isAutoBought = autoBoughtPackages[pkg.id];
-        if (isAutoBought) matchMethod = 'direct-id';
+    // Level 1: Direct ID match (pkg.id = order ID)
+    isAutoBought = autoBoughtPackages[pkg.id];
+    if (isAutoBought) matchMethod = 'direct-id';
 
-        // Level 2: Check orderId/ticketId fields in stored entries
-        if (!isAutoBought) {
-            isAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                entry.orderId === pkg.id || entry.ticketId === pkg.id
-            );
-            if (isAutoBought) matchMethod = 'orderId-ticketId';
+    // Level 2: Check orderId/ticketId fields in stored entries
+    if (!isAutoBought) {
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.orderId === pkg.id || entry.ticketId === pkg.id
+        );
+        if (isAutoBought) matchMethod = 'orderId-ticketId';
+    }
+
+    // Level 3: For team packages - match by package name + recent purchase (within 7 days)
+    if (!isAutoBought && pkg.isTeam) {
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.type === 'team' &&
+            entry.packageName === pkg.name &&
+            entry.timestamp > sevenDaysAgo
+        );
+        if (isAutoBought) matchMethod = 'name-timestamp';
+    }
+
+    // Level 4: Check sharedTicket.id (team packages use shared ticket system)
+    if (!isAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+        const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+        isAutoBought = Object.values(autoBoughtPackages).find(entry =>
+            entry.ticketId === sharedTicketId
+        );
+        if (isAutoBought) matchMethod = 'sharedTicket-id';
+    }
+
+    // Countdown detection - reuse existing countdown detection logic (team packages only)
+    const isCountdown = pkg.isTeam && pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
+
+    // Check if auto-buy is active but package not yet purchased (waiting state)
+    const isAutoBuyWaiting = !isAutoBought && (() => {
+        if (pkg.isTeam) {
+            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            return teamAutoBuy.enabled === true;
+        } else {
+            const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+            return soloAutoBuy.enabled === true;
         }
+    })();
 
-        // Level 3: For team packages - match by package name + recent purchase (within 7 days)
-        if (!isAutoBought) {
-            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-            isAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                entry.type === 'team' &&
-                entry.packageName === pkg.name &&
-                entry.timestamp > sevenDaysAgo
-            );
-            if (isAutoBought) matchMethod = 'name-timestamp';
-        }
-
-        // Level 4: Check sharedTicket.id (team packages use shared ticket system)
-        if (!isAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
-            const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
-            isAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                entry.ticketId === sharedTicketId
-            );
-            if (isAutoBought) matchMethod = 'sharedTicket-id';
-        }
-
-        // Countdown detection - reuse existing countdown detection logic
-        const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
-
-        // Robot icon HTML - only for auto-bought team packages
-        if (isAutoBought) {
-            if (isCountdown) {
-                robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
-                console.log(`🤖 Robot icon (countdown) added to ${pkg.name} - Match: ${matchMethod}`);
-            } else {
-                robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
-                console.log(`🤖 Robot icon (active) added to ${pkg.name} - Match: ${matchMethod}`);
-            }
+    // Robot icon HTML - for both team and solo packages with auto-buy
+    if (isAutoBuyWaiting) {
+        // Auto-buy enabled but not purchased yet: spinning robot (waiting state)
+        robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
+        console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Auto-buy enabled`);
+    } else if (isAutoBought) {
+        if (isCountdown) {
+            robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
+            console.log(`🤖 Robot icon (countdown) added to ${pkg.name} - Match: ${matchMethod}`);
+        } else {
+            robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
+            console.log(`🤖 Robot icon (purchased) added to ${pkg.name} - Match: ${matchMethod}`);
         }
     }
 

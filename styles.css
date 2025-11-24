@@ -1666,6 +1666,12 @@ body.light-mode .package-progress-bar {
     opacity: 1;
 }
 
+/* Spinning robot icon for packages with auto-buy enabled but not yet purchased */
+.block-found-indicator.auto-buy-robot.waiting {
+    animation: spin 2s linear infinite;
+    opacity: 1;
+}
+
 /* Buy package cards need position:relative for robot icon positioning */
 .buy-package-card {
     position: relative;
@@ -1679,6 +1685,11 @@ body.light-mode .package-progress-bar {
 @keyframes flash {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.3; transform: scale(1.2); }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 @keyframes lobby-fade {
