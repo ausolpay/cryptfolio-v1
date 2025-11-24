@@ -13590,14 +13590,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 }
             }
         } else if (participants < 2) {
-            // No lifeTimeTill set yet, but show "Starting Soon!" if < 2 participants
+            // No lifeTimeTill set yet, but show "Mining Lobby" if < 2 participants
             countdownInfo = `
                 <div class="buy-package-stat">
                     <span>Starting:</span>
-                    <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
+                    <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                 </div>
             `;
-            console.log(`📅 ${pkg.name} - No lifeTimeTill, Participants: ${participants} (< 2) → Starting Soon!`);
+            console.log(`📅 ${pkg.name} - No lifeTimeTill, Participants: ${participants} (< 2) → Mining Lobby`);
         }
     }
 
