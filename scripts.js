@@ -9768,24 +9768,18 @@ function displayActivePackages() {
             const packageId = pkg.id || pkg.apiData?.id;
             const myShares = getMyTeamShares(packageId) || 0;
 
-            if (isAutoBuyActive && myShares === 0 && !isAutoBought && pkg.active) {
-                // Auto-buy active but no shares yet: spinning robot (waiting)
-                robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-            } else if (isAutoBuyActive && myShares > 0) {
-                // Has shares and auto-buy enabled: solid robot (not flashing)
+            if (isAutoBuyActive && myShares > 0) {
+                // Has shares and auto-buy enabled: solid robot (for active or completed packages)
                 robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
             }
-            // Else: no shares and no auto-buy = no robot (automatic cleanup)
+            // Note: Spinning robot never shows on active packages (only on buy page/alerts)
         } else {
             // SOLO packages
-            if (isAutoBuyActive && !isAutoBought && pkg.active) {
-                // Auto-buy active but not purchased: spinning robot (waiting)
-                robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-            } else if (isAutoBought && pkg.active) {
+            if (isAutoBought && pkg.active) {
                 // Active auto-bought solo package: FLASHING robot
                 robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
             }
-            // Else: no auto-buy or completed = no robot (automatic cleanup)
+            // Note: Spinning robot never shows on active packages (only on buy page/alerts)
         }
 
         // Rocket icon logic:
