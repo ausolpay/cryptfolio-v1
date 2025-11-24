@@ -10444,24 +10444,12 @@ function createTeamPackageRecommendationCard(pkg) {
 
         if (timeUntilStart > 0) {
             // Package hasn't started yet
-            // Parse package duration to determine countdown threshold (2 hrs or 4 hrs for Team Gold)
-            let countdownDuration = 60 * 60 * 1000; // Default: 1 hour in milliseconds
+            // Countdown kicks in when numberOfParticipants reaches 2
+            const participants = pkg.numberOfParticipants || 0;
 
-            if (pkg.duration) {
-                // Extract hours from duration string (e.g., "2h" → 2, "4h" → 4, "2 hrs" → 2)
-                const durationMatch = pkg.duration.match(/(\d+)\s*h(?:rs?)?/i);
-                if (durationMatch) {
-                    const durationHours = parseInt(durationMatch[1]);
-                    countdownDuration = durationHours * 60 * 60 * 1000; // Convert to milliseconds
-                    console.log(`📅 ${pkg.name} - Duration: ${pkg.duration}, Parsed: ${durationHours}h, Threshold: ${countdownDuration}ms`);
-                } else {
-                    console.log(`⚠️ ${pkg.name} - Could not parse duration: "${pkg.duration}"`);
-                }
-            }
-
-            // Show "Starting Soon!" when package has participants but countdown hasn't kicked in yet
-            // Show timer when countdown is active (within the package duration timeframe)
-            if (timeUntilStart > countdownDuration) {
+            // Show "Starting Soon!" when package has < 2 participants (countdown hasn't kicked in)
+            // Show timer when participants >= 2 (countdown is active)
+            if (participants < 2) {
                 // Countdown hasn't kicked in yet - show "Starting Soon!"
                 countdownInfo = `
                     <div class="buy-package-stat">
@@ -10469,6 +10457,7 @@ function createTeamPackageRecommendationCard(pkg) {
                         <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
                     </div>
                 `;
+                console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Starting Soon!`);
             } else {
                 // Countdown is active - show timer
                 const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
@@ -10481,6 +10470,7 @@ function createTeamPackageRecommendationCard(pkg) {
                         <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
                     </div>
                 `;
+                console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
             }
         }
     }
@@ -13538,24 +13528,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
         if (timeUntilStart > 0) {
             // Package hasn't started yet
-            // Parse package duration to determine countdown threshold (2 hrs or 4 hrs for Team Gold)
-            let countdownDuration = 60 * 60 * 1000; // Default: 1 hour in milliseconds
+            // Countdown kicks in when numberOfParticipants reaches 2
+            const participants = pkg.numberOfParticipants || 0;
 
-            if (pkg.duration) {
-                // Extract hours from duration string (e.g., "2h" → 2, "4h" → 4, "2 hrs" → 2)
-                const durationMatch = pkg.duration.match(/(\d+)\s*h(?:rs?)?/i);
-                if (durationMatch) {
-                    const durationHours = parseInt(durationMatch[1]);
-                    countdownDuration = durationHours * 60 * 60 * 1000; // Convert to milliseconds
-                    console.log(`📅 ${pkg.name} - Duration: ${pkg.duration}, Parsed: ${durationHours}h, Threshold: ${countdownDuration}ms`);
-                } else {
-                    console.log(`⚠️ ${pkg.name} - Could not parse duration: "${pkg.duration}"`);
-                }
-            }
-
-            // Show "Starting Soon!" when package has participants but countdown hasn't kicked in yet
-            // Show timer when countdown is active (within the package duration timeframe)
-            if (timeUntilStart > countdownDuration) {
+            // Show "Starting Soon!" when package has < 2 participants (countdown hasn't kicked in)
+            // Show timer when participants >= 2 (countdown is active)
+            if (participants < 2) {
                 // Countdown hasn't kicked in yet - show "Starting Soon!"
                 countdownInfo = `
                     <div class="buy-package-stat">
@@ -13563,6 +13541,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         <span id="countdown-${pkg.id}" style="color: #FFA500; font-weight: bold;">Starting Soon!</span>
                     </div>
                 `;
+                console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Starting Soon!`);
             } else {
                 // Countdown is active - show timer
                 const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
@@ -13575,6 +13554,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
                     </div>
                 `;
+                console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
             }
         }
     }
