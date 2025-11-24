@@ -10654,7 +10654,7 @@ function createTeamPackageRecommendationCard(pkg) {
     // Get user's current bought shares - use same ID logic as when saving
     const alertPackageId = pkg.apiData?.id || pkg.id;
     const myCurrentShares = getMyTeamShares(alertPackageId) || 0;
-    const initialShareValue = myCurrentShares; // Input starts at owned shares (can be 0)
+    const initialShareValue = myCurrentShares || 1; // Input starts at owned shares, or 1 if none owned
     console.log(`📊 Team alert "${pkg.name}" - ID: ${alertPackageId}, My shares: ${myCurrentShares}, Initial value: ${initialShareValue}`);
 
     // Recalculate initial price to show cost of all shares in input (total, not new)
@@ -10678,7 +10678,7 @@ function createTeamPackageRecommendationCard(pkg) {
     const teamShareSelector = `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myCurrentShares}" max="9999" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myCurrentShares || 1}" max="9999" class="share-adjuster-input" readonly>
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
@@ -13778,14 +13778,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // For team packages: get user's current bought shares
     let myBoughtShares = 0;
-    let initialShareValue = 0;
+    let initialShareValue = 1;
     if (pkg.isTeam) {
         // Use same ID logic as when saving shares
         const packageId = pkg.apiData?.id || pkg.id;
         myBoughtShares = getMyTeamShares(packageId) || 0;
         console.log(`📊 Team package "${pkg.name}" - ID: ${packageId}, My shares: ${myBoughtShares}`);
-        // Input starts at owned shares (can be 0)
-        initialShareValue = myBoughtShares;
+        // Input starts at owned shares, or 1 if none owned
+        initialShareValue = myBoughtShares || 1;
 
         // Recalculate initial price to show cost of all shares in input (total, not new)
         priceAUD = convertBTCtoAUD(initialShareValue * sharePrice);
@@ -13807,7 +13807,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     const teamShareSelector = pkg.isTeam ? `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
-            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myBoughtShares}" max="9999" class="share-adjuster-input" readonly>
+            <input type="number" id="shares-${pkg.name.replace(/\s+/g, '-')}" value="${initialShareValue}" min="${myBoughtShares || 1}" max="9999" class="share-adjuster-input" readonly>
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn" ${plusButtonDisabled} style="${plusButtonStyle}">+</button>
             <button class="buy-now-btn" ${buyButtonDisabled} style="margin-left: 10px; ${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
