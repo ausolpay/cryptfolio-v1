@@ -10773,11 +10773,20 @@ function createTeamPackageRecommendationCard(pkg) {
         }
     }
 
+    // Hashrate info - add if available
+    const hashrateInfo = pkg.hashrate ? `
+        <div class="buy-package-stat">
+            <span>Hashrate:</span>
+            <span>${pkg.hashrate}</span>
+        </div>
+    ` : '';
+
     card.innerHTML = `
         ${robotHtml}
         <h4>${pkg.name} ⭐</h4>
         <div class="buy-package-stats">
             ${probabilityInfo}
+            ${hashrateInfo}
             <div class="buy-package-stat">
                 <span>Duration:</span>
                 <span>${pkg.duration}</span>
