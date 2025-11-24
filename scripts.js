@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 5 (with BTC Withdrawal)
+// CryptFolio v2 - Main Application Script - Stable 6 (Alert System Complete)
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
