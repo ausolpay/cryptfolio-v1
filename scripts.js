@@ -7012,9 +7012,8 @@ let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 let showAllPackages = false;
-let currentPackagePage = 1; // Desktop carousel pagination
-const packagesPerPage = 6; // Cards per page/group
-let mobileVisibleCount = 6; // Mobile progressive reveal count
+let currentPackagePage = 1; // Arrow navigation pagination (Desktop: 6 per page, Mobile: 3 per page)
+const packagesPerPage = 6; // Desktop/Tablet cards per page (mobile uses 3)
 let missedRewardsCheckInterval = null; // For checking missed rewards every 30 seconds
 
 // Error alert throttling with delayed alerts (prevent spam during reconnection)
@@ -7318,19 +7317,6 @@ function prevPackagePage() {
     }
 }
 
-// MOBILE: Show 6 more packages
-function showMorePackages() {
-    const filtered = getFilteredPackages();
-    mobileVisibleCount = Math.min(mobileVisibleCount + 6, filtered.length);
-    displayActivePackages();
-}
-
-// MOBILE: Collapse back to 6 packages
-function showLessPackages() {
-    mobileVisibleCount = 6;
-    displayActivePackages();
-}
-
 // Helper function to get currently filtered packages
 function getFilteredPackages() {
     // Use the same data source as displayActivePackages()
@@ -7373,8 +7359,6 @@ function restoreRockets() {
 
 // Make UI functions globally accessible
 window.toggleEasyMining = toggleEasyMining;
-window.showMorePackages = showMorePackages;
-window.showLessPackages = showLessPackages;
 window.nextPackagePage = nextPackagePage;
 window.prevPackagePage = prevPackagePage;
 window.clearRockets = clearRockets;
@@ -9355,9 +9339,8 @@ function switchPackageTab(tab) {
     currentPackageTab = tab;
     showAllPackages = false; // Reset to collapsed view when switching tabs
 
-    // Reset pagination states
+    // Reset pagination state
     currentPackagePage = 1; // Reset to first page
-    mobileVisibleCount = 6; // Reset mobile count
 
     // Update tab UI
     document.querySelectorAll('.package-tab').forEach(btn => {
@@ -9411,20 +9394,16 @@ function displayActivePackages() {
     document.getElementById('rewards-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true).length;
 
     // Detect desktop/tablet vs mobile (600px breakpoint)
-    // >600px = Desktop/Tablet (arrow navigation), ≤600px = Mobile (show more/less)
     const isDesktop = window.innerWidth > 600;
 
-    // Slice packages based on desktop/mobile mode
-    let packagesToShow;
-    if (isDesktop) {
-        // DESKTOP: Paginate in groups of 6
-        const startIndex = (currentPackagePage - 1) * packagesPerPage;
-        const endIndex = startIndex + packagesPerPage;
-        packagesToShow = filteredPackages.slice(startIndex, endIndex);
-    } else {
-        // MOBILE: Progressive reveal (first N packages based on mobileVisibleCount)
-        packagesToShow = filteredPackages.slice(0, mobileVisibleCount);
-    }
+    // Set cards per page based on screen size
+    // Desktop/Tablet: 6 cards per page, Mobile: 3 cards per page
+    const cardsPerPage = isDesktop ? 6 : 3;
+
+    // Paginate in groups (6 for desktop, 3 for mobile)
+    const startIndex = (currentPackagePage - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    const packagesToShow = filteredPackages.slice(startIndex, endIndex);
 
     if (packagesToShow.length === 0) {
         container.innerHTML = `<p style="text-align: center; color: #888; padding: 20px;">No ${currentPackageTab} packages</p>`;
@@ -9630,69 +9609,36 @@ function displayActivePackages() {
         container.appendChild(card);
     });
 
-    // Update desktop/mobile controls visibility and states
-    if (isDesktop) {
-        // DESKTOP: Update carousel controls
-        const carouselControls = document.getElementById('package-carousel-controls');
-        const mobileControls = document.getElementById('package-mobile-controls');
-        const totalPages = Math.ceil(filteredPackages.length / packagesPerPage);
+    // Update arrow controls visibility and states (both desktop and mobile)
+    const carouselControls = document.getElementById('package-carousel-controls');
+    const totalPages = Math.ceil(filteredPackages.length / cardsPerPage);
 
-        if (filteredPackages.length > 6) {
-            // Show carousel controls
-            if (carouselControls) carouselControls.style.display = 'flex';
-            if (mobileControls) mobileControls.style.display = 'none';
+    // Show controls if there are more packages than can fit on one page
+    if (filteredPackages.length > cardsPerPage) {
+        // Show carousel controls
+        if (carouselControls) carouselControls.style.display = 'flex';
 
-            // Update page counter
-            const pageCounter = document.getElementById('package-page-count');
-            if (pageCounter) {
-                pageCounter.textContent = `${currentPackagePage} of ${totalPages}`;
-            }
-
-            // Update arrow button states
-            const leftArrow = document.getElementById('package-arrow-left');
-            const rightArrow = document.getElementById('package-arrow-right');
-
-            if (leftArrow) {
-                leftArrow.disabled = currentPackagePage === 1;
-            }
-            if (rightArrow) {
-                rightArrow.disabled = currentPackagePage >= totalPages;
-            }
-
-            console.log(`✓ Desktop carousel: Page ${currentPackagePage} of ${totalPages}`);
-        } else {
-            // Hide both controls if 6 or fewer packages
-            if (carouselControls) carouselControls.style.display = 'none';
-            if (mobileControls) mobileControls.style.display = 'none';
+        // Update page counter
+        const pageCounter = document.getElementById('package-page-count');
+        if (pageCounter) {
+            pageCounter.textContent = `${currentPackagePage} of ${totalPages}`;
         }
+
+        // Update arrow button states
+        const leftArrow = document.getElementById('package-arrow-left');
+        const rightArrow = document.getElementById('package-arrow-right');
+
+        if (leftArrow) {
+            leftArrow.disabled = currentPackagePage === 1;
+        }
+        if (rightArrow) {
+            rightArrow.disabled = currentPackagePage >= totalPages;
+        }
+
+        console.log(`✓ Arrow navigation: Page ${currentPackagePage} of ${totalPages} (${cardsPerPage} cards per page)`);
     } else {
-        // MOBILE: Update show more/less buttons
-        const carouselControls = document.getElementById('package-carousel-controls');
-        const mobileControls = document.getElementById('package-mobile-controls');
-        const showMoreBtn = document.getElementById('show-more-packages');
-        const showLessBtn = document.getElementById('show-less-packages');
-
-        if (filteredPackages.length > 6) {
-            // Show mobile controls
-            if (carouselControls) carouselControls.style.display = 'none';
-            if (mobileControls) mobileControls.style.display = 'flex';
-
-            // Show "Show More" if there are more packages to reveal
-            if (showMoreBtn) {
-                showMoreBtn.style.display = mobileVisibleCount < filteredPackages.length ? 'block' : 'none';
-            }
-
-            // Show "Show Less" if we're viewing more than 6
-            if (showLessBtn) {
-                showLessBtn.style.display = mobileVisibleCount > 6 ? 'block' : 'none';
-            }
-
-            console.log(`✓ Mobile controls: Showing ${mobileVisibleCount} of ${filteredPackages.length} packages`);
-        } else {
-            // Hide both controls if 6 or fewer packages
-            if (carouselControls) carouselControls.style.display = 'none';
-            if (mobileControls) mobileControls.style.display = 'none';
-        }
+        // Hide controls if all packages fit on one page
+        if (carouselControls) carouselControls.style.display = 'none';
     }
 }
 

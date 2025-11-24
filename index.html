@@ -179,17 +179,11 @@
 
                         <div id="active-packages-container" class="active-packages-container"></div>
 
-                        <!-- Desktop Carousel Controls (hidden on mobile) -->
-                        <div class="package-carousel-controls desktop-only" id="package-carousel-controls" style="display: none;">
+                        <!-- Package Navigation Controls (Desktop: 6 per page, Mobile: 3 per page) -->
+                        <div class="package-carousel-controls" id="package-carousel-controls" style="display: none;">
                             <button class="package-arrow left" id="package-arrow-left" onclick="prevPackagePage()" disabled>‹</button>
                             <span class="package-page-count" id="package-page-count">1 of 1</span>
                             <button class="package-arrow right" id="package-arrow-right" onclick="nextPackagePage()">›</button>
-                        </div>
-
-                        <!-- Mobile Pagination Buttons (hidden on desktop) -->
-                        <div class="package-mobile-controls mobile-only" id="package-mobile-controls" style="display: none;">
-                            <button id="show-more-packages" onclick="showMorePackages()">Show More</button>
-                            <button id="show-less-packages" onclick="showLessPackages()" style="display: none;">Show Less</button>
                         </div>
                     </div>
 
