@@ -1,4 +1,4 @@
-// CryptFolio v2 - Main Application Script - Stable 13 (Fix Robot Icons for New Team Package Instances) - STABLE BUILD
+// CryptFolio v2 - Main Application Script - Stable 14 (Change Auto-Clear Timing to 30 Seconds) - STABLE BUILD
 const baseApiUrl = 'https://api.coingecko.com/api/v3/simple/price';
 const coinDetailsUrl = 'https://api.coingecko.com/api/v3/coins/';
 let apiKeys = []; // User must configure their own API keys
@@ -13985,8 +13985,8 @@ function updateTeamPackageCountdowns() {
                     countdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
                     countdownElement.style.color = '#FFA500';
 
-                    // AUTO-CLEAR LOGIC: Check if countdown <= 2 minutes AND auto-clear is enabled
-                    if (autoClearEnabled && timeUntilStart <= 120000) { // 120000ms = 2 minutes
+                    // AUTO-CLEAR LOGIC: Check if countdown <= 30 seconds AND auto-clear is enabled
+                    if (autoClearEnabled && timeUntilStart <= 30000) { // 30000ms = 30 seconds
                         const packageId = pkg.apiData?.id || pkg.id;
                         const myShares = getMyTeamShares(packageId) || 0;
 
