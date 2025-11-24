@@ -10530,6 +10530,15 @@ function createTeamPackageRecommendationCard(pkg) {
                 `;
                 console.log(`📅 ${pkg.name} alert - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
             }
+        } else {
+            // Countdown has ended - show "Starting Soon!" until package goes active
+            countdownInfo = `
+                <div class="buy-package-stat">
+                    <span>Starting:</span>
+                    <span id="countdown-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
+                </div>
+            `;
+            console.log(`📅 ${pkg.name} alert - Countdown ended → Starting Soon!`);
         }
     } else if (participants < 2) {
         // No lifeTimeTill set yet, but show "Mining Lobby" if < 2 participants
@@ -13655,6 +13664,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     `;
                     console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
                 }
+            } else {
+                // Countdown has ended - show "Starting Soon!" until package goes active
+                countdownInfo = `
+                    <div class="buy-package-stat">
+                        <span>Starting:</span>
+                        <span id="countdown-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
+                    </div>
+                `;
+                console.log(`📅 ${pkg.name} - Countdown ended → Starting Soon!`);
             }
         } else if (participants < 2) {
             // No lifeTimeTill set yet, but show "Mining Lobby" if < 2 participants
