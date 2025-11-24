@@ -9410,8 +9410,9 @@ function displayActivePackages() {
     document.getElementById('completed-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.active === false).length;
     document.getElementById('rewards-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true).length;
 
-    // Detect desktop vs mobile (768px breakpoint)
-    const isDesktop = window.innerWidth > 768;
+    // Detect desktop/tablet vs mobile (600px breakpoint)
+    // >600px = Desktop/Tablet (arrow navigation), ≤600px = Mobile (show more/less)
+    const isDesktop = window.innerWidth > 600;
 
     // Slice packages based on desktop/mobile mode
     let packagesToShow;

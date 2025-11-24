@@ -1478,6 +1478,7 @@ body.light-mode .package-tab.active {
 }
 
 /* Responsive visibility classes */
+/* Desktop/Tablet (>600px) use arrow navigation, Mobile (≤600px) use show more/less */
 .desktop-only {
     display: flex;
 }
@@ -1486,7 +1487,7 @@ body.light-mode .package-tab.active {
     display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 600px) {
     .desktop-only {
         display: none;
     }
