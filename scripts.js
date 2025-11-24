@@ -9683,7 +9683,8 @@ function displayActivePackages() {
 
         // Level 3: For team packages - match by package name + recent purchase (within 7 days)
         // This handles team packages that transition from countdown to active with different IDs
-        if (!isAutoBought && pkg.isTeam) {
+        // ⚠️ ONLY match if package is ACTIVE (prevents matching new buy packages with same name)
+        if (!isAutoBought && pkg.isTeam && pkg.active) {
             const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
             isAutoBought = Object.values(autoBoughtPackages).find(entry =>
                 entry.type === 'team' &&
