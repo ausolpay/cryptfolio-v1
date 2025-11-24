@@ -719,9 +719,27 @@
                     <input type="number" id="withdraw-amount-aud" placeholder="0.00" step="0.01" min="0" oninput="convertAudToBtcWithdraw()">
                 </div>
 
+                <!-- Fee Display -->
+                <div style="margin: 10px 0; padding: 10px; background-color: rgba(255, 165, 0, 0.1); border-radius: 5px; border-left: 3px solid #ffa500;">
+                    <p style="margin: 0; color: #ffa500; font-size: 13px;">
+                        <strong>Transaction Fee:</strong> 0.0001 BTC (<span id="fee-aud-display">$0.00 AUD</span>)
+                    </p>
+                    <p style="margin: 5px 0 0 0; color: #888; font-size: 12px;">
+                        Minimum withdrawal: 0.0005 BTC
+                    </p>
+                </div>
+
+                <!-- Fee Included Checkbox -->
+                <div style="margin: 10px 0;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="fee-included-checkbox" style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
+                        <span style="color: #fff; font-size: 14px;">Fee included in withdraw amount</span>
+                    </label>
+                </div>
+
                 <!-- Add Max Amount Button -->
                 <div style="margin: 10px 0;">
-                    <button onclick="addMaxAmountWithdraw()" style="background-color: #2196F3; width: 100%; padding: 8px; font-size: 14px;">➕ Add Max Amount (minus tx fee)</button>
+                    <button onclick="addMaxAmountWithdraw()" style="background-color: #2196F3; width: 100%; padding: 8px; font-size: 14px;">➕ Add Max Amount (includes fee)</button>
                 </div>
 
                 <!-- Note Input -->

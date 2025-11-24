@@ -1772,6 +1772,15 @@ function showWithdrawPage() {
     document.getElementById('withdraw-amount-aud').value = '';
     document.getElementById('withdraw-note').value = '';
     document.getElementById('withdraw-transaction-result').innerHTML = '';
+
+    // Reset fee checkbox to unchecked
+    const feeCheckbox = document.getElementById('fee-included-checkbox');
+    if (feeCheckbox) {
+        feeCheckbox.checked = false;
+    }
+
+    // Update fee AUD display with live price
+    updateFeeAudDisplay();
 }
 
 /**
@@ -1904,6 +1913,9 @@ function convertBtcToAudWithdraw() {
     } else {
         console.warn('⚠️ BTC price not available. Add Bitcoin to portfolio first.');
     }
+
+    // Check if fee checkbox should be auto-checked
+    checkAutoFeeInclusion();
 }
 
 /**
@@ -1927,13 +1939,40 @@ function convertAudToBtcWithdraw() {
     } else {
         console.warn('⚠️ BTC price not available. Add Bitcoin to portfolio first.');
     }
+
+    // Check if fee checkbox should be auto-checked
+    checkAutoFeeInclusion();
 }
 
 /**
- * Add maximum BTC amount (minus transaction fee) to withdraw input
+ * Update fee display with live BTC to AUD conversion
  */
-function addMaxAmountWithdraw() {
-    const TRANSACTION_FEE = 0.00001;
+function updateFeeAudDisplay() {
+    const TRANSACTION_FEE = 0.0001;
+    const feeAudDisplay = document.getElementById('fee-aud-display');
+
+    if (!feeAudDisplay) return;
+
+    // Get current BTC price in AUD from DOM element
+    const priceElement = document.getElementById('bitcoin-price-aud');
+    const btcPriceAud = priceElement
+        ? parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0
+        : 0;
+
+    if (btcPriceAud > 0) {
+        const feeAud = TRANSACTION_FEE * btcPriceAud;
+        feeAudDisplay.textContent = `$${feeAud.toFixed(2)} AUD`;
+    } else {
+        feeAudDisplay.textContent = '$0.00 AUD';
+    }
+}
+
+/**
+ * Check if fee checkbox should be auto-checked based on withdraw amount
+ */
+function checkAutoFeeInclusion() {
+    const TRANSACTION_FEE = 0.0001;
+    const btcAmount = parseFloat(document.getElementById('withdraw-amount-btc').value) || 0;
 
     // Get available BTC from EasyMining balance
     const availableBtcElement = document.getElementById('easymining-available-btc');
@@ -1941,17 +1980,47 @@ function addMaxAmountWithdraw() {
         ? parseFloat(availableBtcElement.textContent) || 0
         : 0;
 
-    // Calculate max amount (available balance minus transaction fee)
-    const maxAmount = Math.max(0, availableBtc - TRANSACTION_FEE);
+    // Auto-check if amount + fee would exceed available (or very close)
+    const feeCheckbox = document.getElementById('fee-included-checkbox');
+    if (feeCheckbox && btcAmount > 0) {
+        const totalNeeded = btcAmount + TRANSACTION_FEE;
+        // Auto-check if trying to withdraw amount that would require fee to be included
+        if (totalNeeded > availableBtc) {
+            feeCheckbox.checked = true;
+            console.log('✓ Auto-checked "Fee included" - insufficient balance for separate fee');
+        }
+    }
+}
+
+/**
+ * Add maximum BTC amount (minus transaction fee) to withdraw input
+ */
+function addMaxAmountWithdraw() {
+    const TRANSACTION_FEE = 0.0001;
+
+    // Get available BTC from EasyMining balance
+    const availableBtcElement = document.getElementById('easymining-available-btc');
+    const availableBtc = availableBtcElement
+        ? parseFloat(availableBtcElement.textContent) || 0
+        : 0;
+
+    // Set max amount to full available balance (fee will be included)
+    const maxAmount = availableBtc;
 
     // Set BTC input to max amount
     const btcInput = document.getElementById('withdraw-amount-btc');
     btcInput.value = maxAmount.toFixed(8);
 
+    // Auto-check the "Fee included" checkbox when clicking Max
+    const feeIncludedCheckbox = document.getElementById('fee-included-checkbox');
+    if (feeIncludedCheckbox) {
+        feeIncludedCheckbox.checked = true;
+    }
+
     // Trigger conversion to update AUD field
     convertBtcToAudWithdraw();
 
-    console.log(`➕ Added max amount: ${maxAmount.toFixed(8)} BTC (${availableBtc.toFixed(8)} - ${TRANSACTION_FEE} fee)`);
+    console.log(`➕ Added max amount: ${maxAmount.toFixed(8)} BTC (fee included in withdraw amount)`);
 }
 
 /**
@@ -1960,14 +2029,24 @@ function addMaxAmountWithdraw() {
 async function executeWithdrawal() {
     console.log('💸 Initiating BTC withdrawal...');
 
+    const TRANSACTION_FEE = 0.0001;
+    const MIN_WITHDRAW = 0.0005;
+
     // Get form values
     const btcAmount = parseFloat(document.getElementById('withdraw-amount-btc').value);
     const selectedAddressJson = document.getElementById('withdraw-address-select').value;
     const note = document.getElementById('withdraw-note').value || '';
+    const feeIncluded = document.getElementById('fee-included-checkbox')?.checked || false;
 
     // Validate amount
     if (!btcAmount || btcAmount <= 0) {
         alert('⚠️ Please enter a valid BTC amount');
+        return;
+    }
+
+    // Validate minimum withdraw amount
+    if (btcAmount < MIN_WITHDRAW) {
+        alert(`⚠️ Minimum withdrawal amount is ${MIN_WITHDRAW.toFixed(4)} BTC`);
         return;
     }
 
@@ -1993,8 +2072,22 @@ async function executeWithdrawal() {
         ? parseFloat(availableBtcElement.textContent) || 0
         : 0;
 
-    if (btcAmount > availableBtc) {
-        alert(`⚠️ Insufficient balance. You have ${availableBtc.toFixed(8)} BTC available.`);
+    // Calculate total needed based on fee inclusion
+    let totalNeeded;
+    let actualWithdrawAmount;
+
+    if (feeIncluded) {
+        // Fee is included in withdraw amount - deduct from amount
+        totalNeeded = btcAmount;
+        actualWithdrawAmount = btcAmount - TRANSACTION_FEE;
+    } else {
+        // Fee is on top of withdraw amount - add to total needed
+        totalNeeded = btcAmount + TRANSACTION_FEE;
+        actualWithdrawAmount = btcAmount;
+    }
+
+    if (totalNeeded > availableBtc) {
+        alert(`⚠️ Insufficient balance. You need ${totalNeeded.toFixed(8)} BTC (including fee) but have ${availableBtc.toFixed(8)} BTC available.`);
         return;
     }
 
@@ -2010,9 +2103,16 @@ async function executeWithdrawal() {
     }
 
     // Confirm withdrawal
+    const feeText = feeIncluded
+        ? `Fee: ${TRANSACTION_FEE.toFixed(4)} BTC (included in amount)\n` +
+          `You will receive: ${actualWithdrawAmount.toFixed(8)} BTC\n`
+        : `Fee: ${TRANSACTION_FEE.toFixed(4)} BTC (additional)\n` +
+          `Total from balance: ${totalNeeded.toFixed(8)} BTC\n`;
+
     const confirmed = confirm(
         `⚠️ CONFIRM WITHDRAWAL\n\n` +
-        `Amount: ${btcAmount.toFixed(8)} BTC\n` +
+        `Withdraw Amount: ${btcAmount.toFixed(8)} BTC\n` +
+        feeText +
         `Address: ${addressData.name}\n` +
         `Destination: ${addressData.address}\n` +
         `Note: ${note || '(none)'}\n\n` +
