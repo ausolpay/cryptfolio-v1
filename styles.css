@@ -894,6 +894,7 @@ canvas:active {
   .sentiment-bar {
     height: 100%;
     position: absolute;
+    transition: width 0.8s ease-in-out;
   }
 
   .bearish-bar {
@@ -932,6 +933,12 @@ canvas:active {
     font-size: 11px;
     font-weight: bold;
     z-index: 1;
+    transition: transform 0.3s ease;
+  }
+
+  /* Pulse animation when score updates */
+  .sentiment-score-badge.updating {
+    transform: translate(-50%, -50%) scale(1.15);
   }
 
   /* Overall sentiment label styling */
@@ -940,6 +947,7 @@ canvas:active {
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    transition: color 0.5s ease;
   }
 
   .sentiment-overall-label.extreme-bullish {

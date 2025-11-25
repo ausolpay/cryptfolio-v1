@@ -6510,7 +6510,7 @@ function calculateMarketSentiment(coinData, rsi = 50) {
 function updateSentimentUI(sentimentResult) {
     const { bullishPercent, bearishPercent, score, label, labelClass } = sentimentResult;
 
-    // Update main bar widths
+    // Update main bar widths (CSS transition handles animation)
     const bearishBar = document.getElementById('bearish-bar');
     const bullishBar = document.getElementById('bullish-bar');
     if (bearishBar) bearishBar.style.width = `${bearishPercent}%`;
@@ -6522,13 +6522,25 @@ function updateSentimentUI(sentimentResult) {
     if (bearishLabel) bearishLabel.innerText = `Bearish: ${Math.round(bearishPercent)}%`;
     if (bullishLabel) bullishLabel.innerText = `Bullish: ${Math.round(bullishPercent)}%`;
 
-    // Update score badge
+    // Update score badge with pulse animation
     const scoreBadge = document.getElementById('sentiment-score-badge');
     if (scoreBadge) {
-        scoreBadge.innerText = Math.round(score);
+        const oldScore = parseInt(scoreBadge.innerText) || 50;
+        const newScore = Math.round(score);
+
+        if (oldScore !== newScore) {
+            // Pulse animation when score changes
+            scoreBadge.classList.add('updating');
+            scoreBadge.innerText = newScore;
+            setTimeout(() => {
+                scoreBadge.classList.remove('updating');
+            }, 300);
+        } else {
+            scoreBadge.innerText = newScore;
+        }
     }
 
-    // Update overall label
+    // Update overall label (CSS transition handles color change)
     const overallLabel = document.getElementById('sentiment-overall-label');
     if (overallLabel) {
         overallLabel.innerText = label;
