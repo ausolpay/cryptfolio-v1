@@ -4750,6 +4750,31 @@ function resetMilestone() {
     updateMilestone(totalHoldings);
 }
 
+function clearMentionsCache() {
+    // Find and remove all mentions cache entries for the current user
+    const keysToRemove = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        // Match keys like: username_cryptoName_mentions30d and username_cryptoName_mentions30dExpiry
+        if (key && key.startsWith(`${loggedInUser}_`) && key.includes('_mentions30d')) {
+            keysToRemove.push(key);
+        }
+    }
+
+    // Remove all matching keys
+    keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`Cleared mentions cache: ${key}`);
+    });
+
+    // Show feedback to user
+    const count = keysToRemove.length / 2; // Divide by 2 since each crypto has data + expiry keys
+    alert(`Cleared mentions cache for ${Math.floor(count)} cryptocurrency${count !== 1 ? 's' : ''}. Fresh data will be fetched when you open chart modals.`);
+
+    console.log(`Cleared ${keysToRemove.length} mentions cache entries for user: ${loggedInUser}`);
+}
+
 function resetMilestoneEvery24Hours() {
     const lastReset = parseInt(getStorageItem(`${loggedInUser}_lastMilestoneReset`)) || Date.now();
     const now = Date.now();
