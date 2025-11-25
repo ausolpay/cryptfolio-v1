@@ -13860,13 +13860,9 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     // Validate and fix auto-buy robot icons after page load
-    // Only run validation if buy packages containers are visible (prevents console errors)
-    const singleContainer = document.getElementById('buy-packages-single');
-    const teamContainer = document.getElementById('buy-packages-team');
-    if (singleContainer && teamContainer) {
-        console.log('🤖 Running robot icon validation...');
-        validateAndFixAutoBuyRobotIcons();
-    }
+    // The function handles missing containers gracefully
+    console.log('🤖 Running robot icon validation...');
+    validateAndFixAutoBuyRobotIcons();
 }
 
 // Validate and fix auto-buy robot icons on Buy Packages page
@@ -13878,11 +13874,13 @@ function validateAndFixAutoBuyRobotIcons() {
     const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
 
     // Query all package cards on the Buy Packages page
-    const singleContainer = document.getElementById('buy-packages-single');
-    const teamContainer = document.getElementById('buy-packages-team');
+    // Note: Container IDs are buy-single-packages-page and buy-team-packages-page
+    const singleContainer = document.getElementById('buy-single-packages-page');
+    const teamContainer = document.getElementById('buy-team-packages-page');
 
     if (!singleContainer || !teamContainer) {
-        console.warn('⚠️ Could not find package containers for validation');
+        // Expected when not on Buy Packages page - silently return
+        console.log('ℹ️ Buy Packages page not active, skipping robot icon validation');
         return;
     }
 
