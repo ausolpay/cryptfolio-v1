@@ -1245,6 +1245,9 @@ let currentQrTokenIndex = 0;
 /**
  * Show the Deposits page
  */
+// Global variable for deposits page balance polling
+let depositsBalanceInterval = null;
+
 function showDepositsPage() {
     console.log('💰 Showing BTC Lightning Deposits Page');
 
@@ -1279,8 +1282,94 @@ function showDepositsPage() {
     document.getElementById('deposit-amount-btc').value = '';
     document.getElementById('deposit-amount-aud').value = '';
 
-    // Load and display balance section
-    updateDepositsBalance();
+    // Load and display balance section (fetch fresh data)
+    fetchAndUpdateDepositsBalance();
+
+    // Start polling for balance updates every 30 seconds
+    startDepositsBalancePolling();
+}
+
+/**
+ * Start polling for deposits page balance updates
+ */
+function startDepositsBalancePolling() {
+    // Clear any existing interval
+    if (depositsBalanceInterval) {
+        clearInterval(depositsBalanceInterval);
+    }
+
+    // Poll every 30 seconds
+    depositsBalanceInterval = setInterval(() => {
+        // Only update if deposits page is visible
+        const depositsPage = document.getElementById('deposits-page');
+        if (depositsPage && depositsPage.style.display !== 'none') {
+            console.log('🔄 Deposits page: Refreshing balance...');
+            fetchAndUpdateDepositsBalance();
+        } else {
+            // Stop polling if page is hidden
+            stopDepositsBalancePolling();
+        }
+    }, 30000); // 30 seconds
+
+    console.log('✅ Deposits balance polling started (30s interval)');
+}
+
+/**
+ * Stop polling for deposits page balance updates
+ */
+function stopDepositsBalancePolling() {
+    if (depositsBalanceInterval) {
+        clearInterval(depositsBalanceInterval);
+        depositsBalanceInterval = null;
+        console.log('⏹️ Deposits balance polling stopped');
+    }
+}
+
+/**
+ * Fetch fresh balance data from NiceHash and update deposits page
+ */
+async function fetchAndUpdateDepositsBalance() {
+    console.log('💰 Fetching fresh balance data for deposits page...');
+
+    try {
+        // Fetch fresh balance from NiceHash API
+        const balanceData = await fetchNiceHashBalances();
+
+        if (balanceData) {
+            window.niceHashBalance = {
+                available: balanceData.available || 0,
+                pending: balanceData.pending || 0
+            };
+            console.log('✅ Fresh balance fetched:', window.niceHashBalance);
+        }
+
+        // Fetch fresh BTC price if not available or stale
+        if (!window.packageCryptoPrices?.['btc']?.aud) {
+            console.log('💱 Fetching BTC price for AUD conversion...');
+            try {
+                const priceUrl = `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=aud&x_cg_demo_api_key=${getApiKey()}`;
+                const priceData = await fetchWithApiKeyRotation(priceUrl);
+                if (priceData?.bitcoin?.aud) {
+                    if (!window.packageCryptoPrices) {
+                        window.packageCryptoPrices = {};
+                    }
+                    window.packageCryptoPrices['btc'] = { aud: priceData.bitcoin.aud };
+                    window.packageCryptoPrices['bitcoin'] = { aud: priceData.bitcoin.aud };
+                    console.log('✅ BTC price fetched:', priceData.bitcoin.aud, 'AUD');
+                }
+            } catch (priceError) {
+                console.warn('⚠️ Could not fetch BTC price:', priceError);
+            }
+        }
+
+        // Update the display
+        updateDepositsBalance();
+
+    } catch (error) {
+        console.error('❌ Error fetching deposits balance:', error);
+        // Still try to update with cached data
+        updateDepositsBalance();
+    }
 }
 
 /**
@@ -1291,7 +1380,7 @@ function updateDepositsBalance() {
     console.log('💰 Updating deposits page balance section...');
 
     try {
-        // Populate balance section (uses cached data only - no independent fetching)
+        // Populate balance section
         const balanceSection = document.getElementById('deposits-balance-section');
         if (!balanceSection) {
             console.error('❌ Could not find deposits-balance-section container!');
@@ -1313,31 +1402,59 @@ function updateDepositsBalance() {
         // Use cached balance data (from EasyMining polling or buy packages page)
         const availableBalance = window.niceHashBalance?.available || easyMiningData?.availableBTC || 0;
         const pendingBalance = window.niceHashBalance?.pending || easyMiningData?.pendingBTC || 0;
-        console.log('✓ Using cached balance data:', { availableBalance, pendingBalance });
 
-        const availableAUD = window.packageCryptoPrices?.['btc']?.aud
-            ? (availableBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
+        // Get BTC price - try multiple sources
+        let btcPriceAUD = window.packageCryptoPrices?.['btc']?.aud
+            || window.packageCryptoPrices?.['bitcoin']?.aud
+            || prices?.['bitcoin']?.aud
+            || 0;
+
+        const availableAUD = btcPriceAUD > 0
+            ? (availableBalance * btcPriceAUD).toFixed(2)
             : '0.00';
-        const pendingAUD = window.packageCryptoPrices?.['btc']?.aud
-            ? (pendingBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
+        const pendingAUD = btcPriceAUD > 0
+            ? (pendingBalance * btcPriceAUD).toFixed(2)
             : '0.00';
 
-        balanceSection.innerHTML = `
-            <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
-                <div style="display: flex; justify-content: space-around; align-items: center; gap: 40px;">
-                    <div style="flex: 1; text-align: center;">
-                        <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
-                        <div style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                        <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
-                    </div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
-                        <div style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
-                        <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
+        console.log('✓ Balance data:', {
+            availableBalance: availableBalance.toFixed(8),
+            pendingBalance: pendingBalance.toFixed(8),
+            btcPriceAUD,
+            availableAUD,
+            pendingAUD
+        });
+
+        // Check if elements already exist (for smooth updates without flickering)
+        const existingAvailableBTC = document.getElementById('deposits-available-btc');
+        const existingAvailableAUD = document.getElementById('deposits-available-aud');
+        const existingPendingBTC = document.getElementById('deposits-pending-btc');
+        const existingPendingAUD = document.getElementById('deposits-pending-aud');
+
+        if (existingAvailableBTC && existingAvailableAUD && existingPendingBTC && existingPendingAUD) {
+            // Update existing elements (no flicker)
+            existingAvailableBTC.textContent = `${availableBalance.toFixed(8)} BTC`;
+            existingAvailableAUD.textContent = `≈ $${availableAUD} AUD`;
+            existingPendingBTC.textContent = `${pendingBalance.toFixed(8)} BTC`;
+            existingPendingAUD.textContent = `≈ $${pendingAUD} AUD`;
+        } else {
+            // First render - create full HTML with IDs
+            balanceSection.innerHTML = `
+                <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                    <div style="display: flex; justify-content: space-around; align-items: center; gap: 40px;">
+                        <div style="flex: 1; text-align: center;">
+                            <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
+                            <div id="deposits-available-btc" style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
+                            <div id="deposits-available-aud" style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
+                            <div id="deposits-pending-btc" style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
+                            <div id="deposits-pending-aud" style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
 
         console.log('✅ Deposits balance section updated');
 
