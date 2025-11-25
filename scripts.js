@@ -977,7 +977,7 @@ function showEasyMiningSettingsPage() {
 
     // Load auto-clear active shares settings
     document.getElementById('autoClearActiveShares').checked = savedSettings.autoClearActiveShares || false; // Default OFF
-    document.getElementById('autoClearThreshold').value = savedSettings.autoClearThreshold || 90; // Default 90%
+    document.getElementById('autoClearThreshold').value = savedSettings.autoClearThreshold || 50; // Default 50%
 }
 
 // =============================================================================
@@ -5267,6 +5267,49 @@ async function autoResetEasyMiningDaily() {
     console.log("🔍 Checking for 24hr EasyMining Daily Reset (midnight)");
 }
 
+// ✅ FIX: Check for midnight reset during initialization (called from initializeEasyMining)
+// This runs AFTER easyMiningData is loaded from localStorage, ensuring proper reset
+function checkMidnightResetOnInit() {
+    if (!loggedInUser) return;
+
+    const now = new Date();
+    const lastResetDate = getStorageItem(`${loggedInUser}_lastEasyMiningResetDate`);
+    const todayDate = now.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+    // If we haven't reset today, perform the reset
+    if (lastResetDate !== todayDate) {
+        console.log("🔄 Performing midnight reset on init - clearing rockets and daily stats");
+        console.log(`   Last reset: ${lastResetDate || 'never'}, Today: ${todayDate}`);
+
+        // Mark as reset for today
+        setStorageItem(`${loggedInUser}_lastEasyMiningResetDate`, todayDate);
+
+        // Reset today's stats
+        easyMiningData.todayStats = {
+            totalBlocks: 0,
+            totalReward: 0,
+            totalSpent: 0,
+            pnl: 0
+        };
+
+        // Clear rockets (session blocks)
+        easyMiningData.blocksFoundSession = 0;
+
+        // Save to localStorage
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+
+        // Clear the UI element
+        const rocketsElement = document.getElementById('blocks-found-rockets');
+        if (rocketsElement) {
+            rocketsElement.textContent = '';
+        }
+
+        console.log("✅ Midnight reset completed on init - rockets and daily stats cleared");
+    } else {
+        console.log(`🔍 Midnight reset check: Already reset today (${todayDate})`);
+    }
+}
+
 // Call autoResetPercentage on app load to handle missed resets with a 3-second delay
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
@@ -8347,7 +8390,7 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle-page').checked;
     easyMiningSettings.autoBuyTgSafeHold = document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked;
     easyMiningSettings.autoClearActiveShares = document.getElementById('autoClearActiveShares')?.checked || false;
-    easyMiningSettings.autoClearThreshold = parseInt(document.getElementById('autoClearThreshold')?.value) || 90;
+    easyMiningSettings.autoClearThreshold = parseInt(document.getElementById('autoClearThreshold')?.value) || 50;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -16812,7 +16855,7 @@ function checkAutoClearActiveShares() {
         return;
     }
 
-    const threshold = easyMiningSettings.autoClearThreshold || 90;
+    const threshold = easyMiningSettings.autoClearThreshold || 50;
     console.log(`🔍 Checking auto-clear active shares (threshold: ${threshold}%)`);
 
     // Get auto-bought packages tracking
@@ -17396,7 +17439,11 @@ function initializeEasyMining() {
         updateBTCHoldings();
     }
 
-    // Restore rocket display from saved data
+    // ✅ FIX: Check for midnight reset BEFORE restoring rockets
+    // This ensures rockets are cleared if a new day started while app was closed
+    checkMidnightResetOnInit();
+
+    // Restore rocket display from saved data (only if not cleared by midnight reset)
     restoreRockets();
 
     // ✅ FIX: Only show section if EasyMining is enabled (hide by default until activated)
