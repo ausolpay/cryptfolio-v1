@@ -140,6 +140,38 @@ body.light-mode .crypto-container p {
     font-weight: bold;
 }
 
+/* Sentiment icons on holdings boxes (bull/bear) */
+.sentiment-icon {
+    position: absolute;
+    top: 8px;
+    font-size: 18px;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.sentiment-icon.visible {
+    opacity: 1;
+}
+
+.bear-icon {
+    left: 8px;
+}
+
+.bull-icon {
+    right: 8px;
+}
+
+.sentiment-flash {
+    animation: sentiment-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes sentiment-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.15); }
+}
+
 input[type="number"], .add-crypto input[type="text"], .login-form input[type="email"], .login-form input[type="password"], .register-form input[type="text"], .register-form input[type="email"], .register-form input[type="tel"], .register-form input[type="password"] {
     width: calc(100% - 20px); /* Full width minus the margins */
     max-width: 500px;

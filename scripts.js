@@ -126,6 +126,44 @@ function switchApiKey() {
     console.log(`Switched to API key: ${getApiKey()}`);
 }
 
+// Calculate simple sentiment score from 24h and 7d price changes (0-100)
+// Used for holdings box bull/bear icons - no extra API calls needed
+function calculateSimpleSentiment(change24h, change7d) {
+    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+    // 24h change: -30% to +30% → maps to 0-100
+    const score24h = ((clamp(change24h || 0, -30, 30) + 30) / 60) * 100;
+
+    // 7d change: -50% to +50% → maps to 0-100
+    const score7d = ((clamp(change7d || 0, -50, 50) + 50) / 100) * 100;
+
+    // Combined: 60% weight on 24h, 40% on 7d
+    return (score24h * 0.6) + (score7d * 0.4);
+}
+
+// Update bull/bear icons on holdings box based on sentiment score
+function updateHoldingsBoxSentiment(cryptoId, score) {
+    const bearIcon = document.getElementById(`${cryptoId}-bear-icon`);
+    const bullIcon = document.getElementById(`${cryptoId}-bull-icon`);
+
+    if (!bearIcon || !bullIcon) return;
+
+    // Reset state
+    bearIcon.classList.remove('visible', 'sentiment-flash');
+    bullIcon.classList.remove('visible', 'sentiment-flash');
+
+    if (score < 40) {
+        // Bearish - show bear icon
+        bearIcon.classList.add('visible');
+        if (score < 25) bearIcon.classList.add('sentiment-flash'); // Very bearish - flash
+    } else if (score > 60) {
+        // Bullish - show bull icon
+        bullIcon.classList.add('visible');
+        if (score > 75) bullIcon.classList.add('sentiment-flash'); // Very bullish - flash
+    }
+    // Neutral (40-60): both icons remain hidden
+}
+
 // Format holdings with full decimal precision (shows actual decimals stored, with comma separators)
 function formatHoldingsWithFullDecimals(value) {
     if (value === 0) return '0';
@@ -4502,6 +4540,7 @@ async function fetchInitialPercentageChanges(cryptoId) {
     const url = `${coinDetailsUrl}${cryptoId}?x_cg_demo_api_key=${getApiKey()}`;
     try {
         const data = await fetchWithFallback(url);
+        const percentageChange24h = data.market_data.price_change_percentage_24h || 0;
         const percentageChange7d = data.market_data.price_change_percentage_7d;
 
         if (!users[loggedInUser].percentageThresholds) {
@@ -4522,8 +4561,12 @@ async function fetchInitialPercentageChanges(cryptoId) {
         } else if (percentageChange7d <= -20) {
             container.style.borderColor = '#ff0000';
         } else {
-            container.style.borderColor = ''; 
+            container.style.borderColor = '';
         }
+
+        // Update bull/bear sentiment icons on holdings box
+        const sentimentScore = calculateSimpleSentiment(percentageChange24h, percentageChange7d);
+        updateHoldingsBoxSentiment(cryptoId, sentimentScore);
 
         setStorageItem('users', JSON.stringify(users));
     } catch (error) {
@@ -4535,10 +4578,15 @@ async function fetchPercentageChanges(cryptoId) {
     const url = `${coinDetailsUrl}${cryptoId}?x_cg_demo_api_key=${getApiKey()}`;
     try {
         const data = await fetchWithFallback(url);
+        const percentageChange24h = data.market_data.price_change_percentage_24h || 0;
         const percentageChange7d = data.market_data.price_change_percentage_7d;
         const percentageChange30d = data.market_data.price_change_percentage_30d;
 
         updatePercentageChangeUI(cryptoId, percentageChange7d, percentageChange30d);
+
+        // Update bull/bear sentiment icons on holdings box
+        const sentimentScore = calculateSimpleSentiment(percentageChange24h, percentageChange7d);
+        updateHoldingsBoxSentiment(cryptoId, sentimentScore);
 
            // Check for threshold cross and update storage if necessary
            const thresholdCrossed = checkThresholdCross(cryptoId, percentageChange7d);
@@ -5200,6 +5248,8 @@ function addCryptoContainer(id, symbol, name, thumb) {
     newContainer.id = `${id}-container`;
 
     newContainer.innerHTML = `
+        <span id="${id}-bear-icon" class="sentiment-icon bear-icon">🐻</span>
+        <span id="${id}-bull-icon" class="sentiment-icon bull-icon">🐂</span>
         <div class="logo-container" id="${id}-logo" onclick="openCandlestickModal('${id}')">
             <img src="${thumb}" alt="${name} Logo">
         </div>
