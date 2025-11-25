@@ -983,6 +983,7 @@ function showAppPage() {
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
@@ -6714,6 +6715,10 @@ async function fetchCryptoCompareCount30d(cryptoName, cryptoSymbol) {
 // Source 4: Reddit Search (via Vercel proxy to avoid CORS)
 async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
     try {
+        // Get user's Reddit API settings
+        const redditSettings = getRedditApiSettings();
+        const hasCredentials = redditSettings.clientId && redditSettings.clientSecret;
+
         const searches = [
             cryptoName,
             `${cryptoName} crypto`,
@@ -6733,7 +6738,12 @@ async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
             try {
                 let url;
                 if (IS_PRODUCTION) {
+                    // Build URL with optional OAuth credentials
                     url = `/api/reddit?q=${encodeURIComponent(query)}&sort=new&t=month&limit=100`;
+                    if (hasCredentials) {
+                        url += `&clientId=${encodeURIComponent(redditSettings.clientId)}`;
+                        url += `&clientSecret=${encodeURIComponent(redditSettings.clientSecret)}`;
+                    }
                 } else {
                     url = `https://old.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&t=month&limit=100`;
                 }
@@ -8762,6 +8772,7 @@ function showCoinGeckoApiSettingsPage() {
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
 
     // Show CoinGecko API settings page
     document.getElementById('coingecko-settings-page').style.display = 'block';
@@ -8981,6 +8992,7 @@ function showApiKeysPage() {
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
 
     // Show API Keys page
     document.getElementById('api-keys-page').style.display = 'block';
@@ -9017,6 +9029,7 @@ function showGoogleApiSettingsPage() {
     document.getElementById('api-keys-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
 
     // Show Google API settings page
     document.getElementById('google-settings-page').style.display = 'block';
@@ -9133,6 +9146,7 @@ function showBraveApiSettingsPage() {
     document.getElementById('api-keys-page').style.display = 'none';
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
 
     // Show Brave API settings page
     document.getElementById('brave-settings-page').style.display = 'block';
@@ -9261,6 +9275,7 @@ function showCryptoCompareApiSettingsPage() {
     document.getElementById('api-keys-page').style.display = 'none';
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
 
     // Show CryptoCompare API settings page
     document.getElementById('cryptocompare-settings-page').style.display = 'block';
@@ -9359,6 +9374,110 @@ window.showCryptoCompareApiSettingsPage = showCryptoCompareApiSettingsPage;
 window.activateCryptoCompareApi = activateCryptoCompareApi;
 window.clearCryptoCompareApiKey = clearCryptoCompareApiKey;
 window.getCryptoCompareApiSettings = getCryptoCompareApiSettings;
+
+// =============================================================================
+// REDDIT API SETTINGS
+// =============================================================================
+
+function showRedditApiSettingsPage() {
+    console.log('Showing Reddit API Settings Page');
+
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+
+    // Hide all other pages
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+
+    document.getElementById('reddit-settings-page').style.display = 'block';
+
+    // Load saved settings
+    const settings = getRedditApiSettings();
+    document.getElementById('reddit-client-id-input').value = settings.clientId || '';
+    document.getElementById('reddit-client-secret-input').value = settings.clientSecret || '';
+    document.getElementById('reddit-api-paid').checked = settings.isPaid || false;
+
+    // Show status
+    updateRedditApiStatus(settings);
+}
+
+function activateRedditApi() {
+    const clientId = document.getElementById('reddit-client-id-input').value.trim();
+    const clientSecret = document.getElementById('reddit-client-secret-input').value.trim();
+    const isPaid = document.getElementById('reddit-api-paid').checked;
+
+    // Save settings (works without credentials for public tier)
+    try {
+        const settings = { clientId, clientSecret, isPaid };
+        localStorage.setItem(`${loggedInUser}_redditApiSettings`, JSON.stringify(settings));
+        console.log('Saved Reddit API settings');
+
+        updateRedditApiStatus(settings);
+
+        if (clientId && clientSecret) {
+            alert('Reddit API credentials activated!\n\nHigher rate limits (100 req/min) are now enabled.');
+        } else {
+            alert('Settings saved.\n\nReddit will use public tier (rate limited).');
+        }
+    } catch (error) {
+        console.error('Error saving Reddit API settings:', error);
+        alert('Error saving API settings. Please try again.');
+    }
+}
+
+function clearRedditApiSettings() {
+    if (!confirm('Are you sure you want to clear Reddit API settings?')) return;
+
+    document.getElementById('reddit-client-id-input').value = '';
+    document.getElementById('reddit-client-secret-input').value = '';
+    document.getElementById('reddit-api-paid').checked = false;
+
+    localStorage.removeItem(`${loggedInUser}_redditApiSettings`);
+
+    updateRedditApiStatus({});
+    alert('Reddit API settings cleared.\n\nWill use public tier.');
+}
+
+function getRedditApiSettings() {
+    if (!loggedInUser) return { clientId: null, clientSecret: null, isPaid: false };
+    try {
+        const saved = localStorage.getItem(`${loggedInUser}_redditApiSettings`);
+        if (saved) return JSON.parse(saved);
+    } catch (e) {
+        console.error('Error loading Reddit API settings:', e);
+    }
+    return { clientId: null, clientSecret: null, isPaid: false };
+}
+
+function updateRedditApiStatus(settings) {
+    const statusDiv = document.getElementById('reddit-api-status');
+    statusDiv.style.display = 'block';
+
+    if (settings.clientId && settings.clientSecret) {
+        statusDiv.style.backgroundColor = '#1a3d1a';
+        statusDiv.style.border = '1px solid #28a745';
+        const tierText = settings.isPaid ? ' (Paid tier)' : ' (Free tier)';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Reddit OAuth credentials configured' + tierText + '</span>';
+    } else {
+        statusDiv.style.backgroundColor = '#1a3d3d';
+        statusDiv.style.border = '1px solid #17a2b8';
+        statusDiv.innerHTML = '<span style="color: #17a2b8;">Using public tier (rate limited - may return 0 results)</span>';
+    }
+}
+
+// Make Reddit functions globally accessible
+window.showRedditApiSettingsPage = showRedditApiSettingsPage;
+window.activateRedditApi = activateRedditApi;
+window.clearRedditApiSettings = clearRedditApiSettings;
+window.getRedditApiSettings = getRedditApiSettings;
 
 // =============================================================================
 // EASYMINING UI TOGGLE FUNCTIONS

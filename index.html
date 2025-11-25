@@ -928,10 +928,15 @@
                         <span class="api-name">CryptoCompare API</span>
                         <span class="api-desc">News mentions (Optional API key)</span>
                     </button>
+
+                    <button onclick="closeApiKeysPage(); showRedditApiSettingsPage();" class="api-hub-button">
+                        <span class="api-name">Reddit API</span>
+                        <span class="api-desc">Social mentions (Optional OAuth)</span>
+                    </button>
                 </div>
 
                 <p style="margin-top: 30px; color: #888; font-size: 13px;">
-                    <strong>Note:</strong> Reddit is used automatically (no API key needed).
+                    <strong>Note:</strong> APIs work without keys but have rate limits. Add keys for better performance.
                 </p>
             </div>
         </div>
@@ -1113,6 +1118,76 @@
 
                 <div style="margin-top: 30px;">
                     <button onclick="clearCryptoCompareApiKey()" class="delete-button">Clear API Key</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> &copy; <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
+    <!-- Reddit API Settings Page -->
+    <div id="reddit-settings-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>Reddit API Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">Reddit API</h3>
+                <p style="margin: 10px 0; color: #666;">Reddit API enables social mentions tracking in the chart modal.</p>
+                <p style="margin: 10px 0; color: #28a745; font-size: 14px;"><strong>Works without API key</strong> (public tier - rate limited)</p>
+                <p style="margin: 10px 0; color: #888; font-size: 14px;">
+                    For better rate limits (100 req/min vs 10 req/min), register an app at <a href="https://www.reddit.com/prefs/apps" target="_blank" style="color: #ffa500;">reddit.com/prefs/apps</a><br>
+                    Select "script" type and use any redirect URI (e.g., http://localhost)
+                </p>
+
+                <!-- Client ID Input -->
+                <div class="input-group">
+                    <label for="reddit-client-id-input">Client ID (Optional):</label>
+                    <div class="api-key-row">
+                        <input type="text" id="reddit-client-id-input" placeholder="Leave empty for public tier">
+                    </div>
+                </div>
+
+                <!-- Client Secret Input -->
+                <div class="input-group">
+                    <label for="reddit-client-secret-input">Client Secret (Optional):</label>
+                    <div class="api-key-row">
+                        <input type="password" id="reddit-client-secret-input" placeholder="Leave empty for public tier">
+                    </div>
+                </div>
+
+                <!-- Free/Paid Toggle -->
+                <div class="input-group" style="margin-top: 15px;">
+                    <label>API Tier:</label>
+                    <label class="api-tier-toggle">
+                        <span class="tier-label tier-free">Free</span>
+                        <input type="checkbox" id="reddit-api-paid">
+                        <span class="tier-slider"></span>
+                        <span class="tier-label tier-paid">Paid</span>
+                    </label>
+                </div>
+
+                <!-- Status Display -->
+                <div id="reddit-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;"></div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateRedditApi()" class="activate-button">Activate API</button>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearRedditApiSettings()" class="delete-button">Clear API Settings</button>
                 </div>
             </div>
         </div>
