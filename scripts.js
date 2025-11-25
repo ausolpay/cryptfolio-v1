@@ -9890,6 +9890,91 @@ function displayActivePackages() {
         // Hide controls if all packages fit on one page
         if (carouselControls) carouselControls.style.display = 'none';
     }
+
+    // Validate robot icons on active packages after rendering
+    validateActivePackageRobotIcons();
+}
+
+// Validate and fix flashing robot icons on active packages
+function validateActivePackageRobotIcons() {
+    const container = document.getElementById('active-packages-container');
+    if (!container) return;
+
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+
+    // Only validate if we have auto-buy data
+    if (Object.keys(autoBoughtPackages).length === 0 &&
+        Object.keys(teamAutoBuy).length === 0 &&
+        Object.keys(soloAutoBuy).length === 0) {
+        return;
+    }
+
+    let fixedCount = 0;
+    const packageCards = container.querySelectorAll('.package-card');
+
+    packageCards.forEach(card => {
+        // Get package name from card
+        const nameElement = card.querySelector('.package-card-name');
+        if (!nameElement) return;
+
+        // Extract package name (remove block count badge if present)
+        const fullText = nameElement.textContent;
+        const packageName = fullText.split(' 🚀')[0].trim();
+
+        // Check if this card has a flashing rocket (indicates active package)
+        const hasFlashingRocket = card.querySelector('.block-found-indicator.flashing:not(.auto-buy-robot)');
+        if (!hasFlashingRocket) return; // Not an active package
+
+        // Check if robot icon already exists
+        const existingRobot = card.querySelector('.auto-buy-robot');
+        if (existingRobot) return; // Robot already present
+
+        // Check if this package should have a flashing robot
+        // 1. Check if auto-buy is enabled for this package type
+        const isTeamPackage = packageName.toLowerCase().includes('team');
+        const autoBuySettings = isTeamPackage ? teamAutoBuy : soloAutoBuy;
+        const isAutoBuyActive = autoBuySettings[packageName]?.enabled === true;
+
+        // 2. Check if package was auto-bought (various matching methods)
+        let isAutoBought = false;
+
+        // Check by package name in autoBoughtPackages
+        for (const entry of Object.values(autoBoughtPackages)) {
+            if (entry.packageName === packageName) {
+                isAutoBought = true;
+                break;
+            }
+        }
+
+        // For team packages with shares and auto-buy enabled
+        if (isTeamPackage && isAutoBuyActive) {
+            // Check if user has shares (card would show "My Shares" stat)
+            const sharesElement = card.querySelector('.package-card-stat span');
+            const hasShares = Array.from(card.querySelectorAll('.package-card-stat')).some(stat =>
+                stat.textContent.includes('My Shares:')
+            );
+            if (hasShares) {
+                isAutoBought = true;
+            }
+        }
+
+        // Add flashing robot if needed
+        if (isAutoBought || (isAutoBuyActive && isTeamPackage)) {
+            const robotIcon = document.createElement('div');
+            robotIcon.className = 'block-found-indicator flashing auto-buy-robot';
+            robotIcon.title = 'Auto-buy active (mining)';
+            robotIcon.textContent = '🤖';
+            card.insertBefore(robotIcon, card.firstChild);
+            fixedCount++;
+            console.log(`🤖 Added missing flashing robot to active package: ${packageName}`);
+        }
+    });
+
+    if (fixedCount > 0) {
+        console.log(`🤖 Active package validation: Added ${fixedCount} missing robot icons`);
+    }
 }
 
 function updateStats() {
