@@ -178,6 +178,94 @@ body.light-mode .crypto-container p {
     50% { opacity: 0.4; transform: scale(1.15); }
 }
 
+/* Mini RSI Bar - Compact version for crypto boxes */
+.mini-rsi-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0 0 8px 8px;
+    height: 16px;
+    box-sizing: content-box;
+}
+
+.mini-rsi-label {
+    font-size: 7px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 22px;
+    text-align: center;
+}
+
+.mini-rsi-label.sell {
+    color: #4caf50;
+}
+
+.mini-rsi-label.buy {
+    color: #f44336;
+}
+
+.mini-rsi-track {
+    flex: 1;
+    height: 8px;
+    position: relative;
+    border-radius: 4px;
+    overflow: visible;
+}
+
+.mini-rsi-gradient {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(to right,
+        #2e7d32 0%,
+        #4caf50 15%,
+        #8bc34a 30%,
+        #ffeb3b 45%,
+        #ff9800 60%,
+        #f44336 75%,
+        #b71c1c 100%
+    );
+}
+
+.mini-rsi-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    left: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: left 0.3s ease-out;
+}
+
+.mini-rsi-value {
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    font-size: 8px;
+    font-weight: bold;
+    padding: 1px 4px;
+    border-radius: 3px;
+    min-width: 16px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Light mode adjustments */
+body.light-mode .mini-rsi-bar {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .mini-rsi-value {
+    background: rgba(0, 0, 0, 0.75);
+}
+
 input[type="number"], .add-crypto input[type="text"], .login-form input[type="email"], .login-form input[type="password"], .register-form input[type="text"], .register-form input[type="email"], .register-form input[type="tel"], .register-form input[type="password"] {
     width: calc(100% - 20px); /* Full width minus the margins */
     max-width: 500px;

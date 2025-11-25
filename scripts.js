@@ -287,10 +287,43 @@ function switchApiKey() {
 // Store sentiment scores per crypto (populated when modal opens with full 8-indicator calculation)
 const storedSentimentScores = {};
 
+// Store RSI values per crypto (populated during sentiment fetch)
+const storedRSIValues = {};
+
 // Store full sentiment score for a crypto (called from modal sentiment calculation)
 function storeCryptoSentiment(cryptoId, score) {
     storedSentimentScores[cryptoId] = score;
     console.log(`📊 Stored sentiment for ${cryptoId}: ${score.toFixed(1)}`);
+}
+
+// Store RSI value for a crypto
+function storeCryptoRSI(cryptoId, rsi) {
+    storedRSIValues[cryptoId] = rsi;
+    updateMiniRSIBar(cryptoId, rsi);
+}
+
+// Get stored RSI value for a crypto (returns null if not calculated yet)
+function getStoredRSI(cryptoId) {
+    return storedRSIValues[cryptoId] || null;
+}
+
+/**
+ * Update mini RSI bar on a crypto box
+ * @param {string} cryptoId - The crypto ID (e.g., 'bitcoin')
+ * @param {number} rsi - RSI value (0-100)
+ */
+function updateMiniRSIBar(cryptoId, rsi) {
+    const indicator = document.getElementById(`${cryptoId}-rsi-indicator`);
+    const valueDisplay = document.getElementById(`${cryptoId}-rsi-value`);
+
+    if (!indicator || !valueDisplay) return;
+
+    // Position indicator (0-100 maps to 0%-100%)
+    const position = Math.max(0, Math.min(100, rsi));
+    indicator.style.left = `${position}%`;
+
+    // Update value display
+    valueDisplay.textContent = Math.round(rsi);
 }
 
 // Get stored sentiment score for a crypto (returns null if not calculated yet)
@@ -410,6 +443,9 @@ async function fetchAllCryptoSentiments() {
 
             // Calculate full sentiment using all 8 indicators
             const sentimentResult = calculateMarketSentiment(coinData, rsi);
+
+            // Store RSI and update mini RSI bar
+            storeCryptoRSI(crypto.id, rsi);
 
             // Store and update icon
             storeCryptoSentiment(crypto.id, sentimentResult.score);
@@ -5583,6 +5619,16 @@ function addCryptoContainer(id, symbol, name, thumb) {
         <button style="margin-bottom: 15px;" onclick="updateHoldings('${id}')">Update Holdings</button>
         <button style="margin-bottom: 15px;" class="delete-button" onclick="showDeleteModal('${id}-container', '${id}')">Delete</button>
         <p>7D: <span id="${id}-triangle-7d" class="triangle"></span><span id="${id}-percentage-change-7d">0.00%</span> 30D: <span id="${id}-triangle-30d" class="triangle"></span><span id="${id}-percentage-change-30d">0.00%</span></p>
+        <div class="mini-rsi-bar" id="${id}-mini-rsi">
+            <span class="mini-rsi-label sell">SELL</span>
+            <div class="mini-rsi-track">
+                <div class="mini-rsi-gradient"></div>
+                <div class="mini-rsi-indicator" id="${id}-rsi-indicator">
+                    <span class="mini-rsi-value" id="${id}-rsi-value">--</span>
+                </div>
+            </div>
+            <span class="mini-rsi-label buy">BUY</span>
+        </div>
     `;
 
     document.getElementById('crypto-containers').appendChild(newContainer);
@@ -6574,6 +6620,10 @@ function syncModalLivePrice() {
             if (storedOHLCData && storedOHLCData.length >= 15) {
                 const realtimeRSI = calculateRealTimeRSI(priceUsd);
                 updateAllRSIDisplays(realtimeRSI);
+                // Also update mini RSI bar on the holdings box
+                if (currentCryptoId) {
+                    storeCryptoRSI(currentCryptoId, realtimeRSI);
+                }
             }
         }
     }
