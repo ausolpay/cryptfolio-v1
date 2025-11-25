@@ -979,6 +979,10 @@ function showEasyMiningSettingsPage() {
     document.getElementById('autoClearActiveShares').checked = savedSettings.autoClearActiveShares || false; // Default OFF
     document.getElementById('autoClearThreshold').value = savedSettings.autoClearThreshold || 50; // Default 50%
     document.getElementById('teamBailIncludeManual').checked = savedSettings.teamBailIncludeManual || false; // Default OFF
+
+    // Load Reward & Bail settings
+    document.getElementById('rewardAndBailToggle').checked = savedSettings.rewardAndBail || false; // Default OFF
+    document.getElementById('rewardAndBailIncludeManual').checked = savedSettings.rewardAndBailIncludeManual || false; // Default OFF
 }
 
 // =============================================================================
@@ -8393,6 +8397,8 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.autoClearActiveShares = document.getElementById('autoClearActiveShares')?.checked || false;
     easyMiningSettings.autoClearThreshold = parseInt(document.getElementById('autoClearThreshold')?.value) || 50;
     easyMiningSettings.teamBailIncludeManual = document.getElementById('teamBailIncludeManual')?.checked || false;
+    easyMiningSettings.rewardAndBail = document.getElementById('rewardAndBailToggle')?.checked || false;
+    easyMiningSettings.rewardAndBailIncludeManual = document.getElementById('rewardAndBailIncludeManual')?.checked || false;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -8994,6 +9000,9 @@ async function fetchEasyMiningData() {
 
         // Check for auto-clear active shares based on completion threshold
         checkAutoClearActiveShares();
+
+        // Check for Reward & Bail (clear shares 1min after block found)
+        checkRewardAndBail();
 
         // ✅ Auto-add crypto boxes for active packages (ensures live prices are used)
         await autoAddCryptoBoxesForActivePackages();
@@ -16949,6 +16958,129 @@ function checkAutoClearActiveShares() {
                     // Remove cleared flag if failed, so it can retry
                     localStorage.removeItem(clearedKey);
                 });
+            }
+        }
+    });
+}
+
+// Storage for tracking when blocks were found for Reward & Bail feature
+const rewardAndBailBlockTimes = {};
+
+// Auto-buy Bot - Reward & Bail (TP): Clear shares 1 minute after a block reward is found
+function checkRewardAndBail() {
+    // Check if feature is enabled
+    if (!easyMiningSettings.rewardAndBail) {
+        return;
+    }
+
+    const includeManual = easyMiningSettings.rewardAndBailIncludeManual || false;
+    console.log(`🔍 Checking Reward & Bail (includeManual: ${includeManual})`);
+
+    // Get auto-bought packages tracking
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+
+    // Iterate through active packages
+    easyMiningData.activePackages.forEach(pkg => {
+        // Only process active TEAM packages
+        if (!pkg.isTeam || !pkg.active) {
+            return;
+        }
+
+        const packageId = pkg.apiData?.id || pkg.id;
+        const hasBlockFound = pkg.blockFound === true;
+        const myShares = getMyTeamShares(packageId) || 0;
+
+        // Skip if no shares
+        if (myShares === 0) {
+            return;
+        }
+
+        // Check if block was found
+        if (hasBlockFound) {
+            // Record the time when we first detected the block
+            if (!rewardAndBailBlockTimes[packageId]) {
+                rewardAndBailBlockTimes[packageId] = Date.now();
+                console.log(`🎯 Reward & Bail: Block found for ${pkg.name}, starting 1 minute timer`);
+            }
+
+            // Check if 1 minute has passed since block was found
+            const timeSinceBlock = Date.now() - rewardAndBailBlockTimes[packageId];
+            const oneMinute = 60 * 1000; // 60 seconds
+
+            if (timeSinceBlock >= oneMinute) {
+                // Check if package was auto-bought (unless includeManual is enabled)
+                let wasAutoBought = null;
+                let matchMethod = 'none';
+
+                if (!includeManual) {
+                    // Level 1: Direct ID match
+                    wasAutoBought = autoBoughtPackages[packageId];
+                    if (wasAutoBought) matchMethod = 'direct-id';
+
+                    // Level 2: Check orderId/ticketId fields
+                    if (!wasAutoBought) {
+                        wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                            entry.orderId === packageId || entry.ticketId === packageId
+                        );
+                        if (wasAutoBought) matchMethod = 'orderId-ticketId';
+                    }
+
+                    // Level 3: Match by package name + recent purchase (within 7 days)
+                    if (!wasAutoBought && pkg.active) {
+                        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+                        wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                            entry.type === 'team' &&
+                            entry.packageName === pkg.name &&
+                            entry.timestamp > sevenDaysAgo
+                        );
+                        if (wasAutoBought) matchMethod = 'name-timestamp';
+                    }
+
+                    // Level 4: Check sharedTicket.id
+                    if (!wasAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+                        const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+                        wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                            entry.ticketId === sharedTicketId
+                        );
+                        if (wasAutoBought) matchMethod = 'sharedTicket-id';
+                    }
+
+                    // Skip if not auto-bought (and includeManual is off)
+                    if (!wasAutoBought) {
+                        console.log(`⏭️ Skipping Reward & Bail for ${pkg.name} - was manually bought`);
+                        return;
+                    }
+                } else {
+                    matchMethod = 'include-manual';
+                }
+
+                // Check if already cleared to prevent duplicates
+                const clearedKey = `${loggedInUser}_rewardAndBail_${packageId}`;
+                const alreadyCleared = localStorage.getItem(clearedKey);
+
+                if (!alreadyCleared) {
+                    console.log(`🤖 Reward & Bail triggered for ${pkg.name}:`, {
+                        timeSinceBlock: `${Math.round(timeSinceBlock / 1000)}s`,
+                        myShares: myShares,
+                        matchMethod: matchMethod
+                    });
+
+                    // Mark as cleared to prevent duplicate clears
+                    localStorage.setItem(clearedKey, 'true');
+
+                    // Call auto-clear function
+                    autoClearTeamShares(packageId, pkg.name).catch(err => {
+                        console.error('Reward & Bail failed:', err);
+                        // Remove cleared flag if failed, so it can retry
+                        localStorage.removeItem(clearedKey);
+                    });
+
+                    // Clean up the block time tracking
+                    delete rewardAndBailBlockTimes[packageId];
+                }
+            } else {
+                const remainingSeconds = Math.round((oneMinute - timeSinceBlock) / 1000);
+                console.log(`⏳ Reward & Bail: Waiting ${remainingSeconds}s more before clearing ${pkg.name}`);
             }
         }
     });
