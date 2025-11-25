@@ -912,10 +912,64 @@ canvas:active {
     display: flex;
     justify-content: space-between;
     margin-top: 5px;
+    align-items: center;
   }
 
   .bar-head {
     margin-top: 30px;
+  }
+
+  /* Score badge in center of sentiment bar */
+  .sentiment-score-badge {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 1;
+  }
+
+  /* Overall sentiment label styling */
+  .sentiment-overall-label {
+    font-weight: bold;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sentiment-overall-label.extreme-bullish {
+    color: #00c853;
+  }
+
+  .sentiment-overall-label.very-bullish {
+    color: #2b5a60;
+  }
+
+  .sentiment-overall-label.neutral {
+    color: #888;
+  }
+
+  .sentiment-overall-label.very-bearish {
+    color: #982b42;
+  }
+
+  .sentiment-overall-label.extreme-bearish {
+    color: #b71c1c;
+  }
+
+  /* Dark mode adjustments for sentiment */
+  body.dark-mode .sentiment-score-badge {
+    background: rgba(255, 255, 255, 0.9);
+    color: #121212;
+  }
+
+  body.dark-mode .sentiment-overall-label.neutral {
+    color: #aaa;
   }
 
 /* CSS to align data to the right and keep the titles bold */

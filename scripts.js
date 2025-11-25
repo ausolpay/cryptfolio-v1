@@ -6053,7 +6053,7 @@ async function fetchNewsAndRedditData(cryptoName, cryptoSymbol) {
 // Function to load data for the specific crypto when the modal is opened
 async function loadCryptoDataForModal(coinId) {
     fetchCryptoInfo(coinId);   // Pulls detailed info like market cap, FDV, etc.
-    updateSentimentBar(coinId);   // Updates the sentiment bar based on CoinGecko sentiment
+    fetchAndCalculateAdvancedSentiment(coinId);   // Advanced sentiment with RSI + indicators
 
     // Fetch and display the number of news articles
     const totalNewsArticles = await fetchNewsArticles(coinId);
@@ -6297,6 +6297,300 @@ async function updateSentimentBar(cryptoId) {
 
     // Update every minute
     setTimeout(() => updateSentimentBar(cryptoId), 30000);
+}
+
+// =============================================================================
+// ADVANCED MARKET SENTIMENT SYSTEM
+// =============================================================================
+
+/**
+ * Calculate RSI (Relative Strength Index) from OHLC data
+ * @param {Array} ohlcData - Array of [timestamp, open, high, low, close]
+ * @param {number} period - RSI period (default 14)
+ * @returns {number} RSI value 0-100
+ */
+function calculateRSI(ohlcData, period = 14) {
+    if (!ohlcData || ohlcData.length < period + 1) {
+        console.log('RSI: Insufficient data, returning neutral 50');
+        return 50; // Neutral if insufficient data
+    }
+
+    // Extract close prices (index 4 in CoinGecko OHLC format)
+    const closes = ohlcData.map(candle => candle[4]);
+
+    let gains = 0, losses = 0;
+
+    // Calculate initial average gain/loss
+    for (let i = 1; i <= period; i++) {
+        const change = closes[i] - closes[i - 1];
+        if (change >= 0) gains += change;
+        else losses += Math.abs(change);
+    }
+
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+
+    // Calculate smoothed RSI using Wilder's smoothing method
+    for (let i = period + 1; i < closes.length; i++) {
+        const change = closes[i] - closes[i - 1];
+        avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
+        avgLoss = (avgLoss * (period - 1) + (change < 0 ? Math.abs(change) : 0)) / period;
+    }
+
+    if (avgLoss === 0) return 100;
+    const rs = avgGain / avgLoss;
+    const rsi = 100 - (100 / (1 + rs));
+
+    console.log(`RSI calculated: ${rsi.toFixed(2)} (from ${ohlcData.length} candles)`);
+    return rsi;
+}
+
+/**
+ * Calculate 24h price momentum score (0-100)
+ */
+function calculatePriceMomentum24h(priceChange24h) {
+    // Range: -30% to +30% maps to 0-100
+    const clampedChange = Math.max(-30, Math.min(30, priceChange24h || 0));
+    const score = ((clampedChange + 30) / 60) * 100;
+    return score;
+}
+
+/**
+ * Calculate 7d price momentum score (0-100)
+ */
+function calculatePriceMomentum7d(priceChange7d) {
+    // Range: -50% to +50% maps to 0-100
+    const clampedChange = Math.max(-50, Math.min(50, priceChange7d || 0));
+    const score = ((clampedChange + 50) / 100) * 100;
+    return score;
+}
+
+/**
+ * Calculate 30d price momentum score (0-100)
+ */
+function calculatePriceMomentum30d(priceChange30d) {
+    // Range: -70% to +70% maps to 0-100
+    const clampedChange = Math.max(-70, Math.min(70, priceChange30d || 0));
+    const score = ((clampedChange + 70) / 140) * 100;
+    return score;
+}
+
+/**
+ * Calculate volume to market cap ratio score (0-100)
+ */
+function calculateVolumeScore(volume24h, marketCap) {
+    if (!marketCap || marketCap === 0) return 50; // Neutral if no data
+
+    // Volume/MCap ratio: 0-25% maps to 0-100
+    const volumeRatio = (volume24h / marketCap) * 100;
+    const clampedRatio = Math.max(0, Math.min(25, volumeRatio));
+    const score = (clampedRatio / 25) * 100;
+    return score;
+}
+
+/**
+ * Calculate 24h range position score (0-100)
+ * Where current price sits within the day's range
+ */
+function calculateRangePosition(currentPrice, low24h, high24h) {
+    if (!low24h || !high24h || high24h === low24h) return 50; // Neutral if no data
+
+    const range = high24h - low24h;
+    const positionInRange = (currentPrice - low24h) / range;
+    const score = Math.max(0, Math.min(100, positionInRange * 100));
+    return score;
+}
+
+/**
+ * Calculate ATH/ATL proximity score (0-100)
+ * Closer to ATH = higher score (bullish), closer to ATL = lower score
+ */
+function calculateAthAtlScore(currentPrice, ath, atl) {
+    if (!ath || !atl || ath === atl) return 50; // Neutral if no data
+
+    const totalRange = ath - atl;
+    const positionFromAtl = currentPrice - atl;
+    const score = Math.max(0, Math.min(100, (positionFromAtl / totalRange) * 100));
+    return score;
+}
+
+/**
+ * Calculate community sentiment score (0-100)
+ * Direct mapping of CoinGecko's sentiment_votes_up_percentage
+ */
+function calculateCommunitySentiment(sentimentVotesUp) {
+    return sentimentVotesUp || 50; // Default to neutral
+}
+
+/**
+ * Calculate comprehensive market sentiment score
+ * Combines 8 indicators with weighted scoring
+ * @param {Object} coinData - Full CoinGecko coin data response
+ * @param {number} rsi - Pre-calculated RSI value
+ * @returns {Object} Sentiment analysis result
+ */
+function calculateMarketSentiment(coinData, rsi = 50) {
+    const marketData = coinData?.market_data || {};
+
+    // Calculate individual indicator scores (0-100 each)
+    const scores = {
+        rsi: rsi,
+        momentum24h: calculatePriceMomentum24h(marketData.price_change_percentage_24h),
+        momentum7d: calculatePriceMomentum7d(marketData.price_change_percentage_7d),
+        momentum30d: calculatePriceMomentum30d(marketData.price_change_percentage_30d),
+        volume: calculateVolumeScore(marketData.total_volume?.aud || 0, marketData.market_cap?.aud || 0),
+        rangePosition: calculateRangePosition(
+            marketData.current_price?.aud || 0,
+            marketData.low_24h?.aud || 0,
+            marketData.high_24h?.aud || 0
+        ),
+        athAtl: calculateAthAtlScore(
+            marketData.current_price?.aud || 0,
+            marketData.ath?.aud || 0,
+            marketData.atl?.aud || 0
+        ),
+        community: calculateCommunitySentiment(coinData?.sentiment_votes_up_percentage)
+    };
+
+    // Apply weights (total = 100%)
+    const weights = {
+        rsi: 0.20,          // 20%
+        momentum24h: 0.20,  // 20%
+        momentum7d: 0.15,   // 15%
+        momentum30d: 0.10,  // 10%
+        volume: 0.12,       // 12%
+        rangePosition: 0.12,// 12%
+        athAtl: 0.08,       // 8%
+        community: 0.03     // 3%
+    };
+
+    // Calculate weighted total (0-100)
+    let totalScore = 0;
+    for (const [key, score] of Object.entries(scores)) {
+        totalScore += score * weights[key];
+    }
+
+    // Determine sentiment label
+    let label, labelClass;
+    if (totalScore >= 75) {
+        label = 'Extreme Bullish';
+        labelClass = 'extreme-bullish';
+    } else if (totalScore >= 60) {
+        label = 'Very Bullish';
+        labelClass = 'very-bullish';
+    } else if (totalScore >= 40) {
+        label = 'Neutral';
+        labelClass = 'neutral';
+    } else if (totalScore >= 25) {
+        label = 'Very Bearish';
+        labelClass = 'very-bearish';
+    } else {
+        label = 'Extreme Bearish';
+        labelClass = 'extreme-bearish';
+    }
+
+    console.log(`📊 Sentiment calculated: ${label} (${totalScore.toFixed(1)})`);
+    console.log(`   RSI: ${scores.rsi.toFixed(1)}, 24h: ${scores.momentum24h.toFixed(1)}, 7d: ${scores.momentum7d.toFixed(1)}`);
+    console.log(`   Vol: ${scores.volume.toFixed(1)}, Range: ${scores.rangePosition.toFixed(1)}, ATH: ${scores.athAtl.toFixed(1)}`);
+
+    return {
+        score: totalScore,
+        bullishPercent: totalScore,
+        bearishPercent: 100 - totalScore,
+        label: label,
+        labelClass: labelClass,
+        indicators: scores
+    };
+}
+
+/**
+ * Update sentiment UI with calculated data
+ * @param {Object} sentimentResult - Result from calculateMarketSentiment()
+ */
+function updateSentimentUI(sentimentResult) {
+    const { bullishPercent, bearishPercent, score, label, labelClass } = sentimentResult;
+
+    // Update main bar widths
+    const bearishBar = document.getElementById('bearish-bar');
+    const bullishBar = document.getElementById('bullish-bar');
+    if (bearishBar) bearishBar.style.width = `${bearishPercent}%`;
+    if (bullishBar) bullishBar.style.width = `${bullishPercent}%`;
+
+    // Update percentage labels
+    const bearishLabel = document.getElementById('bearish-label');
+    const bullishLabel = document.getElementById('bullish-label');
+    if (bearishLabel) bearishLabel.innerText = `Bearish: ${Math.round(bearishPercent)}%`;
+    if (bullishLabel) bullishLabel.innerText = `Bullish: ${Math.round(bullishPercent)}%`;
+
+    // Update score badge
+    const scoreBadge = document.getElementById('sentiment-score-badge');
+    if (scoreBadge) {
+        scoreBadge.innerText = Math.round(score);
+    }
+
+    // Update overall label
+    const overallLabel = document.getElementById('sentiment-overall-label');
+    if (overallLabel) {
+        overallLabel.innerText = label;
+        overallLabel.className = `sentiment-overall-label ${labelClass}`;
+    }
+
+    console.log(`Sentiment UI updated: ${label} (${Math.round(bullishPercent)}% bullish)`);
+}
+
+/**
+ * Fetch OHLC data and calculate advanced sentiment
+ * @param {string} cryptoId - CoinGecko crypto ID
+ * @param {Object} coinData - Already fetched coin data (optional)
+ */
+async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
+    try {
+        // Fetch OHLC data for RSI calculation (14+ candles needed)
+        const apiKey = getApiKey();
+        const ohlcUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&x_cg_demo_api_key=${apiKey}`;
+
+        let ohlcData = [];
+        try {
+            const ohlcResponse = await fetch(ohlcUrl);
+            if (ohlcResponse.ok) {
+                ohlcData = await ohlcResponse.json();
+                console.log(`Fetched ${ohlcData.length} OHLC candles for RSI`);
+            }
+        } catch (ohlcError) {
+            console.warn('Could not fetch OHLC data for RSI, using default:', ohlcError);
+        }
+
+        // Calculate RSI from OHLC data
+        const rsi = calculateRSI(ohlcData);
+
+        // If coinData not provided, fetch it
+        if (!coinData) {
+            const coinUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`;
+            const coinResponse = await fetch(coinUrl);
+            if (coinResponse.ok) {
+                coinData = await coinResponse.json();
+            } else {
+                throw new Error('Failed to fetch coin data');
+            }
+        }
+
+        // Calculate and update sentiment
+        const sentimentResult = calculateMarketSentiment(coinData, rsi);
+        updateSentimentUI(sentimentResult);
+
+        return sentimentResult;
+    } catch (error) {
+        console.error('Error calculating advanced sentiment:', error);
+        // Fallback to neutral
+        updateSentimentUI({
+            score: 50,
+            bullishPercent: 50,
+            bearishPercent: 50,
+            label: 'Neutral',
+            labelClass: 'neutral',
+            indicators: {}
+        });
+    }
 }
 
 
@@ -6955,7 +7249,7 @@ async function openCandlestickModal(cryptoId) {
 
         // Fetch and display detailed info and sentiment data
         await fetchCryptoInfo(cryptoId);  // Market data
-        await fetchCryptoSentiment(cryptoId);  // Sentiment data
+        await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + 7 other indicators
         await fetchNewsAndRedditData(cryptoName);  // Fetch news and Reddit mentions using crypto name
         
         startAutoUpdateCryptoInfo(cryptoId);
@@ -6968,7 +7262,7 @@ async function openCandlestickModal(cryptoId) {
         cryptoInfoInterval = setInterval(async () => {
             if (isModalOpen && currentCryptoId === cryptoId) {
                 await fetchCryptoInfo(cryptoId);
-                await fetchCryptoSentiment(cryptoId);
+                await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + indicators
                 await fetchNewsAndRedditData(cryptoName);
             }
         }, 30000); // 30 seconds
