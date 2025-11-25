@@ -189,6 +189,97 @@ function updateHoldingsBoxSentiment(cryptoId, score) {
     // Neutral (40-60): both icons remain hidden
 }
 
+// ============================================================================
+// SENTIMENT PRELOAD SYSTEM - Fetches full 8-indicator sentiment for all cryptos
+// ============================================================================
+
+let sentimentRefreshInterval = null;
+
+// Fetch OHLC data for RSI calculation
+async function fetchOHLCDataForSentiment(cryptoId) {
+    const apiKey = getApiKey();
+    const url = `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&x_cg_demo_api_key=${apiKey}`;
+    try {
+        const response = await fetch(url);
+        return response.ok ? await response.json() : [];
+    } catch (error) {
+        console.warn(`Failed to fetch OHLC for ${cryptoId}:`, error);
+        return [];
+    }
+}
+
+// Fetch coin data for sentiment indicators
+async function fetchCoinDataForSentiment(cryptoId) {
+    const apiKey = getApiKey();
+    const url = `https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`;
+    try {
+        const response = await fetch(url);
+        return response.ok ? await response.json() : null;
+    } catch (error) {
+        console.warn(`Failed to fetch coin data for ${cryptoId}:`, error);
+        return null;
+    }
+}
+
+// Fetch full 8-indicator sentiment for all user's cryptos
+async function fetchAllCryptoSentiments() {
+    if (!loggedInUser || !users[loggedInUser]?.cryptos) return;
+
+    console.log('📊 Fetching full sentiment for all cryptos...');
+
+    for (const crypto of users[loggedInUser].cryptos) {
+        try {
+            // Fetch OHLC for RSI
+            const ohlcData = await fetchOHLCDataForSentiment(crypto.id);
+            const rsi = calculateRSI(ohlcData);
+
+            // Fetch coin data for other indicators
+            const coinData = await fetchCoinDataForSentiment(crypto.id);
+            if (!coinData) {
+                console.warn(`Skipping sentiment for ${crypto.id} - no coin data`);
+                continue;
+            }
+
+            // Calculate full sentiment using all 8 indicators
+            const sentimentResult = calculateMarketSentiment(coinData, rsi);
+
+            // Store and update icon
+            storeCryptoSentiment(crypto.id, sentimentResult.score);
+            updateHoldingsBoxSentiment(crypto.id, sentimentResult.score);
+
+            console.log(`📊 ${crypto.symbol.toUpperCase()}: ${sentimentResult.label} (${sentimentResult.score.toFixed(1)})`);
+
+            // Small delay to avoid rate limiting (500ms between cryptos)
+            await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+            console.error(`Error fetching sentiment for ${crypto.id}:`, error);
+        }
+    }
+
+    console.log('📊 Finished fetching all crypto sentiments');
+}
+
+// Start sentiment refresh cycle (called on app load)
+function startSentimentRefresh() {
+    // Initial fetch after a short delay to let UI load first
+    setTimeout(() => {
+        fetchAllCryptoSentiments();
+    }, 2000);
+
+    // Refresh every 30 seconds
+    sentimentRefreshInterval = setInterval(fetchAllCryptoSentiments, 30000);
+    console.log('📊 Sentiment refresh started (every 30 seconds)');
+}
+
+// Stop sentiment refresh (called on logout)
+function stopSentimentRefresh() {
+    if (sentimentRefreshInterval) {
+        clearInterval(sentimentRefreshInterval);
+        sentimentRefreshInterval = null;
+        console.log('📊 Sentiment refresh stopped');
+    }
+}
+
 // Format holdings with full decimal precision (shows actual decimals stored, with comma separators)
 function formatHoldingsWithFullDecimals(value) {
     if (value === 0) return '0';
@@ -310,6 +401,8 @@ function initializeApp() {
         // Initialize autocomplete for crypto search
         initializeAutocomplete();
 
+        // Start sentiment refresh for holdings box bull/bear icons
+        startSentimentRefresh();
 
         // Initialize the holdings audio toggle
         const holdingsAudioToggle = document.getElementById('holdings-audio-toggle');
@@ -3849,6 +3942,9 @@ function formatPhoneNumber(phone) {
 }
 
 function logout() {
+    // Stop sentiment refresh interval
+    stopSentimentRefresh();
+
     // Close WebSocket connection before logging out
     closeWebSocketIntentionally();
 
