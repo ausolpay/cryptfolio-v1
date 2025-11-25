@@ -6195,7 +6195,7 @@ async function fetchNewsCount30d(cryptoName, cryptoSymbol) {
     return totalArticles;
 }
 
-// Fetch Reddit mentions from last 30 days - FIXED to avoid rate limiting
+// Fetch Reddit mentions from last 30 days - Uses Vercel proxy to avoid CORS
 async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
     try {
         // Simple, targeted searches - sequential to avoid rate limiting
@@ -6217,19 +6217,19 @@ async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
             if (!query || query.length < 2) continue;
 
             try {
-                // Search ALL of Reddit (no subreddit restriction), last month (30 days)
-                const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&t=month&limit=100`;
+                // Use Vercel proxy in production to avoid CORS issues
+                let url;
+                if (IS_PRODUCTION) {
+                    url = `/api/reddit?q=${encodeURIComponent(query)}&sort=new&t=month&limit=100`;
+                } else {
+                    // Direct call for local development
+                    url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&t=month&limit=100`;
+                }
+
                 const response = await fetch(url);
 
                 if (!response.ok) {
                     console.warn(`Reddit search failed for "${query}":`, response.status);
-                    continue;
-                }
-
-                // Check if response is JSON (Reddit sometimes returns HTML when blocked)
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    console.warn(`Reddit returned non-JSON for "${query}"`);
                     continue;
                 }
 
