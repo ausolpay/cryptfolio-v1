@@ -978,6 +978,7 @@ function showEasyMiningSettingsPage() {
     // Load auto-clear active shares settings
     document.getElementById('autoClearActiveShares').checked = savedSettings.autoClearActiveShares || false; // Default OFF
     document.getElementById('autoClearThreshold').value = savedSettings.autoClearThreshold || 50; // Default 50%
+    document.getElementById('teamBailIncludeManual').checked = savedSettings.teamBailIncludeManual || false; // Default OFF
 }
 
 // =============================================================================
@@ -8391,6 +8392,7 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.autoBuyTgSafeHold = document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked;
     easyMiningSettings.autoClearActiveShares = document.getElementById('autoClearActiveShares')?.checked || false;
     easyMiningSettings.autoClearThreshold = parseInt(document.getElementById('autoClearThreshold')?.value) || 50;
+    easyMiningSettings.teamBailIncludeManual = document.getElementById('teamBailIncludeManual')?.checked || false;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -16848,7 +16850,7 @@ async function autoClearTeamShares(packageId, packageName) {
     }
 }
 
-// Auto-buy Bot - Team No Reward Bail: Clear shares from auto-bought team packages that cross completion threshold without finding a block
+// Auto-buy Bot - Team Bail: Clear shares from team packages that cross completion threshold
 function checkAutoClearActiveShares() {
     // Check if feature is enabled
     if (!easyMiningSettings.autoClearActiveShares) {
@@ -16856,7 +16858,8 @@ function checkAutoClearActiveShares() {
     }
 
     const threshold = easyMiningSettings.autoClearThreshold || 50;
-    console.log(`🔍 Checking Team No Reward Bail (threshold: ${threshold}%)`);
+    const includeManual = easyMiningSettings.teamBailIncludeManual || false;
+    console.log(`🔍 Checking Team Bail (threshold: ${threshold}%, includeManual: ${includeManual})`);
 
     // Get auto-bought packages tracking
     const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
@@ -16870,68 +16873,70 @@ function checkAutoClearActiveShares() {
 
         const packageId = pkg.apiData?.id || pkg.id;
         const progress = pkg.progress || 0;
-        const hasBlockFound = pkg.blockFound === true;
         const myShares = getMyTeamShares(packageId) || 0;
 
-        // Skip if no shares or block was found
-        if (myShares === 0 || hasBlockFound) {
+        // Skip if no shares
+        if (myShares === 0) {
             return;
         }
 
         // Check if progress crosses threshold
         if (progress >= threshold) {
-            // Check if package was auto-bought (same logic as existing auto-clear)
+            // Check if package was auto-bought (unless includeManual is enabled)
             let wasAutoBought = null;
             let matchMethod = 'none';
 
-            // Level 1: Direct ID match
-            wasAutoBought = autoBoughtPackages[packageId];
-            if (wasAutoBought) matchMethod = 'direct-id';
+            if (!includeManual) {
+                // Level 1: Direct ID match
+                wasAutoBought = autoBoughtPackages[packageId];
+                if (wasAutoBought) matchMethod = 'direct-id';
 
-            // Level 2: Check orderId/ticketId fields
-            if (!wasAutoBought) {
-                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                    entry.orderId === packageId || entry.ticketId === packageId
-                );
-                if (wasAutoBought) matchMethod = 'orderId-ticketId';
-            }
+                // Level 2: Check orderId/ticketId fields
+                if (!wasAutoBought) {
+                    wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                        entry.orderId === packageId || entry.ticketId === packageId
+                    );
+                    if (wasAutoBought) matchMethod = 'orderId-ticketId';
+                }
 
-            // Level 3: Match by package name + recent purchase (within 7 days)
-            if (!wasAutoBought && pkg.active) {
-                const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                    entry.type === 'team' &&
-                    entry.packageName === pkg.name &&
-                    entry.timestamp > sevenDaysAgo
-                );
-                if (wasAutoBought) matchMethod = 'name-timestamp';
-            }
+                // Level 3: Match by package name + recent purchase (within 7 days)
+                if (!wasAutoBought && pkg.active) {
+                    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+                    wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                        entry.type === 'team' &&
+                        entry.packageName === pkg.name &&
+                        entry.timestamp > sevenDaysAgo
+                    );
+                    if (wasAutoBought) matchMethod = 'name-timestamp';
+                }
 
-            // Level 4: Check sharedTicket.id
-            if (!wasAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
-                const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
-                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                    entry.ticketId === sharedTicketId
-                );
-                if (wasAutoBought) matchMethod = 'sharedTicket-id';
-            }
+                // Level 4: Check sharedTicket.id
+                if (!wasAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+                    const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+                    wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                        entry.ticketId === sharedTicketId
+                    );
+                    if (wasAutoBought) matchMethod = 'sharedTicket-id';
+                }
 
-            // Only auto-clear if package was auto-bought
-            if (!wasAutoBought) {
-                console.log(`⏭️ Skipping bail for ${pkg.name} - was manually bought`);
-                return;
+                // Skip if not auto-bought (and includeManual is off)
+                if (!wasAutoBought) {
+                    console.log(`⏭️ Skipping bail for ${pkg.name} - was manually bought`);
+                    return;
+                }
+            } else {
+                matchMethod = 'include-manual';
             }
 
             // Check if already cleared to prevent duplicates
-            const clearedKey = `${loggedInUser}_teamNoRewardBail_${packageId}`;
+            const clearedKey = `${loggedInUser}_teamBail_${packageId}`;
             const alreadyCleared = localStorage.getItem(clearedKey);
 
             if (!alreadyCleared) {
-                console.log(`🤖 Team No Reward Bail triggered for ${pkg.name}:`, {
+                console.log(`🤖 Team Bail triggered for ${pkg.name}:`, {
                     progress: `${progress.toFixed(2)}%`,
                     threshold: `${threshold}%`,
                     myShares: myShares,
-                    blockFound: hasBlockFound,
                     matchMethod: matchMethod
                 });
 
@@ -16940,7 +16945,7 @@ function checkAutoClearActiveShares() {
 
                 // Call auto-clear function
                 autoClearTeamShares(packageId, pkg.name).catch(err => {
-                    console.error('Team No Reward Bail failed:', err);
+                    console.error('Team Bail failed:', err);
                     // Remove cleared flag if failed, so it can retry
                     localStorage.removeItem(clearedKey);
                 });
