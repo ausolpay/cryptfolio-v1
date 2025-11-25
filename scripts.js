@@ -974,6 +974,10 @@ function showEasyMiningSettingsPage() {
     document.getElementById('auto-buy-cooldown-toggle-page').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
     document.getElementById('auto-clear-team-shares-toggle-page').checked = savedSettings.autoClearTeamShares || false; // Default OFF
     document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked = savedSettings.autoBuyTgSafeHold || false; // Default OFF
+
+    // Load auto-clear active shares settings
+    document.getElementById('autoClearActiveShares').checked = savedSettings.autoClearActiveShares || false; // Default OFF
+    document.getElementById('autoClearThreshold').value = savedSettings.autoClearThreshold || 90; // Default 90%
 }
 
 // =============================================================================
@@ -8342,6 +8346,8 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle-page').checked;
     easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle-page').checked;
     easyMiningSettings.autoBuyTgSafeHold = document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked;
+    easyMiningSettings.autoClearActiveShares = document.getElementById('autoClearActiveShares')?.checked || false;
+    easyMiningSettings.autoClearThreshold = parseInt(document.getElementById('autoClearThreshold')?.value) || 90;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -8940,6 +8946,9 @@ async function fetchEasyMiningData() {
 
         // Check for package status changes (start/complete)
         checkForPackageStatusChanges();
+
+        // Check for auto-clear active shares based on completion threshold
+        checkAutoClearActiveShares();
 
         // ✅ Auto-add crypto boxes for active packages (ensures live prices are used)
         await autoAddCryptoBoxesForActivePackages();
@@ -16794,6 +16803,107 @@ async function autoClearTeamShares(packageId, packageName) {
         console.error('❌ Error auto-clearing team shares:', error);
         // Don't show alert for auto-clear errors (silent failure)
     }
+}
+
+// Check and auto-clear active shares based on completion threshold
+function checkAutoClearActiveShares() {
+    // Check if feature is enabled
+    if (!easyMiningSettings.autoClearActiveShares) {
+        return;
+    }
+
+    const threshold = easyMiningSettings.autoClearThreshold || 90;
+    console.log(`🔍 Checking auto-clear active shares (threshold: ${threshold}%)`);
+
+    // Get auto-bought packages tracking
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+
+    // Iterate through active packages
+    easyMiningData.activePackages.forEach(pkg => {
+        // Only process team packages that are active (not countdown/queued)
+        if (!pkg.isTeam || !pkg.active) {
+            return;
+        }
+
+        const packageId = pkg.apiData?.id || pkg.id;
+        const progress = pkg.progress || 0;
+        const hasBlockFound = pkg.blockFound === true;
+        const myShares = getMyTeamShares(packageId) || 0;
+
+        // Skip if no shares or block was found
+        if (myShares === 0 || hasBlockFound) {
+            return;
+        }
+
+        // Check if progress crosses threshold
+        if (progress >= threshold) {
+            // Check if package was auto-bought (same logic as existing auto-clear)
+            let wasAutoBought = null;
+            let matchMethod = 'none';
+
+            // Level 1: Direct ID match
+            wasAutoBought = autoBoughtPackages[packageId];
+            if (wasAutoBought) matchMethod = 'direct-id';
+
+            // Level 2: Check orderId/ticketId fields
+            if (!wasAutoBought) {
+                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                    entry.orderId === packageId || entry.ticketId === packageId
+                );
+                if (wasAutoBought) matchMethod = 'orderId-ticketId';
+            }
+
+            // Level 3: Match by package name + recent purchase (within 7 days)
+            if (!wasAutoBought && pkg.active) {
+                const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                    entry.type === 'team' &&
+                    entry.packageName === pkg.name &&
+                    entry.timestamp > sevenDaysAgo
+                );
+                if (wasAutoBought) matchMethod = 'name-timestamp';
+            }
+
+            // Level 4: Check sharedTicket.id
+            if (!wasAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
+                const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
+                    entry.ticketId === sharedTicketId
+                );
+                if (wasAutoBought) matchMethod = 'sharedTicket-id';
+            }
+
+            // Only auto-clear if package was auto-bought
+            if (!wasAutoBought) {
+                console.log(`⏭️ Skipping auto-clear active shares for ${pkg.name} - shares were manually bought`);
+                return;
+            }
+
+            // Check if already cleared to prevent duplicates
+            const clearedKey = `${loggedInUser}_autoClearedActiveShares_${packageId}`;
+            const alreadyCleared = localStorage.getItem(clearedKey);
+
+            if (!alreadyCleared) {
+                console.log(`🤖 Auto-clear active shares triggered for ${pkg.name}:`, {
+                    progress: `${progress.toFixed(2)}%`,
+                    threshold: `${threshold}%`,
+                    myShares: myShares,
+                    blockFound: hasBlockFound,
+                    matchMethod: matchMethod
+                });
+
+                // Mark as cleared to prevent duplicate clears
+                localStorage.setItem(clearedKey, 'true');
+
+                // Call auto-clear function
+                autoClearTeamShares(packageId, pkg.name).catch(err => {
+                    console.error('Auto-clear active shares failed:', err);
+                    // Remove cleared flag if failed, so it can retry
+                    localStorage.removeItem(clearedKey);
+                });
+            }
+        }
+    });
 }
 
 // Manual clear shares function with confirmation

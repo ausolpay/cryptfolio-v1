@@ -331,6 +331,17 @@
                         <label for="auto-clear-team-shares-toggle-page">Auto-Clear Team Shares</label>
                     </div>
 
+                    <div class="setting-item" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number" id="autoClearThreshold" min="0" max="100" value="90" placeholder="90"
+                               style="width: 60px; padding: 5px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; text-align: center;">
+                        <span style="color: #888;">%</span>
+                        <label class="switch">
+                            <input type="checkbox" id="autoClearActiveShares">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="autoClearActiveShares">Auto-clear Active Shares</label>
+                    </div>
+
                     <div class="setting-item">
                         <label class="switch">
                             <input type="checkbox" id="auto-buy-tg-safe-hold-toggle-page">
