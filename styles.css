@@ -1377,7 +1377,7 @@ body.light-mode .autocomplete-text {
 
 /* Conversion Calculator Styles */
 .conversion-calculator {
-    margin: 30px 20px 0 20px; /* Match RSI bar side padding */
+    margin: 30px 20px 30px 20px; /* Match RSI bar side padding, with bottom spacing */
     padding: 20px;
     background-color: rgba(30, 30, 30, 0.5);
     border-radius: 8px;
