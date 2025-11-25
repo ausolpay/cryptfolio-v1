@@ -163,8 +163,14 @@ body.light-mode .crypto-container p {
     right: 8px;
 }
 
-.sentiment-flash {
-    animation: sentiment-pulse 0.8s ease-in-out infinite;
+/* Slow flash for Very Bearish / Very Bullish */
+.sentiment-flash-slow {
+    animation: sentiment-pulse 1.5s ease-in-out infinite;
+}
+
+/* Fast flash for Extreme Bearish / Extreme Bullish */
+.sentiment-flash-fast {
+    animation: sentiment-pulse 0.4s ease-in-out infinite;
 }
 
 @keyframes sentiment-pulse {
@@ -1077,15 +1083,23 @@ body:not(.dark-mode) .holdings-info {
   }
 
   .sentiment-overall-label.very-bullish {
-    color: #2b5a60;
+    color: #2b8a3e;
+  }
+
+  .sentiment-overall-label.bullish {
+    color: #4caf50;
   }
 
   .sentiment-overall-label.neutral {
     color: #888;
   }
 
+  .sentiment-overall-label.bearish {
+    color: #f44336;
+  }
+
   .sentiment-overall-label.very-bearish {
-    color: #982b42;
+    color: #c62828;
   }
 
   .sentiment-overall-label.extreme-bearish {

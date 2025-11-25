@@ -166,27 +166,37 @@ function getSentimentForHoldingsBox(cryptoId, change24h, change7d) {
     return calculateSimpleSentiment(change24h, change7d);
 }
 
-// Update bull/bear icons on holdings box based on sentiment score
+// Update bull/bear icons on holdings box based on sentiment score (7 levels)
 function updateHoldingsBoxSentiment(cryptoId, score) {
     const bearIcon = document.getElementById(`${cryptoId}-bear-icon`);
     const bullIcon = document.getElementById(`${cryptoId}-bull-icon`);
 
     if (!bearIcon || !bullIcon) return;
 
-    // Reset state
-    bearIcon.classList.remove('visible', 'sentiment-flash');
-    bullIcon.classList.remove('visible', 'sentiment-flash');
+    // Reset all states
+    bearIcon.classList.remove('visible', 'sentiment-flash-slow', 'sentiment-flash-fast');
+    bullIcon.classList.remove('visible', 'sentiment-flash-slow', 'sentiment-flash-fast');
 
-    if (score < 40) {
-        // Bearish - show bear icon
+    if (score < 15) {
+        // Extreme Bearish - bear icon with FAST flash
+        bearIcon.classList.add('visible', 'sentiment-flash-fast');
+    } else if (score < 30) {
+        // Very Bearish - bear icon with SLOW flash
+        bearIcon.classList.add('visible', 'sentiment-flash-slow');
+    } else if (score < 45) {
+        // Bearish - bear icon SOLID (no flash)
         bearIcon.classList.add('visible');
-        if (score < 25) bearIcon.classList.add('sentiment-flash'); // Very bearish - flash
-    } else if (score > 60) {
-        // Bullish - show bull icon
+    } else if (score >= 85) {
+        // Extreme Bullish - bull icon with FAST flash
+        bullIcon.classList.add('visible', 'sentiment-flash-fast');
+    } else if (score >= 70) {
+        // Very Bullish - bull icon with SLOW flash
+        bullIcon.classList.add('visible', 'sentiment-flash-slow');
+    } else if (score >= 55) {
+        // Bullish - bull icon SOLID (no flash)
         bullIcon.classList.add('visible');
-        if (score > 75) bullIcon.classList.add('sentiment-flash'); // Very bullish - flash
     }
-    // Neutral (40-60): both icons remain hidden
+    // Neutral (45-54): both icons remain hidden
 }
 
 // ============================================================================
@@ -6725,18 +6735,24 @@ function calculateMarketSentiment(coinData, rsi = 50) {
         totalScore += score * weights[key];
     }
 
-    // Determine sentiment label
+    // Determine sentiment label (7 levels)
     let label, labelClass;
-    if (totalScore >= 75) {
+    if (totalScore >= 85) {
         label = 'Extreme Bullish';
         labelClass = 'extreme-bullish';
-    } else if (totalScore >= 60) {
+    } else if (totalScore >= 70) {
         label = 'Very Bullish';
         labelClass = 'very-bullish';
-    } else if (totalScore >= 40) {
+    } else if (totalScore >= 55) {
+        label = 'Bullish';
+        labelClass = 'bullish';
+    } else if (totalScore >= 45) {
         label = 'Neutral';
         labelClass = 'neutral';
-    } else if (totalScore >= 25) {
+    } else if (totalScore >= 30) {
+        label = 'Bearish';
+        labelClass = 'bearish';
+    } else if (totalScore >= 15) {
         label = 'Very Bearish';
         labelClass = 'very-bearish';
     } else {
