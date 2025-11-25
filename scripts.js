@@ -6141,68 +6141,47 @@ function sleep(ms) {
 // MENTIONS (30d) - Combined News + Reddit Search
 // ============================================================================
 
-// Fetch news article count from last 30 days
+// Fetch news article count from last 30 days (free sources only, no API keys)
 async function fetchNewsCount30d(cryptoName, cryptoSymbol) {
-    const newsApiKey = '75211ca24268436da2443ab960ce465b';
+    let totalArticles = 0;
 
+    // Source 1: CryptoCompare (free, no key, crypto-specific)
     try {
-        // Calculate 30 days ago date for NewsAPI
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
-
-        const searches = [
-            cryptoName,
-            cryptoSymbol.toUpperCase()
-        ];
-
-        let totalArticles = 0;
-
-        for (const query of searches) {
-            if (!query || query.length < 2) continue;
-
-            try {
-                const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${fromDate}&language=en&sortBy=relevancy&apiKey=${newsApiKey}`;
-                const response = await fetch(url);
-
-                if (!response.ok) continue;
-
-                const data = await response.json();
-                totalArticles += data.totalResults || 0;
-                console.log(`NewsAPI "${query}" (30d): ${data.totalResults || 0} results`);
-
-            } catch (err) {
-                console.warn(`NewsAPI error for "${query}":`, err);
+        const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN`;
+        const ccResponse = await fetch(ccUrl);
+        if (ccResponse.ok) {
+            const ccData = await ccResponse.json();
+            if (ccData.Data && Array.isArray(ccData.Data)) {
+                const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
+                const recentNews = ccData.Data.filter(item =>
+                    (item.published_on * 1000) > thirtyDaysAgoTs
+                );
+                totalArticles += recentNews.length;
+                console.log(`CryptoCompare (30d) for ${cryptoSymbol}: ${recentNews.length} results`);
             }
         }
-
-        // Also fetch from CryptoCompare (filter to last 30 days)
-        try {
-            const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN`;
-            const ccResponse = await fetch(ccUrl);
-            if (ccResponse.ok) {
-                const ccData = await ccResponse.json();
-                if (ccData.Data && Array.isArray(ccData.Data)) {
-                    // Filter to last 30 days
-                    const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
-                    const recentNews = ccData.Data.filter(item =>
-                        (item.published_on * 1000) > thirtyDaysAgoTs
-                    );
-                    totalArticles += recentNews.length;
-                    console.log(`CryptoCompare (30d): ${recentNews.length} results`);
-                }
-            }
-        } catch (err) {
-            console.warn('CryptoCompare error:', err);
-        }
-
-        // Light deduplication (name and symbol searches overlap)
-        return Math.round(totalArticles * 0.8);
-
-    } catch (error) {
-        console.error('News fetch error:', error);
-        return 0;
+    } catch (err) {
+        console.warn('CryptoCompare error:', err);
     }
+
+    // Source 2: Bing News RSS (free, no key)
+    try {
+        const bingUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cryptoName + ' cryptocurrency')}&format=rss`;
+        const bingResponse = await fetch(bingUrl);
+        if (bingResponse.ok) {
+            const xmlText = await bingResponse.text();
+            // Count <item> tags in RSS feed (simple count without full XML parsing)
+            const itemMatches = xmlText.match(/<item>/g);
+            const bingCount = itemMatches ? itemMatches.length : 0;
+            totalArticles += bingCount;
+            console.log(`Bing News RSS (30d) for ${cryptoName}: ${bingCount} results`);
+        }
+    } catch (err) {
+        console.warn('Bing News RSS error:', err);
+    }
+
+    // Light deduplication
+    return Math.round(totalArticles * 0.85);
 }
 
 // Fetch Reddit mentions from last 30 days - FIXED to avoid rate limiting
@@ -6275,19 +6254,8 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
         mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">Loading...</span>`;
     }
 
-    // Check cache
-    const cachedTotal = localStorage.getItem(cacheKey);
-    const cacheExpiry = localStorage.getItem(cacheExpiryKey);
+    // Always fetch fresh on modal open - no cache skip
     const currentTime = Date.now();
-
-    if (cachedTotal && cacheExpiry && currentTime < parseInt(cacheExpiry)) {
-        console.log('Using cached mentions data for', cryptoName);
-        if (mentionsElement) {
-            mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedTotal}</span>`;
-        }
-        return;
-    }
-
     let totalMentions = 0;
 
     try {
