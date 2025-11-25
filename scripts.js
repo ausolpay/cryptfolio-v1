@@ -47,6 +47,42 @@ function getCurrentApiTier() {
 }
 
 /**
+ * Get the correct API key query parameter based on current tier
+ * Free tier uses: x_cg_demo_api_key
+ * Paid tier uses: x-cg-pro-api-key
+ * @returns {string} The query parameter string with API key
+ */
+function getApiKeyParam() {
+    const apiKey = getApiKey();
+    const tier = getCurrentApiTier();
+    if (tier === 'paid') {
+        return `x-cg-pro-api-key=${apiKey}`;
+    }
+    return `x_cg_demo_api_key=${apiKey}`;
+}
+
+/**
+ * Replace API key parameter in a URL with the correct one for current tier
+ * @param {string} url - URL with existing API key param
+ * @returns {string} URL with corrected API key param
+ */
+function replaceApiKeyParam(url) {
+    const apiKey = getApiKey();
+    const tier = getCurrentApiTier();
+    // Remove old param (either demo or pro)
+    let newUrl = url.replace(/[?&]x_cg_demo_api_key=[^&]*/g, '');
+    newUrl = newUrl.replace(/[?&]x-cg-pro-api-key=[^&]*/g, '');
+    // Clean up any double && or trailing &
+    newUrl = newUrl.replace(/&&/g, '&').replace(/\?&/g, '?').replace(/&$/g, '').replace(/\?$/g, '');
+    // Add correct param
+    const separator = newUrl.includes('?') ? '&' : '?';
+    if (tier === 'paid') {
+        return `${newUrl}${separator}x-cg-pro-api-key=${apiKey}`;
+    }
+    return `${newUrl}${separator}x_cg_demo_api_key=${apiKey}`;
+}
+
+/**
  * Calculate optimal polling intervals based on crypto count and API tier
  * Ensures we never exceed rate limits while maximizing responsiveness
  */
@@ -421,8 +457,7 @@ let sentimentRefreshInterval = null;
 
 // Fetch OHLC data for RSI calculation
 async function fetchOHLCDataForSentiment(cryptoId) {
-    const apiKey = getApiKey();
-    const url = `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&x_cg_demo_api_key=${apiKey}`;
+    const url = `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&${getApiKeyParam()}`;
     try {
         const response = await fetch(url);
         const data = response.ok ? await response.json() : [];
@@ -441,8 +476,7 @@ async function fetchOHLCDataForSentiment(cryptoId) {
 
 // Fetch coin data for sentiment indicators
 async function fetchCoinDataForSentiment(cryptoId) {
-    const apiKey = getApiKey();
-    const url = `https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`;
+    const url = `https://api.coingecko.com/api/v3/coins/${cryptoId}?${getApiKeyParam()}`;
     try {
         const response = await fetch(url);
         return response.ok ? await response.json() : null;
@@ -564,13 +598,14 @@ function formatHoldingsWithFullDecimals(value) {
 async function fetchWithFallback(url) {
     for (let i = 0; i < apiKeys.length; i++) {
         const apiKey = getApiKey();
-        const urlWithApiKey = url.replace(/x_cg_demo_api_key=[^&]*/, `x_cg_demo_api_key=${apiKey}`);
+        // Use replaceApiKeyParam to handle both demo and pro keys
+        const urlWithApiKey = replaceApiKeyParam(url);
         try {
             const response = await fetch(urlWithApiKey);
             if (!response.ok) {
                 throw new Error('Failed to fetch data');
             }
-            console.log(`Successfully fetched data with API key: ${apiKey}`);
+            console.log(`Successfully fetched data with API key: ${apiKey} (${getCurrentApiTier()} tier)`);
             return await response.json();
         } catch (error) {
             console.error(`Error with API key ${apiKey}:`, error);
@@ -583,7 +618,8 @@ async function fetchWithFallback(url) {
 async function fetchWithApiKeyRotation(url) {
     for (let i = 0; i < apiKeys.length; i++) {
         const apiKey = getApiKey();
-        const urlWithApiKey = url.replace(/x_cg_demo_api_key=[^&]*/, `x_cg_demo_api_key=${apiKey}`);
+        // Use replaceApiKeyParam to handle both demo and pro keys
+        const urlWithApiKey = replaceApiKeyParam(url);
         try {
             const response = await fetch(urlWithApiKey);
 
@@ -599,7 +635,7 @@ async function fetchWithApiKeyRotation(url) {
                 throw new Error(`Failed to fetch data: ${response.status}`);
             }
 
-            console.log(`Successfully fetched data with API key: ${apiKey}`);
+            console.log(`Successfully fetched data with API key: ${apiKey} (${getCurrentApiTier()} tier)`);
             return await response.json(); // Return the fetched data if successful
 
         } catch (error) {
@@ -1793,7 +1829,7 @@ async function fetchAndUpdateDepositsBalance() {
         if (!window.packageCryptoPrices?.['btc']?.aud) {
             console.log('💱 Fetching BTC price for AUD conversion...');
             try {
-                const priceUrl = `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=aud&x_cg_demo_api_key=${getApiKey()}`;
+                const priceUrl = `https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=aud&${getApiKeyParam()}`;
                 const priceData = await fetchWithApiKeyRotation(priceUrl);
                 if (priceData?.bitcoin?.aud) {
                     if (!window.packageCryptoPrices) {
@@ -4240,7 +4276,7 @@ function updateRecordDisplay() {
 
 function updateApiUrl() {
     const ids = users[loggedInUser].cryptos.map(crypto => crypto.id);
-    apiUrl = `${baseApiUrl}?ids=${ids.join(',')}&vs_currencies=aud&x_cg_demo_api_key=${getApiKey()}`;
+    apiUrl = `${baseApiUrl}?ids=${ids.join(',')}&vs_currencies=aud&${getApiKeyParam()}`;
     console.log('API URL updated:', apiUrl);
 }
 
@@ -4284,7 +4320,7 @@ function updateHoldings(crypto) {
 
 
 async function fetchPricesFromCoinGecko(cryptoId) {
-    const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoId}&vs_currencies=aud&x_cg_demo_api_key=${getApiKey()}`;
+    const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoId}&vs_currencies=aud&${getApiKeyParam()}`;
 
     try {
         const data = await fetchWithApiKeyRotation(apiUrl);
@@ -4929,7 +4965,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 async function fetchInitialPercentageChanges(cryptoId) {
-    const url = `${coinDetailsUrl}${cryptoId}?x_cg_demo_api_key=${getApiKey()}`;
+    const url = `${coinDetailsUrl}${cryptoId}?${getApiKeyParam()}`;
     try {
         const data = await fetchWithFallback(url);
         const percentageChange24h = data.market_data.price_change_percentage_24h || 0;
@@ -4968,7 +5004,7 @@ async function fetchInitialPercentageChanges(cryptoId) {
 }
 
 async function fetchPercentageChanges(cryptoId) {
-    const url = `${coinDetailsUrl}${cryptoId}?x_cg_demo_api_key=${getApiKey()}`;
+    const url = `${coinDetailsUrl}${cryptoId}?${getApiKeyParam()}`;
     try {
         const data = await fetchWithFallback(url);
         const percentageChange24h = data.market_data.price_change_percentage_24h || 0;
@@ -5611,7 +5647,7 @@ function clearData() {
 
     clearCryptoContainers();
 
-    apiUrl = `${baseApiUrl}?vs_currencies=aud&x_cg_demo_api_key=${getApiKey()}`;
+    apiUrl = `${baseApiUrl}?vs_currencies=aud&${getApiKeyParam()}`;
 
     recordHigh = 0;
     recordLow = Infinity;
@@ -5647,7 +5683,7 @@ async function addCrypto() {
     if (!cryptoId) return;
 
     try {
-        const data = await fetchWithFallback(`${coinDetailsUrl}${cryptoId}?x_cg_demo_api_key=${getApiKey()}`);
+        const data = await fetchWithFallback(`${coinDetailsUrl}${cryptoId}?${getApiKeyParam()}`);
         const { id, symbol, name, image: { thumb } } = data;
 
         const cryptoExists = users[loggedInUser].cryptos.some(crypto => crypto.id === id);
@@ -6254,8 +6290,7 @@ async function fetchUsdtToAudConversionRate() {
     // If 15 minutes have passed, fetch a new rate
     let success = false;
     for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-        const apiKey = getApiKey();
-        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=aud&x_cg_demo_api_key=${apiKey}`;
+        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=aud&${getApiKeyParam()}`;
 
         try {
             const response = await fetch(apiUrl);
@@ -6749,13 +6784,12 @@ async function fetchCryptoInfo(cryptoId) {
 
         // Try fetching CoinGecko data with API key rotation
         for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-            const apiKey = getApiKey();
-            const apiUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`;
+            const apiUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}?${getApiKeyParam()}`;
 
             try {
                 const response = await fetch(apiUrl);
                 if (response.status === 429) { // Too many requests, rotate the API key
-                    console.warn(`API key ${apiKey} hit rate limit. Switching to next key.`);
+                    console.warn(`API key hit rate limit. Switching to next key.`);
                     switchApiKey(); // Rotate to the next key
                     continue; // Retry with the new key
                 } else if (!response.ok) {
@@ -7236,8 +7270,7 @@ function updateRSIDisplay(rsi) {
 async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
     try {
         // Fetch OHLC data for RSI calculation (14+ candles needed)
-        const apiKey = getApiKey();
-        const ohlcUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&x_cg_demo_api_key=${apiKey}`;
+        const ohlcUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&${getApiKeyParam()}`;
 
         let ohlcData = [];
         try {
@@ -7262,7 +7295,7 @@ async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
 
         // If coinData not provided, fetch it
         if (!coinData) {
-            const coinUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`;
+            const coinUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}?${getApiKeyParam()}`;
             const coinResponse = await fetch(coinUrl);
             if (coinResponse.ok) {
                 coinData = await coinResponse.json();
@@ -7883,12 +7916,11 @@ async function openCandlestickModal(cryptoId) {
 
         // Try fetching CoinGecko data with API key rotation
         for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-            const apiKey = getApiKey();
-            const coinGeckoApi = `https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`;
+            const coinGeckoApi = `https://api.coingecko.com/api/v3/coins/${cryptoId}?${getApiKeyParam()}`;
             try {
                 const response = await fetch(coinGeckoApi);
                 if (response.status === 429) { // Too many requests, rotate the API key
-                    console.warn(`API key ${apiKey} hit rate limit. Switching to the next key.`);
+                    console.warn(`API key hit rate limit. Switching to the next key.`);
                     switchApiKey(); // Rotate to the next key
                     continue; // Retry with the new key
                 } else if (!response.ok) {
@@ -13254,8 +13286,7 @@ window.manualTriggerAutoUpdate = async function() {
 async function addCryptoById(cryptoId) {
     try {
         // Fetch crypto details from CoinGecko
-        const apiKey = getApiKey();
-        const response = await fetch(`https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`);
+        const response = await fetch(`https://api.coingecko.com/api/v3/coins/${cryptoId}?${getApiKeyParam()}`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch crypto data');
@@ -14972,7 +15003,7 @@ async function fetchPackageCryptoPrices(packages) {
     try {
         // Fetch all prices in one API call
         const ids = uniqueIds.join(',');
-        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=aud&x_cg_demo_api_key=${getApiKey()}`;
+        const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=aud&${getApiKeyParam()}`;
 
         const data = await fetchWithApiKeyRotation(apiUrl);
         console.log('💰 Fetched price data:', data);
