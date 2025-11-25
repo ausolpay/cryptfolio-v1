@@ -803,6 +803,17 @@ input:checked + .slider:before {
     }
 }
 
+/* Tablet: Reduce chart modal height */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .tradingview-chart {
+        height: 600px; /* Reduced height for tablet */
+    }
+
+    #candlestick-modal .modal-content {
+        max-height: 85vh; /* Limit modal height on tablet */
+    }
+}
+
 .chart-interval-buttons button {
     padding: 5px 10px;
     background-color: #555555;
