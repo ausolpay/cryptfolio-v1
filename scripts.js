@@ -6098,6 +6098,9 @@ function applyRightAlignment() {
 let cryptoInfoInterval = null; // Store the interval ID for refreshing
 let modalLivePriceInterval = null; // Store interval for syncing modal live price with holdings box
 
+// Track previous modal price for flash color
+let previousModalPrice = 0;
+
 // ✅ FIX: Function to sync modal live price with holdings box price
 // Also updates RSI in real-time every 1 second
 function syncModalLivePrice() {
@@ -6110,12 +6113,26 @@ function syncModalLivePrice() {
         const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
 
         if (displayPriceAud > 0) {
-            // Format with commas and 3 decimals: 131,142.123
+            // Format with commas and 4 decimals: 131,142.1234
             const formattedPrice = displayPriceAud.toLocaleString('en-US', {
-                minimumFractionDigits: 3,
-                maximumFractionDigits: 3
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4
             });
-            livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${formattedPrice} AUD</b>`;
+            livePriceElement.innerHTML = `<b>$${formattedPrice} AUD</b>`;
+
+            // Flash green/red on price change
+            if (previousModalPrice > 0 && displayPriceAud !== previousModalPrice) {
+                if (displayPriceAud > previousModalPrice) {
+                    livePriceElement.classList.remove('flash-red');
+                    livePriceElement.classList.add('flash-green');
+                    setTimeout(() => livePriceElement.classList.remove('flash-green'), 1000);
+                } else {
+                    livePriceElement.classList.remove('flash-green');
+                    livePriceElement.classList.add('flash-red');
+                    setTimeout(() => livePriceElement.classList.remove('flash-red'), 1000);
+                }
+            }
+            previousModalPrice = displayPriceAud;
 
             // Update RSI in real-time using live price
             // Convert AUD back to USD (approximate) for RSI calculation
@@ -7483,6 +7500,9 @@ function closeCandlestickModal() {
     // Clear stored OHLC data for RSI
     storedOHLCData = [];
     lastRSIValue = 50;
+
+    // Reset previous modal price for flash tracking
+    previousModalPrice = 0;
 }
 
 
