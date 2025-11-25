@@ -126,8 +126,22 @@ function switchApiKey() {
     console.log(`Switched to API key: ${getApiKey()}`);
 }
 
+// Store sentiment scores per crypto (populated when modal opens with full 8-indicator calculation)
+const storedSentimentScores = {};
+
+// Store full sentiment score for a crypto (called from modal sentiment calculation)
+function storeCryptoSentiment(cryptoId, score) {
+    storedSentimentScores[cryptoId] = score;
+    console.log(`📊 Stored sentiment for ${cryptoId}: ${score.toFixed(1)}`);
+}
+
+// Get stored sentiment score for a crypto (returns null if not calculated yet)
+function getStoredSentiment(cryptoId) {
+    return storedSentimentScores[cryptoId] || null;
+}
+
 // Calculate simple sentiment score from 24h and 7d price changes (0-100)
-// Used for holdings box bull/bear icons - no extra API calls needed
+// Used as fallback when full 8-indicator sentiment hasn't been calculated yet
 function calculateSimpleSentiment(change24h, change7d) {
     const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
@@ -139,6 +153,17 @@ function calculateSimpleSentiment(change24h, change7d) {
 
     // Combined: 60% weight on 24h, 40% on 7d
     return (score24h * 0.6) + (score7d * 0.4);
+}
+
+// Get sentiment score for holdings box - uses stored full sentiment if available, otherwise simple calculation
+function getSentimentForHoldingsBox(cryptoId, change24h, change7d) {
+    // First check if we have a stored full sentiment score (from modal)
+    const storedScore = getStoredSentiment(cryptoId);
+    if (storedScore !== null) {
+        return storedScore;
+    }
+    // Fallback to simple calculation
+    return calculateSimpleSentiment(change24h, change7d);
 }
 
 // Update bull/bear icons on holdings box based on sentiment score
@@ -4565,7 +4590,8 @@ async function fetchInitialPercentageChanges(cryptoId) {
         }
 
         // Update bull/bear sentiment icons on holdings box
-        const sentimentScore = calculateSimpleSentiment(percentageChange24h, percentageChange7d);
+        // Uses stored full 8-indicator sentiment if available, otherwise simple calculation
+        const sentimentScore = getSentimentForHoldingsBox(cryptoId, percentageChange24h, percentageChange7d);
         updateHoldingsBoxSentiment(cryptoId, sentimentScore);
 
         setStorageItem('users', JSON.stringify(users));
@@ -4585,7 +4611,8 @@ async function fetchPercentageChanges(cryptoId) {
         updatePercentageChangeUI(cryptoId, percentageChange7d, percentageChange30d);
 
         // Update bull/bear sentiment icons on holdings box
-        const sentimentScore = calculateSimpleSentiment(percentageChange24h, percentageChange7d);
+        // Uses stored full 8-indicator sentiment if available, otherwise simple calculation
+        const sentimentScore = getSentimentForHoldingsBox(cryptoId, percentageChange24h, percentageChange7d);
         updateHoldingsBoxSentiment(cryptoId, sentimentScore);
 
            // Check for threshold cross and update storage if necessary
@@ -6812,6 +6839,10 @@ async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
         // Calculate and update sentiment
         const sentimentResult = calculateMarketSentiment(coinData, rsi);
         updateSentimentUI(sentimentResult);
+
+        // Store sentiment score and update holdings box icon
+        storeCryptoSentiment(cryptoId, sentimentResult.score);
+        updateHoldingsBoxSentiment(cryptoId, sentimentResult.score);
 
         return sentimentResult;
     } catch (error) {
