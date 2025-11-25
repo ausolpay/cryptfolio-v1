@@ -290,6 +290,9 @@ const storedSentimentScores = {};
 // Store RSI values per crypto (populated during sentiment fetch)
 const storedRSIValues = {};
 
+// Store OHLC data per crypto for real-time RSI calculation
+const storedOHLCDataPerCrypto = {};
+
 // Store full sentiment score for a crypto (called from modal sentiment calculation)
 function storeCryptoSentiment(cryptoId, score) {
     storedSentimentScores[cryptoId] = score;
@@ -324,6 +327,26 @@ function updateMiniRSIBar(cryptoId, rsi) {
 
     // Update value display
     valueDisplay.textContent = Math.round(rsi);
+}
+
+/**
+ * Calculate real-time RSI for any crypto using stored OHLC data + live price
+ * @param {string} cryptoId - The crypto ID (e.g., 'bitcoin')
+ * @param {number} livePrice - Current live price in USD
+ * @returns {number} RSI value 0-100
+ */
+function calculateRealTimeRSIForCrypto(cryptoId, livePrice) {
+    const ohlcData = storedOHLCDataPerCrypto[cryptoId];
+    if (!ohlcData || ohlcData.length < 15 || !livePrice) {
+        return storedRSIValues[cryptoId] || 50; // Return stored or neutral
+    }
+
+    // Create copy and append live price as latest candle
+    const ohlcWithLive = [...ohlcData];
+    ohlcWithLive.push([Date.now(), livePrice, livePrice, livePrice, livePrice]);
+
+    // Calculate RSI
+    return calculateRSI(ohlcWithLive);
 }
 
 // Get stored sentiment score for a crypto (returns null if not calculated yet)
@@ -402,7 +425,14 @@ async function fetchOHLCDataForSentiment(cryptoId) {
     const url = `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&x_cg_demo_api_key=${apiKey}`;
     try {
         const response = await fetch(url);
-        return response.ok ? await response.json() : [];
+        const data = response.ok ? await response.json() : [];
+
+        // Store OHLC data for real-time RSI calculation
+        if (data && data.length > 0) {
+            storedOHLCDataPerCrypto[cryptoId] = data;
+        }
+
+        return data;
     } catch (error) {
         console.warn(`Failed to fetch OHLC for ${cryptoId}:`, error);
         return [];
@@ -5842,9 +5872,9 @@ function startMEXCPricePolling() {
         }
     };
 
-    // Update immediately, then every 2 seconds
+    // Update immediately, then every 1 second
     updatePrices();
-    mexcPricePollingInterval = setInterval(updatePrices, 2000);
+    mexcPricePollingInterval = setInterval(updatePrices, 1000);
 }
 
 function stopMEXCPricePolling() {
@@ -6335,6 +6365,12 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
 
                     updateTotalHoldings(); // Update total holdings on the main page
                     sortContainersByValue(); // Sort based on updated value
+
+                    // Update mini RSI bar with real-time calculation
+                    if (storedOHLCDataPerCrypto[coingeckoId]) {
+                        const realtimeRSI = calculateRealTimeRSIForCrypto(coingeckoId, priceInUsd);
+                        storeCryptoRSI(coingeckoId, realtimeRSI);
+                    }
 
                     // Update candlestick chart with the new live price
                     if (currentCryptoId === coingeckoId) {
