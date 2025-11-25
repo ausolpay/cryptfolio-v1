@@ -6551,6 +6551,38 @@ function updateSentimentUI(sentimentResult) {
 }
 
 /**
+ * Update RSI display in the crypto info table
+ * @param {number} rsi - RSI value (0-100)
+ */
+function updateRSIDisplay(rsi) {
+    const rsiElement = document.getElementById('rsiValue');
+    if (!rsiElement) return;
+
+    const rsiValue = rsi.toFixed(1);
+
+    // Determine RSI condition and color
+    let rsiLabel, rsiColor;
+    if (rsi >= 70) {
+        rsiLabel = 'Overbought';
+        rsiColor = '#e53935'; // Red
+    } else if (rsi >= 60) {
+        rsiLabel = 'High';
+        rsiColor = '#ff9800'; // Orange
+    } else if (rsi >= 40) {
+        rsiLabel = 'Neutral';
+        rsiColor = '#888'; // Gray
+    } else if (rsi >= 30) {
+        rsiLabel = 'Low';
+        rsiColor = '#4caf50'; // Green
+    } else {
+        rsiLabel = 'Oversold';
+        rsiColor = '#2e7d32'; // Dark green
+    }
+
+    rsiElement.innerHTML = `<span class="info-data" style="text-align: right; display: block; color: ${rsiColor};">${rsiValue} <small>(${rsiLabel})</small></span>`;
+}
+
+/**
  * Fetch OHLC data and calculate advanced sentiment
  * @param {string} cryptoId - CoinGecko crypto ID
  * @param {Object} coinData - Already fetched coin data (optional)
@@ -6574,6 +6606,9 @@ async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
 
         // Calculate RSI from OHLC data
         const rsi = calculateRSI(ohlcData);
+
+        // Update RSI display in the table
+        updateRSIDisplay(rsi);
 
         // If coinData not provided, fetch it
         if (!coinData) {
