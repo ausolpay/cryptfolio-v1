@@ -7626,10 +7626,12 @@ async function openCandlestickModal(cryptoId) {
         initializeTradingViewChart(symbol, currentChartInterval);
         modal.style.display = 'block';
 
-        // Fetch and display detailed info and sentiment data
-        await fetchCryptoInfo(cryptoId);  // Market data
-        await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + 7 other indicators
-        await fetchMentions30d(cryptoName, symbol.toUpperCase());  // Fetch combined mentions (30d) from news and Reddit
+        // Fetch and display detailed info and sentiment data - ALL IN PARALLEL for faster loading
+        await Promise.all([
+            fetchCryptoInfo(cryptoId),
+            fetchAndCalculateAdvancedSentiment(cryptoId),
+            fetchMentions30d(cryptoName, symbol.toUpperCase())
+        ]);
         
         startAutoUpdateCryptoInfo(cryptoId);
         
@@ -7640,9 +7642,11 @@ async function openCandlestickModal(cryptoId) {
         if (cryptoInfoInterval) clearInterval(cryptoInfoInterval);
         cryptoInfoInterval = setInterval(async () => {
             if (isModalOpen && currentCryptoId === cryptoId) {
-                await fetchCryptoInfo(cryptoId);
-                await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + indicators
-                await fetchMentions30d(cryptoName, symbol.toUpperCase());
+                await Promise.all([
+                    fetchCryptoInfo(cryptoId),
+                    fetchAndCalculateAdvancedSentiment(cryptoId)
+                ]);
+                // Note: Mentions only loads on modal open (cached for 5 min), not on refresh
             }
         }, 30000); // 30 seconds
 
