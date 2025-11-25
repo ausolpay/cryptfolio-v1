@@ -6141,11 +6141,11 @@ function sleep(ms) {
 // MENTIONS (30d) - Combined News + Reddit Search
 // ============================================================================
 
-// Fetch news article count from last 30 days (free sources only, no API keys)
+// Fetch news article count from last 30 days (free sources only, no API keys, CORS-friendly)
 async function fetchNewsCount30d(cryptoName, cryptoSymbol) {
     let totalArticles = 0;
 
-    // Source 1: CryptoCompare (free, no key, crypto-specific)
+    // Source 1: CryptoCompare News (free, no key, crypto-specific, CORS enabled)
     try {
         const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN`;
         const ccResponse = await fetch(ccUrl);
@@ -6164,24 +6164,35 @@ async function fetchNewsCount30d(cryptoName, cryptoSymbol) {
         console.warn('CryptoCompare error:', err);
     }
 
-    // Source 2: Bing News RSS (free, no key)
+    // Source 2: CryptoCompare News by search term (searches by name too)
     try {
-        const bingUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cryptoName + ' cryptocurrency')}&format=rss`;
-        const bingResponse = await fetch(bingUrl);
-        if (bingResponse.ok) {
-            const xmlText = await bingResponse.text();
-            // Count <item> tags in RSS feed (simple count without full XML parsing)
-            const itemMatches = xmlText.match(/<item>/g);
-            const bingCount = itemMatches ? itemMatches.length : 0;
-            totalArticles += bingCount;
-            console.log(`Bing News RSS (30d) for ${cryptoName}: ${bingCount} results`);
+        // Search using the crypto name as well for broader coverage
+        const searchUrl = `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=popular`;
+        const searchResponse = await fetch(searchUrl);
+        if (searchResponse.ok) {
+            const searchData = await searchResponse.json();
+            if (searchData.Data && Array.isArray(searchData.Data)) {
+                const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
+                // Filter news that mentions the crypto name or symbol in title/body
+                const nameUpper = cryptoName.toUpperCase();
+                const symbolUpper = cryptoSymbol.toUpperCase();
+                const matchingNews = searchData.Data.filter(item => {
+                    if ((item.published_on * 1000) <= thirtyDaysAgoTs) return false;
+                    const title = (item.title || '').toUpperCase();
+                    const body = (item.body || '').toUpperCase();
+                    return title.includes(nameUpper) || title.includes(symbolUpper) ||
+                           body.includes(nameUpper) || body.includes(symbolUpper);
+                });
+                // Avoid double-counting (some might be in category search too)
+                totalArticles += Math.round(matchingNews.length * 0.5);
+                console.log(`CryptoCompare search (30d) for ${cryptoName}: ${matchingNews.length} matches`);
+            }
         }
     } catch (err) {
-        console.warn('Bing News RSS error:', err);
+        console.warn('CryptoCompare search error:', err);
     }
 
-    // Light deduplication
-    return Math.round(totalArticles * 0.85);
+    return totalArticles;
 }
 
 // Fetch Reddit mentions from last 30 days - FIXED to avoid rate limiting
@@ -6189,11 +6200,14 @@ async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
     try {
         // Simple, targeted searches - sequential to avoid rate limiting
         const searches = [
-            cryptoName,                     // "Mintlayer"
-            cryptoSymbol.toUpperCase(),     // "ML"
-            `${cryptoName} official`,       // "Mintlayer official"
-            `${cryptoName} crypto`          // "Mintlayer crypto"
+            cryptoName,                     // "Bitcoin"
+            `${cryptoName} crypto`,         // "Bitcoin crypto"
+            `${cryptoName} price`           // "Bitcoin price"
         ];
+        // Only add symbol search if it's meaningful (3+ chars to avoid false positives)
+        if (cryptoSymbol && cryptoSymbol.length >= 3) {
+            searches.push(cryptoSymbol.toUpperCase());
+        }
 
         let totalPosts = 0;
         let totalComments = 0;
@@ -6212,18 +6226,25 @@ async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
                     continue;
                 }
 
+                // Check if response is JSON (Reddit sometimes returns HTML when blocked)
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    console.warn(`Reddit returned non-JSON for "${query}"`);
+                    continue;
+                }
+
                 const data = await response.json();
 
-                if (data.data && data.data.children) {
+                if (data && data.data && data.data.children) {
                     data.data.children.forEach(item => {
                         totalPosts++;
-                        totalComments += item.data.num_comments || 0;
+                        totalComments += item.data?.num_comments || 0;
                     });
                     console.log(`Reddit "${query}" (30d): ${data.data.children.length} posts`);
                 }
 
                 // Small delay between requests to avoid rate limiting
-                await new Promise(r => setTimeout(r, 250));
+                await new Promise(r => setTimeout(r, 300));
 
             } catch (err) {
                 console.warn(`Reddit search error for "${query}":`, err);
