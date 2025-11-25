@@ -6478,58 +6478,6 @@ function startAutoUpdateCryptoInfo(cryptoId) {
     }, 30000);  // 30 seconds = 30000 milliseconds
 }
 
-
-// Function to fetch sentiment data from CoinGecko with API key rotation
-async function fetchCryptoSentiment(cryptoId) {
-    let success = false;
-
-    for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-        const apiKey = getApiKey();
-        const apiUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}?x_cg_demo_api_key=${apiKey}`;
-
-        try {
-            const response = await fetch(apiUrl);
-            if (response.status === 429) { // Rate limit hit
-                console.warn(`API key ${apiKey} hit rate limit. Switching to the next key.`);
-                switchApiKey();
-                continue; // Retry with the next key
-            }
-            if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
-
-            const data = await response.json();
-            const sentimentData = data.sentiment_votes_up_percentage || 50; // Default to 50% if no data
-            const bullishPercent = sentimentData;
-            const bearishPercent = 100 - bullishPercent;
-
-            // Update the sentiment bar
-            document.getElementById('bearish-bar').style.width = `${bearishPercent}%`;
-            document.getElementById('bullish-bar').style.width = `${bullishPercent}%`;
-            document.getElementById('bearish-label').innerText = `Bearish: ${Math.round(bearishPercent)}%`;
-            document.getElementById('bullish-label').innerText = `Bullish: ${Math.round(bullishPercent)}%`;
-
-            console.log(`Sentiment updated: Bullish ${bullishPercent}% | Bearish ${bearishPercent}%`);
-
-            success = true;
-            break; // Exit the loop on success
-        } catch (error) {
-            console.error(`Error fetching sentiment data with API key ${apiKey}:`, error);
-            if (attempt === apiKeys.length - 1) {
-                console.error('All API keys failed.');
-                throw new Error('Unable to fetch sentiment data.');
-            }
-            switchApiKey(); // Rotate key if failed
-        }
-    }
-}
-
-// Function to update the sentiment bar every minute
-async function updateSentimentBar(cryptoId) {
-    await fetchCryptoSentiment(cryptoId); // Fetch and display sentiment
-
-    // Update every minute
-    setTimeout(() => updateSentimentBar(cryptoId), 30000);
-}
-
 // =============================================================================
 // ADVANCED MARKET SENTIMENT SYSTEM
 // =============================================================================
@@ -6833,17 +6781,26 @@ function updateSentimentUI(sentimentResult) {
     const scoreBadge = document.getElementById('sentiment-score-badge');
     if (scoreBadge) {
         const oldScore = parseInt(scoreBadge.innerText) || 50;
-        const newScore = Math.round(score);
 
-        if (oldScore !== newScore) {
+        // Show dominant sentiment percentage (matches the label)
+        let displayScore;
+        if (score < 50) {
+            // Bearish - show bearish percentage
+            displayScore = Math.round(bearishPercent);
+        } else {
+            // Bullish - show bullish percentage
+            displayScore = Math.round(bullishPercent);
+        }
+
+        if (oldScore !== displayScore) {
             // Pulse animation when score changes
             scoreBadge.classList.add('updating');
-            scoreBadge.innerText = newScore;
+            scoreBadge.innerText = displayScore;
             setTimeout(() => {
                 scoreBadge.classList.remove('updating');
             }, 300);
         } else {
-            scoreBadge.innerText = newScore;
+            scoreBadge.innerText = displayScore;
         }
     }
 
