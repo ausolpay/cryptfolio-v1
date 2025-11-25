@@ -6090,6 +6090,7 @@ let cryptoInfoInterval = null; // Store the interval ID for refreshing
 let modalLivePriceInterval = null; // Store interval for syncing modal live price with holdings box
 
 // ✅ FIX: Function to sync modal live price with holdings box price
+// Also updates RSI in real-time every 1 second
 function syncModalLivePrice() {
     if (!currentCryptoId || !isModalOpen) return;
 
@@ -6106,6 +6107,16 @@ function syncModalLivePrice() {
                 maximumFractionDigits: 3
             });
             livePriceElement.innerHTML = `<span style="font-weight: normal;">Live Price: </span><b>$${formattedPrice} AUD</b>`;
+
+            // Update RSI in real-time using live price
+            // Convert AUD back to USD (approximate) for RSI calculation
+            const audToUsdRate = 0.65; // Approximate conversion
+            const priceUsd = displayPriceAud * audToUsdRate;
+
+            if (storedOHLCData && storedOHLCData.length >= 15) {
+                const realtimeRSI = calculateRealTimeRSI(priceUsd);
+                updateAllRSIDisplays(realtimeRSI);
+            }
         }
     }
 }
@@ -6302,6 +6313,82 @@ async function updateSentimentBar(cryptoId) {
 // =============================================================================
 // ADVANCED MARKET SENTIMENT SYSTEM
 // =============================================================================
+
+// =============================================================================
+// RSI REAL-TIME UPDATE SYSTEM
+// =============================================================================
+
+// Global storage for OHLC data to enable real-time RSI updates
+let storedOHLCData = [];
+let lastRSIValue = 50;
+
+/**
+ * Calculate RSI with real-time price update
+ * Uses stored OHLC data and appends current live price
+ * @param {number} livePrice - Current live price in USD
+ * @returns {number} RSI value 0-100
+ */
+function calculateRealTimeRSI(livePrice) {
+    if (!storedOHLCData || storedOHLCData.length < 15 || !livePrice) {
+        return lastRSIValue; // Return last known RSI if no data
+    }
+
+    // Create a copy and append live price as latest candle close
+    const ohlcWithLive = [...storedOHLCData];
+    const now = Date.now();
+
+    // Append current price as a new candle [timestamp, open, high, low, close]
+    // Using live price for all OHLC values of the current candle
+    ohlcWithLive.push([now, livePrice, livePrice, livePrice, livePrice]);
+
+    // Calculate RSI with updated data
+    const rsi = calculateRSI(ohlcWithLive);
+    lastRSIValue = rsi;
+
+    return rsi;
+}
+
+/**
+ * Update RSI bar visual display
+ * @param {number} rsi - RSI value (0-100)
+ */
+function updateRSIBar(rsi) {
+    const indicator = document.getElementById('rsi-indicator');
+    const badge = document.getElementById('rsi-score-badge');
+
+    if (!indicator || !badge) return;
+
+    // Position indicator and badge (0-100 maps to 0%-100%)
+    const position = Math.max(0, Math.min(100, rsi));
+    indicator.style.left = `${position}%`;
+    badge.style.left = `${position}%`;
+
+    // Update badge text
+    badge.innerText = rsi.toFixed(1);
+
+    // Update badge color class based on RSI value
+    badge.classList.remove('oversold', 'low', 'neutral', 'high', 'overbought');
+    if (rsi < 30) {
+        badge.classList.add('oversold');
+    } else if (rsi < 40) {
+        badge.classList.add('low');
+    } else if (rsi < 60) {
+        badge.classList.add('neutral');
+    } else if (rsi < 70) {
+        badge.classList.add('high');
+    } else {
+        badge.classList.add('overbought');
+    }
+}
+
+/**
+ * Update both RSI bar and RSI field with current value
+ * @param {number} rsi - RSI value (0-100)
+ */
+function updateAllRSIDisplays(rsi) {
+    updateRSIBar(rsi);
+    updateRSIDisplay(rsi);
+}
 
 /**
  * Calculate RSI (Relative Strength Index) from OHLC data
@@ -6599,6 +6686,9 @@ async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
             if (ohlcResponse.ok) {
                 ohlcData = await ohlcResponse.json();
                 console.log(`Fetched ${ohlcData.length} OHLC candles for RSI`);
+
+                // Store OHLC data globally for real-time RSI updates
+                storedOHLCData = ohlcData;
             }
         } catch (ohlcError) {
             console.warn('Could not fetch OHLC data for RSI, using default:', ohlcError);
@@ -6606,9 +6696,10 @@ async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
 
         // Calculate RSI from OHLC data
         const rsi = calculateRSI(ohlcData);
+        lastRSIValue = rsi;
 
-        // Update RSI display in the table
-        updateRSIDisplay(rsi);
+        // Update RSI display in the table AND the RSI bar
+        updateAllRSIDisplays(rsi);
 
         // If coinData not provided, fetch it
         if (!coinData) {
@@ -7379,6 +7470,10 @@ function closeCandlestickModal() {
         clearInterval(modalLivePriceInterval);
         modalLivePriceInterval = null;
     }
+
+    // Clear stored OHLC data for RSI
+    storedOHLCData = [];
+    lastRSIValue = 50;
 }
 
 

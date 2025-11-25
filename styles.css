@@ -980,6 +980,123 @@ canvas:active {
     color: #aaa;
   }
 
+  /* RSI Bar Styles */
+  .rsi-bar-container {
+    margin-top: 15px;
+    width: 100%;
+    height: 24px;
+    position: relative;
+    border-radius: 12px;
+    overflow: visible;
+  }
+
+  .rsi-bar-gradient {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background: linear-gradient(to right,
+      #2e7d32 0%,      /* Dark green - Oversold */
+      #4caf50 15%,     /* Green */
+      #8bc34a 30%,     /* Light green - entering neutral */
+      #ffeb3b 45%,     /* Yellow - neutral low */
+      #ff9800 60%,     /* Orange - neutral high */
+      #f44336 75%,     /* Red - entering overbought */
+      #b71c1c 100%     /* Dark red - Overbought */
+    );
+  }
+
+  .rsi-indicator {
+    position: absolute;
+    top: -4px;
+    width: 4px;
+    height: 32px;
+    background: white;
+    border: 2px solid #333;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    transition: left 0.3s ease-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .rsi-score-badge {
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    transition: left 0.3s ease-out, background-color 0.3s ease;
+    white-space: nowrap;
+  }
+
+  .rsi-zone-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 11px;
+  }
+
+  .rsi-zone {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+
+  .rsi-zone.oversold {
+    color: #4caf50;
+  }
+
+  .rsi-zone.neutral {
+    color: #ff9800;
+  }
+
+  .rsi-zone.overbought {
+    color: #f44336;
+  }
+
+  .rsi-tick-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+    font-size: 9px;
+    color: #888;
+  }
+
+  /* RSI score badge color based on value */
+  .rsi-score-badge.oversold {
+    background: rgba(46, 125, 50, 0.9);
+  }
+
+  .rsi-score-badge.low {
+    background: rgba(139, 195, 74, 0.9);
+  }
+
+  .rsi-score-badge.neutral {
+    background: rgba(255, 152, 0, 0.9);
+  }
+
+  .rsi-score-badge.high {
+    background: rgba(244, 67, 54, 0.9);
+  }
+
+  .rsi-score-badge.overbought {
+    background: rgba(183, 28, 28, 0.9);
+  }
+
+  /* Dark mode adjustments for RSI */
+  body.dark-mode .rsi-indicator {
+    background: #fff;
+    border-color: #fff;
+  }
+
+  body.dark-mode .rsi-tick-labels {
+    color: #666;
+  }
+
 /* CSS to align data to the right and keep the titles bold */
 .crypto-info-row strong {
     font-weight: bold; /* Your headings are already bold in HTML */
