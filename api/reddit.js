@@ -19,15 +19,16 @@ export default async function handler(req, res) {
             });
         }
 
-        // Construct Reddit search URL
-        const redditUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=${sort}&t=${t}&limit=${limit}`;
+        // Construct Reddit search URL - use old.reddit.com which is more lenient with API requests
+        const redditUrl = `https://old.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=${sort}&t=${t}&limit=${limit}`;
 
         console.log(`Proxying Reddit request: ${redditUrl}`);
 
-        // Fetch from Reddit with proper User-Agent
+        // Fetch from Reddit with Reddit-compliant User-Agent format
         const response = await fetch(redditUrl, {
             headers: {
-                'User-Agent': 'CryptFolio/1.0 (Crypto Portfolio Tracker)'
+                'User-Agent': 'web:CryptFolio:v1.0 (by /u/cryptfolio_app)',
+                'Accept': 'application/json'
             }
         });
 
