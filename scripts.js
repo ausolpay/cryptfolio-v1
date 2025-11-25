@@ -48,14 +48,14 @@ function getCurrentApiTier() {
 /**
  * Get the correct API key query parameter based on current tier
  * Free tier uses: x_cg_demo_api_key
- * Paid tier uses: x-cg-pro-api-key
+ * Paid tier uses: x_cg_pro_api_key
  * @returns {string} The query parameter string with API key
  */
 function getApiKeyParam() {
     const apiKey = getApiKey();
     const tier = getCurrentApiTier();
     if (tier === 'paid') {
-        return `x-cg-pro-api-key=${apiKey}`;
+        return `x_cg_pro_api_key=${apiKey}`;
     }
     return `x_cg_demo_api_key=${apiKey}`;
 }
@@ -80,13 +80,13 @@ function replaceApiKeyParam(url) {
 
     // Remove old param (either demo or pro)
     newUrl = newUrl.replace(/[?&]x_cg_demo_api_key=[^&]*/g, '');
-    newUrl = newUrl.replace(/[?&]x-cg-pro-api-key=[^&]*/g, '');
+    newUrl = newUrl.replace(/[?&]x_cg_pro_api_key=[^&]*/g, '');
     // Clean up any double && or trailing &
     newUrl = newUrl.replace(/&&/g, '&').replace(/\?&/g, '?').replace(/&$/g, '').replace(/\?$/g, '');
     // Add correct param
     const separator = newUrl.includes('?') ? '&' : '?';
     if (tier === 'paid') {
-        return `${newUrl}${separator}x-cg-pro-api-key=${apiKey}`;
+        return `${newUrl}${separator}x_cg_pro_api_key=${apiKey}`;
     }
     return `${newUrl}${separator}x_cg_demo_api_key=${apiKey}`;
 }
