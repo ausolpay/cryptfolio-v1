@@ -6137,289 +6137,185 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Fetch news from CryptoCompare API (free, no API key required for basic access)
-async function fetchCryptoCompareNews(cryptoSymbol) {
+// ============================================================================
+// MENTIONS (30d) - Combined News + Reddit Search
+// ============================================================================
+
+// Fetch news article count from last 30 days
+async function fetchNewsCount30d(cryptoName, cryptoSymbol) {
+    const newsApiKey = '75211ca24268436da2443ab960ce465b';
+
     try {
-        // CryptoCompare news API - filter by categories/coins
-        const url = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol}&lang=EN`;
-        const response = await fetch(url);
+        // Calculate 30 days ago date for NewsAPI
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
 
-        if (!response.ok) {
-            console.warn('CryptoCompare API error:', response.status);
-            return 0;
+        const searches = [
+            cryptoName,
+            cryptoSymbol.toUpperCase()
+        ];
+
+        let totalArticles = 0;
+
+        for (const query of searches) {
+            if (!query || query.length < 2) continue;
+
+            try {
+                const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${fromDate}&language=en&sortBy=relevancy&apiKey=${newsApiKey}`;
+                const response = await fetch(url);
+
+                if (!response.ok) continue;
+
+                const data = await response.json();
+                totalArticles += data.totalResults || 0;
+                console.log(`NewsAPI "${query}" (30d): ${data.totalResults || 0} results`);
+
+            } catch (err) {
+                console.warn(`NewsAPI error for "${query}":`, err);
+            }
         }
 
-        const data = await response.json();
-        if (data.Data && Array.isArray(data.Data)) {
-            return data.Data.length;
+        // Also fetch from CryptoCompare (filter to last 30 days)
+        try {
+            const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN`;
+            const ccResponse = await fetch(ccUrl);
+            if (ccResponse.ok) {
+                const ccData = await ccResponse.json();
+                if (ccData.Data && Array.isArray(ccData.Data)) {
+                    // Filter to last 30 days
+                    const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
+                    const recentNews = ccData.Data.filter(item =>
+                        (item.published_on * 1000) > thirtyDaysAgoTs
+                    );
+                    totalArticles += recentNews.length;
+                    console.log(`CryptoCompare (30d): ${recentNews.length} results`);
+                }
+            }
+        } catch (err) {
+            console.warn('CryptoCompare error:', err);
         }
-        return 0;
+
+        // Light deduplication (name and symbol searches overlap)
+        return Math.round(totalArticles * 0.8);
+
     } catch (error) {
-        console.warn('Error fetching from CryptoCompare:', error);
+        console.error('News fetch error:', error);
         return 0;
     }
 }
 
-// Updated fetchNewsArticles function - searches multiple sources, max 5000
-async function fetchNewsArticles(cryptoName, cryptoSymbol, coinId = null) {
-    const newsApiKey = '75211ca24268436da2443ab960ce465b';
-    const cacheKey = `${cryptoName}_newsCache`;
-    const cacheExpiryKey = `${cryptoName}_newsCacheExpiry`;
-    const cacheExpiryDuration = 5 * 60 * 1000; // Cache for 5 minutes
-    const MAX_ARTICLES = 5000;
+// Fetch Reddit mentions from last 30 days - FIXED to avoid rate limiting
+async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
+    try {
+        // Simple, targeted searches - sequential to avoid rate limiting
+        const searches = [
+            cryptoName,                     // "Mintlayer"
+            cryptoSymbol.toUpperCase(),     // "ML"
+            `${cryptoName} official`,       // "Mintlayer official"
+            `${cryptoName} crypto`          // "Mintlayer crypto"
+        ];
 
-    document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">Loading...</span>`;
+        let totalPosts = 0;
+        let totalComments = 0;
 
-    // Check cache first
+        // Sequential searches to avoid Reddit rate limiting
+        for (const query of searches) {
+            if (!query || query.length < 2) continue;
+
+            try {
+                // Search ALL of Reddit (no subreddit restriction), last month (30 days)
+                const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&t=month&limit=100`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    console.warn(`Reddit search failed for "${query}":`, response.status);
+                    continue;
+                }
+
+                const data = await response.json();
+
+                if (data.data && data.data.children) {
+                    data.data.children.forEach(item => {
+                        totalPosts++;
+                        totalComments += item.data.num_comments || 0;
+                    });
+                    console.log(`Reddit "${query}" (30d): ${data.data.children.length} posts`);
+                }
+
+                // Small delay between requests to avoid rate limiting
+                await new Promise(r => setTimeout(r, 250));
+
+            } catch (err) {
+                console.warn(`Reddit search error for "${query}":`, err);
+            }
+        }
+
+        // Light deduplication (searches overlap somewhat)
+        const result = Math.round((totalPosts + totalComments) * 0.7);
+        console.log(`Reddit 30d Total: Posts=${totalPosts}, Comments=${totalComments}, Final=${result}`);
+        return result;
+
+    } catch (error) {
+        console.error('Reddit fetch error:', error);
+        return 0;
+    }
+}
+
+// Main function to fetch combined mentions (30 days)
+async function fetchMentions30d(cryptoName, cryptoSymbol) {
+    const cacheKey = `${cryptoName}_mentions30d`;
+    const cacheExpiryKey = `${cryptoName}_mentions30dExpiry`;
+    const cacheExpiryDuration = 5 * 60 * 1000; // 5 minutes
+    const MAX_MENTIONS = 5000;
+
+    // Always show Loading immediately on modal open
+    const mentionsElement = document.getElementById('mentions30d');
+    if (mentionsElement) {
+        mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">Loading...</span>`;
+    }
+
+    // Check cache
     const cachedTotal = localStorage.getItem(cacheKey);
     const cacheExpiry = localStorage.getItem(cacheExpiryKey);
     const currentTime = Date.now();
 
     if (cachedTotal && cacheExpiry && currentTime < parseInt(cacheExpiry)) {
-        console.log('Using cached news data for', cryptoName);
-        document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedTotal}</span>`;
-        return;
-    }
-
-    let totalArticles = 0;
-
-    try {
-        // Search with multiple queries to get comprehensive results
-        const searchQueries = [
-            cryptoName,                              // Full name: "Bitcoin"
-            cryptoSymbol.toUpperCase(),              // Symbol: "BTC"
-            `${cryptoName} crypto`,                  // Name + crypto
-            `${cryptoSymbol.toUpperCase()} crypto`   // Symbol + crypto
-        ];
-
-        const fetchPromises = [];
-
-        // NewsAPI - search each query
-        for (const query of searchQueries) {
-            if (!query || query.length < 2) continue;
-
-            fetchPromises.push(
-                (async () => {
-                    try {
-                        if (requestCount >= maxRequestsPerMinute) {
-                            await sleep(60 * 1000);
-                            requestCount = 0;
-                        }
-
-                        const newsUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=relevancy&apiKey=${newsApiKey}`;
-                        const response = await fetch(newsUrl);
-                        requestCount++;
-
-                        if (response.status === 429 || !response.ok) {
-                            return 0;
-                        }
-
-                        const newsData = await response.json();
-                        const count = newsData.totalResults || 0;
-                        console.log(`NewsAPI "${query}": ${count} results`);
-                        return count;
-                    } catch (err) {
-                        console.warn('NewsAPI error:', err);
-                        return 0;
-                    }
-                })()
-            );
+        console.log('Using cached mentions data for', cryptoName);
+        if (mentionsElement) {
+            mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedTotal}</span>`;
         }
-
-        // CryptoCompare fetch
-        fetchPromises.push(fetchCryptoCompareNews(cryptoSymbol.toUpperCase()));
-
-        const results = await Promise.all(fetchPromises);
-
-        // Sum all results (some overlap expected, but gives better coverage)
-        totalArticles = results.reduce((sum, count) => sum + count, 0);
-
-        // Apply deduplication factor (queries overlap) and cap at MAX
-        totalArticles = Math.min(Math.round(totalArticles * 0.6), MAX_ARTICLES);
-
-        console.log(`News for ${cryptoName} (${cryptoSymbol}) - Total: ${totalArticles}`);
-
-        // Cache the result
-        localStorage.setItem(cacheKey, totalArticles.toString());
-        localStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
-
-        document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${totalArticles}</span>`;
-
-    } catch (error) {
-        console.error('Error fetching news:', error);
-        if (cachedTotal) {
-            document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedTotal}</span>`;
-        } else {
-            document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">0</span>`;
-        }
-    }
-}
-
-
-
-
-// Updated fetchRedditMentions function - searches ALL of Reddit properly, max 5000
-async function fetchRedditMentions(cryptoName, cryptoSymbol) {
-    const cacheKey = `${cryptoName}_redditCache`;
-    const cacheExpiryKey = `${cryptoName}_redditCacheExpiry`;
-    const cacheExpiryDuration = 5 * 60 * 1000; // Cache for 5 minutes
-    const MAX_MENTIONS = 5000;
-
-    document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">Loading...</span>`;
-
-    // Check cache first
-    const cachedData = localStorage.getItem(cacheKey);
-    const cacheExpiry = localStorage.getItem(cacheExpiryKey);
-    const currentTime = Date.now();
-
-    if (cachedData && cacheExpiry && currentTime < parseInt(cacheExpiry)) {
-        console.log('Using cached Reddit data for', cryptoName);
-        document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedData}</span>`;
         return;
     }
 
     let totalMentions = 0;
 
     try {
-        // Multiple search queries to find all mentions
-        const searchQueries = [
-            cryptoName,                                    // "Mintlayer"
-            cryptoSymbol.toUpperCase(),                    // "ML"
-            `"${cryptoName}"`,                             // Exact match "Mintlayer"
-            `"${cryptoSymbol.toUpperCase()}"`,             // Exact match "ML"
-            `${cryptoName} cryptocurrency`,                // "Mintlayer cryptocurrency"
-            `${cryptoName} crypto`,                        // "Mintlayer crypto"
-            `${cryptoName} coin`,                          // "Mintlayer coin"
-            `${cryptoName} token`                          // "Mintlayer token"
-        ];
+        // Fetch from news and Reddit in parallel
+        const [newsCount, redditCount] = await Promise.all([
+            fetchNewsCount30d(cryptoName, cryptoSymbol),
+            fetchRedditCount30d(cryptoName, cryptoSymbol)
+        ]);
 
-        // Time periods to search
-        const timeFrames = ['day', 'week', 'month', 'year', 'all'];
-
-        // Sort options to get different results
-        const sortOptions = ['relevance', 'hot', 'new', 'top'];
-
-        const fetchPromises = [];
-
-        // Search posts across all of Reddit with various combinations
-        for (const query of searchQueries) {
-            if (!query || query.length < 2) continue;
-
-            for (const timeFrame of timeFrames) {
-                for (const sort of sortOptions) {
-                    fetchPromises.push(
-                        (async () => {
-                            try {
-                                // Search ALL of Reddit (no subreddit restriction)
-                                const redditUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=${sort}&t=${timeFrame}&limit=100`;
-                                const response = await fetch(redditUrl);
-
-                                if (!response.ok) {
-                                    return { posts: 0, comments: 0, query, timeFrame, sort };
-                                }
-
-                                const data = await response.json();
-                                let postsCount = 0;
-                                let commentsCount = 0;
-
-                                if (data.data && data.data.children) {
-                                    // Check each post actually contains our search term
-                                    const cryptoLower = cryptoName.toLowerCase();
-                                    const symbolLower = cryptoSymbol.toLowerCase();
-
-                                    data.data.children.forEach(item => {
-                                        const title = (item.data.title || '').toLowerCase();
-                                        const body = (item.data.selftext || '').toLowerCase();
-                                        const subreddit = (item.data.subreddit || '').toLowerCase();
-
-                                        // Check if post actually mentions the crypto
-                                        if (title.includes(cryptoLower) || body.includes(cryptoLower) ||
-                                            title.includes(symbolLower) || body.includes(symbolLower) ||
-                                            subreddit.includes(cryptoLower)) {
-                                            postsCount++;
-                                            commentsCount += item.data.num_comments || 0;
-                                        }
-                                    });
-                                }
-
-                                return { posts: postsCount, comments: commentsCount, query, timeFrame, sort };
-                            } catch (err) {
-                                return { posts: 0, comments: 0, query, timeFrame, sort };
-                            }
-                        })()
-                    );
-                }
-            }
-        }
-
-        // Also search specifically in crypto-related subreddits
-        const cryptoSubreddits = ['cryptocurrency', 'cryptomarkets', 'altcoin', 'defi', 'bitcoin'];
-        for (const subreddit of cryptoSubreddits) {
-            fetchPromises.push(
-                (async () => {
-                    try {
-                        const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(cryptoName)}&restrict_sr=on&sort=relevance&t=all&limit=100`;
-                        const response = await fetch(url);
-
-                        if (!response.ok) return { posts: 0, comments: 0 };
-
-                        const data = await response.json();
-                        let postsCount = 0;
-                        let commentsCount = 0;
-
-                        if (data.data && data.data.children) {
-                            data.data.children.forEach(item => {
-                                postsCount++;
-                                commentsCount += item.data.num_comments || 0;
-                            });
-                        }
-
-                        console.log(`Reddit r/${subreddit} for "${cryptoName}": ${postsCount} posts, ${commentsCount} comments`);
-                        return { posts: postsCount, comments: commentsCount };
-                    } catch (err) {
-                        return { posts: 0, comments: 0 };
-                    }
-                })()
-            );
-        }
-
-        const results = await Promise.all(fetchPromises);
-
-        // Sum up all posts and comments
-        let totalPosts = 0;
-        let totalComments = 0;
-
-        results.forEach(result => {
-            totalPosts += result.posts || 0;
-            totalComments += result.comments || 0;
-        });
-
-        // Apply deduplication factor (many overlapping searches) and cap at MAX
-        totalMentions = Math.round((totalPosts + totalComments) * 0.3); // Heavy dedup since we search many combinations
+        totalMentions = newsCount + redditCount;
         totalMentions = Math.min(totalMentions, MAX_MENTIONS);
 
-        console.log(`Reddit for ${cryptoName} (${cryptoSymbol}) - Raw Posts: ${totalPosts}, Raw Comments: ${totalComments}, Final (deduped): ${totalMentions}`);
+        console.log(`Mentions (30d) for ${cryptoName} (${cryptoSymbol}): News=${newsCount}, Reddit=${redditCount}, Total=${totalMentions}`);
 
-        // Cache the result
+        // Cache result
         localStorage.setItem(cacheKey, totalMentions.toString());
         localStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
 
-        document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${totalMentions}</span>`;
-    } catch (error) {
-        console.error('Error fetching from Reddit:', error);
+        if (mentionsElement) {
+            mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">${totalMentions}</span>`;
+        }
 
-        if (cachedData) {
-            document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedData}</span>`;
-        } else {
-            document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">0</span>`;
+    } catch (error) {
+        console.error('Error fetching mentions:', error);
+        if (mentionsElement) {
+            mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">0</span>`;
         }
     }
-}
-
-// Call both News and Reddit functions
-async function fetchNewsAndRedditData(cryptoName, cryptoSymbol) {
-    await fetchNewsArticles(cryptoName, cryptoSymbol);
-    await fetchRedditMentions(cryptoName, cryptoSymbol);
 }
 
 
@@ -7733,7 +7629,7 @@ async function openCandlestickModal(cryptoId) {
         // Fetch and display detailed info and sentiment data
         await fetchCryptoInfo(cryptoId);  // Market data
         await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + 7 other indicators
-        await fetchNewsAndRedditData(cryptoName, symbol.toUpperCase());  // Fetch news and Reddit mentions using crypto name and symbol
+        await fetchMentions30d(cryptoName, symbol.toUpperCase());  // Fetch combined mentions (30d) from news and Reddit
         
         startAutoUpdateCryptoInfo(cryptoId);
         
@@ -7746,7 +7642,7 @@ async function openCandlestickModal(cryptoId) {
             if (isModalOpen && currentCryptoId === cryptoId) {
                 await fetchCryptoInfo(cryptoId);
                 await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + indicators
-                await fetchNewsAndRedditData(cryptoName, symbol.toUpperCase());
+                await fetchMentions30d(cryptoName, symbol.toUpperCase());
             }
         }, 30000); // 30 seconds
 
