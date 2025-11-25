@@ -9895,7 +9895,9 @@ function displayActivePackages() {
     validateActivePackageRobotIcons();
 }
 
-// Validate and fix flashing robot icons on active packages
+// Validate and fix robot icons on active and completed packages
+// Active packages: flashing robot (mining in progress)
+// Completed packages: solid robot (to identify auto-bought packages)
 function validateActivePackageRobotIcons() {
     const container = document.getElementById('active-packages-container');
     if (!container) return;
@@ -9911,7 +9913,8 @@ function validateActivePackageRobotIcons() {
         return;
     }
 
-    let fixedCount = 0;
+    let fixedActiveCount = 0;
+    let fixedCompletedCount = 0;
     const packageCards = container.querySelectorAll('.package-card');
 
     packageCards.forEach(card => {
@@ -9923,15 +9926,15 @@ function validateActivePackageRobotIcons() {
         const fullText = nameElement.textContent;
         const packageName = fullText.split(' 🚀')[0].trim();
 
-        // Check if this card has a flashing rocket (indicates active package)
-        const hasFlashingRocket = card.querySelector('.block-found-indicator.flashing:not(.auto-buy-robot)');
-        if (!hasFlashingRocket) return; // Not an active package
-
         // Check if robot icon already exists
         const existingRobot = card.querySelector('.auto-buy-robot');
         if (existingRobot) return; // Robot already present
 
-        // Check if this package should have a flashing robot
+        // Check if this card has a flashing rocket (indicates active package)
+        const hasFlashingRocket = card.querySelector('.block-found-indicator.flashing:not(.auto-buy-robot)');
+        const isActivePackage = !!hasFlashingRocket;
+
+        // Check if this package should have a robot icon
         // 1. Check if auto-buy is enabled for this package type
         const isTeamPackage = packageName.toLowerCase().includes('team');
         const autoBuySettings = isTeamPackage ? teamAutoBuy : soloAutoBuy;
@@ -9951,7 +9954,6 @@ function validateActivePackageRobotIcons() {
         // For team packages with shares and auto-buy enabled
         if (isTeamPackage && isAutoBuyActive) {
             // Check if user has shares (card would show "My Shares" stat)
-            const sharesElement = card.querySelector('.package-card-stat span');
             const hasShares = Array.from(card.querySelectorAll('.package-card-stat')).some(stat =>
                 stat.textContent.includes('My Shares:')
             );
@@ -9960,20 +9962,31 @@ function validateActivePackageRobotIcons() {
             }
         }
 
-        // Add flashing robot if needed
+        // Add robot icon if this was an auto-bought package
         if (isAutoBought || (isAutoBuyActive && isTeamPackage)) {
             const robotIcon = document.createElement('div');
-            robotIcon.className = 'block-found-indicator flashing auto-buy-robot';
-            robotIcon.title = 'Auto-buy active (mining)';
             robotIcon.textContent = '🤖';
+
+            if (isActivePackage) {
+                // Active package: FLASHING robot
+                robotIcon.className = 'block-found-indicator flashing auto-buy-robot';
+                robotIcon.title = 'Auto-buy active (mining)';
+                fixedActiveCount++;
+                console.log(`🤖 Added missing flashing robot to active package: ${packageName}`);
+            } else {
+                // Completed package: SOLID robot
+                robotIcon.className = 'block-found-indicator auto-buy-robot';
+                robotIcon.title = 'Auto-bought package (completed)';
+                fixedCompletedCount++;
+                console.log(`🤖 Added solid robot to completed package: ${packageName}`);
+            }
+
             card.insertBefore(robotIcon, card.firstChild);
-            fixedCount++;
-            console.log(`🤖 Added missing flashing robot to active package: ${packageName}`);
         }
     });
 
-    if (fixedCount > 0) {
-        console.log(`🤖 Active package validation: Added ${fixedCount} missing robot icons`);
+    if (fixedActiveCount > 0 || fixedCompletedCount > 0) {
+        console.log(`🤖 Package validation: Added ${fixedActiveCount} flashing + ${fixedCompletedCount} solid robot icons`);
     }
 }
 
