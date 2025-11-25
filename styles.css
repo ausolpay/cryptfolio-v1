@@ -1107,7 +1107,8 @@ body:not(.dark-mode) .holdings-info {
     padding-left: 10px;
   }
 
-  .mentions-toggle:hover .mentions-arrow {
+  /* Hover effect for mentions label with arrow */
+  .crypto-info-table td[onclick*="toggleMentionsBreakdown"]:hover #mentions-arrow {
     color: #ffa500 !important;
   }
 

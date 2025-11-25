@@ -6768,8 +6768,10 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
     const breakdownDiv = document.getElementById('mentions-breakdown');
     const currentTime = Date.now();
 
-    // Reset breakdown visibility when opening new chart
+    // Reset breakdown visibility and arrow when opening new chart
     if (breakdownRow) breakdownRow.style.display = 'none';
+    const arrow = document.getElementById('mentions-arrow');
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
 
     // CHECK CACHE FIRST - return cached value if still valid
     try {
@@ -6858,13 +6860,8 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
 function renderMentionsDisplay(mentionsElement, breakdownDiv, total, sources) {
     if (!mentionsElement) return;
 
-    // Create clickable total with arrow
-    mentionsElement.innerHTML = `
-        <span class="mentions-toggle" onclick="toggleMentionsBreakdown()" style="cursor: pointer; display: flex; align-items: center; justify-content: flex-end;">
-            <span class="mentions-arrow" id="mentions-arrow" style="font-size: 10px; margin-right: 6px; transition: transform 0.2s; color: #888;">▶</span>
-            <span class="info-data">${total}</span>
-        </span>
-    `;
+    // Just show the total (arrow is in the label cell)
+    mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">${total}</span>`;
 
     // Populate breakdown
     if (breakdownDiv) {

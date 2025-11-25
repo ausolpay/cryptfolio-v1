@@ -1381,7 +1381,9 @@
                     </tr>
                     <!-- Mentions count from news articles and Reddit (last 30 days) -->
                     <tr>
-                        <td><strong>Mentions (30d):</strong></td>
+                        <td style="cursor: pointer;" onclick="toggleMentionsBreakdown()">
+                            <span id="mentions-arrow" style="font-size: 10px; margin-right: 6px; transition: transform 0.2s; color: #888; display: inline-block;">▶</span><strong>Mentions (30d):</strong>
+                        </td>
                         <td id="mentions30d"></td>
                     </tr>
                     <!-- Mentions source breakdown (hidden by default) -->
