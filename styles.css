@@ -2668,6 +2668,113 @@ body.light-mode .input-group input {
     color: #000000;
 }
 
+/* =============================================================================
+   API KEY TIER TOGGLE (Free/Paid)
+   ============================================================================= */
+
+.api-key-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.api-key-row input[type="text"] {
+    flex: 1;
+}
+
+.api-tier-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.api-tier-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.tier-label {
+    font-size: 12px;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+.tier-label.tier-free {
+    color: #888;
+}
+
+.tier-label.tier-paid {
+    color: #444;
+}
+
+/* When checked (paid), swap colors */
+.api-tier-toggle input[type="checkbox"]:checked ~ .tier-label.tier-free,
+.api-tier-toggle input[type="checkbox"]:not(:checked) ~ .tier-label.tier-paid {
+    color: #444;
+}
+
+.api-tier-toggle input[type="checkbox"]:checked ~ .tier-label.tier-paid,
+.api-tier-toggle input[type="checkbox"]:not(:checked) ~ .tier-label.tier-free {
+    color: #888;
+}
+
+/* Specifically highlight active state */
+.api-tier-toggle input[type="checkbox"]:not(:checked) ~ .tier-label.tier-free {
+    color: #4CAF50;
+}
+
+.api-tier-toggle input[type="checkbox"]:checked ~ .tier-label.tier-paid {
+    color: #ffa500;
+}
+
+.tier-slider {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background-color: #4CAF50;
+    border-radius: 20px;
+    transition: background-color 0.3s ease;
+}
+
+.tier-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 2px;
+    top: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+.api-tier-toggle input[type="checkbox"]:checked + .tier-slider {
+    background-color: #ffa500;
+}
+
+.api-tier-toggle input[type="checkbox"]:checked + .tier-slider::before {
+    transform: translateX(16px);
+}
+
+/* Light mode adjustments */
+body.light-mode .tier-label.tier-free {
+    color: #666;
+}
+
+body.light-mode .tier-label.tier-paid {
+    color: #999;
+}
+
+body.light-mode .api-tier-toggle input[type="checkbox"]:not(:checked) ~ .tier-label.tier-free {
+    color: #2E7D32;
+}
+
+body.light-mode .api-tier-toggle input[type="checkbox"]:checked ~ .tier-label.tier-paid {
+    color: #e69500;
+}
+
 .activate-button {
     width: 100%;
     padding: 15px;

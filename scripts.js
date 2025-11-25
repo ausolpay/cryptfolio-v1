@@ -5,6 +5,142 @@ let apiKeys = []; // User must configure their own API keys
 let currentApiKeyIndex = 0;
 
 // =============================================================================
+// COINGECKO DYNAMIC RATE LIMITING SYSTEM
+// =============================================================================
+
+// Base rate limits per tier (calls per minute)
+const COINGECKO_TIERS = {
+    free: {
+        callsPerMinute: 30,
+        safetyBuffer: 0.8  // Use only 80% of limit to prevent hitting caps
+    },
+    paid: {
+        callsPerMinute: 250,
+        safetyBuffer: 0.8  // Use only 80% of limit
+    }
+};
+
+// API call costs (calls per operation)
+const API_CALL_COSTS = {
+    sentimentPerCrypto: 2,      // OHLC + coin data
+    pricesBatch: 1,             // Single batch call for all prices
+    conversionRate: 1,          // USDT/AUD rate
+    cryptoInfo: 1,              // Coin details (modal open)
+    chartData: 2                // OHLC + coin details
+};
+
+// Cache for current rate limits
+let cachedRateLimits = null;
+let lastCryptoCount = 0;
+let lastTier = null;
+
+/**
+ * Get current API key's tier (free or paid)
+ * Reads from the new storage format with isPaid flag
+ */
+function getCurrentApiTier() {
+    if (!loggedInUser) return 'free';
+    const settings = JSON.parse(localStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`));
+    if (!settings || !settings.keys || settings.keys.length === 0) return 'free';
+    const currentKey = settings.keys[settings.currentIndex || 0];
+    return currentKey?.isPaid ? 'paid' : 'free';
+}
+
+/**
+ * Calculate optimal polling intervals based on crypto count and API tier
+ * Ensures we never exceed rate limits while maximizing responsiveness
+ */
+function calculateDynamicRateLimits() {
+    const tier = getCurrentApiTier();
+    const tierConfig = COINGECKO_TIERS[tier];
+    const cryptoCount = users[loggedInUser]?.cryptos?.length || 10;
+
+    // Calculate available calls per minute (with safety buffer)
+    const availableCalls = Math.floor(tierConfig.callsPerMinute * tierConfig.safetyBuffer);
+
+    // Fixed calls per minute (conversion rate: 1 call per 15 min for free, 5 min for paid)
+    const conversionInterval = tier === 'paid' ? 300000 : 900000; // 5min vs 15min
+    const fixedCallsPerMinute = API_CALL_COSTS.conversionRate * (60000 / conversionInterval);
+
+    // Remaining budget for dynamic calls
+    const dynamicBudget = availableCalls - fixedCallsPerMinute;
+
+    // Sentiment calls needed per cycle: 2 calls × cryptoCount
+    const sentimentCallsPerCycle = API_CALL_COSTS.sentimentPerCrypto * cryptoCount;
+
+    // Calculate max sentiment refresh cycles per minute
+    const maxSentimentCyclesPerMinute = dynamicBudget / sentimentCallsPerCycle;
+
+    // Calculate optimal sentiment interval (in ms)
+    // Minimum 10 seconds, maximum 60 seconds
+    let sentimentInterval = Math.max(10000, Math.min(60000,
+        Math.ceil(60000 / maxSentimentCyclesPerMinute)
+    ));
+
+    // Calculate delay between calls within a cycle
+    // Total cycle time should allow all calls to complete within interval
+    // Leave 20% buffer for network latency
+    const cycleTime = sentimentInterval * 0.8;
+    const delayBetweenCalls = Math.floor(cycleTime / Math.max(cryptoCount, 1));
+
+    // Minimum delay: 50ms (paid) or 200ms (free) to avoid burst requests
+    const minDelay = tier === 'paid' ? 50 : 200;
+    const finalDelay = Math.max(minDelay, delayBetweenCalls);
+
+    // Crypto info interval (modal): faster on paid
+    const cryptoInfoInterval = tier === 'paid' ? 15000 : 30000; // 15s vs 30s
+
+    console.log(`📊 Dynamic Rate Limits Calculated:`, {
+        tier,
+        cryptoCount,
+        availableCalls: `${availableCalls}/min`,
+        sentimentInterval: `${sentimentInterval / 1000}s`,
+        delayBetweenCalls: `${finalDelay}ms`,
+        conversionInterval: `${conversionInterval / 60000}min`,
+        cryptoInfoInterval: `${cryptoInfoInterval / 1000}s`
+    });
+
+    return {
+        sentimentInterval,
+        delayBetweenCalls: finalDelay,
+        conversionRateInterval: conversionInterval,
+        cryptoInfoInterval,
+        callsPerMinute: availableCalls,
+        cryptoCount,
+        tier
+    };
+}
+
+/**
+ * Get current rate limits (cached for performance)
+ * Recalculates if tier or crypto count changed
+ */
+function getRateLimits() {
+    const currentTier = getCurrentApiTier();
+    const currentCryptoCount = users[loggedInUser]?.cryptos?.length || 10;
+
+    // Recalculate if tier or crypto count changed
+    if (!cachedRateLimits || currentTier !== lastTier || currentCryptoCount !== lastCryptoCount) {
+        cachedRateLimits = calculateDynamicRateLimits();
+        lastTier = currentTier;
+        lastCryptoCount = currentCryptoCount;
+    }
+
+    return cachedRateLimits;
+}
+
+/**
+ * Force recalculation of rate limits
+ * Call when adding/removing cryptos or changing API tier
+ */
+function invalidateRateLimitsCache() {
+    cachedRateLimits = null;
+    lastTier = null;
+    lastCryptoCount = 0;
+    console.log('🔄 Rate limits cache invalidated');
+}
+
+// =============================================================================
 // VERCEL PROXY CONFIGURATION
 // =============================================================================
 
@@ -122,8 +258,30 @@ function getApiKey() {
 }
 
 function switchApiKey() {
+    // Get current tier before switching
+    const oldTier = getCurrentApiTier();
+
+    // Switch to next key
     currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
-    console.log(`Switched to API key: ${getApiKey()}`);
+
+    // Update currentIndex in localStorage
+    const settings = JSON.parse(localStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`));
+    if (settings) {
+        settings.currentIndex = currentApiKeyIndex;
+        localStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(settings));
+    }
+
+    // Get new tier after switching
+    const newTier = getCurrentApiTier();
+
+    console.log(`🔄 Switched to API key ${currentApiKeyIndex + 1}: ${getApiKey()} (${newTier} tier)`);
+
+    // If tier changed, invalidate cache and restart polling with new limits
+    if (oldTier !== newTier) {
+        console.log(`📊 Tier changed: ${oldTier} → ${newTier} - restarting polling intervals`);
+        invalidateRateLimitsCache();
+        restartPollingWithNewLimits();
+    }
 }
 
 // Store sentiment scores per crypto (populated when modal opens with full 8-indicator calculation)
@@ -259,8 +417,9 @@ async function fetchAllCryptoSentiments() {
 
             console.log(`📊 ${crypto.symbol.toUpperCase()}: ${sentimentResult.label} (${sentimentResult.score.toFixed(1)})`);
 
-            // Small delay to avoid rate limiting (500ms between cryptos)
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Dynamic delay based on API tier and crypto count
+            const limits = getRateLimits();
+            await new Promise(resolve => setTimeout(resolve, limits.delayBetweenCalls));
         } catch (error) {
             console.error(`Error fetching sentiment for ${crypto.id}:`, error);
         }
@@ -276,9 +435,12 @@ function startSentimentRefresh() {
         fetchAllCryptoSentiments();
     }, 2000);
 
-    // Refresh every 30 seconds
-    sentimentRefreshInterval = setInterval(fetchAllCryptoSentiments, 30000);
-    console.log('📊 Sentiment refresh started (every 30 seconds)');
+    // Get dynamic interval based on API tier and crypto count
+    const limits = getRateLimits();
+
+    // Refresh at dynamic interval
+    sentimentRefreshInterval = setInterval(fetchAllCryptoSentiments, limits.sentimentInterval);
+    console.log(`📊 Sentiment refresh started (every ${limits.sentimentInterval / 1000}s - ${limits.tier} tier)`);
 }
 
 // Stop sentiment refresh (called on logout)
@@ -288,6 +450,25 @@ function stopSentimentRefresh() {
         sentimentRefreshInterval = null;
         console.log('📊 Sentiment refresh stopped');
     }
+}
+
+/**
+ * Restart all polling intervals with new rate limits
+ * Called when API tier changes (e.g., switching to fallback key with different tier)
+ */
+function restartPollingWithNewLimits() {
+    const limits = getRateLimits();
+    console.log(`🔄 Restarting polling intervals with ${limits.tier} tier limits`);
+
+    // Stop existing sentiment refresh
+    stopSentimentRefresh();
+
+    // Restart sentiment refresh with new interval
+    sentimentRefreshInterval = setInterval(fetchAllCryptoSentiments, limits.sentimentInterval);
+    console.log(`📊 Sentiment refresh restarted (every ${limits.sentimentInterval / 1000}s)`);
+
+    // Note: Conversion rate interval is handled elsewhere in the codebase
+    // This function focuses on sentiment which is the most API-intensive operation
 }
 
 // Format holdings with full decimal precision (shows actual decimals stored, with comma separators)
@@ -5366,6 +5547,9 @@ async function addCrypto() {
         // Subscribe to WebSocket price updates for the new crypto
         subscribeToSymbol(symbol);
 
+        // Invalidate rate limits cache (crypto count changed)
+        invalidateRateLimitsCache();
+
         document.getElementById('crypto-id-input').value = '';
         showModal('Crypto successfully added!');
         closeModal(1500);
@@ -5419,6 +5603,9 @@ function deleteContainer(containerId, cryptoId) {
     setStorageItem('users', JSON.stringify(users));
 
     removeStorageItem(`${loggedInUser}_${cryptoId}Holdings`);
+
+    // Invalidate rate limits cache (crypto count changed)
+    invalidateRateLimitsCache();
 
     updateApiUrl();
 
@@ -8145,13 +8332,33 @@ function showCoinGeckoApiSettingsPage() {
     // Show CoinGecko API settings page
     document.getElementById('coingecko-settings-page').style.display = 'block';
 
-    // Load saved API keys
-    const savedKeys = loadUserApiKeys();
+    // Load saved API settings (new format with tier info)
+    const settings = loadApiSettings();
 
-    // Populate form fields with saved keys (if any)
-    document.getElementById('primary-api-key-page').value = savedKeys[0] || '';
-    document.getElementById('fallback-api-key-1-page').value = savedKeys[1] || '';
-    document.getElementById('fallback-api-key-2-page').value = savedKeys[2] || '';
+    // Populate form fields with saved keys and tier toggles
+    if (settings.keys.length > 0) {
+        document.getElementById('primary-api-key-page').value = settings.keys[0]?.key || '';
+        document.getElementById('primary-api-key-paid').checked = settings.keys[0]?.isPaid || false;
+    } else {
+        document.getElementById('primary-api-key-page').value = '';
+        document.getElementById('primary-api-key-paid').checked = false;
+    }
+
+    if (settings.keys.length > 1) {
+        document.getElementById('fallback-api-key-1-page').value = settings.keys[1]?.key || '';
+        document.getElementById('fallback-api-key-1-paid').checked = settings.keys[1]?.isPaid || false;
+    } else {
+        document.getElementById('fallback-api-key-1-page').value = '';
+        document.getElementById('fallback-api-key-1-paid').checked = false;
+    }
+
+    if (settings.keys.length > 2) {
+        document.getElementById('fallback-api-key-2-page').value = settings.keys[2]?.key || '';
+        document.getElementById('fallback-api-key-2-paid').checked = settings.keys[2]?.isPaid || false;
+    } else {
+        document.getElementById('fallback-api-key-2-page').value = '';
+        document.getElementById('fallback-api-key-2-paid').checked = false;
+    }
 }
 
 function activateCoinGeckoApi() {
@@ -8160,24 +8367,42 @@ function activateCoinGeckoApi() {
     const fallbackKey1 = document.getElementById('fallback-api-key-1-page').value.trim();
     const fallbackKey2 = document.getElementById('fallback-api-key-2-page').value.trim();
 
+    // Get tier toggle states (checked = paid, unchecked = free)
+    const primaryIsPaid = document.getElementById('primary-api-key-paid').checked;
+    const fallback1IsPaid = document.getElementById('fallback-api-key-1-paid').checked;
+    const fallback2IsPaid = document.getElementById('fallback-api-key-2-paid').checked;
+
     // Validate that at least primary key is entered
     if (!primaryKey) {
         alert('❌ Primary API key is required!\n\nPlease enter at least one CoinGecko API key to continue.');
         return;
     }
 
-    // Build array of keys (only include non-empty keys)
-    const userKeys = [primaryKey];
-    if (fallbackKey1) userKeys.push(fallbackKey1);
-    if (fallbackKey2) userKeys.push(fallbackKey2);
+    // Build array of keys with tier info (only include non-empty keys)
+    const keySettings = [{ key: primaryKey, isPaid: primaryIsPaid }];
+    if (fallbackKey1) keySettings.push({ key: fallbackKey1, isPaid: fallback1IsPaid });
+    if (fallbackKey2) keySettings.push({ key: fallbackKey2, isPaid: fallback2IsPaid });
 
-    // Save to localStorage
+    // Create settings object with keys and current index
+    const apiSettings = {
+        keys: keySettings,
+        currentIndex: 0
+    };
+
+    // Save to localStorage (new format)
     try {
-        localStorage.setItem(`${loggedInUser}_coinGeckoApiKeys`, JSON.stringify(userKeys));
-        console.log('✅ Saved CoinGecko API keys:', userKeys.length, 'keys');
+        localStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(apiSettings));
+        // Remove old format if it exists
+        localStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
+        console.log('✅ Saved CoinGecko API settings:', keySettings.length, 'keys');
+
+        // Log tier info
+        keySettings.forEach((k, i) => {
+            console.log(`   Key ${i + 1}: ${k.isPaid ? 'Paid' : 'Free'} tier`);
+        });
 
         // Set success message to show after reload
-        setStorageItem('modalMessage', '✅ CoinGecko API keys activated successfully!\n\n' + userKeys.length + ' key(s) configured.');
+        setStorageItem('modalMessage', '✅ CoinGecko API keys activated successfully!\n\n' + keySettings.length + ' key(s) configured.');
 
         // Reload page to properly initialize app with new keys
         console.log('🔄 Reloading page to initialize app with new API keys...');
@@ -8198,28 +8423,91 @@ function clearCoinGeckoApiKeys() {
     document.getElementById('fallback-api-key-1-page').value = '';
     document.getElementById('fallback-api-key-2-page').value = '';
 
-    // Remove from localStorage
+    // Clear tier toggles (reset to Free/unchecked)
+    document.getElementById('primary-api-key-paid').checked = false;
+    document.getElementById('fallback-api-key-1-paid').checked = false;
+    document.getElementById('fallback-api-key-2-paid').checked = false;
+
+    // Remove from localStorage (both old and new formats)
     localStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
+    localStorage.removeItem(`${loggedInUser}_coinGeckoApiSettings`);
 
     // Clear global apiKeys array (app will not work without keys)
     apiKeys = [];
     currentApiKeyIndex = 0;
 
+    // Invalidate rate limits cache
+    invalidateRateLimitsCache();
+
     console.log('✅ CoinGecko API keys cleared');
     alert('✅ CoinGecko API keys cleared successfully.\n\nYou must enter new keys to use the app.');
 }
 
+/**
+ * Migrate from old API key storage format (array of strings) to new format (with isPaid flag)
+ * Called automatically on load if old format is detected
+ */
+function migrateApiKeyStorage() {
+    const oldKeys = localStorage.getItem(`${loggedInUser}_coinGeckoApiKeys`);
+    if (!oldKeys) return false;
+
+    try {
+        const parsed = JSON.parse(oldKeys);
+
+        // Check if it's the old format (array of strings)
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+            // Migrate to new format (all keys default to free)
+            const newSettings = {
+                keys: parsed.map(key => ({ key, isPaid: false })),
+                currentIndex: 0
+            };
+            localStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(newSettings));
+            localStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
+            console.log('✅ Migrated API key storage to new format with tier support');
+            return true;
+        }
+    } catch (error) {
+        console.error('❌ Error migrating API key storage:', error);
+    }
+    return false;
+}
+
+/**
+ * Load API settings (new format with isPaid flag)
+ * Returns { keys: [{key, isPaid}], currentIndex: number }
+ */
+function loadApiSettings() {
+    try {
+        // First, try to migrate from old format if needed
+        migrateApiKeyStorage();
+
+        // Load new format
+        const savedSettings = localStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`);
+
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            if (settings.keys && Array.isArray(settings.keys) && settings.keys.length > 0) {
+                console.log('✅ Loaded CoinGecko API settings:', settings.keys.length, 'keys');
+                return settings;
+            }
+        }
+
+        return { keys: [], currentIndex: 0 };
+    } catch (error) {
+        console.error('❌ Error loading API settings:', error);
+        return { keys: [], currentIndex: 0 };
+    }
+}
+
 function loadUserApiKeys() {
     try {
-        // Try to load user's custom API keys
-        const savedKeys = localStorage.getItem(`${loggedInUser}_coinGeckoApiKeys`);
+        // Load settings and extract just the key strings for backwards compatibility
+        const settings = loadApiSettings();
 
-        if (savedKeys) {
-            const userKeys = JSON.parse(savedKeys);
-            if (Array.isArray(userKeys) && userKeys.length > 0) {
-                console.log('✅ Loaded user CoinGecko API keys:', userKeys.length, 'keys');
-                return userKeys;
-            }
+        if (settings.keys.length > 0) {
+            const keys = settings.keys.map(k => k.key);
+            console.log('✅ Loaded user CoinGecko API keys:', keys.length, 'keys');
+            return keys;
         }
 
         // If no user keys found, return empty array (user must configure)
@@ -12820,6 +13108,9 @@ async function addCryptoById(cryptoId) {
 
             // Subscribe to WebSocket price updates for the new crypto
             subscribeToSymbol(crypto.symbol);
+
+            // Invalidate rate limits cache (crypto count changed)
+            invalidateRateLimitsCache();
 
             // Set the initial price from CoinGecko data (prevents 0 price issue)
             console.log(`🔍 Checking for market_data in API response for ${crypto.id}...`);

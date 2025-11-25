@@ -801,17 +801,41 @@
 
                 <div class="input-group">
                     <label for="primary-api-key-page">Primary API Key (Required):</label>
-                    <input type="text" id="primary-api-key-page" placeholder="Enter your CoinGecko API Key">
+                    <div class="api-key-row">
+                        <input type="text" id="primary-api-key-page" placeholder="Enter your CoinGecko API Key">
+                        <label class="api-tier-toggle">
+                            <span class="tier-label tier-free">Free</span>
+                            <input type="checkbox" id="primary-api-key-paid">
+                            <span class="tier-slider"></span>
+                            <span class="tier-label tier-paid">Paid</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="input-group">
                     <label for="fallback-api-key-1-page">Fallback API Key 1 (Optional):</label>
-                    <input type="text" id="fallback-api-key-1-page" placeholder="Enter fallback API key (optional)">
+                    <div class="api-key-row">
+                        <input type="text" id="fallback-api-key-1-page" placeholder="Enter fallback API key (optional)">
+                        <label class="api-tier-toggle">
+                            <span class="tier-label tier-free">Free</span>
+                            <input type="checkbox" id="fallback-api-key-1-paid">
+                            <span class="tier-slider"></span>
+                            <span class="tier-label tier-paid">Paid</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="input-group">
                     <label for="fallback-api-key-2-page">Fallback API Key 2 (Optional):</label>
-                    <input type="text" id="fallback-api-key-2-page" placeholder="Enter fallback API key (optional)">
+                    <div class="api-key-row">
+                        <input type="text" id="fallback-api-key-2-page" placeholder="Enter fallback API key (optional)">
+                        <label class="api-tier-toggle">
+                            <span class="tier-label tier-free">Free</span>
+                            <input type="checkbox" id="fallback-api-key-2-paid">
+                            <span class="tier-slider"></span>
+                            <span class="tier-label tier-paid">Paid</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div style="margin: 20px 0;">
