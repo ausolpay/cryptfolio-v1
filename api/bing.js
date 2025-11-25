@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { q, count = 50, freshness = 'Month' } = req.query;
+        const { q, count = 50, freshness = 'Month', apiKey: userApiKey } = req.query;
 
         if (!q) {
             return res.status(400).json({
@@ -24,11 +24,11 @@ export default async function handler(req, res) {
 
         console.log(`Proxying Bing News request for: ${q}`);
 
-        // Check for Bing API key in environment
-        const apiKey = process.env.BING_API_KEY;
+        // Use user-provided API key from query param, or fallback to environment variable
+        const apiKey = userApiKey || process.env.BING_API_KEY;
         if (!apiKey) {
-            console.warn('BING_API_KEY not configured, returning empty result');
-            return res.status(200).json({ value: [], totalEstimatedMatches: 0 });
+            console.warn('No Bing API key provided (neither user key nor BING_API_KEY env var)');
+            return res.status(200).json({ value: [], totalEstimatedMatches: 0, noKey: true });
         }
 
         const response = await fetch(bingUrl, {

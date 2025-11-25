@@ -895,6 +895,53 @@
         </div>
     </div>
 
+    <!-- Bing API Settings Page -->
+    <div id="bing-settings-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>Bing News API Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">Bing News Search API</h3>
+                <p style="margin: 10px 0; color: #666;">Bing API key enables news search for crypto mentions in the chart modal.</p>
+                <p style="margin: 10px 0; color: #888; font-size: 14px;">Get a free API key (1000 calls/month) from <a href="https://www.microsoft.com/en-us/bing/apis/bing-news-search-api" target="_blank" style="color: #ffa500;">Microsoft Bing News Search API</a></p>
+
+                <div class="input-group">
+                    <label for="bing-api-key-input">Bing API Key:</label>
+                    <div class="api-key-row">
+                        <input type="text" id="bing-api-key-input" placeholder="Enter your Bing News Search API Key">
+                    </div>
+                </div>
+
+                <div id="bing-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;">
+                    <!-- Status message will appear here -->
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateBingApi()" class="activate-button">Activate API Key</button>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearBingApiKey()" class="delete-button">Clear API Key</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showAppPage()">← Back</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
     <!-- Buy Packages Page -->
     <div id="buy-packages-page" class="container" style="display: none;">
         <div class="header">
@@ -1019,6 +1066,7 @@
             <div style="margin-top: 20px;">
                 <button id="easymining-settings-btn" onclick="closeSettingsModal(); showEasyMiningSettingsPage();">EasyMining</button>
                 <button id="coingecko-api-btn" onclick="closeSettingsModal(); showCoinGeckoApiSettingsPage();">CG API</button>
+                <button id="bing-api-btn" onclick="closeSettingsModal(); showBingApiSettingsPage();">Bing API</button>
                 <button class="delete-button" onclick="closeSettingsModal()">Close</button>
             </div>
         </div>

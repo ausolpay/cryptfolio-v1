@@ -979,6 +979,7 @@ function showAppPage() {
     document.getElementById('app-page').style.display = 'block';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('bing-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
@@ -6528,12 +6529,26 @@ function sleep(ms) {
 // Source 1: Bing News Search (via Vercel proxy, requires API key)
 async function fetchBingNewsCount30d(cryptoName, cryptoSymbol) {
     try {
-        const query = `${cryptoName} cryptocurrency`;
-        const url = IS_PRODUCTION
-            ? `/api/bing?q=${encodeURIComponent(query)}&count=100&freshness=Month`
-            : null; // Bing requires API key, skip in local dev
+        // Get user's Bing API key from localStorage
+        const bingApiKey = getBingApiKey();
 
-        if (!url) {
+        // Skip if no API key configured
+        if (!bingApiKey && !IS_PRODUCTION) {
+            console.log('Bing: Skipped (no API key configured)');
+            return { count: 0, success: false };
+        }
+
+        const query = `${cryptoName} cryptocurrency`;
+        let url;
+
+        if (IS_PRODUCTION) {
+            // Pass user's API key to proxy (proxy will also check for env var as fallback)
+            url = `/api/bing?q=${encodeURIComponent(query)}&count=100&freshness=Month`;
+            if (bingApiKey) {
+                url += `&apiKey=${encodeURIComponent(bingApiKey)}`;
+            }
+        } else {
+            // Local dev - skip Bing (requires proxy)
             console.log('Bing: Skipped (local development)');
             return { count: 0, success: false };
         }
@@ -6546,7 +6561,13 @@ async function fetchBingNewsCount30d(cryptoName, cryptoSymbol) {
 
         const data = await response.json();
 
-        // Check for error in response (API key missing, etc.)
+        // Check for no API key
+        if (data.noKey) {
+            console.log('Bing: No API key configured');
+            return { count: 0, success: false };
+        }
+
+        // Check for error in response
         if (data.error) {
             console.warn('Bing News API error:', data.error);
             return { count: 0, success: false };
@@ -8785,6 +8806,103 @@ function loadUserApiKeys() {
 window.showCoinGeckoApiSettingsPage = showCoinGeckoApiSettingsPage;
 window.activateCoinGeckoApi = activateCoinGeckoApi;
 window.clearCoinGeckoApiKeys = clearCoinGeckoApiKeys;
+
+// =============================================================================
+// BING API SETTINGS PAGE FUNCTIONS
+// =============================================================================
+
+function showBingApiSettingsPage() {
+    console.log('Showing Bing API Settings Page');
+
+    // Stop polling when leaving app page
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+
+    // Show Bing API settings page
+    document.getElementById('bing-settings-page').style.display = 'block';
+
+    // Load saved Bing API key
+    const savedKey = getBingApiKey();
+    document.getElementById('bing-api-key-input').value = savedKey || '';
+
+    // Show status if key is active
+    const statusDiv = document.getElementById('bing-api-status');
+    if (savedKey) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.backgroundColor = '#1a3d1a';
+        statusDiv.style.border = '1px solid #28a745';
+        statusDiv.innerHTML = '<span style="color: #28a745;">✅ Bing API key is active</span>';
+    } else {
+        statusDiv.style.display = 'none';
+    }
+}
+
+function activateBingApi() {
+    const apiKey = document.getElementById('bing-api-key-input').value.trim();
+
+    if (!apiKey) {
+        alert('❌ Please enter a Bing API key.');
+        return;
+    }
+
+    // Save to localStorage
+    try {
+        localStorage.setItem(`${loggedInUser}_bingApiKey`, apiKey);
+        console.log('✅ Saved Bing API key');
+
+        // Update status display
+        const statusDiv = document.getElementById('bing-api-status');
+        statusDiv.style.display = 'block';
+        statusDiv.style.backgroundColor = '#1a3d1a';
+        statusDiv.style.border = '1px solid #28a745';
+        statusDiv.innerHTML = '<span style="color: #28a745;">✅ Bing API key activated successfully!</span>';
+
+        alert('✅ Bing API key activated!\n\nNews mentions will now include Bing results.');
+    } catch (error) {
+        console.error('❌ Error saving Bing API key:', error);
+        alert('❌ Error saving API key. Please try again.');
+    }
+}
+
+function clearBingApiKey() {
+    if (!confirm('Are you sure you want to clear the Bing API key?\n\nMentions will still work using CryptoCompare and Reddit.')) {
+        return;
+    }
+
+    // Clear input field
+    document.getElementById('bing-api-key-input').value = '';
+
+    // Remove from localStorage
+    localStorage.removeItem(`${loggedInUser}_bingApiKey`);
+
+    // Hide status
+    const statusDiv = document.getElementById('bing-api-status');
+    statusDiv.style.display = 'none';
+
+    console.log('✅ Bing API key cleared');
+    alert('✅ Bing API key cleared.');
+}
+
+function getBingApiKey() {
+    if (!loggedInUser) return null;
+    return localStorage.getItem(`${loggedInUser}_bingApiKey`) || null;
+}
+
+// Make Bing functions globally accessible
+window.showBingApiSettingsPage = showBingApiSettingsPage;
+window.activateBingApi = activateBingApi;
+window.clearBingApiKey = clearBingApiKey;
+window.getBingApiKey = getBingApiKey;
 
 // =============================================================================
 // EASYMINING UI TOGGLE FUNCTIONS
