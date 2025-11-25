@@ -126,6 +126,30 @@ function switchApiKey() {
     console.log(`Switched to API key: ${getApiKey()}`);
 }
 
+// Format holdings with full decimal precision (shows actual decimals stored, with comma separators)
+function formatHoldingsWithFullDecimals(value) {
+    if (value === 0) return '0';
+
+    // Convert to string to count actual decimal places
+    const strValue = value.toString();
+    const decimalIndex = strValue.indexOf('.');
+
+    // Count decimal places in the original value
+    let decimalPlaces = 0;
+    if (decimalIndex !== -1) {
+        decimalPlaces = strValue.length - decimalIndex - 1;
+    }
+
+    // Cap at 8 decimal places max for display
+    decimalPlaces = Math.min(decimalPlaces, 8);
+
+    // Format with commas and preserve decimal places
+    return value.toLocaleString('en-US', {
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces
+    });
+}
+
 async function fetchWithFallback(url) {
     for (let i = 0; i < apiKeys.length; i++) {
         const apiKey = getApiKey();
@@ -5871,11 +5895,8 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                     // Now update the chart modal holdings and value if it's open
                     if (currentCryptoId === coingeckoId) {
                         const holdingsElement = document.getElementById('holdings-info');
-                        // Format with commas before decimal, 3 decimals for holdings, 2 for AUD
-                        const formattedHoldingsWs = holdings.toLocaleString('en-US', {
-                            minimumFractionDigits: 3,
-                            maximumFractionDigits: 3
-                        });
+                        // Format holdings with full decimal precision, AUD with 2 decimals
+                        const formattedHoldingsWs = formatHoldingsWithFullDecimals(holdings);
                         const formattedAudWs = holdingsValueAud.toLocaleString('en-US', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
@@ -6113,10 +6134,10 @@ function syncModalLivePrice() {
         const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
 
         if (displayPriceAud > 0) {
-            // Format with commas and 4 decimals: 131,142.1234
+            // Format with commas and 2 decimals: 131,142.12
             const formattedPrice = displayPriceAud.toLocaleString('en-US', {
-                minimumFractionDigits: 4,
-                maximumFractionDigits: 4
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
             });
             livePriceElement.innerHTML = `<b>$${formattedPrice} AUD</b>`;
 
@@ -7382,11 +7403,8 @@ async function openCandlestickModal(cryptoId) {
         const holdingsValueAud = holdings * priceInAud;
         const holdingsElement = document.getElementById('holdings-info');
 
-        // Format holdings with commas (3 decimals) and AUD value (2 decimals)
-        const formattedHoldings = holdings.toLocaleString('en-US', {
-            minimumFractionDigits: 3,
-            maximumFractionDigits: 3
-        });
+        // Format holdings with full decimal precision, AUD value with 2 decimals
+        const formattedHoldings = formatHoldingsWithFullDecimals(holdings);
         const formattedAudValue = holdingsValueAud.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
