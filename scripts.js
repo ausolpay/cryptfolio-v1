@@ -6764,20 +6764,24 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
     const MAX_MENTIONS = 5000;
 
     const mentionsElement = document.getElementById('mentions30d');
+    const breakdownRow = document.getElementById('mentions-breakdown-row');
+    const breakdownDiv = document.getElementById('mentions-breakdown');
     const currentTime = Date.now();
+
+    // Reset breakdown visibility when opening new chart
+    if (breakdownRow) breakdownRow.style.display = 'none';
 
     // CHECK CACHE FIRST - return cached value if still valid
     try {
-        const cachedValue = localStorage.getItem(cacheKey);
+        const cachedData = localStorage.getItem(cacheKey);
         const cachedExpiry = localStorage.getItem(cacheExpiryKey);
 
-        if (cachedValue && cachedExpiry && currentTime < parseInt(cachedExpiry)) {
+        if (cachedData && cachedExpiry && currentTime < parseInt(cachedExpiry)) {
             // Cache is valid - use it
+            const cached = JSON.parse(cachedData);
             const hoursRemaining = Math.round((parseInt(cachedExpiry) - currentTime) / 3600000);
-            console.log(`Mentions cache hit for ${cryptoName}: ${cachedValue} (expires in ${hoursRemaining}h)`);
-            if (mentionsElement) {
-                mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedValue}</span>`;
-            }
+            console.log(`Mentions cache hit for ${cryptoName}: ${cached.total} (expires in ${hoursRemaining}h)`);
+            renderMentionsDisplay(mentionsElement, breakdownDiv, cached.total, cached.sources);
             return; // Don't fetch, use cached value
         }
     } catch (e) {
@@ -6790,7 +6794,7 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
     }
 
     let totalMentions = 0;
-    let sourcesUsed = [];
+    let sources = { google: 0, brave: 0, cc: 0, reddit: 0 };
 
     try {
         // Fetch all 4 sources in parallel
@@ -6801,41 +6805,46 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
             fetchRedditCount30d(cryptoName, cryptoSymbol)
         ]);
 
-        // Combine results from all successful sources
+        // Combine results from all sources
         if (googleResult.success) {
+            sources.google = googleResult.count;
             totalMentions += googleResult.count;
-            sourcesUsed.push(`Google:${googleResult.count}`);
         }
         if (braveResult.success) {
+            sources.brave = braveResult.count;
             totalMentions += braveResult.count;
-            sourcesUsed.push(`Brave:${braveResult.count}`);
         }
         if (ccResult.success) {
+            sources.cc = ccResult.count;
             totalMentions += ccResult.count;
-            sourcesUsed.push(`CC:${ccResult.count}`);
         }
         if (redditResult.success) {
+            sources.reddit = redditResult.count;
             totalMentions += redditResult.count;
-            sourcesUsed.push(`Reddit:${redditResult.count}`);
         }
 
-        // Fallback: If no sources succeeded, try to use whatever we got
-        if (sourcesUsed.length === 0) {
-            totalMentions = googleResult.count + braveResult.count + ccResult.count + redditResult.count;
+        // Fallback: If no sources succeeded, use raw counts
+        if (totalMentions === 0) {
+            sources = {
+                google: googleResult.count,
+                brave: braveResult.count,
+                cc: ccResult.count,
+                reddit: redditResult.count
+            };
+            totalMentions = sources.google + sources.brave + sources.cc + sources.reddit;
             console.warn('Mentions: All sources failed or returned 0, using raw counts');
         }
 
         totalMentions = Math.min(totalMentions, MAX_MENTIONS);
 
-        console.log(`Mentions (30d) for ${cryptoName} (${cryptoSymbol}): Total=${totalMentions} [${sourcesUsed.join(', ') || 'no sources'}] (cached for 24h)`);
+        console.log(`Mentions (30d) for ${cryptoName} (${cryptoSymbol}): Total=${totalMentions} [Google:${sources.google}, Brave:${sources.brave}, CC:${sources.cc}, Reddit:${sources.reddit}] (cached for 24h)`);
 
-        // Cache result for 24 hours
-        localStorage.setItem(cacheKey, totalMentions.toString());
+        // Cache result with source breakdown for 24 hours
+        const cacheData = { total: totalMentions, sources };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
         localStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
 
-        if (mentionsElement) {
-            mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">${totalMentions}</span>`;
-        }
+        renderMentionsDisplay(mentionsElement, breakdownDiv, totalMentions, sources);
 
     } catch (error) {
         console.error('Error fetching mentions:', error);
@@ -6844,6 +6853,48 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
         }
     }
 }
+
+// Render mentions with collapsible source breakdown
+function renderMentionsDisplay(mentionsElement, breakdownDiv, total, sources) {
+    if (!mentionsElement) return;
+
+    // Create clickable total with arrow
+    mentionsElement.innerHTML = `
+        <span class="mentions-toggle" onclick="toggleMentionsBreakdown()" style="cursor: pointer; display: flex; align-items: center; justify-content: flex-end;">
+            <span class="mentions-arrow" id="mentions-arrow" style="font-size: 10px; margin-right: 6px; transition: transform 0.2s; color: #888;">▶</span>
+            <span class="info-data">${total}</span>
+        </span>
+    `;
+
+    // Populate breakdown
+    if (breakdownDiv) {
+        breakdownDiv.innerHTML = `
+            <div style="font-size: 12px; color: #888; padding: 5px 0;">
+                <div style="display: flex; justify-content: space-between; padding: 2px 0;"><span>Google:</span><span>${sources.google || 0}</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 2px 0;"><span>Brave:</span><span>${sources.brave || 0}</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 2px 0;"><span>CryptoCompare:</span><span>${sources.cc || 0}</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 2px 0;"><span>Reddit:</span><span>${sources.reddit || 0}</span></div>
+            </div>
+        `;
+    }
+}
+
+// Toggle mentions breakdown visibility
+function toggleMentionsBreakdown() {
+    const breakdownRow = document.getElementById('mentions-breakdown-row');
+    const arrow = document.getElementById('mentions-arrow');
+
+    if (breakdownRow) {
+        const isHidden = breakdownRow.style.display === 'none';
+        breakdownRow.style.display = isHidden ? 'table-row' : 'none';
+        if (arrow) {
+            arrow.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+        }
+    }
+}
+
+// Make toggle function globally accessible
+window.toggleMentionsBreakdown = toggleMentionsBreakdown;
 
 
 

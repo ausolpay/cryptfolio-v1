@@ -1100,6 +1100,21 @@ body:not(.dark-mode) .holdings-info {
     border-bottom: 1px solid #909090;
   }
 
+  /* Mentions breakdown styles */
+  .mentions-breakdown {
+    border-left: 2px solid #444;
+    margin-left: 5px;
+    padding-left: 10px;
+  }
+
+  .mentions-toggle:hover .mentions-arrow {
+    color: #ffa500 !important;
+  }
+
+  #mentions-breakdown-row td {
+    border-bottom: 1px solid #909090;
+  }
+
   .sentiment-section {
     padding: 15px 20px 10px 20px;
   }
