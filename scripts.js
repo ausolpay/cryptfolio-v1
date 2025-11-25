@@ -982,6 +982,7 @@ function showAppPage() {
     document.getElementById('api-keys-page').style.display = 'none';
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
@@ -6626,14 +6627,18 @@ async function fetchBraveNewsCount30d(cryptoName, cryptoSymbol) {
     }
 }
 
-// Source 3: CryptoCompare News (free, no key, crypto-specific, CORS enabled)
+// Source 3: CryptoCompare News (works without key, optional API key for higher limits)
 async function fetchCryptoCompareCount30d(cryptoName, cryptoSymbol) {
     let totalArticles = 0;
     let hasResults = false;
 
+    // Get API key if configured
+    const ccSettings = getCryptoCompareApiSettings();
+    const apiKeyParam = ccSettings.apiKey ? `&api_key=${ccSettings.apiKey}` : '';
+
     // Search 1: By symbol category
     try {
-        const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN`;
+        const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN${apiKeyParam}`;
         const ccResponse = await fetch(ccUrl);
         if (ccResponse.ok) {
             const ccData = await ccResponse.json();
@@ -6653,7 +6658,7 @@ async function fetchCryptoCompareCount30d(cryptoName, cryptoSymbol) {
 
     // Search 2: By name in popular news
     try {
-        const searchUrl = `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=popular`;
+        const searchUrl = `https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=popular${apiKeyParam}`;
         const searchResponse = await fetch(searchUrl);
         if (searchResponse.ok) {
             const searchData = await searchResponse.json();
@@ -8662,6 +8667,7 @@ function showCoinGeckoApiSettingsPage() {
     document.getElementById('api-keys-page').style.display = 'none';
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
 
     // Show CoinGecko API settings page
     document.getElementById('coingecko-settings-page').style.display = 'block';
@@ -8880,6 +8886,7 @@ function showApiKeysPage() {
     document.getElementById('coingecko-settings-page').style.display = 'none';
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
 
     // Show API Keys page
     document.getElementById('api-keys-page').style.display = 'block';
@@ -8915,6 +8922,7 @@ function showGoogleApiSettingsPage() {
     document.getElementById('coingecko-settings-page').style.display = 'none';
     document.getElementById('api-keys-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
 
     // Show Google API settings page
     document.getElementById('google-settings-page').style.display = 'block';
@@ -8923,6 +8931,7 @@ function showGoogleApiSettingsPage() {
     const settings = getGoogleApiSettings();
     document.getElementById('google-api-key-input').value = settings.apiKey || '';
     document.getElementById('google-cse-id-input').value = settings.cseId || '';
+    document.getElementById('google-api-paid').checked = settings.isPaid || false;
 
     // Show status if configured
     const statusDiv = document.getElementById('google-api-status');
@@ -8930,7 +8939,8 @@ function showGoogleApiSettingsPage() {
         statusDiv.style.display = 'block';
         statusDiv.style.backgroundColor = '#1a3d1a';
         statusDiv.style.border = '1px solid #28a745';
-        statusDiv.innerHTML = '<span style="color: #28a745;">Google API is active</span>';
+        const tierText = settings.isPaid ? ' (Paid tier)' : ' (Free tier)';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Google API is active' + tierText + '</span>';
     } else {
         statusDiv.style.display = 'none';
     }
@@ -8939,6 +8949,7 @@ function showGoogleApiSettingsPage() {
 function activateGoogleApi() {
     const apiKey = document.getElementById('google-api-key-input').value.trim();
     const cseId = document.getElementById('google-cse-id-input').value.trim();
+    const isPaid = document.getElementById('google-api-paid').checked;
 
     if (!apiKey || !cseId) {
         alert('Both Google API Key and Custom Search Engine ID are required.');
@@ -8947,16 +8958,17 @@ function activateGoogleApi() {
 
     // Save to localStorage
     try {
-        const settings = { apiKey, cseId };
+        const settings = { apiKey, cseId, isPaid };
         localStorage.setItem(`${loggedInUser}_googleApiSettings`, JSON.stringify(settings));
-        console.log('Saved Google API settings');
+        console.log('Saved Google API settings (isPaid:', isPaid, ')');
 
         // Update status display
         const statusDiv = document.getElementById('google-api-status');
         statusDiv.style.display = 'block';
         statusDiv.style.backgroundColor = '#1a3d1a';
         statusDiv.style.border = '1px solid #28a745';
-        statusDiv.innerHTML = '<span style="color: #28a745;">Google API activated successfully!</span>';
+        const tierText = isPaid ? ' (Paid tier)' : ' (Free tier)';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Google API activated successfully!' + tierText + '</span>';
 
         alert('Google API activated!\n\nNews mentions will now include Google search results.');
     } catch (error) {
@@ -9026,21 +9038,24 @@ function showBraveApiSettingsPage() {
     document.getElementById('coingecko-settings-page').style.display = 'none';
     document.getElementById('api-keys-page').style.display = 'none';
     document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
 
     // Show Brave API settings page
     document.getElementById('brave-settings-page').style.display = 'block';
 
-    // Load saved Brave API key
-    const savedKey = getBraveApiKey();
-    document.getElementById('brave-api-key-input').value = savedKey || '';
+    // Load saved Brave API settings
+    const settings = getBraveApiSettings();
+    document.getElementById('brave-api-key-input').value = settings.apiKey || '';
+    document.getElementById('brave-api-paid').checked = settings.isPaid || false;
 
     // Show status if key is active
     const statusDiv = document.getElementById('brave-api-status');
-    if (savedKey) {
+    if (settings.apiKey) {
         statusDiv.style.display = 'block';
         statusDiv.style.backgroundColor = '#1a3d1a';
         statusDiv.style.border = '1px solid #28a745';
-        statusDiv.innerHTML = '<span style="color: #28a745;">Brave API key is active</span>';
+        const tierText = settings.isPaid ? ' (Paid tier)' : ' (Free tier)';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Brave API key is active' + tierText + '</span>';
     } else {
         statusDiv.style.display = 'none';
     }
@@ -9048,6 +9063,7 @@ function showBraveApiSettingsPage() {
 
 function activateBraveApi() {
     const apiKey = document.getElementById('brave-api-key-input').value.trim();
+    const isPaid = document.getElementById('brave-api-paid').checked;
 
     if (!apiKey) {
         alert('Please enter a Brave API key.');
@@ -9056,15 +9072,17 @@ function activateBraveApi() {
 
     // Save to localStorage
     try {
-        localStorage.setItem(`${loggedInUser}_braveApiKey`, apiKey);
-        console.log('Saved Brave API key');
+        const settings = { apiKey, isPaid };
+        localStorage.setItem(`${loggedInUser}_braveApiSettings`, JSON.stringify(settings));
+        console.log('Saved Brave API settings (isPaid:', isPaid, ')');
 
         // Update status display
         const statusDiv = document.getElementById('brave-api-status');
         statusDiv.style.display = 'block';
         statusDiv.style.backgroundColor = '#1a3d1a';
         statusDiv.style.border = '1px solid #28a745';
-        statusDiv.innerHTML = '<span style="color: #28a745;">Brave API key activated successfully!</span>';
+        const tierText = isPaid ? ' (Paid tier)' : ' (Free tier)';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Brave API key activated successfully!' + tierText + '</span>';
 
         alert('Brave API key activated!\n\nNews mentions will now include Brave search results.');
     } catch (error) {
@@ -9080,8 +9098,10 @@ function clearBraveApiKey() {
 
     // Clear input field
     document.getElementById('brave-api-key-input').value = '';
+    document.getElementById('brave-api-paid').checked = false;
 
-    // Remove from localStorage
+    // Remove from localStorage (both old and new keys for backwards compatibility)
+    localStorage.removeItem(`${loggedInUser}_braveApiSettings`);
     localStorage.removeItem(`${loggedInUser}_braveApiKey`);
 
     // Hide status
@@ -9092,16 +9112,159 @@ function clearBraveApiKey() {
     alert('Brave API key cleared.');
 }
 
+function getBraveApiSettings() {
+    if (!loggedInUser) return { apiKey: null, isPaid: false };
+    try {
+        // Try new format first
+        const saved = localStorage.getItem(`${loggedInUser}_braveApiSettings`);
+        if (saved) {
+            return JSON.parse(saved);
+        }
+        // Fallback to old format (just the key as a string)
+        const oldKey = localStorage.getItem(`${loggedInUser}_braveApiKey`);
+        if (oldKey) {
+            return { apiKey: oldKey, isPaid: false };
+        }
+    } catch (e) {
+        console.error('Error loading Brave API settings:', e);
+    }
+    return { apiKey: null, isPaid: false };
+}
+
+// Keep getBraveApiKey for backwards compatibility with fetch functions
 function getBraveApiKey() {
-    if (!loggedInUser) return null;
-    return localStorage.getItem(`${loggedInUser}_braveApiKey`) || null;
+    const settings = getBraveApiSettings();
+    return settings.apiKey;
 }
 
 // Make Brave functions globally accessible
 window.showBraveApiSettingsPage = showBraveApiSettingsPage;
 window.activateBraveApi = activateBraveApi;
 window.clearBraveApiKey = clearBraveApiKey;
+window.getBraveApiSettings = getBraveApiSettings;
 window.getBraveApiKey = getBraveApiKey;
+
+// =============================================================================
+// CRYPTOCOMPARE API SETTINGS PAGE FUNCTIONS
+// =============================================================================
+
+function showCryptoCompareApiSettingsPage() {
+    console.log('Showing CryptoCompare API Settings Page');
+
+    // Stop polling when leaving app page
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
+
+    // Show CryptoCompare API settings page
+    document.getElementById('cryptocompare-settings-page').style.display = 'block';
+
+    // Load saved CryptoCompare API settings
+    const settings = getCryptoCompareApiSettings();
+    document.getElementById('cryptocompare-api-key-input').value = settings.apiKey || '';
+    document.getElementById('cryptocompare-api-paid').checked = settings.isPaid || false;
+
+    // Show status
+    const statusDiv = document.getElementById('cryptocompare-api-status');
+    if (settings.apiKey) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.backgroundColor = '#1a3d1a';
+        statusDiv.style.border = '1px solid #28a745';
+        const tierText = settings.isPaid ? ' (Paid tier)' : ' (Free tier)';
+        statusDiv.innerHTML = '<span style="color: #28a745;">CryptoCompare API key is active' + tierText + '</span>';
+    } else {
+        statusDiv.style.display = 'block';
+        statusDiv.style.backgroundColor = '#1a3d3d';
+        statusDiv.style.border = '1px solid #17a2b8';
+        statusDiv.innerHTML = '<span style="color: #17a2b8;">Using public tier (no API key needed)</span>';
+    }
+}
+
+function activateCryptoCompareApi() {
+    const apiKey = document.getElementById('cryptocompare-api-key-input').value.trim();
+    const isPaid = document.getElementById('cryptocompare-api-paid').checked;
+
+    // CryptoCompare works without API key, so just save what we have
+    try {
+        const settings = { apiKey, isPaid };
+        localStorage.setItem(`${loggedInUser}_cryptoCompareApiSettings`, JSON.stringify(settings));
+        console.log('Saved CryptoCompare API settings (isPaid:', isPaid, ')');
+
+        // Update status display
+        const statusDiv = document.getElementById('cryptocompare-api-status');
+        statusDiv.style.display = 'block';
+
+        if (apiKey) {
+            statusDiv.style.backgroundColor = '#1a3d1a';
+            statusDiv.style.border = '1px solid #28a745';
+            const tierText = isPaid ? ' (Paid tier)' : ' (Free tier)';
+            statusDiv.innerHTML = '<span style="color: #28a745;">CryptoCompare API key activated!' + tierText + '</span>';
+            alert('CryptoCompare API key activated!\n\nHigher rate limits are now enabled.');
+        } else {
+            statusDiv.style.backgroundColor = '#1a3d3d';
+            statusDiv.style.border = '1px solid #17a2b8';
+            statusDiv.innerHTML = '<span style="color: #17a2b8;">Using public tier (no API key needed)</span>';
+            alert('Settings saved.\n\nCryptoCompare will use the public tier (no API key).');
+        }
+    } catch (error) {
+        console.error('Error saving CryptoCompare API settings:', error);
+        alert('Error saving API settings. Please try again.');
+    }
+}
+
+function clearCryptoCompareApiKey() {
+    if (!confirm('Are you sure you want to clear the CryptoCompare API key?\n\nCryptoCompare will continue to work using the public tier.')) {
+        return;
+    }
+
+    // Clear input field
+    document.getElementById('cryptocompare-api-key-input').value = '';
+    document.getElementById('cryptocompare-api-paid').checked = false;
+
+    // Remove from localStorage
+    localStorage.removeItem(`${loggedInUser}_cryptoCompareApiSettings`);
+
+    // Update status
+    const statusDiv = document.getElementById('cryptocompare-api-status');
+    statusDiv.style.display = 'block';
+    statusDiv.style.backgroundColor = '#1a3d3d';
+    statusDiv.style.border = '1px solid #17a2b8';
+    statusDiv.innerHTML = '<span style="color: #17a2b8;">Using public tier (no API key needed)</span>';
+
+    console.log('CryptoCompare API key cleared');
+    alert('CryptoCompare API key cleared.\n\nWill continue using public tier.');
+}
+
+function getCryptoCompareApiSettings() {
+    if (!loggedInUser) return { apiKey: null, isPaid: false };
+    try {
+        const saved = localStorage.getItem(`${loggedInUser}_cryptoCompareApiSettings`);
+        if (saved) {
+            return JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error('Error loading CryptoCompare API settings:', e);
+    }
+    return { apiKey: null, isPaid: false };
+}
+
+// Make CryptoCompare functions globally accessible
+window.showCryptoCompareApiSettingsPage = showCryptoCompareApiSettingsPage;
+window.activateCryptoCompareApi = activateCryptoCompareApi;
+window.clearCryptoCompareApiKey = clearCryptoCompareApiKey;
+window.getCryptoCompareApiSettings = getCryptoCompareApiSettings;
 
 // =============================================================================
 // EASYMINING UI TOGGLE FUNCTIONS

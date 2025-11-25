@@ -923,10 +923,15 @@
                         <span class="api-name">Brave Search API</span>
                         <span class="api-desc">News mentions via Brave search (Optional)</span>
                     </button>
+
+                    <button onclick="closeApiKeysPage(); showCryptoCompareApiSettingsPage();" class="api-hub-button">
+                        <span class="api-name">CryptoCompare API</span>
+                        <span class="api-desc">News mentions (Optional API key)</span>
+                    </button>
                 </div>
 
                 <p style="margin-top: 30px; color: #888; font-size: 13px;">
-                    <strong>Note:</strong> CryptoCompare and Reddit are used automatically (no API key needed).
+                    <strong>Note:</strong> Reddit is used automatically (no API key needed).
                 </p>
             </div>
         </div>
@@ -976,6 +981,16 @@
                     </div>
                 </div>
 
+                <div class="input-group" style="margin-top: 15px;">
+                    <label>API Tier:</label>
+                    <label class="api-tier-toggle">
+                        <span class="tier-label tier-free">Free</span>
+                        <input type="checkbox" id="google-api-paid">
+                        <span class="tier-slider"></span>
+                        <span class="tier-label tier-paid">Paid</span>
+                    </label>
+                </div>
+
                 <div id="google-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;">
                 </div>
 
@@ -1022,6 +1037,16 @@
                     </div>
                 </div>
 
+                <div class="input-group" style="margin-top: 15px;">
+                    <label>API Tier:</label>
+                    <label class="api-tier-toggle">
+                        <span class="tier-label tier-free">Free</span>
+                        <input type="checkbox" id="brave-api-paid">
+                        <span class="tier-slider"></span>
+                        <span class="tier-label tier-paid">Paid</span>
+                    </label>
+                </div>
+
                 <div id="brave-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;">
                 </div>
 
@@ -1031,6 +1056,63 @@
 
                 <div style="margin-top: 30px;">
                     <button onclick="clearBraveApiKey()" class="delete-button">Clear API Key</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> &copy; <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
+    <!-- CryptoCompare API Settings Page -->
+    <div id="cryptocompare-settings-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>CryptoCompare API Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">CryptoCompare API</h3>
+                <p style="margin: 10px 0; color: #666;">CryptoCompare provides crypto news for mentions in the chart modal.</p>
+                <p style="margin: 10px 0; color: #28a745; font-size: 14px;"><strong>Works without API key</strong> (public tier: 100k calls/month)</p>
+                <p style="margin: 10px 0; color: #888; font-size: 14px;">Add an optional API key for higher rate limits from <a href="https://min-api.cryptocompare.com/" target="_blank" style="color: #ffa500;">min-api.cryptocompare.com</a></p>
+
+                <div class="input-group">
+                    <label for="cryptocompare-api-key-input">API Key (Optional):</label>
+                    <div class="api-key-row">
+                        <input type="text" id="cryptocompare-api-key-input" placeholder="Leave empty for public tier">
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top: 15px;">
+                    <label>API Tier:</label>
+                    <label class="api-tier-toggle">
+                        <span class="tier-label tier-free">Free</span>
+                        <input type="checkbox" id="cryptocompare-api-paid">
+                        <span class="tier-slider"></span>
+                        <span class="tier-label tier-paid">Paid</span>
+                    </label>
+                </div>
+
+                <div id="cryptocompare-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;">
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateCryptoCompareApi()" class="activate-button">Activate API Key</button>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearCryptoCompareApiKey()" class="delete-button">Clear API Key</button>
                 </div>
             </div>
         </div>
