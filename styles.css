@@ -833,18 +833,108 @@ canvas:active {
     cursor: grabbing;
 }
 
+/* Price Info Panel - Modern Header Strip */
+.price-info-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(45, 45, 45, 0.95) 100%);
+    border-radius: 12px;
+    padding: 15px 25px;
+    margin: 10px 15px 15px 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-wrap: wrap;
+}
+
+body:not(.dark-mode) .price-info-panel {
+    background: linear-gradient(135deg, rgba(245, 245, 245, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.price-info-main {
+    flex: 0 0 auto;
+}
+
+.price-info-conversion {
+    flex: 0 0 auto;
+}
+
+.price-info-changes {
+    flex: 0 0 auto;
+}
+
+.price-info-divider {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+body:not(.dark-mode) .price-info-divider {
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.15), transparent);
+}
+
 .live-price {
-    font-size: calc(60% * var(--vw));
-    margin-top: 10px;
+    font-size: 1.4rem;
+    margin: 0;
     text-align: center;
-    width: 100%;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.holdings-info {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #ccc;
+    white-space: nowrap;
+}
+
+.holdings-info p {
+    margin: 0;
+}
+
+body:not(.dark-mode) .holdings-info {
+    color: #555;
 }
 
 .modal-percentage-changes {
-    font-size: calc(40% * var(--vw));
-    margin-top: 5px;
+    font-size: 0.9rem;
+    margin: 0;
     text-align: center;
-    width: 100%;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Responsive adjustments for price panel */
+@media (max-width: 768px) {
+    .price-info-panel {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 15px;
+    }
+
+    .price-info-divider {
+        width: 80%;
+        height: 1px;
+        background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+    }
+
+    body:not(.dark-mode) .price-info-divider {
+        background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.15), transparent);
+    }
+
+    .live-price {
+        font-size: 1.2rem;
+    }
+
+    .holdings-info,
+    .modal-percentage-changes {
+        font-size: 0.85rem;
+    }
 }
 
 :root {

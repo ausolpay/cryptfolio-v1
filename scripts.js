@@ -5871,8 +5871,17 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                     // Now update the chart modal holdings and value if it's open
                     if (currentCryptoId === coingeckoId) {
                         const holdingsElement = document.getElementById('holdings-info');
+                        // Format with commas before decimal, 3 decimals for holdings, 2 for AUD
+                        const formattedHoldingsWs = holdings.toLocaleString('en-US', {
+                            minimumFractionDigits: 3,
+                            maximumFractionDigits: 3
+                        });
+                        const formattedAudWs = holdingsValueAud.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
                         holdingsElement.innerHTML = `
-                            <p><strong>${holdings.toFixed(3)}</strong> ${crypto.symbol.toUpperCase()} = <strong id="holdings-value">$${holdingsValueAud.toFixed(2)}</strong> AUD</p>
+                            <span><strong>${formattedHoldingsWs}</strong> ${crypto.symbol.toUpperCase()} = <strong id="holdings-value">$${formattedAudWs}</strong> AUD</span>
                         `;
 
                         // ✅ FIX: Live price is now updated by syncModalLivePrice() interval only
@@ -7356,18 +7365,18 @@ async function openCandlestickModal(cryptoId) {
         const holdingsValueAud = holdings * priceInAud;
         const holdingsElement = document.getElementById('holdings-info');
 
-        // Format holdings and AUD value with commas and 3 decimals
+        // Format holdings with commas (3 decimals) and AUD value (2 decimals)
         const formattedHoldings = holdings.toLocaleString('en-US', {
             minimumFractionDigits: 3,
             maximumFractionDigits: 3
         });
         const formattedAudValue = holdingsValueAud.toLocaleString('en-US', {
-            minimumFractionDigits: 3,
-            maximumFractionDigits: 3
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
         });
 
         holdingsElement.innerHTML = `
-            <p><strong>${formattedHoldings}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${formattedAudValue}</strong> AUD</p>
+            <span><strong>${formattedHoldings}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${formattedAudValue}</strong> AUD</span>
         `;
 
         // Initialize conversion calculator with current price
