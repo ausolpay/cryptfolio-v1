@@ -803,14 +803,10 @@ input:checked + .slider:before {
     }
 }
 
-/* Tablet: Reduce chart modal height */
+/* Tablet: Reduce chart height */
 @media (min-width: 769px) and (max-width: 1024px) {
     .tradingview-chart {
-        height: 600px; /* Reduced height for tablet */
-    }
-
-    #candlestick-modal .modal-content {
-        max-height: 85vh; /* Limit modal height on tablet */
+        height: 550px; /* Reduced height for tablet */
     }
 }
 
