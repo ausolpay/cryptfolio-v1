@@ -6755,19 +6755,40 @@ async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
     }
 }
 
-// Main function: Fetch all sources with fallback logic
+// Main function: Fetch all sources with fallback logic (24-hour cache)
 async function fetchMentions30d(cryptoName, cryptoSymbol) {
-    const cacheKey = `${cryptoName}_mentions30d`;
-    const cacheExpiryKey = `${cryptoName}_mentions30dExpiry`;
-    const cacheExpiryDuration = 5 * 60 * 1000; // 5 minutes
+    // User-namespaced cache keys for multi-user support
+    const cacheKey = `${loggedInUser}_${cryptoName}_mentions30d`;
+    const cacheExpiryKey = `${loggedInUser}_${cryptoName}_mentions30dExpiry`;
+    const cacheExpiryDuration = 24 * 60 * 60 * 1000; // 24 hours
     const MAX_MENTIONS = 5000;
 
     const mentionsElement = document.getElementById('mentions30d');
+    const currentTime = Date.now();
+
+    // CHECK CACHE FIRST - return cached value if still valid
+    try {
+        const cachedValue = localStorage.getItem(cacheKey);
+        const cachedExpiry = localStorage.getItem(cacheExpiryKey);
+
+        if (cachedValue && cachedExpiry && currentTime < parseInt(cachedExpiry)) {
+            // Cache is valid - use it
+            const hoursRemaining = Math.round((parseInt(cachedExpiry) - currentTime) / 3600000);
+            console.log(`Mentions cache hit for ${cryptoName}: ${cachedValue} (expires in ${hoursRemaining}h)`);
+            if (mentionsElement) {
+                mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedValue}</span>`;
+            }
+            return; // Don't fetch, use cached value
+        }
+    } catch (e) {
+        console.warn('Mentions cache read error:', e);
+    }
+
+    // Cache miss or expired - fetch fresh data
     if (mentionsElement) {
         mentionsElement.innerHTML = `<span class="info-data" style="text-align: right; display: block;">Loading...</span>`;
     }
 
-    const currentTime = Date.now();
     let totalMentions = 0;
     let sourcesUsed = [];
 
@@ -6806,9 +6827,9 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
 
         totalMentions = Math.min(totalMentions, MAX_MENTIONS);
 
-        console.log(`Mentions (30d) for ${cryptoName} (${cryptoSymbol}): Total=${totalMentions} [${sourcesUsed.join(', ') || 'no sources'}]`);
+        console.log(`Mentions (30d) for ${cryptoName} (${cryptoSymbol}): Total=${totalMentions} [${sourcesUsed.join(', ') || 'no sources'}] (cached for 24h)`);
 
-        // Cache result
+        // Cache result for 24 hours
         localStorage.setItem(cacheKey, totalMentions.toString());
         localStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
 
