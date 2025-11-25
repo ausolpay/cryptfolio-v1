@@ -979,7 +979,9 @@ function showAppPage() {
     document.getElementById('app-page').style.display = 'block';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('coingecko-settings-page').style.display = 'none';
-    document.getElementById('bing-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
@@ -6523,18 +6525,66 @@ function sleep(ms) {
 }
 
 // ============================================================================
-// MENTIONS (30d) - Bing + CryptoCompare + Reddit with Fallbacks
+// MENTIONS (30d) - Google + Brave + CryptoCompare + Reddit with Fallbacks
 // ============================================================================
 
-// Source 1: Bing News Search (via Vercel proxy, requires API key)
-async function fetchBingNewsCount30d(cryptoName, cryptoSymbol) {
+// Source 1: Google Custom Search (via Vercel proxy, requires API key + CSE ID)
+async function fetchGoogleNewsCount30d(cryptoName, cryptoSymbol) {
     try {
-        // Get user's Bing API key from localStorage
-        const bingApiKey = getBingApiKey();
+        const googleSettings = getGoogleApiSettings();
 
-        // Skip if no API key configured
-        if (!bingApiKey && !IS_PRODUCTION) {
-            console.log('Bing: Skipped (no API key configured)');
+        if (!googleSettings.apiKey || !googleSettings.cseId) {
+            console.log('Google: Skipped (no API credentials configured)');
+            return { count: 0, success: false };
+        }
+
+        const query = `${cryptoName} cryptocurrency news`;
+        let url;
+
+        if (IS_PRODUCTION) {
+            url = `/api/google?q=${encodeURIComponent(query)}&apiKey=${encodeURIComponent(googleSettings.apiKey)}&cx=${encodeURIComponent(googleSettings.cseId)}`;
+        } else {
+            console.log('Google: Skipped (local development)');
+            return { count: 0, success: false };
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.warn('Google Custom Search API failed:', response.status);
+            return { count: 0, success: false };
+        }
+
+        const data = await response.json();
+
+        if (data.noKey) {
+            console.log('Google: No API credentials configured');
+            return { count: 0, success: false };
+        }
+
+        if (data.error) {
+            console.warn('Google Custom Search API error:', data.error);
+            return { count: 0, success: false };
+        }
+
+        const totalResults = parseInt(data.searchInformation?.totalResults || '0', 10);
+        const count = Math.min(totalResults, 500);
+
+        console.log(`Google Search (30d) for ${cryptoName}: ${count} results (raw: ${totalResults})`);
+        return { count, success: count > 0 };
+
+    } catch (error) {
+        console.warn('Google Search fetch error:', error);
+        return { count: 0, success: false };
+    }
+}
+
+// Source 2: Brave Search (via Vercel proxy, requires API key)
+async function fetchBraveNewsCount30d(cryptoName, cryptoSymbol) {
+    try {
+        const braveApiKey = getBraveApiKey();
+
+        if (!braveApiKey) {
+            console.log('Brave: Skipped (no API key configured)');
             return { count: 0, success: false };
         }
 
@@ -6542,48 +6592,41 @@ async function fetchBingNewsCount30d(cryptoName, cryptoSymbol) {
         let url;
 
         if (IS_PRODUCTION) {
-            // Pass user's API key to proxy (proxy will also check for env var as fallback)
-            url = `/api/bing?q=${encodeURIComponent(query)}&count=100&freshness=Month`;
-            if (bingApiKey) {
-                url += `&apiKey=${encodeURIComponent(bingApiKey)}`;
-            }
+            url = `/api/brave?q=${encodeURIComponent(query)}&count=20&freshness=pm&apiKey=${encodeURIComponent(braveApiKey)}`;
         } else {
-            // Local dev - skip Bing (requires proxy)
-            console.log('Bing: Skipped (local development)');
+            console.log('Brave: Skipped (local development)');
             return { count: 0, success: false };
         }
 
         const response = await fetch(url);
         if (!response.ok) {
-            console.warn('Bing News API failed:', response.status);
+            console.warn('Brave Search API failed:', response.status);
             return { count: 0, success: false };
         }
 
         const data = await response.json();
 
-        // Check for no API key
         if (data.noKey) {
-            console.log('Bing: No API key configured');
+            console.log('Brave: No API key configured');
             return { count: 0, success: false };
         }
 
-        // Check for error in response
         if (data.error) {
-            console.warn('Bing News API error:', data.error);
+            console.warn('Brave Search API error:', data.error);
             return { count: 0, success: false };
         }
 
-        const count = data.totalEstimatedMatches || (data.value ? data.value.length : 0);
-        console.log(`Bing News (30d) for ${cryptoName}: ${count} results`);
+        const count = data.results ? data.results.length : 0;
+        console.log(`Brave News (30d) for ${cryptoName}: ${count} results`);
         return { count, success: count > 0 };
 
     } catch (error) {
-        console.warn('Bing News fetch error:', error);
+        console.warn('Brave Search fetch error:', error);
         return { count: 0, success: false };
     }
 }
 
-// Source 2: CryptoCompare News (free, no key, crypto-specific, CORS enabled)
+// Source 3: CryptoCompare News (free, no key, crypto-specific, CORS enabled)
 async function fetchCryptoCompareCount30d(cryptoName, cryptoSymbol) {
     let totalArticles = 0;
     let hasResults = false;
@@ -6638,7 +6681,7 @@ async function fetchCryptoCompareCount30d(cryptoName, cryptoSymbol) {
     return { count: totalArticles, success: hasResults };
 }
 
-// Source 3: Reddit Search (via Vercel proxy to avoid CORS)
+// Source 4: Reddit Search (via Vercel proxy to avoid CORS)
 async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
     try {
         const searches = [
@@ -6724,17 +6767,22 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
     let sourcesUsed = [];
 
     try {
-        // Fetch all sources in parallel
-        const [bingResult, ccResult, redditResult] = await Promise.all([
-            fetchBingNewsCount30d(cryptoName, cryptoSymbol),
+        // Fetch all 4 sources in parallel
+        const [googleResult, braveResult, ccResult, redditResult] = await Promise.all([
+            fetchGoogleNewsCount30d(cryptoName, cryptoSymbol),
+            fetchBraveNewsCount30d(cryptoName, cryptoSymbol),
             fetchCryptoCompareCount30d(cryptoName, cryptoSymbol),
             fetchRedditCount30d(cryptoName, cryptoSymbol)
         ]);
 
         // Combine results from all successful sources
-        if (bingResult.success) {
-            totalMentions += bingResult.count;
-            sourcesUsed.push(`Bing:${bingResult.count}`);
+        if (googleResult.success) {
+            totalMentions += googleResult.count;
+            sourcesUsed.push(`Google:${googleResult.count}`);
+        }
+        if (braveResult.success) {
+            totalMentions += braveResult.count;
+            sourcesUsed.push(`Brave:${braveResult.count}`);
         }
         if (ccResult.success) {
             totalMentions += ccResult.count;
@@ -6747,7 +6795,7 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
 
         // Fallback: If no sources succeeded, try to use whatever we got
         if (sourcesUsed.length === 0) {
-            totalMentions = bingResult.count + ccResult.count + redditResult.count;
+            totalMentions = googleResult.count + braveResult.count + ccResult.count + redditResult.count;
             console.warn('Mentions: All sources failed or returned 0, using raw counts');
         }
 
@@ -8611,6 +8659,9 @@ function showCoinGeckoApiSettingsPage() {
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
 
     // Show CoinGecko API settings page
     document.getElementById('coingecko-settings-page').style.display = 'block';
@@ -8808,11 +8859,11 @@ window.activateCoinGeckoApi = activateCoinGeckoApi;
 window.clearCoinGeckoApiKeys = clearCoinGeckoApiKeys;
 
 // =============================================================================
-// BING API SETTINGS PAGE FUNCTIONS
+// API KEYS HUB PAGE FUNCTIONS
 // =============================================================================
 
-function showBingApiSettingsPage() {
-    console.log('Showing Bing API Settings Page');
+function showApiKeysPage() {
+    console.log('Showing API Keys Page');
 
     // Stop polling when leaving app page
     stopBuyPackagesPolling();
@@ -8827,82 +8878,230 @@ function showBingApiSettingsPage() {
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
     document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
 
-    // Show Bing API settings page
-    document.getElementById('bing-settings-page').style.display = 'block';
+    // Show API Keys page
+    document.getElementById('api-keys-page').style.display = 'block';
+}
 
-    // Load saved Bing API key
-    const savedKey = getBingApiKey();
-    document.getElementById('bing-api-key-input').value = savedKey || '';
+function closeApiKeysPage() {
+    document.getElementById('api-keys-page').style.display = 'none';
+}
 
-    // Show status if key is active
-    const statusDiv = document.getElementById('bing-api-status');
-    if (savedKey) {
+// Make API Keys hub functions globally accessible
+window.showApiKeysPage = showApiKeysPage;
+window.closeApiKeysPage = closeApiKeysPage;
+
+// =============================================================================
+// GOOGLE CUSTOM SEARCH API SETTINGS PAGE FUNCTIONS
+// =============================================================================
+
+function showGoogleApiSettingsPage() {
+    console.log('Showing Google API Settings Page');
+
+    // Stop polling when leaving app page
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
+
+    // Show Google API settings page
+    document.getElementById('google-settings-page').style.display = 'block';
+
+    // Load saved Google API settings
+    const settings = getGoogleApiSettings();
+    document.getElementById('google-api-key-input').value = settings.apiKey || '';
+    document.getElementById('google-cse-id-input').value = settings.cseId || '';
+
+    // Show status if configured
+    const statusDiv = document.getElementById('google-api-status');
+    if (settings.apiKey && settings.cseId) {
         statusDiv.style.display = 'block';
         statusDiv.style.backgroundColor = '#1a3d1a';
         statusDiv.style.border = '1px solid #28a745';
-        statusDiv.innerHTML = '<span style="color: #28a745;">✅ Bing API key is active</span>';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Google API is active</span>';
     } else {
         statusDiv.style.display = 'none';
     }
 }
 
-function activateBingApi() {
-    const apiKey = document.getElementById('bing-api-key-input').value.trim();
+function activateGoogleApi() {
+    const apiKey = document.getElementById('google-api-key-input').value.trim();
+    const cseId = document.getElementById('google-cse-id-input').value.trim();
 
-    if (!apiKey) {
-        alert('❌ Please enter a Bing API key.');
+    if (!apiKey || !cseId) {
+        alert('Both Google API Key and Custom Search Engine ID are required.');
         return;
     }
 
     // Save to localStorage
     try {
-        localStorage.setItem(`${loggedInUser}_bingApiKey`, apiKey);
-        console.log('✅ Saved Bing API key');
+        const settings = { apiKey, cseId };
+        localStorage.setItem(`${loggedInUser}_googleApiSettings`, JSON.stringify(settings));
+        console.log('Saved Google API settings');
 
         // Update status display
-        const statusDiv = document.getElementById('bing-api-status');
+        const statusDiv = document.getElementById('google-api-status');
         statusDiv.style.display = 'block';
         statusDiv.style.backgroundColor = '#1a3d1a';
         statusDiv.style.border = '1px solid #28a745';
-        statusDiv.innerHTML = '<span style="color: #28a745;">✅ Bing API key activated successfully!</span>';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Google API activated successfully!</span>';
 
-        alert('✅ Bing API key activated!\n\nNews mentions will now include Bing results.');
+        alert('Google API activated!\n\nNews mentions will now include Google search results.');
     } catch (error) {
-        console.error('❌ Error saving Bing API key:', error);
-        alert('❌ Error saving API key. Please try again.');
+        console.error('Error saving Google API settings:', error);
+        alert('Error saving API settings. Please try again.');
     }
 }
 
-function clearBingApiKey() {
-    if (!confirm('Are you sure you want to clear the Bing API key?\n\nMentions will still work using CryptoCompare and Reddit.')) {
+function clearGoogleApiKeys() {
+    if (!confirm('Are you sure you want to clear the Google API keys?\n\nMentions will still work using other sources.')) {
+        return;
+    }
+
+    // Clear input fields
+    document.getElementById('google-api-key-input').value = '';
+    document.getElementById('google-cse-id-input').value = '';
+
+    // Remove from localStorage
+    localStorage.removeItem(`${loggedInUser}_googleApiSettings`);
+
+    // Hide status
+    const statusDiv = document.getElementById('google-api-status');
+    statusDiv.style.display = 'none';
+
+    console.log('Google API keys cleared');
+    alert('Google API keys cleared.');
+}
+
+function getGoogleApiSettings() {
+    if (!loggedInUser) return { apiKey: null, cseId: null };
+    try {
+        const saved = localStorage.getItem(`${loggedInUser}_googleApiSettings`);
+        if (saved) {
+            return JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error('Error loading Google API settings:', e);
+    }
+    return { apiKey: null, cseId: null };
+}
+
+// Make Google functions globally accessible
+window.showGoogleApiSettingsPage = showGoogleApiSettingsPage;
+window.activateGoogleApi = activateGoogleApi;
+window.clearGoogleApiKeys = clearGoogleApiKeys;
+window.getGoogleApiSettings = getGoogleApiSettings;
+
+// =============================================================================
+// BRAVE SEARCH API SETTINGS PAGE FUNCTIONS
+// =============================================================================
+
+function showBraveApiSettingsPage() {
+    console.log('Showing Brave API Settings Page');
+
+    // Stop polling when leaving app page
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+
+    // Show Brave API settings page
+    document.getElementById('brave-settings-page').style.display = 'block';
+
+    // Load saved Brave API key
+    const savedKey = getBraveApiKey();
+    document.getElementById('brave-api-key-input').value = savedKey || '';
+
+    // Show status if key is active
+    const statusDiv = document.getElementById('brave-api-status');
+    if (savedKey) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.backgroundColor = '#1a3d1a';
+        statusDiv.style.border = '1px solid #28a745';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Brave API key is active</span>';
+    } else {
+        statusDiv.style.display = 'none';
+    }
+}
+
+function activateBraveApi() {
+    const apiKey = document.getElementById('brave-api-key-input').value.trim();
+
+    if (!apiKey) {
+        alert('Please enter a Brave API key.');
+        return;
+    }
+
+    // Save to localStorage
+    try {
+        localStorage.setItem(`${loggedInUser}_braveApiKey`, apiKey);
+        console.log('Saved Brave API key');
+
+        // Update status display
+        const statusDiv = document.getElementById('brave-api-status');
+        statusDiv.style.display = 'block';
+        statusDiv.style.backgroundColor = '#1a3d1a';
+        statusDiv.style.border = '1px solid #28a745';
+        statusDiv.innerHTML = '<span style="color: #28a745;">Brave API key activated successfully!</span>';
+
+        alert('Brave API key activated!\n\nNews mentions will now include Brave search results.');
+    } catch (error) {
+        console.error('Error saving Brave API key:', error);
+        alert('Error saving API key. Please try again.');
+    }
+}
+
+function clearBraveApiKey() {
+    if (!confirm('Are you sure you want to clear the Brave API key?\n\nMentions will still work using other sources.')) {
         return;
     }
 
     // Clear input field
-    document.getElementById('bing-api-key-input').value = '';
+    document.getElementById('brave-api-key-input').value = '';
 
     // Remove from localStorage
-    localStorage.removeItem(`${loggedInUser}_bingApiKey`);
+    localStorage.removeItem(`${loggedInUser}_braveApiKey`);
 
     // Hide status
-    const statusDiv = document.getElementById('bing-api-status');
+    const statusDiv = document.getElementById('brave-api-status');
     statusDiv.style.display = 'none';
 
-    console.log('✅ Bing API key cleared');
-    alert('✅ Bing API key cleared.');
+    console.log('Brave API key cleared');
+    alert('Brave API key cleared.');
 }
 
-function getBingApiKey() {
+function getBraveApiKey() {
     if (!loggedInUser) return null;
-    return localStorage.getItem(`${loggedInUser}_bingApiKey`) || null;
+    return localStorage.getItem(`${loggedInUser}_braveApiKey`) || null;
 }
 
-// Make Bing functions globally accessible
-window.showBingApiSettingsPage = showBingApiSettingsPage;
-window.activateBingApi = activateBingApi;
-window.clearBingApiKey = clearBingApiKey;
-window.getBingApiKey = getBingApiKey;
+// Make Brave functions globally accessible
+window.showBraveApiSettingsPage = showBraveApiSettingsPage;
+window.activateBraveApi = activateBraveApi;
+window.clearBraveApiKey = clearBraveApiKey;
+window.getBraveApiKey = getBraveApiKey;
 
 // =============================================================================
 // EASYMINING UI TOGGLE FUNCTIONS

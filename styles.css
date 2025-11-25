@@ -3396,3 +3396,57 @@ body.light-mode .easymining-settings-form input[type="number"] {
 #withdraw-amount-aud {
     -moz-appearance: textfield; /* Firefox */
 }
+
+/* =============================================================================
+   API Keys Hub Button Styles
+   ============================================================================= */
+
+.api-hub-button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    border: 1px solid #444;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.api-hub-button:hover {
+    background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+    border-color: #ffa500;
+    transform: translateX(5px);
+}
+
+.api-hub-button .api-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffa500;
+    margin-bottom: 3px;
+}
+
+.api-hub-button .api-desc {
+    font-size: 12px;
+    color: #888;
+}
+
+/* Light mode adjustments for API hub buttons */
+body:not(.dark-mode) .api-hub-button,
+body.light-mode .api-hub-button {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 100%);
+    border-color: #ccc;
+}
+
+body:not(.dark-mode) .api-hub-button:hover,
+body.light-mode .api-hub-button:hover {
+    background: linear-gradient(135deg, #fff 0%, #f5f5f5 100%);
+}
+
+body:not(.dark-mode) .api-hub-button .api-desc,
+body.light-mode .api-hub-button .api-desc {
+    color: #666;
+}

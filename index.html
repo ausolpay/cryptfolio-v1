@@ -895,49 +895,154 @@
         </div>
     </div>
 
-    <!-- Bing API Settings Page -->
-    <div id="bing-settings-page" class="container" style="display: none;">
+    <!-- API Keys Hub Page -->
+    <div id="api-keys-page" class="container" style="display: none;">
         <div class="header">
             <div>
                 <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
                 <h1 class="app-title">CRYPTFOLIO v2</h1>
-                <p>Bing News API Settings</p>
+                <p>API Keys Settings</p>
             </div>
 
             <div class="easymining-settings-form">
-                <h3 style="margin-top: 0; color: #ffa500;">Bing News Search API</h3>
-                <p style="margin: 10px 0; color: #666;">Bing API key enables news search for crypto mentions in the chart modal.</p>
-                <p style="margin: 10px 0; color: #888; font-size: 14px;">Get a free API key (1000 calls/month) from <a href="https://www.microsoft.com/en-us/bing/apis/bing-news-search-api" target="_blank" style="color: #ffa500;">Microsoft Bing News Search API</a></p>
+                <h3 style="margin-top: 0; color: #ffa500;">Manage API Keys</h3>
+                <p style="margin: 10px 0; color: #666;">Configure API keys for various services used by CryptFolio.</p>
 
-                <div class="input-group">
-                    <label for="bing-api-key-input">Bing API Key:</label>
-                    <div class="api-key-row">
-                        <input type="text" id="bing-api-key-input" placeholder="Enter your Bing News Search API Key">
-                    </div>
+                <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 15px;">
+                    <button onclick="closeApiKeysPage(); showCoinGeckoApiSettingsPage();" class="api-hub-button">
+                        <span class="api-name">CoinGecko API</span>
+                        <span class="api-desc">Price data & market info (Required)</span>
+                    </button>
+
+                    <button onclick="closeApiKeysPage(); showGoogleApiSettingsPage();" class="api-hub-button">
+                        <span class="api-name">Google Custom Search API</span>
+                        <span class="api-desc">News mentions via Google search (Optional)</span>
+                    </button>
+
+                    <button onclick="closeApiKeysPage(); showBraveApiSettingsPage();" class="api-hub-button">
+                        <span class="api-name">Brave Search API</span>
+                        <span class="api-desc">News mentions via Brave search (Optional)</span>
+                    </button>
                 </div>
 
-                <div id="bing-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;">
-                    <!-- Status message will appear here -->
-                </div>
-
-                <div style="margin: 20px 0;">
-                    <button onclick="activateBingApi()" class="activate-button">Activate API Key</button>
-                </div>
-
-                <div style="margin-top: 30px;">
-                    <button onclick="clearBingApiKey()" class="delete-button">Clear API Key</button>
-                </div>
+                <p style="margin-top: 30px; color: #888; font-size: 13px;">
+                    <strong>Note:</strong> CryptoCompare and Reddit are used automatically (no API key needed).
+                </p>
             </div>
         </div>
 
         <div class="buttons">
-            <button onclick="showAppPage()">← Back</button>
+            <button onclick="showAppPage()">&#8592; Back</button>
             <button id="settings-button" onclick="showSettingsModal()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
         <div>
-            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> &copy; <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
+    <!-- Google API Settings Page -->
+    <div id="google-settings-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>Google Custom Search API Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">Google Custom Search JSON API</h3>
+                <p style="margin: 10px 0; color: #666;">Google Custom Search enables news search for crypto mentions in the chart modal.</p>
+                <p style="margin: 10px 0; color: #888; font-size: 14px;">
+                    1. Get an API key from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: #ffa500;">Google Cloud Console</a><br>
+                    2. Enable "Custom Search API" in the API Library<br>
+                    3. Create a Programmable Search Engine at <a href="https://programmablesearchengine.google.com/" target="_blank" style="color: #ffa500;">programmablesearchengine.google.com</a><br>
+                    4. Configure it to search the entire web
+                </p>
+
+                <div class="input-group">
+                    <label for="google-api-key-input">Google API Key:</label>
+                    <div class="api-key-row">
+                        <input type="text" id="google-api-key-input" placeholder="Enter your Google API Key">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="google-cse-id-input">Custom Search Engine ID (cx):</label>
+                    <div class="api-key-row">
+                        <input type="text" id="google-cse-id-input" placeholder="Enter your CSE ID (e.g., 017576662512468239146:omuauf_lfve)">
+                    </div>
+                </div>
+
+                <div id="google-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;">
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateGoogleApi()" class="activate-button">Activate Google API</button>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearGoogleApiKeys()" class="delete-button">Clear API Keys</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> &copy; <span class="current-year"></span></p>
+            <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
+    <!-- Brave API Settings Page -->
+    <div id="brave-settings-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>Brave Search API Settings</p>
+            </div>
+
+            <div class="easymining-settings-form">
+                <h3 style="margin-top: 0; color: #ffa500;">Brave Search API</h3>
+                <p style="margin: 10px 0; color: #666;">Brave Search API enables news search for crypto mentions in the chart modal.</p>
+                <p style="margin: 10px 0; color: #888; font-size: 14px;">Get a free API key (2000 queries/month) from <a href="https://brave.com/search/api/" target="_blank" style="color: #ffa500;">brave.com/search/api</a></p>
+
+                <div class="input-group">
+                    <label for="brave-api-key-input">Brave API Key:</label>
+                    <div class="api-key-row">
+                        <input type="text" id="brave-api-key-input" placeholder="Enter your Brave Search API Key">
+                    </div>
+                </div>
+
+                <div id="brave-api-status" style="margin: 15px 0; padding: 10px; border-radius: 5px; display: none;">
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <button onclick="activateBraveApi()" class="activate-button">Activate API Key</button>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button onclick="clearBraveApiKey()" class="delete-button">Clear API Key</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
+            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
+        </div>
+
+        <div>
+            <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> &copy; <span class="current-year"></span></p>
             <p>Data by CoinGecko / MEXC</p>
         </div>
     </div>
@@ -1065,8 +1170,7 @@
             </div>
             <div style="margin-top: 20px;">
                 <button id="easymining-settings-btn" onclick="closeSettingsModal(); showEasyMiningSettingsPage();">EasyMining</button>
-                <button id="coingecko-api-btn" onclick="closeSettingsModal(); showCoinGeckoApiSettingsPage();">CG API</button>
-                <button id="bing-api-btn" onclick="closeSettingsModal(); showBingApiSettingsPage();">Bing API</button>
+                <button id="api-keys-btn" onclick="closeSettingsModal(); showApiKeysPage();">API Keys</button>
                 <button class="delete-button" onclick="closeSettingsModal()">Close</button>
             </div>
         </div>
