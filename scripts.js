@@ -15750,6 +15750,35 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             }
         }
 
+        // Update probability (single crypto)
+        const probabilityEl = card.querySelector(`#probability-${packageIdForElements}`);
+        if (probabilityEl && pkg.probability) {
+            probabilityEl.textContent = pkg.probability;
+        }
+
+        // Update dual-crypto probabilities
+        const mergeProbEl = card.querySelector(`#merge-probability-${packageIdForElements}`);
+        if (mergeProbEl && pkg.mergeProbability) {
+            mergeProbEl.textContent = `${pkg.mergeProbability} ${pkg.mergeCrypto}`;
+        }
+
+        const mainProbEl = card.querySelector(`#main-probability-${packageIdForElements}`);
+        if (mainProbEl && pkg.mainProbability) {
+            mainProbEl.textContent = `${pkg.mainProbability} ${pkg.mainCrypto}`;
+        }
+
+        // Update duration
+        const durationEl = card.querySelector(`#duration-${packageIdForElements}`);
+        if (durationEl && pkg.duration) {
+            durationEl.textContent = pkg.duration;
+        }
+
+        // Update hashrate
+        const hashrateEl = card.querySelector(`#hashrate-${packageIdForElements}`);
+        if (hashrateEl && pkg.hashrate) {
+            hashrateEl.textContent = pkg.hashrate;
+        }
+
         // DO NOT touch countdown element - updateTeamPackageCountdowns() handles it every second
 
         console.log(`✅ Smart updated: ${pkg.name}`);
@@ -16778,7 +16807,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             ${probabilityInfo}
             <div class="buy-package-stat">
                 <span>Duration:</span>
-                <span>${pkg.duration}</span>
+                <span id="duration-${packageIdForElements}">${pkg.duration}</span>
             </div>
             ${hashrateInfo}
             ${sharesInfo}
