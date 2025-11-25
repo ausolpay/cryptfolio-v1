@@ -16848,7 +16848,7 @@ async function autoClearTeamShares(packageId, packageName) {
     }
 }
 
-// Check and auto-clear active packages based on completion threshold
+// Auto-buy Bot - Team No Reward Bail: Clear shares from auto-bought team packages that cross completion threshold without finding a block
 function checkAutoClearActiveShares() {
     // Check if feature is enabled
     if (!easyMiningSettings.autoClearActiveShares) {
@@ -16856,41 +16856,31 @@ function checkAutoClearActiveShares() {
     }
 
     const threshold = easyMiningSettings.autoClearThreshold || 50;
-    console.log(`🔍 Checking auto-clear active packages (threshold: ${threshold}%)`);
+    console.log(`🔍 Checking Team No Reward Bail (threshold: ${threshold}%)`);
 
     // Get auto-bought packages tracking
     const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
-    const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
     // Iterate through active packages
     easyMiningData.activePackages.forEach(pkg => {
-        // Only process active packages (not countdown/queued)
-        if (!pkg.active) {
+        // Only process active TEAM packages (not countdown/queued, not solo)
+        if (!pkg.isTeam || !pkg.active) {
             return;
         }
 
         const packageId = pkg.apiData?.id || pkg.id;
         const progress = pkg.progress || 0;
         const hasBlockFound = pkg.blockFound === true;
-        const isTeamPackage = pkg.isTeam === true;
+        const myShares = getMyTeamShares(packageId) || 0;
 
-        // For team packages, check shares. For solo packages, always process (no shares to check)
-        if (isTeamPackage) {
-            const myShares = getMyTeamShares(packageId) || 0;
-            // Skip team packages with no shares or if block was found
-            if (myShares === 0 || hasBlockFound) {
-                return;
-            }
-        } else {
-            // Solo package - skip if block was found
-            if (hasBlockFound) {
-                return;
-            }
+        // Skip if no shares or block was found
+        if (myShares === 0 || hasBlockFound) {
+            return;
         }
 
         // Check if progress crosses threshold
         if (progress >= threshold) {
-            // Check if package was auto-bought
+            // Check if package was auto-bought (same logic as existing auto-clear)
             let wasAutoBought = null;
             let matchMethod = 'none';
 
@@ -16909,17 +16899,16 @@ function checkAutoClearActiveShares() {
             // Level 3: Match by package name + recent purchase (within 7 days)
             if (!wasAutoBought && pkg.active) {
                 const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-                const packageType = isTeamPackage ? 'team' : 'solo';
                 wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                    entry.type === packageType &&
+                    entry.type === 'team' &&
                     entry.packageName === pkg.name &&
                     entry.timestamp > sevenDaysAgo
                 );
                 if (wasAutoBought) matchMethod = 'name-timestamp';
             }
 
-            // Level 4: For team packages - check sharedTicket.id
-            if (!wasAutoBought && isTeamPackage && pkg.fullOrderData?.sharedTicket?.id) {
+            // Level 4: Check sharedTicket.id
+            if (!wasAutoBought && pkg.fullOrderData?.sharedTicket?.id) {
                 const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
                 wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
                     entry.ticketId === sharedTicketId
@@ -16927,30 +16916,18 @@ function checkAutoClearActiveShares() {
                 if (wasAutoBought) matchMethod = 'sharedTicket-id';
             }
 
-            // Level 5: For solo packages - check soloAutoBuy settings
-            if (!wasAutoBought && !isTeamPackage && soloAutoBuy[pkg.name]?.enabled === true) {
-                // If auto-buy is enabled for this package, check for recent purchase
-                wasAutoBought = Object.values(autoBoughtPackages).find(entry =>
-                    entry.type === 'solo' &&
-                    entry.packageName === pkg.name
-                );
-                if (wasAutoBought) matchMethod = 'solo-autobuy';
-            }
-
-            // Only process if package was auto-bought
+            // Only auto-clear if package was auto-bought
             if (!wasAutoBought) {
-                console.log(`⏭️ Skipping auto-clear for ${pkg.name} - was manually bought`);
+                console.log(`⏭️ Skipping bail for ${pkg.name} - was manually bought`);
                 return;
             }
 
-            // Check if already processed to prevent duplicates
-            const clearedKey = `${loggedInUser}_autoClearedActivePackage_${packageId}`;
+            // Check if already cleared to prevent duplicates
+            const clearedKey = `${loggedInUser}_teamNoRewardBail_${packageId}`;
             const alreadyCleared = localStorage.getItem(clearedKey);
 
             if (!alreadyCleared) {
-                const myShares = isTeamPackage ? (getMyTeamShares(packageId) || 0) : 'N/A (solo)';
-                console.log(`🤖 Auto-clear active package triggered for ${pkg.name}:`, {
-                    type: isTeamPackage ? 'team' : 'solo',
+                console.log(`🤖 Team No Reward Bail triggered for ${pkg.name}:`, {
                     progress: `${progress.toFixed(2)}%`,
                     threshold: `${threshold}%`,
                     myShares: myShares,
@@ -16958,20 +16935,15 @@ function checkAutoClearActiveShares() {
                     matchMethod: matchMethod
                 });
 
-                // Mark as processed to prevent duplicate processing
+                // Mark as cleared to prevent duplicate clears
                 localStorage.setItem(clearedKey, 'true');
 
-                // Only team packages can have shares cleared
-                if (isTeamPackage) {
-                    autoClearTeamShares(packageId, pkg.name).catch(err => {
-                        console.error('Auto-clear active package failed:', err);
-                        // Remove cleared flag if failed, so it can retry
-                        localStorage.removeItem(clearedKey);
-                    });
-                } else {
-                    // Solo packages - log detection but no clear action available
-                    console.log(`ℹ️ Solo package ${pkg.name} crossed threshold without block - no clear action available for solo packages`);
-                }
+                // Call auto-clear function
+                autoClearTeamShares(packageId, pkg.name).catch(err => {
+                    console.error('Team No Reward Bail failed:', err);
+                    // Remove cleared flag if failed, so it can retry
+                    localStorage.removeItem(clearedKey);
+                });
             }
         }
     });
