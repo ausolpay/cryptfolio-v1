@@ -4476,6 +4476,11 @@ function updateTotalHoldings() {
         updateMilestone(totalHoldings);
 
         resetMilestone();
+
+        // Update EasyMining stats with live prices if packages exist
+        if (easyMiningData && easyMiningData.activePackages && easyMiningData.activePackages.length > 0) {
+            updateStats();
+        }
     }
 }
 
@@ -11085,6 +11090,8 @@ function updateStats() {
             id: pkg.id,
             name: pkg.name,
             btcEarnings: pkg.btcEarnings,
+            reward: pkg.reward,
+            crypto: pkg.crypto,
             blockFound: pkg.blockFound,
             price: pkg.price
         })));
@@ -11096,26 +11103,43 @@ function updateStats() {
     // Total blocks = sum of totalBlocks from each package (not just package count!)
     const totalBlocksAll = packages.reduce((sum, pkg) => sum + (pkg.totalBlocks || 0), 0);
 
-    // Total spent = sum price from ALL packages (not just ones with blocks)
+    // Total spent = sum price from ALL packages (not just ones with blocks) - in BTC
     const totalSpentBTC = packages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
 
-    // Total reward = sum btcEarnings from packages that found blocks
-    const totalRewardBTC = packagesWithBlocks.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0);
+    // Total reward = calculate using LIVE CRYPTO PRICES for each package's actual crypto
+    // This ensures rewards update with live market prices, not the BTC snapshot from API
+    let totalRewardAUD = 0;
+    packagesWithBlocks.forEach(pkg => {
+        // Primary reward (e.g., BTC, BCH, RVN, DOGE, LTC, KAS)
+        const primaryRewardAUD = convertCryptoToAUD(pkg.reward || 0, pkg.crypto);
+        // Secondary reward for dual mining (e.g., LTC in Palladium DOGE+LTC packages)
+        const secondaryRewardAUD = pkg.rewardSecondary > 0 && pkg.cryptoSecondary
+            ? convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary)
+            : 0;
 
-    const pnlBTC = totalRewardBTC - totalSpentBTC;
+        totalRewardAUD += primaryRewardAUD + secondaryRewardAUD;
 
-    console.log(`\n💰 STATS CALCULATION:`);
+        if (pkg.reward > 0) {
+            console.log(`   📈 ${pkg.name}: ${pkg.reward} ${pkg.crypto} = $${primaryRewardAUD.toFixed(2)} AUD`);
+            if (secondaryRewardAUD > 0) {
+                console.log(`      + ${pkg.rewardSecondary} ${pkg.cryptoSecondary} = $${secondaryRewardAUD.toFixed(2)} AUD`);
+            }
+        }
+    });
+
+    // Convert spent BTC to AUD using live BTC price
+    const totalSpentAUD = convertBTCtoAUD(totalSpentBTC);
+
+    // Calculate PnL in AUD
+    const pnlAUD = totalRewardAUD - totalSpentAUD;
+
+    console.log(`\n💰 STATS CALCULATION (LIVE PRICES):`);
     console.log(`   Total packages: ${packages.length}`);
     console.log(`   Packages with blocks: ${packagesWithBlocks.length}`);
     console.log(`   Total blocks found: ${totalBlocksAll}`);
-    console.log(`   Total spent: ${totalSpentBTC.toFixed(8)} BTC`);
-    console.log(`   Total rewards: ${totalRewardBTC.toFixed(8)} BTC`);
-    console.log(`   PnL: ${pnlBTC.toFixed(8)} BTC`);
-
-    // Convert BTC to AUD for display
-    const totalSpentAUD = convertBTCtoAUD(totalSpentBTC);
-    const totalRewardAUD = convertBTCtoAUD(totalRewardBTC);
-    const pnlAUD = convertBTCtoAUD(pnlBTC);
+    console.log(`   Total spent: ${totalSpentBTC.toFixed(8)} BTC = $${totalSpentAUD.toFixed(2)} AUD`);
+    console.log(`   Total rewards: $${totalRewardAUD.toFixed(2)} AUD (using live crypto prices)`);
+    console.log(`   PnL: $${pnlAUD.toFixed(2)} AUD`);
 
     // Today stats - packages started today
     const today = new Date();
@@ -11128,17 +11152,22 @@ function updateStats() {
     // Total blocks today = sum of totalBlocks from packages started today
     const totalBlocksToday = todayPackages.reduce((sum, pkg) => sum + (pkg.totalBlocks || 0), 0);
 
-    // Total spent today = sum price from packages started today
+    // Total spent today = sum price from packages started today (in BTC)
     const totalSpentTodayBTC = todayPackages.reduce((sum, pkg) => sum + (pkg.price || 0), 0);
 
-    // Total reward today = sum btcEarnings from packages started today that found blocks
-    const totalRewardTodayBTC = todayPackagesWithBlocks.reduce((sum, pkg) => sum + (pkg.btcEarnings || 0), 0);
+    // Total reward today = calculate using LIVE CRYPTO PRICES
+    let totalRewardTodayAUD = 0;
+    todayPackagesWithBlocks.forEach(pkg => {
+        const primaryRewardAUD = convertCryptoToAUD(pkg.reward || 0, pkg.crypto);
+        const secondaryRewardAUD = pkg.rewardSecondary > 0 && pkg.cryptoSecondary
+            ? convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary)
+            : 0;
+        totalRewardTodayAUD += primaryRewardAUD + secondaryRewardAUD;
+    });
 
-    const pnlTodayBTC = totalRewardTodayBTC - totalSpentTodayBTC;
-
-    // Convert today's BTC to AUD
+    // Convert today's spent BTC to AUD
     const totalSpentTodayAUD = convertBTCtoAUD(totalSpentTodayBTC);
-    const pnlTodayAUD = convertBTCtoAUD(pnlTodayBTC);
+    const pnlTodayAUD = totalRewardTodayAUD - totalSpentTodayAUD;
 
     console.log(`📈 Stats - Blocks: ${totalBlocksAll}, Spent: $${totalSpentAUD.toFixed(2)}, Reward: $${totalRewardAUD.toFixed(2)}, PNL: $${pnlAUD.toFixed(2)}`);
 
@@ -11150,7 +11179,6 @@ function updateStats() {
     document.getElementById('pnl-all').className = pnlAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
 
     // Update UI - Today stats (in AUD)
-    const totalRewardTodayAUD = convertBTCtoAUD(totalRewardTodayBTC);
     const blocksElem = document.getElementById('total-blocks-today');
     const rewardsTodayElem = document.getElementById('rewards-today');
     const spentTodayElem = document.getElementById('total-spent-today');
@@ -11164,19 +11192,20 @@ function updateStats() {
         pnlTodayElem.className = pnlTodayAUD >= 0 ? 'stat-value positive' : 'stat-value negative';
     }
 
-    // Update the easyMiningData stats for persistence (store in BTC)
+    // Update the easyMiningData stats for persistence (store in BTC for spent, AUD for rewards)
+    // Note: totalReward now represents AUD value calculated with live prices
     easyMiningData.allTimeStats = {
         totalBlocks: totalBlocksAll,
-        totalReward: totalRewardBTC,
-        totalSpent: totalSpentBTC,
-        pnl: pnlBTC
+        totalReward: totalRewardAUD, // Now in AUD using live prices
+        totalSpent: totalSpentBTC,   // Still in BTC for consistency
+        pnl: pnlAUD                  // Now in AUD
     };
 
     easyMiningData.todayStats = {
         totalBlocks: totalBlocksToday,
-        totalReward: totalRewardTodayBTC,
-        totalSpent: totalSpentTodayBTC,
-        pnl: pnlTodayBTC
+        totalReward: totalRewardTodayAUD, // Now in AUD using live prices
+        totalSpent: totalSpentTodayBTC,   // Still in BTC for consistency
+        pnl: pnlTodayAUD                  // Now in AUD
     };
 }
 
