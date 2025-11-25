@@ -6137,141 +6137,274 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Updated fetchNewsArticles function with caching, rate-limiting, and right-aligned data
-async function fetchNewsArticles(cryptoName, cryptoSymbol) {
+// Fetch news from CryptoCompare API (free, no API key required for basic access)
+async function fetchCryptoCompareNews(cryptoSymbol) {
+    try {
+        // CryptoCompare news API - filter by categories/coins
+        const url = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol}&lang=EN`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            console.warn('CryptoCompare API error:', response.status);
+            return 0;
+        }
+
+        const data = await response.json();
+        if (data.Data && Array.isArray(data.Data)) {
+            return data.Data.length;
+        }
+        return 0;
+    } catch (error) {
+        console.warn('Error fetching from CryptoCompare:', error);
+        return 0;
+    }
+}
+
+// Fetch news/status updates from CoinGecko for specific coin
+async function fetchCoinGeckoNews(coinId) {
+    try {
+        // CoinGecko has status updates for specific coins
+        const url = `https://api.coingecko.com/api/v3/coins/${coinId}/status_updates`;
+        const response = await fetchWithApiKeyRotation(url);
+
+        if (!response.ok) {
+            // If status updates endpoint fails, try getting news from coin data
+            console.warn('CoinGecko status updates not available for', coinId);
+            return 0;
+        }
+
+        const data = await response.json();
+        if (data.status_updates && Array.isArray(data.status_updates)) {
+            return data.status_updates.length;
+        }
+        return 0;
+    } catch (error) {
+        console.warn('Error fetching from CoinGecko news:', error);
+        return 0;
+    }
+}
+
+// Fetch trending/buzz data from CoinGecko search to gauge activity
+async function fetchCoinGeckoTrending(cryptoName) {
+    try {
+        const url = `https://api.coingecko.com/api/v3/search/trending`;
+        const response = await fetchWithApiKeyRotation(url);
+
+        if (!response.ok) {
+            return 0;
+        }
+
+        const data = await response.json();
+        let trendingScore = 0;
+
+        // Check if the crypto is in trending list
+        if (data.coins && Array.isArray(data.coins)) {
+            const found = data.coins.find(coin =>
+                coin.item.name.toLowerCase() === cryptoName.toLowerCase() ||
+                coin.item.symbol.toLowerCase() === cryptoName.toLowerCase()
+            );
+            if (found) {
+                // Trending boost - gives a sense of current buzz
+                trendingScore = found.item.score || 10;
+            }
+        }
+        return trendingScore;
+    } catch (error) {
+        console.warn('Error fetching CoinGecko trending:', error);
+        return 0;
+    }
+}
+
+// Updated fetchNewsArticles function with multiple sources and caching
+// Now fetches from: NewsAPI, CryptoCompare, and CoinGecko trending
+async function fetchNewsArticles(cryptoName, cryptoSymbol, coinId = null) {
     const newsApiKey = '75211ca24268436da2443ab960ce465b'; // Your NewsAPI key
-    let totalArticles = 0;
-    const cacheKey = `${cryptoName}_newsCache`; // Cache key for each crypto
-    const cacheExpiryKey = `${cryptoName}_newsCacheExpiry`; // Cache expiry timestamp key
-    const cacheExpiryDuration = 1 * 60 * 1000; // Cache duration (15 minutes)
+    const cacheKey = `${cryptoName}_newsCache`;
+    const cacheExpiryKey = `${cryptoName}_newsCacheExpiry`;
+    const cacheExpiryDuration = 5 * 60 * 1000; // Cache duration (5 minutes)
 
     // Reset the articles count to 'Loading...' to indicate fetching process
     document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">Loading...</span>`;
 
     // Get the cached data and its expiry timestamp
-    const cachedData = JSON.parse(localStorage.getItem(cacheKey));
+    const cachedTotal = localStorage.getItem(cacheKey);
     const cacheExpiry = localStorage.getItem(cacheExpiryKey);
-
     const currentTime = Date.now();
 
     // Use cached data if it exists and hasn't expired
-    if (cachedData && cacheExpiry && currentTime < cacheExpiry) {
-        console.log('Using cached data for news.');
-        displayNews(cachedData); // Use cached data
+    if (cachedTotal && cacheExpiry && currentTime < parseInt(cacheExpiry)) {
+        console.log('Using cached news data for', cryptoName);
+        document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedTotal}</span>`;
         return;
     }
 
-    const newsUrl = `https://newsapi.org/v2/everything?q=${cryptoName}+OR+${cryptoSymbol}&language=en&apiKey=${newsApiKey}`;
-
-    // Throttle the API requests
-    if (requestCount >= maxRequestsPerMinute) {
-        console.warn('Rate limit reached, waiting...');
-        await sleep(60 * 1000);  // Wait for 1 minute before trying again
-        requestCount = 0;  // Reset request count after waiting
-    }
+    let totalArticles = 0;
 
     try {
-        const response = await fetch(newsUrl);
-        requestCount++;  // Increment request count after each request
+        // Fetch from multiple sources in parallel for the specific crypto
+        const [newsApiCount, cryptoCompareCount, trendingBoost] = await Promise.all([
+            // NewsAPI fetch - searches for specific crypto news
+            (async () => {
+                // Throttle the API requests
+                if (requestCount >= maxRequestsPerMinute) {
+                    console.warn('Rate limit reached, waiting...');
+                    await sleep(60 * 1000);
+                    requestCount = 0;
+                }
 
-        if (requestCount % maxRequestsPerSecond === 0) {
-            // Sleep for 1 second after every 3 requests to avoid hitting per-second limit
-            await sleep(1000);
-        }
+                // Search specifically for this crypto by name AND symbol
+                const searchQuery = encodeURIComponent(`"${cryptoName}" OR "${cryptoSymbol}" cryptocurrency`);
+                const newsUrl = `https://newsapi.org/v2/everything?q=${searchQuery}&language=en&sortBy=publishedAt&pageSize=100&apiKey=${newsApiKey}`;
 
-        if (response.status === 429) { // Too many requests (rate-limited)
-            console.warn('Rate limit hit, using cached data.');
-            if (cachedData) {
-                displayNews(cachedData); // Use cached data
-            } else {
-                console.error('No cached data available.');
-                document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">0</span>`;
-            }
-        } else if (!response.ok) {
-            throw new Error('Failed to fetch data');
-        } else {
-            const newsData = await response.json();
-            displayNews(newsData); // Display new data
+                try {
+                    const response = await fetch(newsUrl);
+                    requestCount++;
 
-            // Cache the new data and update the expiry timestamp
-            localStorage.setItem(cacheKey, JSON.stringify(newsData));
-            localStorage.setItem(cacheExpiryKey, currentTime + cacheExpiryDuration); // Cache for 15 minutes
-        }
+                    if (requestCount % maxRequestsPerSecond === 0) {
+                        await sleep(1000);
+                    }
+
+                    if (response.status === 429 || !response.ok) {
+                        console.warn('NewsAPI rate limit or error');
+                        return 0;
+                    }
+
+                    const newsData = await response.json();
+                    return newsData.totalResults || 0;
+                } catch (err) {
+                    console.warn('NewsAPI fetch error:', err);
+                    return 0;
+                }
+            })(),
+            // CryptoCompare fetch - specifically for this crypto symbol
+            fetchCryptoCompareNews(cryptoSymbol.toUpperCase()),
+            // CoinGecko trending check - bonus if crypto is trending
+            fetchCoinGeckoTrending(cryptoName)
+        ]);
+
+        totalArticles = newsApiCount + cryptoCompareCount + trendingBoost;
+        console.log(`News for ${cryptoName} (${cryptoSymbol}) - NewsAPI: ${newsApiCount}, CryptoCompare: ${cryptoCompareCount}, Trending: ${trendingBoost}, Total: ${totalArticles}`);
+
+        // Cache the combined total
+        localStorage.setItem(cacheKey, totalArticles.toString());
+        localStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
+
+        document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${totalArticles}</span>`;
+
     } catch (error) {
-        console.error('Error fetching from NewsAPI:', error);
+        console.error('Error fetching news:', error);
 
-        // Use cached data if there's an error fetching new data
-        if (cachedData) {
-            displayNews(cachedData); // Use cached data
+        // Use cached data if there's an error
+        if (cachedTotal) {
+            document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedTotal}</span>`;
         } else {
             document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">0</span>`;
         }
     }
 }
 
-// Function to display news articles and handle right alignment
-function displayNews(newsData) {
-    const totalArticles = newsData.totalResults || 0;
-    document.getElementById('newsArticles').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${totalArticles}</span>`;
-    console.log(`Displaying ${totalArticles} articles`);
-}
 
 
 
-// Updated fetchRedditMentions function with right-aligned data
-async function fetchRedditMentions(cryptoName) {
-    const redditUrl = `https://www.reddit.com/r/CryptoCurrency/search.json?q=${cryptoName}&sort=relevance&t=all`;
+// Updated fetchRedditMentions function with caching and multiple subreddits
+async function fetchRedditMentions(cryptoName, cryptoSymbol) {
+    const cacheKey = `${cryptoName}_redditCache`;
+    const cacheExpiryKey = `${cryptoName}_redditCacheExpiry`;
+    const cacheExpiryDuration = 5 * 60 * 1000; // Cache for 5 minutes
+
+    // Multiple crypto-related subreddits to search
+    const subreddits = [
+        'CryptoCurrency',
+        'Bitcoin',
+        'altcoin',
+        'CryptoMarkets',
+        'SatoshiStreetBets'
+    ];
 
     // Reset the Reddit mentions count before starting a new fetch
     document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">Loading...</span>`;
 
+    // Check cache first
+    const cachedData = localStorage.getItem(cacheKey);
+    const cacheExpiry = localStorage.getItem(cacheExpiryKey);
+    const currentTime = Date.now();
+
+    if (cachedData && cacheExpiry && currentTime < parseInt(cacheExpiry)) {
+        console.log('Using cached Reddit data for', cryptoName);
+        document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedData}</span>`;
+        return;
+    }
+
+    let totalMentions = 0;
+    const searchTerms = cryptoSymbol ? `${cryptoName}+OR+${cryptoSymbol}` : cryptoName;
+
     try {
-        const response = await fetch(redditUrl);
-        const data = await response.json();
-        let mentionsCount = 0;
+        // Search across multiple subreddits
+        const fetchPromises = subreddits.map(async (subreddit) => {
+            try {
+                const redditUrl = `https://www.reddit.com/r/${subreddit}/search.json?q=${searchTerms}&sort=relevance&t=week&limit=100`;
+                const response = await fetch(redditUrl);
 
-        // Ensure we filter posts that are actually related to the crypto name
-        if (data.data && data.data.children) {
-            data.data.children.forEach(post => {
-                const postTitle = post.data.title.toLowerCase();
-                const postBody = post.data.selftext.toLowerCase();
-                const comments = post.data.num_comments || 0; // Count the comments
-
-                // Count posts that include the crypto name in title or body
-                if (postTitle.includes(cryptoName.toLowerCase()) || postBody.includes(cryptoName.toLowerCase())) {
-                    mentionsCount++;
-                    mentionsCount += comments; // Add comments count as mentions
+                if (!response.ok) {
+                    console.warn(`Reddit API error for r/${subreddit}:`, response.status);
+                    return 0;
                 }
-            });
-        }
+
+                const data = await response.json();
+                let subredditMentions = 0;
+
+                if (data.data && data.data.children) {
+                    data.data.children.forEach(post => {
+                        const postTitle = post.data.title.toLowerCase();
+                        const postBody = (post.data.selftext || '').toLowerCase();
+                        const comments = post.data.num_comments || 0;
+                        const cryptoLower = cryptoName.toLowerCase();
+                        const symbolLower = cryptoSymbol ? cryptoSymbol.toLowerCase() : '';
+
+                        // Check if post matches crypto name or symbol
+                        if (postTitle.includes(cryptoLower) || postBody.includes(cryptoLower) ||
+                            (symbolLower && (postTitle.includes(symbolLower) || postBody.includes(symbolLower)))) {
+                            subredditMentions++;
+                            subredditMentions += comments;
+                        }
+                    });
+                }
+                return subredditMentions;
+            } catch (err) {
+                console.warn(`Error fetching from r/${subreddit}:`, err);
+                return 0;
+            }
+        });
+
+        const results = await Promise.all(fetchPromises);
+        totalMentions = results.reduce((sum, count) => sum + count, 0);
+
+        // Cache the result
+        localStorage.setItem(cacheKey, totalMentions.toString());
+        localStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
 
         // Update the Reddit mentions count in the modal with right alignment
-        document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${mentionsCount}</span>`;
-        console.log(`Reddit mentions for ${cryptoName}: ${mentionsCount}`);
+        document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${totalMentions}</span>`;
+        console.log(`Reddit mentions for ${cryptoName} across ${subreddits.length} subreddits: ${totalMentions}`);
     } catch (error) {
         console.error('Error fetching from Reddit:', error);
-        document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">0</span>`; // Default to 0 in case of error
+
+        // Try to use cached data on error
+        if (cachedData) {
+            document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">${cachedData}</span>`;
+        } else {
+            document.getElementById('xMentions').innerHTML = `<span class="info-data" style="text-align: right; display: block;">0</span>`;
+        }
     }
 }
 
 // Call both News and Reddit functions
 async function fetchNewsAndRedditData(cryptoName, cryptoSymbol) {
     await fetchNewsArticles(cryptoName, cryptoSymbol);
-    await fetchRedditMentions(cryptoName);
+    await fetchRedditMentions(cryptoName, cryptoSymbol);
 }
 
 
-
-
-// Function to load data for the specific crypto when the modal is opened
-async function loadCryptoDataForModal(coinId) {
-    fetchCryptoInfo(coinId);   // Pulls detailed info like market cap, FDV, etc.
-    fetchAndCalculateAdvancedSentiment(coinId);   // Advanced sentiment with RSI + indicators
-
-    // Fetch and display the number of news articles
-    const totalNewsArticles = await fetchNewsArticles(coinId);
-    document.getElementById('newsArticles').innerHTML = `<span class="info-data">${totalNewsArticles}</span>`;
-}
 
 
 // Helper function to format large numbers (for both currency and supply amounts)
@@ -7582,7 +7715,7 @@ async function openCandlestickModal(cryptoId) {
         // Fetch and display detailed info and sentiment data
         await fetchCryptoInfo(cryptoId);  // Market data
         await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + 7 other indicators
-        await fetchNewsAndRedditData(cryptoName);  // Fetch news and Reddit mentions using crypto name
+        await fetchNewsAndRedditData(cryptoName, symbol.toUpperCase());  // Fetch news and Reddit mentions using crypto name and symbol
         
         startAutoUpdateCryptoInfo(cryptoId);
         
@@ -7595,7 +7728,7 @@ async function openCandlestickModal(cryptoId) {
             if (isModalOpen && currentCryptoId === cryptoId) {
                 await fetchCryptoInfo(cryptoId);
                 await fetchAndCalculateAdvancedSentiment(cryptoId);  // Advanced sentiment with RSI + indicators
-                await fetchNewsAndRedditData(cryptoName);
+                await fetchNewsAndRedditData(cryptoName, symbol.toUpperCase());
             }
         }, 30000); // 30 seconds
 
