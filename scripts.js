@@ -14534,6 +14534,100 @@ async function fetchPackageCryptoPrices(packages) {
     }
 }
 
+// Smart update function for team package cards - updates data without destroying countdown elements
+function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
+    console.log('🔄 Smart update: Updating team package cards in place (preserving countdowns)...');
+
+    teamPackages.forEach(pkg => {
+        const card = document.querySelector(`[data-package-id="${pkg.id}"]`);
+        if (!card) {
+            console.log(`⚠️ Card not found for package ${pkg.id}, skipping update`);
+            return;
+        }
+
+        // Get package identifiers
+        const packageIdForElements = pkg.name.replace(/\s+/g, '-');
+        const packageId = pkg.apiData?.id || pkg.id;
+
+        // Update participants count
+        const participantsSpan = card.querySelector('.buy-package-stat span[style*="color: #4CAF50"]');
+        if (participantsSpan && participantsSpan.previousElementSibling?.textContent === 'Participants:') {
+            participantsSpan.textContent = pkg.numberOfParticipants || 0;
+        }
+
+        // Update share distribution (myBought/totalBought/totalAvailable)
+        const shareDistSpan = card.querySelector('.buy-package-stat span[style*="color: #ffa500"]');
+        if (shareDistSpan && shareDistSpan.previousElementSibling?.textContent === 'Share Distribution:') {
+            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+            const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
+            const myBoughtShares = getMyTeamShares(packageId) || 0;
+            shareDistSpan.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+        }
+
+        // Update recommended status (star)
+        const isRecommended = teamRecommendedNames.includes(pkg.name);
+        const titleElement = card.querySelector('h4');
+        if (titleElement) {
+            const hasRecommended = card.classList.contains('recommended');
+            if (isRecommended && !hasRecommended) {
+                card.classList.add('recommended');
+                if (!titleElement.textContent.includes('⭐')) {
+                    titleElement.textContent = pkg.name + ' ⭐';
+                }
+            } else if (!isRecommended && hasRecommended) {
+                card.classList.remove('recommended');
+                titleElement.textContent = pkg.name;
+            }
+        }
+
+        // Update reward values if prices changed
+        const prices = window.packageCryptoPrices || {};
+        let rewardAUD = 0;
+
+        if (pkg.isDualCrypto) {
+            const mainCryptoKey = pkg.mainCrypto?.toLowerCase();
+            const mergeCryptoKey = pkg.mergeCrypto?.toLowerCase();
+            let mainRewardAUD = 0, mergeRewardAUD = 0;
+
+            if (prices[mainCryptoKey]?.aud) {
+                mainRewardAUD = pkg.blockReward * prices[mainCryptoKey].aud;
+            }
+            if (prices[mergeCryptoKey]?.aud) {
+                mergeRewardAUD = pkg.mergeBlockReward * prices[mergeCryptoKey].aud;
+            }
+            rewardAUD = mainRewardAUD + mergeRewardAUD;
+        } else if (pkg.blockReward && pkg.crypto) {
+            const cryptoKey = pkg.crypto.toLowerCase();
+            if (prices[cryptoKey]?.aud) {
+                rewardAUD = pkg.blockReward * prices[cryptoKey].aud;
+            }
+        }
+
+        // Update reward value display
+        const rewardValueEl = card.querySelector(`#reward-value-${packageIdForElements}`);
+        if (rewardValueEl && rewardAUD > 0) {
+            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+            const myBoughtShares = getMyTeamShares(packageId) || 0;
+            const inputEl = card.querySelector(`#shares-${packageIdForElements}`);
+            const myShares = inputEl ? parseInt(inputEl.value) || 1 : 1;
+            const othersBought = totalBoughtShares - myBoughtShares;
+            const totalShares = othersBought + myShares;
+
+            if (totalShares > 0) {
+                const myRewardAUD = (rewardAUD / totalShares) * myShares;
+                rewardValueEl.textContent = `$${myRewardAUD.toFixed(2)} AUD`;
+            }
+        }
+
+        // DO NOT touch countdown element - updateTeamPackageCountdowns() handles it every second
+
+        console.log(`✅ Smart updated: ${pkg.name}`);
+    });
+
+    // Update window.currentTeamPackages with latest data for countdown function
+    window.currentTeamPackages = teamPackages;
+}
+
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
@@ -14675,21 +14769,39 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     console.log(`👥 Populating ${teamPackages.length} team packages...`);
-    teamContainer.innerHTML = '';
 
-    teamPackages.forEach(pkg => {
-        try {
-            const isRecommended = teamRecommendedNames.includes(pkg.name);
-            const card = createBuyPackageCardForPage(pkg, isRecommended);
-            teamContainer.appendChild(card);
-        } catch (error) {
-            console.error('❌ Error creating card for package:', pkg.name, error);
-        }
-    });
+    // Smart re-rendering: Check if we can update in place (preserves countdown elements)
+    const existingTeamIds = Array.from(teamContainer.querySelectorAll('[data-package-id]'))
+        .map(el => el.dataset.packageId);
+    const newTeamIds = teamPackages.map(pkg => pkg.id);
+
+    // Check if same packages exist (same IDs in same order)
+    const samePackages = existingTeamIds.length === newTeamIds.length &&
+        existingTeamIds.every((id, index) => id === newTeamIds[index]);
+
+    if (samePackages && teamContainer.children.length > 0) {
+        // Smart update: update data fields without destroying countdown elements
+        console.log('🔄 Same packages detected - using smart update (preserving countdowns)');
+        updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames);
+    } else {
+        // Full re-render needed (packages changed or first load)
+        console.log('🔄 Packages changed or first load - doing full re-render');
+        teamContainer.innerHTML = '';
+
+        teamPackages.forEach(pkg => {
+            try {
+                const isRecommended = teamRecommendedNames.includes(pkg.name);
+                const card = createBuyPackageCardForPage(pkg, isRecommended);
+                teamContainer.appendChild(card);
+            } catch (error) {
+                console.error('❌ Error creating card for package:', pkg.name, error);
+            }
+        });
+
+        // Store team packages for countdown updates
+        window.currentTeamPackages = teamPackages;
+    }
     console.log('✅ Team packages populated');
-
-    // Store team packages for countdown updates
-    window.currentTeamPackages = teamPackages;
 
     // Start countdown updates for team packages
     startCountdownUpdates();
@@ -15041,6 +15153,9 @@ function stopCountdownUpdates() {
 function createBuyPackageCardForPage(pkg, isRecommended) {
     const card = document.createElement('div');
     card.className = 'buy-package-card' + (isRecommended ? ' recommended' : '') + (pkg.isTeam ? ' team-package' : '');
+
+    // Add data-package-id for smart re-rendering (avoids destroying countdown elements)
+    card.setAttribute('data-package-id', pkg.id);
 
     // Use package crypto prices (fetched specifically for buy packages page)
     const prices = window.packageCryptoPrices || {};
