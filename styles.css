@@ -1655,15 +1655,22 @@ body.light-mode .package-progress-bar {
 }
 
 /* Auto-buy robot indicator - positioned on left (rocket is on right) */
+/* Default: solid (no animation) - flashing must be explicitly added */
 .block-found-indicator.auto-buy-robot {
     left: 5px;
     right: auto;
+    animation: none;  /* Override base pulse animation - solid by default */
 }
 
 /* Non-flashing robot icon for countdown packages */
 .block-found-indicator.auto-buy-robot.countdown {
     animation: none;  /* No animation for countdown packages */
     opacity: 1;
+}
+
+/* Flashing robot icon for active auto-bought packages (mining in progress) */
+.block-found-indicator.auto-buy-robot.flashing {
+    animation: flash 0.5s infinite;  /* Override solid animation for active packages */
 }
 
 /* Spinning robot icon for packages with auto-buy enabled but not yet purchased */

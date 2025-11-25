@@ -9763,14 +9763,24 @@ function displayActivePackages() {
         let robotHtml = '';
 
         // Robot icon logic with share detection and cleanup
+        // Active packages: FLASHING robot (to show it's mining)
+        // Completed/Buy page packages: SOLID robot (to show ownership)
         if (pkg.isTeam) {
             // TEAM packages: check for owned shares
             const packageId = pkg.id || pkg.apiData?.id;
             const myShares = getMyTeamShares(packageId) || 0;
 
             if (isAutoBuyActive && myShares > 0) {
-                // Has shares and auto-buy enabled: solid robot (for active or completed packages)
-                robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+                if (pkg.active) {
+                    // Active team package with shares: FLASHING robot (mining in progress)
+                    robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-buy active (mining)">🤖</div>';
+                } else {
+                    // Completed team package with shares: SOLID robot
+                    robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+                }
+            } else if (isAutoBought && pkg.active) {
+                // Active auto-bought team package (matched by name/timestamp): FLASHING robot
+                robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot (mining)">🤖</div>';
             }
             // Note: Spinning robot never shows on active packages (only on buy page/alerts)
         } else {
@@ -13850,8 +13860,13 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     // Validate and fix auto-buy robot icons after page load
-    console.log('🤖 Running robot icon validation...');
-    validateAndFixAutoBuyRobotIcons();
+    // Only run validation if buy packages containers are visible (prevents console errors)
+    const singleContainer = document.getElementById('buy-packages-single');
+    const teamContainer = document.getElementById('buy-packages-team');
+    if (singleContainer && teamContainer) {
+        console.log('🤖 Running robot icon validation...');
+        validateAndFixAutoBuyRobotIcons();
+    }
 }
 
 // Validate and fix auto-buy robot icons on Buy Packages page
