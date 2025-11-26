@@ -20006,24 +20006,62 @@ Do you want to continue?
 // HASHRATE/PARTICIPANTS DROP DETECTION
 // =============================================================================
 
+// Check if a package was auto-bought (uses same logic as robot icon)
+function isPackageAutoBought(pkg) {
+    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+
+    // Level 1: Direct ID match
+    if (autoBoughtPackages[pkg.id]) return true;
+
+    // Level 2: Check orderId/ticketId fields
+    if (Object.values(autoBoughtPackages).find(entry =>
+        entry.orderId === pkg.id || entry.ticketId === pkg.id
+    )) return true;
+
+    // Level 3: Team packages - match by name + recent purchase (within 7 days)
+    if (pkg.isTeam && pkg.active) {
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        if (Object.values(autoBoughtPackages).find(entry =>
+            entry.type === 'team' &&
+            entry.packageName === pkg.name &&
+            entry.timestamp > sevenDaysAgo
+        )) return true;
+    }
+
+    // Level 4: Check sharedTicket.id
+    if (pkg.fullOrderData?.sharedTicket?.id) {
+        const sharedTicketId = pkg.fullOrderData.sharedTicket.id;
+        if (Object.values(autoBoughtPackages).find(entry =>
+            entry.ticketId === sharedTicketId
+        )) return true;
+    }
+
+    return false;
+}
+
 // Parse hashrate string to numeric value (normalized to TH)
 function parseHashrateToNumeric(hashrateStr) {
-    // "10 TH" -> 10, "500 GH" -> 0.5 (converted to TH)
+    // "10 TH" -> 10, "500 GH" -> 0.5 (converted to TH), "1.35 EH" -> 1350000
     if (!hashrateStr) return 0;
-    const match = hashrateStr.match(/([\d.]+)\s*(TH|GH|MH|PH)/i);
+    const match = hashrateStr.match(/([\d.]+)\s*(EH|PH|TH|GH|MH)/i);
     if (!match) return 0;
     const value = parseFloat(match[1]);
     const unit = match[2].toUpperCase();
-    // Normalize to TH
-    const multipliers = { 'PH': 1000, 'TH': 1, 'GH': 0.001, 'MH': 0.000001 };
+    // Normalize to TH (1 EH = 1,000,000 TH, 1 PH = 1,000 TH)
+    const multipliers = { 'EH': 1000000, 'PH': 1000, 'TH': 1, 'GH': 0.001, 'MH': 0.000001 };
     return value * (multipliers[unit] || 1);
 }
 
 // Capture initial values when package first appears with user shares
+// ONLY captures for auto-bought packages (manual shares won't trigger auto-clear on drop)
 function captureInitialPackageValues(packages) {
     const now = Date.now();
     packages.forEach(pkg => {
         if (pkg.active && pkg.isTeam && pkg.ownedShares > 0) {
+            // Only capture for AUTO-BOUGHT packages (still works if user adds more shares later)
+            if (!isPackageAutoBought(pkg)) {
+                return; // Skip non-auto-bought packages
+            }
             // Only capture if not already captured for this package
             if (!packageInitialValues[pkg.id]) {
                 packageInitialValues[pkg.id] = {
@@ -20032,7 +20070,7 @@ function captureInitialPackageValues(packages) {
                     participants: pkg.numberOfParticipants || 0,
                     capturedAt: now
                 };
-                console.log(`📊 Captured initial values for ${pkg.name}: HR=${pkg.hashrate}, Participants=${pkg.numberOfParticipants}`);
+                console.log(`📊 Captured initial values for AUTO-BOUGHT ${pkg.name}: HR=${pkg.hashrate}, Participants=${pkg.numberOfParticipants}`);
             }
         }
     });
@@ -20045,6 +20083,7 @@ function captureInitialPackageValues(packages) {
 }
 
 // Check for significant drops in hashrate or participants and auto-clear if threshold exceeded
+// ONLY works on auto-bought packages (even if user added more shares later)
 async function checkForHashrateParticipantDrops(packages) {
     if (!easyMiningSettings.autoClearOnDrop) return;
 
@@ -20052,6 +20091,11 @@ async function checkForHashrateParticipantDrops(packages) {
 
     for (const pkg of packages) {
         if (!pkg.active || !pkg.isTeam || pkg.ownedShares <= 0) continue;
+
+        // CRITICAL: Only auto-clear packages that were originally auto-bought
+        if (!isPackageAutoBought(pkg)) {
+            continue; // Skip manually purchased packages
+        }
 
         const initial = packageInitialValues[pkg.id];
         if (!initial) continue;
