@@ -231,6 +231,13 @@ let dailyAddedValue = 0;
 let lastMidnightReset = null;
 let cryptoPriceChanges = {}; // Store 24h changes for each crypto
 
+// EasyMining polling intervals (declared early for showAppPage access)
+let easyMiningPollingInterval = null;
+let easyMiningAlertsPollingInterval = null;
+let buyPackagesPollingInterval = null;
+let buyPackagesPollingPaused = false;
+let buyPackagesPauseTimer = null;
+
 let socket;
 let lastWebSocketUpdate = Date.now();
 const twoMinutes = 2 * 60 * 1000;
@@ -6351,7 +6358,11 @@ function updateTotalHoldingsModal() {
     flashColor('modal-total-holdings', 'flash-green');
 }
 
-document.querySelector('.ui-holdings').addEventListener('click', showTotalHoldingsModal);
+// Click handler for portfolio hero section (replaced .ui-holdings)
+const portfolioHeroEl = document.querySelector('.portfolio-hero');
+if (portfolioHeroEl) {
+    portfolioHeroEl.addEventListener('click', showTotalHoldingsModal);
+}
 
 function resetPercentage() {
     const currentTotalHoldings = parseFloat(document.getElementById('total-holdings').textContent.replace(/,/g, '').replace('$', '').replace('AUD', '').trim());
@@ -6896,7 +6907,11 @@ function showTotalHoldingsModal() {
     document.getElementById('total-holdings-modal').style.display = 'block';
 }
 
-document.querySelector('.ui-holdings').addEventListener('click', showTotalHoldingsModal);
+// Click handler for portfolio hero section (replaced .ui-holdings)
+const portfolioHeroEl = document.querySelector('.portfolio-hero');
+if (portfolioHeroEl) {
+    portfolioHeroEl.addEventListener('click', showTotalHoldingsModal);
+}
 
 document.getElementById('password-login').addEventListener('keyup', function(event) {
     if (event.key === 'Enter') {
@@ -9794,11 +9809,8 @@ let easyMiningData = {
     lastBlockCount: 0
 };
 
-let easyMiningPollingInterval = null;
-let easyMiningAlertsPollingInterval = null; // For solo/team alerts in main EasyMining section
-let buyPackagesPollingInterval = null;
-let buyPackagesPollingPaused = false;
-let buyPackagesPauseTimer = null;
+// Note: easyMiningPollingInterval, easyMiningAlertsPollingInterval, buyPackagesPollingInterval,
+// buyPackagesPollingPaused, buyPackagesPauseTimer are declared at the top of the file
 let showAllPackages = false;
 let currentPackagePage = 1; // Arrow navigation pagination (Desktop: 6 per page, Mobile: 3 per page)
 const packagesPerPage = 6; // Desktop/Tablet cards per page (mobile uses 3)
