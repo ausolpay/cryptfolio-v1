@@ -17805,7 +17805,8 @@ function updateTeamPackageCountdowns() {
                             }
                         }
 
-                        if (myShares > 0 && !isStillRecommended) {
+                        // Safety check: Only auto-clear countdown packages, NOT active ones
+                        if (myShares > 0 && !isStillRecommended && !pkg.active) {
                             // CHECK: Was this package auto-bought? (Only clear auto-bought packages)
                             const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
                             let wasAutoBought = null;
