@@ -12121,7 +12121,7 @@ function displayActivePackages() {
                     if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
                         totalAUD += convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary);
                     }
-                    return '$' + totalAUD.toFixed(2) + ' AUD';
+                    return '$' + formatNumber(totalAUD.toFixed(2)) + ' AUD';
                 })()}</span>
             </div>
             ` : ''}
@@ -12134,7 +12134,7 @@ function displayActivePackages() {
             ${pkg.active && pkg.potentialReward > 0 ? `
             <div class="package-card-stat">
                 <span>Potential:</span>
-                <span style="color: #ffa500;">$${convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2)} AUD${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2)} AUD` : ''}</span>
+                <span style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))} AUD${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))} AUD` : ''}</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
@@ -14657,12 +14657,12 @@ function showPackageDetailPage(pkg) {
         ${pkg.active && pkg.potentialReward > 0 ? `
         <div class="stat-item">
             <span class="stat-label">Potential Reward:</span>
-            <span class="stat-value" style="color: #ffa500;">$${convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2)} AUD (${pkg.potentialReward.toFixed(8)} ${pkg.crypto})</span>
+            <span class="stat-value" style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))} AUD (${pkg.potentialReward.toFixed(8)} ${pkg.crypto})</span>
         </div>
         ${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `
         <div class="stat-item">
             <span class="stat-label">Potential Secondary:</span>
-            <span class="stat-value" style="color: #ffa500;">$${convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2)} AUD (${pkg.potentialRewardSecondary.toFixed(8)} ${pkg.cryptoSecondary})</span>
+            <span class="stat-value" style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))} AUD (${pkg.potentialRewardSecondary.toFixed(8)} ${pkg.cryptoSecondary})</span>
         </div>
         ` : ''}
         ` : ''}
