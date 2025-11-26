@@ -1,3 +1,8 @@
+html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+}
+
 body {
     background-color: #121212;
     color: #ffffff;
@@ -7,6 +12,7 @@ body {
     align-items: center;
     min-height: 100vh;
     margin: 0;
+    overflow-x: hidden;
 }
 
 body.dark-mode {
@@ -29,11 +35,14 @@ body.light-mode {
     background-color: #1a1a1a;
     border-bottom: 1px solid #333;
     z-index: 1000;
-    transition: transform 0.3s ease;
+    transform: translateY(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
 }
 
 .top-nav.hidden {
     transform: translateY(-100%);
+    pointer-events: none;
 }
 
 body.light-mode .top-nav {

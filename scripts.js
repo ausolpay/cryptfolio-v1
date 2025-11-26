@@ -688,34 +688,53 @@ async function fetchWithApiKeyRotation(url) {
 // TOP NAVIGATION - SCROLL BEHAVIOR & DROPDOWN
 // =============================================================================
 
-let lastScrollTop = 0;
-let navScrollThreshold = 50; // Minimum scroll before hiding nav
+let lastScrollY = 0;
+let ticking = false;
 
 function initTopNavScrollBehavior() {
     const topNav = document.getElementById('top-nav');
     if (!topNav) return;
 
-    window.addEventListener('scroll', function() {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    // Use requestAnimationFrame for smooth performance
+    function handleScroll() {
+        const currentScrollY = window.scrollY || window.pageYOffset;
 
-        // Only hide/show after scrolling past threshold
-        if (scrollTop > navScrollThreshold) {
-            if (scrollTop > lastScrollTop) {
-                // Scrolling down - hide nav
+        if (currentScrollY > 60) {
+            // Past threshold - check direction
+            if (currentScrollY > lastScrollY) {
+                // Scrolling DOWN - hide nav
                 topNav.classList.add('hidden');
-                // Close dropdown if open
                 closeProfileDropdown();
+                closeMobileMenu();
             } else {
-                // Scrolling up - show nav
+                // Scrolling UP - show nav
                 topNav.classList.remove('hidden');
             }
         } else {
-            // At top of page - always show nav
+            // Near top - always show nav
             topNav.classList.remove('hidden');
         }
 
-        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+        lastScrollY = currentScrollY;
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            requestAnimationFrame(handleScroll);
+            ticking = true;
+        }
     }, { passive: true });
+
+    // Also listen on document for better mobile support
+    document.addEventListener('scroll', function() {
+        if (!ticking) {
+            requestAnimationFrame(handleScroll);
+            ticking = true;
+        }
+    }, { passive: true });
+
+    console.log('✅ Top nav scroll behavior initialized');
 }
 
 function toggleProfileDropdown() {
@@ -5280,6 +5299,11 @@ function setupActivityListeners() {
 
 // Initialize the script
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize top navigation scroll behavior immediately
+    initTopNavScrollBehavior();
+    // Update nav auth state
+    updateNavAuthState();
+
     setupActivityListeners(); // Set up activity tracking
     resetIdleTimer(); // Start idle detection
 
