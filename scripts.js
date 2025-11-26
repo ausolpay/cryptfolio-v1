@@ -12902,6 +12902,15 @@ async function fetchNiceHashOrders() {
             console.log(`      → Total reward: ${totalRewardBTC.toFixed(8)} BTC`);
             console.log(`      → Profit: ${(totalRewardBTC - priceSpent).toFixed(8)} BTC`);
 
+            // Debug hashrate fields from API
+            console.log(`   ⚡ Hashrate Data:`);
+            console.log(`      limit: ${order.limit}`);
+            console.log(`      displayMarketFactor: ${order.displayMarketFactor}`);
+            console.log(`      acceptedCurrentSpeed: ${order.acceptedCurrentSpeed}`);
+            console.log(`      rigsCount: ${order.rigsCount}`);
+            console.log(`      speed: ${order.speed}`);
+            console.log(`      → Displaying as: ${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`);
+
             console.log(`   ⏱️  Time Remaining Data:`);
             console.log(`      alive: ${order.alive}`);
             console.log(`      estimateDurationInSeconds: ${order.estimateDurationInSeconds}`);
@@ -13010,7 +13019,10 @@ async function fetchNiceHashOrders() {
                 totalBlocks: totalBlocks,
                 algorithm: algorithmCode,
                 algorithmName: algoInfo.name,
-                hashrate: `${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`,
+                // Use acceptedCurrentSpeed if available (actual live speed), otherwise use limit (pool capacity)
+                hashrate: order.acceptedCurrentSpeed
+                    ? `${order.acceptedCurrentSpeed} ${order.displayMarketFactor || 'TH'}`
+                    : `${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`,
                 timeRemaining: calculateTimeRemaining(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 progress: calculateProgress(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 blockFound: blockFound,
@@ -13673,7 +13685,7 @@ function displayActivePackages() {
             </div>
             ${pkg.active && pkg.isTeam && pkg.hashrate ? `
             <div class="package-card-stat">
-                <span>Hash Rate:</span>
+                <span>Pool Hashrate:</span>
                 <span style="color: #00ccff;">${pkg.hashrate}</span>
             </div>
             ` : ''}
@@ -14798,9 +14810,17 @@ function updateTeamAlertCardValues(pkg) {
         if (probEl) probEl.textContent = pkg.probability;
     }
 
-    // Update hashrate
+    // Update hashrate with live speed calculation
     const hashrateEl = document.getElementById(`alert-hashrate-${packageId}`);
-    if (hashrateEl && pkg.hashrate) hashrateEl.textContent = pkg.hashrate;
+    if (hashrateEl && pkg.projectedSpeed) {
+        // Recalculate live speed based on current fill percentage
+        const fillPercentage = (pkg.addedAmount && pkg.fullAmount) ? (pkg.addedAmount / pkg.fullAmount) : 0;
+        const currentSpeed = (fillPercentage * pkg.projectedSpeed).toFixed(4);
+        const maxSpeed = pkg.projectedSpeed.toFixed(4);
+        hashrateEl.textContent = `${currentSpeed} / ${maxSpeed} TH/s`;
+    } else if (hashrateEl && pkg.hashrate) {
+        hashrateEl.textContent = pkg.hashrate;
+    }
 
     // Update participants
     const participantsEl = document.getElementById(`alert-participants-${packageId}`);
@@ -15299,7 +15319,7 @@ function createTeamPackageRecommendationCard(pkg) {
     // Hashrate info - add if available
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
-            <span>Hashrate:</span>
+            <span>Pool Hashrate:</span>
             <span id="alert-hashrate-${packageId}">${pkg.hashrate}</span>
         </div>
     ` : '';
@@ -17836,6 +17856,11 @@ async function fetchNiceHashTeamPackages() {
                     mergeProbability: mergeProbability
                 });
 
+                // Calculate live pool hashrate based on fill percentage
+                const fillPercentage = (pkg.addedAmount && pkg.fullAmount) ? (pkg.addedAmount / pkg.fullAmount) : 0;
+                const currentSpeed = (fillPercentage * pkg.projectedSpeed).toFixed(4);
+                const maxSpeed = pkg.projectedSpeed.toFixed(4);
+
                 return {
                     id: ticket.id, // Use currencyAlgoTicket.id for the POST endpoint
                     name: ticket.name,
@@ -17849,7 +17874,10 @@ async function fetchNiceHashTeamPackages() {
                     priceAUD: calculatedPriceAUD.toFixed(2), // Calculated from BTC price
                     duration: `${durationHours}h`,
                     algorithm: ticket.currencyAlgo.miningAlgorithm,
-                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // From projectedSpeed
+                    hashrate: `${currentSpeed} / ${maxSpeed} TH/s`, // Live current / max pool hashrate
+                    currentSpeed: currentSpeed, // Store separately for updates
+                    maxSpeed: maxSpeed, // Store separately for updates
+                    projectedSpeed: pkg.projectedSpeed, // Store raw value for recalculation
                     blockReward: mainBlockReward, // From currencyAlgo.blockReward
                     mergeBlockReward: mergeBlockReward,
                     isDualCrypto: hasMergeCurrency,
@@ -18833,7 +18861,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
-            <span>Hashrate:</span>
+            <span>Pool Hashrate:</span>
             <span id="hashrate-${packageIdForElements}">${pkg.hashrate}</span>
         </div>
     ` : '';
