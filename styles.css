@@ -2013,18 +2013,21 @@ body.light-mode .terms-conditions-content {
     font-weight: 700;
     color: #ffa500;
     line-height: 1.1;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
 }
 
 .modal-hero .modal-change-section {
-    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 .modal-hero .modal-change-values {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 25px;
+    gap: clamp(10px, 2vw, 20px);
     font-size: clamp(20px, 5vw, 48px);
     font-weight: 600;
 }
@@ -2042,9 +2045,11 @@ body.light-mode .terms-conditions-content {
 }
 
 .modal-hero .modal-change-values .change-label {
-    font-size: clamp(14px, 3vw, 36px);
+    font-size: clamp(12px, 2.5vw, 28px);
     color: #888;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .modal-hero .modal-change-values .change-label.positive {
@@ -2105,17 +2110,17 @@ body.light-mode .terms-conditions-content {
     width: 0;
     height: 0;
     border-style: solid;
-    margin-right: 8px;
+    margin-right: clamp(6px, 1vw, 12px);
     vertical-align: middle;
 }
 
 .holdings-modal-inner .triangle-up {
-    border-width: 0 8px 12px 8px;
+    border-width: 0 clamp(6px, 1vw, 12px) clamp(9px, 1.5vw, 18px) clamp(6px, 1vw, 12px);
     border-color: transparent transparent #00ff00 transparent;
 }
 
 .holdings-modal-inner .triangle-down {
-    border-width: 12px 8px 0 8px;
+    border-width: clamp(9px, 1.5vw, 18px) clamp(6px, 1vw, 12px) 0 clamp(6px, 1vw, 12px);
     border-color: #ff0000 transparent transparent transparent;
 }
 
