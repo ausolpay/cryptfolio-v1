@@ -13265,8 +13265,8 @@ function updateTeamAlertCardValues(pkg) {
         // Update combined reward value in AUD
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
         if (rewardValueEl && totalShares > 0) {
-            const mergePrice = prices[pkg.mergeCrypto?.toLowerCase()] || 0;
-            const mainPrice = prices[pkg.mainCrypto?.toLowerCase()] || 0;
+            const mergePrice = prices[pkg.mergeCrypto?.toLowerCase()]?.aud || 0;
+            const mainPrice = prices[pkg.mainCrypto?.toLowerCase()]?.aud || 0;
             const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
             const myRewardAUD = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
@@ -13284,7 +13284,7 @@ function updateTeamAlertCardValues(pkg) {
         // Update reward value in AUD
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
         if (rewardValueEl && totalShares > 0) {
-            const cryptoPrice = prices[pkg.crypto?.toLowerCase()] || 0;
+            const cryptoPrice = prices[pkg.crypto?.toLowerCase()]?.aud || 0;
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
             const myRewardAUD = myMainReward * cryptoPrice;
             rewardValueEl.textContent = `$${myRewardAUD.toFixed(2)} AUD`;
