@@ -230,6 +230,7 @@ let recordLow = Infinity;
 let dailyAddedValue = 0;
 let lastMidnightReset = null;
 let cryptoPriceChanges = {}; // Store 24h changes for each crypto
+let cryptoPriceDirections = {}; // Store last price direction for each crypto ('up' or 'down')
 
 // EasyMining polling intervals (declared early for showAppPage access)
 let easyMiningPollingInterval = null;
@@ -4705,12 +4706,14 @@ async function fetchPrices() {
                     flashColor(`${crypto.id}-price-aud`, 'flash-green');
                     triangleElement.classList.remove('triangle-down');
                     triangleElement.classList.add('triangle-up');
+                    cryptoPriceDirections[crypto.id] = 'up'; // Store direction
                 } else if (priceAud < previousPriceAud) {
                     priceElement.classList.remove('price-up', 'flash-green');
                     priceElement.classList.add('price-down');
                     flashColor(`${crypto.id}-price-aud`, 'flash-red');
                     triangleElement.classList.remove('triangle-up');
                     triangleElement.classList.add('triangle-down');
+                    cryptoPriceDirections[crypto.id] = 'down'; // Store direction
                 }
 
                 priceElement.textContent = `$${formatAudPrice(priceAud)}`;
@@ -4739,6 +4742,14 @@ async function fetchPrices() {
                     console.warn(`⚠️ fetchPrices BTC - NOT updating display because price is 0 (keeping stored value visible)`);
                 } else {
                     valueElement.textContent = formatNumber(audValue.toFixed(2));
+
+                    // Apply persistent color based on last price direction (no flashing)
+                    const direction = cryptoPriceDirections[crypto.id];
+                    if (direction === 'up') {
+                        valueElement.style.color = '#00ff00'; // Green for price up
+                    } else if (direction === 'down') {
+                        valueElement.style.color = '#ff4444'; // Red for price down
+                    }
 
                     // SAVE Bitcoin AUD to localStorage when price is valid
                     if (crypto.id === 'bitcoin') {
@@ -8029,6 +8040,9 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                     const flashClass = isPriceUp ? 'flash-green' : 'flash-red';
                     const colorClass = isPriceUp ? 'price-up' : 'price-down';
 
+                    // Store price direction for persistent value color
+                    cryptoPriceDirections[coingeckoId] = isPriceUp ? 'up' : 'down';
+
                     // Update price without re-rendering the container
                     priceElement.classList.remove('price-down', 'flash-red', 'price-up', 'flash-green');
                     priceElement.classList.add(colorClass);
@@ -8049,9 +8063,11 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
 
                     const holdingsValueAud = holdings * priceInAud;
 
-                    // Update holdings value directly
+                    // Update holdings value directly with persistent color
                     const valueElement = document.getElementById(`${coingeckoId}-value-aud`);
                     valueElement.textContent = formatNumber(holdingsValueAud.toFixed(2));
+                    // Apply persistent color based on price direction (no flashing)
+                    valueElement.style.color = isPriceUp ? '#00ff00' : '#ff4444';
 
                     // For Bitcoin, save the AUD value to localStorage so it persists
                     if (coingeckoId === 'bitcoin' && priceInAud > 0) {
