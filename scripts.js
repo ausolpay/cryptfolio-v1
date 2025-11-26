@@ -14138,7 +14138,7 @@ function updateTeamAlertCardValues(pkg) {
     const shareInput = document.getElementById(`shares-${packageId}`);
     if (shareInput && myBoughtShares > 0) {
         shareInput.value = myBoughtShares;
-        shareInput.min = myBoughtShares;
+        shareInput.min = 1;  // Always allow decreasing to minimum of 1
         shareInput.dataset.myBought = myBoughtShares;
         // Update cached value too
         if (window.packageShareValues) {
@@ -14439,7 +14439,7 @@ function createTeamPackageRecommendationCard(pkg) {
                 type="number"
                 id="shares-${pkg.name.replace(/\s+/g, '-')}"
                 value="${initialShareValue}"
-                min="${myCurrentShares || 1}"
+                min="1"
                 max="9999"
                 class="share-adjuster-input"
                 readonly
@@ -15916,7 +15916,7 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
     const alertInput = document.getElementById(alertInputId);
     if (alertInput) {
         alertInput.value = newShares;
-        alertInput.min = newShares;
+        alertInput.min = 1;  // Always allow decreasing to minimum of 1
         alertInput.dataset.myBought = newShares;
         console.log(`   ✅ Updated alert card input: ${alertInputId} = ${newShares}`);
     }
@@ -15926,7 +15926,7 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
     const buyInput1 = document.getElementById(`team-${packageId}-shares`);
     if (buyInput1) {
         buyInput1.value = newShares;
-        buyInput1.min = newShares;
+        buyInput1.min = 1;  // Always allow decreasing to minimum of 1
         buyInput1.dataset.myBought = newShares;
         console.log(`   ✅ Updated buy packages input: team-${packageId}-shares = ${newShares}`);
     }
@@ -15935,7 +15935,7 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
     const buyInput2 = document.getElementById(`${packageName.replace(/\s+/g, '-')}-shares`);
     if (buyInput2 && buyInput2 !== alertInput) {
         buyInput2.value = newShares;
-        buyInput2.min = newShares;
+        buyInput2.min = 1;  // Always allow decreasing to minimum of 1
         buyInput2.dataset.myBought = newShares;
         console.log(`   ✅ Updated buy packages input: ${packageName.replace(/\s+/g, '-')}-shares = ${newShares}`);
     }
@@ -15951,7 +15951,7 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
     document.querySelectorAll('input[data-package-id]').forEach(input => {
         if (input.dataset.packageId === packageId) {
             input.value = newShares;
-            input.min = newShares;
+            input.min = 1;  // Always allow decreasing to minimum of 1
             input.dataset.myBought = newShares;
             console.log(`   ✅ Updated input with data-package-id: ${input.id} = ${newShares}`);
         }
@@ -16111,7 +16111,7 @@ function createTeamPackageCard(pkg) {
                 id="${cardId}-shares"
                 class="share-input"
                 value="${myBoughtShares}"
-                min="${myBoughtShares}"
+                min="1"
                 max="${myBoughtShares + availableShares}"
                 oninput="updateShareCost('${cardId}')"
                 onchange="validateShares('${cardId}', ${myBoughtShares + availableShares})"
@@ -16348,14 +16348,24 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     const currentShares = getMyTeamShares(packageId) || 0;
     const sharesToPurchase = desiredTotalShares - currentShares;
 
-    if (sharesToPurchase <= 0) {
-        showModal(`You already own ${currentShares} share(s) in this package.\n\nIncrease the number to buy more.`);
+    // Block only if no change
+    if (sharesToPurchase === 0) {
+        showModal(`No change - you already own ${currentShares} share(s).`);
         return;
     }
 
+    // Block if trying to go below 1
+    if (desiredTotalShares < 1) {
+        showModal(`Cannot reduce below 1 share. Use "Clear Shares" button to remove all shares.`);
+        return;
+    }
+
+    const isDecrease = sharesToPurchase < 0;
+
     // 4. Calculate cost for NEW shares only (not total)
+    // Cost is 0 for decreases, positive for increases
     const sharePrice = 0.0001;
-    const totalAmount = sharesToPurchase * sharePrice;  // Pay only for new shares
+    const totalAmount = isDecrease ? 0 : (sharesToPurchase * sharePrice);
     const totalCostBTC = totalAmount.toFixed(8);
 
     const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
@@ -16373,15 +16383,24 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         saveWithdrawalAddress(crypto, mainWalletAddress);
     }
 
-    // 5. Confirm purchase - show increment AND new total
-    const confirmed = confirm(
-        `Purchase team shares for ${crypto}?\n\n` +
-        `Buying: ${sharesToPurchase} share(s)\n` +
-        `Total after purchase: ${desiredTotalShares} share(s)\n\n` +
-        `Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
-        `Withdrawal Address: ${mainWalletAddress}\n\n` +
-        `Click OK to proceed with purchase.`
-    );
+    // 5. Confirm - different message for increases vs decreases
+    let confirmText;
+    if (isDecrease) {
+        confirmText = `Update team shares for ${crypto}?\n\n` +
+            `Current: ${currentShares} share(s)\n` +
+            `Updating to: ${desiredTotalShares} share(s)\n` +
+            `Reducing by: ${Math.abs(sharesToPurchase)} share(s)\n\n` +
+            `This will reduce your shares in this package.\n` +
+            `Click OK to proceed.`;
+    } else {
+        confirmText = `Purchase team shares for ${crypto}?\n\n` +
+            `Buying: ${sharesToPurchase} share(s)\n` +
+            `Total after purchase: ${desiredTotalShares} share(s)\n\n` +
+            `Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
+            `Withdrawal Address: ${mainWalletAddress}\n\n` +
+            `Click OK to proceed with purchase.`;
+    }
+    const confirmed = confirm(confirmText);
 
     if (!confirmed) return;
 
@@ -16476,19 +16495,30 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
                            cardId.replace('team-', '').replace(/-shares$/, '');
         syncTeamShareInputs(packageId, packageName, desiredTotalShares);
 
-        showModal(
-            `✅ Purchase Complete!\n\n` +
-            `Purchased: ${sharesToPurchase} share(s)\n` +
-            `Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
-            `Total Shares Owned: ${desiredTotalShares}\n` +
-            `Order ID: ${result.id || result.orderId || 'N/A'}\n\n` +
-            `Order is now active and mining.`
-        );
+        // Show success message - different for increases vs decreases
+        if (isDecrease) {
+            showModal(
+                `✅ Shares Updated!\n\n` +
+                `Reduced from ${currentShares} to ${desiredTotalShares} shares.\n` +
+                `Order ID: ${result.id || result.orderId || 'N/A'}`
+            );
+        } else {
+            showModal(
+                `✅ Purchase Complete!\n\n` +
+                `Purchased: ${sharesToPurchase} share(s)\n` +
+                `Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
+                `Total Shares Owned: ${desiredTotalShares}\n` +
+                `Order ID: ${result.id || result.orderId || 'N/A'}\n\n` +
+                `Order is now active and mining.`
+            );
+        }
 
-        // Update stats
-        easyMiningData.allTimeStats.totalSpent += parseFloat(totalAUD);
-        easyMiningData.todayStats.totalSpent += parseFloat(totalAUD);
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        // Update stats (only for increases, not decreases)
+        if (!isDecrease) {
+            easyMiningData.allTimeStats.totalSpent += parseFloat(totalAUD);
+            easyMiningData.todayStats.totalSpent += parseFloat(totalAUD);
+            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        }
 
         // Refresh data
         await fetchEasyMiningData();
@@ -18847,12 +18877,21 @@ async function buyTeamPackage(pkg, packageId) {
         willPurchase: sharesToPurchase
     });
 
-    if (sharesToPurchase <= 0) {
-        alert(`You already own ${currentShares} share(s) in this package.\n\nIncrease the number in the input to buy more shares.`);
+    // Block only if no change
+    if (sharesToPurchase === 0) {
+        alert(`No change - you already own ${currentShares} share(s) in this package.`);
         return;
     }
 
-    // Use sharesToPurchase for the actual purchase
+    // Block if trying to go below 1
+    if (desiredTotalShares < 1) {
+        alert(`Cannot reduce below 1 share. Use "Clear Shares" button to remove all shares.`);
+        return;
+    }
+
+    const isDecrease = sharesToPurchase < 0;
+
+    // Use sharesToPurchase for the actual purchase (can be negative for decreases)
     const shares = sharesToPurchase;
 
     // Standard share price for team packages
@@ -18874,8 +18913,25 @@ async function buyTeamPackage(pkg, packageId) {
     const usingSavedMainAddress = !!mainWalletAddress;
     const usingSavedMergeAddress = isDualCrypto ? !!mergeWalletAddress : null;
 
-    // Build confirmation message - show increment AND new total
-    let confirmMessage = `
+    // Build confirmation message - different for increases vs decreases
+    let confirmMessage;
+    if (isDecrease) {
+        confirmMessage = `
+🔄 Update Team Mining Package?
+
+Package: ${pkg.name}
+Current shares: ${currentShares}
+Updating to: ${desiredTotalShares} share(s)
+Reducing by: ${Math.abs(sharesToPurchase)} share(s)
+${isDualCrypto
+    ? `Main Crypto: ${pkg.mainCrypto}\nMerge Crypto: ${pkg.mergeCrypto}`
+    : `Crypto: ${pkg.crypto}`}
+
+This will reduce your shares in this package.
+Do you want to continue?
+        `.trim();
+    } else {
+        confirmMessage = `
 🛒 Purchase Team Mining Package?
 
 Package: ${pkg.name}
@@ -18901,7 +18957,8 @@ ${isDualCrypto
 
 This will create a team order on NiceHash.
 Do you want to continue?
-    `.trim();
+        `.trim();
+    }
 
     if (!confirm(confirmMessage)) {
         return;
@@ -18961,7 +19018,8 @@ Do you want to continue?
 
         // Create order payload for team mining package
         // Calculate total amount (shares × 0.0001 BTC per share)
-        const totalAmount = shares * sharePrice;
+        // Cost is 0 for decreases, positive for increases
+        const totalAmount = isDecrease ? 0 : (shares * sharePrice);
 
         // ✅ FIX: Send TOTAL shares (desiredTotalShares), not increment (sharesToPurchase)
         // NiceHash API expects total shares you want to own, not just new shares
@@ -19065,33 +19123,42 @@ Do you want to continue?
         // ✅ SYNC: Update share inputs on both UIs (Alert cards & Buy Packages page)
         syncTeamShareInputs(packageId, pkg.name, desiredTotalShares);
 
-        // Build success message
-        let successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
-        successMessage += `✅ Purchased: ${shares} ${shares === 1 ? 'share' : 'shares'}\n`;
-        successMessage += `📊 Your total shares: ${desiredTotalShares}\n`;
-        successMessage += `💰 Amount paid: ${totalAmount} BTC\n`;
-        successMessage += `\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}`;
+        // Build success message - different for increases vs decreases
+        let successMessage;
+        if (isDecrease) {
+            successMessage = `✅ Shares Updated!\n\n`;
+            successMessage += `📉 Reduced from ${currentShares} to ${desiredTotalShares} share(s)\n`;
+            successMessage += `📊 Your total shares: ${desiredTotalShares}\n`;
+        } else {
+            successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
+            successMessage += `✅ Purchased: ${shares} ${shares === 1 ? 'share' : 'shares'}\n`;
+            successMessage += `📊 Your total shares: ${desiredTotalShares}\n`;
+            successMessage += `💰 Amount paid: ${totalAmount} BTC\n`;
+            successMessage += `\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}`;
 
-        if (!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress)) {
-            successMessage += '\n\n💡 Tip: Save these addresses in EasyMining Settings → Manage Withdrawal Addresses for faster purchases!';
+            if (!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress)) {
+                successMessage += '\n\n💡 Tip: Save these addresses in EasyMining Settings → Manage Withdrawal Addresses for faster purchases!';
+            }
         }
 
         alert(successMessage);
 
-        // Update stats based on successful purchase
-        const sharesPurchased = shares;
-        const totalPricePaid = sharesPurchased * sharePrice; // sharePrice is per share in BTC
-        const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
-        const totalPriceAUD = totalPricePaid * btcPrice;
+        // Update stats based on successful purchase (only for increases, not decreases)
+        if (!isDecrease) {
+            const sharesPurchased = shares;
+            const totalPricePaid = sharesPurchased * sharePrice; // sharePrice is per share in BTC
+            const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
+            const totalPriceAUD = totalPricePaid * btcPrice;
 
-        easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
-        easyMiningData.todayStats.totalSpent += totalPriceAUD;
+            easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
+            easyMiningData.todayStats.totalSpent += totalPriceAUD;
 
-        // Calculate P&L
-        easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
-        easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - totalPriceAUD;
+            // Calculate P&L
+            easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
+            easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - totalPriceAUD;
 
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        }
 
         // Refresh package data immediately to show the new order
         await fetchEasyMiningData();
