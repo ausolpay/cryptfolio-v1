@@ -965,7 +965,7 @@ a {
     border: 1px solid #333;
     border-radius: 8px;
     padding: 20px;
-    margin: 0 auto 7px auto;
+    margin: 0 auto 8px auto;
     width: 1390px;
     max-width: 1390px;
     box-sizing: border-box;
@@ -2001,6 +2001,11 @@ body.light-mode .terms-conditions-content {
     margin-bottom: 30px;
     width: 100%;
     max-width: 800px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-hero .modal-total-holdings {
