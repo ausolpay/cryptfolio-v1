@@ -13685,7 +13685,7 @@ function displayActivePackages() {
             </div>
             ${pkg.active && pkg.isTeam && pkg.hashrate ? `
             <div class="package-card-stat">
-                <span>Pool Hashrate:</span>
+                <span>Hashrate:</span>
                 <span style="color: #00ccff;">${pkg.hashrate}</span>
             </div>
             ` : ''}
@@ -15319,7 +15319,7 @@ function createTeamPackageRecommendationCard(pkg) {
     // Hashrate info - add if available
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
-            <span>Pool Hashrate:</span>
+            <span>Hashrate:</span>
             <span id="alert-hashrate-${packageId}">${pkg.hashrate}</span>
         </div>
     ` : '';
@@ -18861,7 +18861,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
-            <span>Pool Hashrate:</span>
+            <span>Hashrate:</span>
             <span id="hashrate-${packageIdForElements}">${pkg.hashrate}</span>
         </div>
     ` : '';
