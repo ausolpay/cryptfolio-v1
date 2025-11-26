@@ -2229,7 +2229,7 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     }
 
     .modal-hero {
-        padding: 10px 12px;
+        padding: 20px 12px;
         width: calc(100% - 30px);
         max-width: 320px;
         margin: 0 auto 10px auto;
