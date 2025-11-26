@@ -73,14 +73,14 @@ body.light-mode .portfolio-strip-header h2 {
 /* Hero Section (Total Holdings) */
 .portfolio-hero {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
+    text-align: center;
     padding: 20px;
     background-color: rgba(50, 50, 50, 0.5);
     border-radius: 10px;
     margin-bottom: 15px;
-    flex-wrap: wrap;
-    gap: 15px;
+    gap: 10px;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
@@ -100,6 +100,7 @@ body.light-mode .portfolio-hero:hover {
 .hero-main {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 5px;
 }
 
@@ -119,8 +120,14 @@ body.light-mode .portfolio-hero:hover {
 .hero-change {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
+    align-items: center;
+    gap: 5px;
+}
+
+.hero-change-values {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .portfolio-strip #percentage-change,
@@ -240,15 +247,6 @@ body.light-mode .performer-name {
 
 /* Portfolio Strip Mobile Responsive */
 @media (max-width: 768px) {
-    .portfolio-hero {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .hero-change {
-        align-items: center;
-    }
-
     .hero-value {
         font-size: 36px;
     }
