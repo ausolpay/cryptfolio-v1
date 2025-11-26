@@ -1903,7 +1903,10 @@ body.light-mode .terms-conditions-content {
 /* Fullscreen Holdings Modal */
 .holdings-modal {
     background-color: rgba(0, 0, 0, 0.95);
-    display: flex;
+}
+
+.holdings-modal[style*="display: block"] {
+    display: flex !important;
     align-items: center;
     justify-content: center;
 }
