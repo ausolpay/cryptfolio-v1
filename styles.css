@@ -2032,16 +2032,19 @@ body.light-mode .terms-conditions-content {
     font-weight: 600;
 }
 
-.modal-hero .modal-change-values .positive {
-    color: #00ff00;
+.modal-hero .modal-change-values .positive,
+.modal-hero .modal-change-values > span.positive {
+    color: #00ff00 !important;
 }
 
-.modal-hero .modal-change-values .negative {
-    color: #ff0000;
+.modal-hero .modal-change-values .negative,
+.modal-hero .modal-change-values > span.negative {
+    color: #ff0000 !important;
 }
 
-.modal-hero .modal-change-values .neutral {
-    color: #888;
+.modal-hero .modal-change-values .neutral,
+.modal-hero .modal-change-values > span.neutral {
+    color: #888 !important;
 }
 
 .modal-hero .modal-change-values .change-label {
