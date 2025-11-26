@@ -16684,6 +16684,49 @@ function updateTeamPackageCountdowns() {
             }
         }
     });
+
+    // Also update EasyMining alert countdown elements
+    // These use countdown-${pkg.id} (without 'buy-' prefix)
+    currentRecommendations.forEach(pkg => {
+        if (pkg.lifeTimeTill) {
+            const alertCountdownElement = document.getElementById(`countdown-${pkg.id}`);
+            if (alertCountdownElement) {
+                const startTime = new Date(pkg.lifeTimeTill);
+                const now = new Date();
+                const timeUntilStart = startTime - now;
+                const participants = pkg.numberOfParticipants || 0;
+
+                if (participants < 2) {
+                    // Mining Lobby - waiting for players
+                    alertCountdownElement.textContent = 'Mining Lobby';
+                    alertCountdownElement.style.color = '#FFA500';
+                    alertCountdownElement.style.fontWeight = 'bold';
+                    alertCountdownElement.classList.add('mining-lobby-fade');
+                } else if (timeUntilStart > 0 && timeUntilStart < 60000) {
+                    // Starting Soon! (< 60 seconds)
+                    alertCountdownElement.textContent = 'Starting Soon!';
+                    alertCountdownElement.style.color = '#4CAF50';
+                    alertCountdownElement.style.fontWeight = 'bold';
+                    alertCountdownElement.classList.remove('mining-lobby-fade');
+                } else if (timeUntilStart > 0) {
+                    // Active countdown
+                    const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+                    alertCountdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+                    alertCountdownElement.style.color = '#FFA500';
+                    alertCountdownElement.style.fontWeight = 'normal';
+                    alertCountdownElement.classList.remove('mining-lobby-fade');
+                } else {
+                    // Countdown ended
+                    alertCountdownElement.textContent = 'Starting Soon!';
+                    alertCountdownElement.style.color = '#4CAF50';
+                    alertCountdownElement.style.fontWeight = 'bold';
+                    alertCountdownElement.classList.remove('mining-lobby-fade');
+                }
+            }
+        }
+    });
 }
 
 // Start countdown update interval
