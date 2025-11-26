@@ -136,6 +136,12 @@
                 </div>
                 <input type="email" id="email-register" placeholder="Email">
                 <input type="tel" id="phone" placeholder="Phone Number" maxlength="10" pattern="\d{4} \d{3} \d{3}">
+                <div class="country-input-wrapper" style="position: relative;">
+                    <input type="text" id="register-country" placeholder="Country *" autocomplete="off"
+                           oninput="filterRegisterCountryDropdown(this.value)"
+                           onfocus="showRegisterCountryDropdown()">
+                    <div id="register-country-dropdown" class="country-dropdown"></div>
+                </div>
                 <input type="password" id="password-register" placeholder="Create Password">
                 <input type="password" id="confirm-password" placeholder="Confirm Password">
                 <label>

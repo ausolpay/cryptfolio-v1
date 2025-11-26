@@ -2076,18 +2076,19 @@ async function fetchAndUpdateDepositsBalance() {
         }
 
         // Fetch fresh BTC price if not available or stale
-        if (!window.packageCryptoPrices?.['btc']?.aud) {
-            console.log('💱 Fetching BTC price for AUD conversion...');
+        const currencyKey = getCoinGeckoCurrency();
+        if (!getPriceFromObject(window.packageCryptoPrices?.['btc'])) {
+            console.log(`💱 Fetching BTC price for ${currencyKey.toUpperCase()} conversion...`);
             try {
-                const priceUrl = `${getApiBaseUrl()}/simple/price?ids=bitcoin&vs_currencies=aud&${getApiKeyParam()}`;
+                const priceUrl = `${getApiBaseUrl()}/simple/price?ids=bitcoin&vs_currencies=${currencyKey}&${getApiKeyParam()}`;
                 const priceData = await fetchWithApiKeyRotation(priceUrl);
-                if (priceData?.bitcoin?.aud) {
+                if (priceData?.bitcoin?.[currencyKey]) {
                     if (!window.packageCryptoPrices) {
                         window.packageCryptoPrices = {};
                     }
-                    window.packageCryptoPrices['btc'] = { aud: priceData.bitcoin.aud };
-                    window.packageCryptoPrices['bitcoin'] = { aud: priceData.bitcoin.aud };
-                    console.log('✅ BTC price fetched:', priceData.bitcoin.aud, 'AUD');
+                    window.packageCryptoPrices['btc'] = { [currencyKey]: priceData.bitcoin[currencyKey] };
+                    window.packageCryptoPrices['bitcoin'] = { [currencyKey]: priceData.bitcoin[currencyKey] };
+                    console.log('✅ BTC price fetched:', priceData.bitcoin[currencyKey], currencyKey.toUpperCase());
                 }
             } catch (priceError) {
                 console.warn('⚠️ Could not fetch BTC price:', priceError);
@@ -2136,38 +2137,39 @@ function updateDepositsBalance() {
         const pendingBalance = window.niceHashBalance?.pending || easyMiningData?.pendingBTC || 0;
 
         // Get BTC price - try multiple sources
-        let btcPriceAUD = window.packageCryptoPrices?.['btc']?.aud
-            || window.packageCryptoPrices?.['bitcoin']?.aud
-            || prices?.['bitcoin']?.aud
+        let btcPriceLocal = getPriceFromObject(window.packageCryptoPrices?.['btc'])
+            || getPriceFromObject(window.packageCryptoPrices?.['bitcoin'])
+            || getPriceFromObject(prices?.['bitcoin'])
             || 0;
 
-        const availableAUD = btcPriceAUD > 0
-            ? (availableBalance * btcPriceAUD).toFixed(2)
+        const availableLocal = btcPriceLocal > 0
+            ? (availableBalance * btcPriceLocal).toFixed(2)
             : '0.00';
-        const pendingAUD = btcPriceAUD > 0
-            ? (pendingBalance * btcPriceAUD).toFixed(2)
+        const pendingLocal = btcPriceLocal > 0
+            ? (pendingBalance * btcPriceLocal).toFixed(2)
             : '0.00';
 
+        const currencySymbol = getUserCurrencySymbol();
         console.log('✓ Balance data:', {
             availableBalance: availableBalance.toFixed(8),
             pendingBalance: pendingBalance.toFixed(8),
-            btcPriceAUD,
-            availableAUD,
-            pendingAUD
+            btcPriceLocal,
+            availableLocal,
+            pendingLocal
         });
 
         // Check if elements already exist (for smooth updates without flickering)
         const existingAvailableBTC = document.getElementById('deposits-available-btc');
-        const existingAvailableAUD = document.getElementById('deposits-available-aud');
+        const existingAvailableLocal = document.getElementById('deposits-available-aud');
         const existingPendingBTC = document.getElementById('deposits-pending-btc');
-        const existingPendingAUD = document.getElementById('deposits-pending-aud');
+        const existingPendingLocal = document.getElementById('deposits-pending-aud');
 
-        if (existingAvailableBTC && existingAvailableAUD && existingPendingBTC && existingPendingAUD) {
+        if (existingAvailableBTC && existingAvailableLocal && existingPendingBTC && existingPendingLocal) {
             // Update existing elements (no flicker)
             existingAvailableBTC.textContent = `${availableBalance.toFixed(8)} BTC`;
-            existingAvailableAUD.textContent = `≈ $${availableAUD}`;
+            existingAvailableLocal.textContent = `≈ ${currencySymbol}${availableLocal}`;
             existingPendingBTC.textContent = `${pendingBalance.toFixed(8)} BTC`;
-            existingPendingAUD.textContent = `≈ $${pendingAUD}`;
+            existingPendingLocal.textContent = `≈ ${currencySymbol}${pendingLocal}`;
         } else {
             // First render - create full HTML with IDs
             balanceSection.innerHTML = `
@@ -2176,12 +2178,12 @@ function updateDepositsBalance() {
                         <div style="flex: 1; text-align: center;">
                             <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
                             <div id="deposits-available-btc" style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                            <div id="deposits-available-aud" style="color: #888; font-size: 13px;">≈ $${availableAUD}</div>
+                            <div id="deposits-available-aud" style="color: #888; font-size: 13px;">≈ ${currencySymbol}${availableLocal}</div>
                         </div>
                         <div style="flex: 1; text-align: center;">
                             <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
                             <div id="deposits-pending-btc" style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
-                            <div id="deposits-pending-aud" style="color: #888; font-size: 13px;">≈ $${pendingAUD}</div>
+                            <div id="deposits-pending-aud" style="color: #888; font-size: 13px;">≈ ${currencySymbol}${pendingLocal}</div>
                         </div>
                     </div>
                 </div>
@@ -4472,14 +4474,23 @@ function register() {
     const lastName = document.getElementById('last-name').value.trim();
     const email = document.getElementById('email-register').value.trim();
     const phone = formatPhoneNumber(document.getElementById('phone').value.trim());
+    const countryInput = document.getElementById('register-country').value.trim();
     const password = document.getElementById('password-register').value.trim();
     const confirmPassword = document.getElementById('confirm-password').value.trim();
     const termsAccepted = document.getElementById('terms-conditions').checked;
 
-    if (!firstName || !lastName || !email || !phone || !password || !confirmPassword || !termsAccepted) {
+    if (!firstName || !lastName || !email || !phone || !countryInput || !password || !confirmPassword || !termsAccepted) {
         showModal('Please fill out all fields and accept the terms and conditions.');
         return;
     }
+
+    // Validate country selection
+    const countryData = countriesList.find(c => c.name.toLowerCase() === countryInput.toLowerCase());
+    if (!countryData) {
+        showModal('Please select a valid country from the dropdown.');
+        return;
+    }
+
     const phonePattern = /^\d{4}\s\d{3}\s\d{3}$/;
     if (!phonePattern.test(phone)) {
         showModal('Please enter a valid phone number in the format 0400 000 000.');
@@ -4503,7 +4514,18 @@ function register() {
         return;
     }
 
-    users[email] = { firstName, lastName, email, phone, password, cryptos: [], percentageThresholds: {} };
+    users[email] = {
+        firstName,
+        lastName,
+        email,
+        phone,
+        password,
+        country: countryData.name,
+        currency: countryData.currency,
+        language: countryData.language,
+        cryptos: [],
+        percentageThresholds: {}
+    };
     localStorage.setItem('users', JSON.stringify(users));
 
     showModal('User registered successfully. Please log in.');
@@ -4541,14 +4563,15 @@ function closeTermsConditions() {
 function updateRecordDisplay() {
     const recordHighElement = document.getElementById('record-high');
     const recordLowElement = document.getElementById('record-low');
+    const currencySymbol = getUserCurrencySymbol();
 
-    recordHighElement.innerHTML = `<span class="triangle triangle-up"></span><span class="positive">$${formatNumber(recordHigh.toFixed(2))}</span>`;
-    recordLowElement.innerHTML = `<span class="triangle triangle-down"></span><span class="negative">$${recordLow === Infinity ? '0.00' : formatNumber(recordLow.toFixed(2))}</span>`;
+    recordHighElement.innerHTML = `<span class="triangle triangle-up"></span><span class="positive">${currencySymbol}${formatNumber(recordHigh.toFixed(2))}</span>`;
+    recordLowElement.innerHTML = `<span class="triangle triangle-down"></span><span class="negative">${currencySymbol}${recordLow === Infinity ? '0.00' : formatNumber(recordLow.toFixed(2))}</span>`;
 }
 
 function updateApiUrl() {
     const ids = users[loggedInUser].cryptos.map(crypto => crypto.id);
-    apiUrl = `${getApiBaseUrl()}/simple/price?ids=${ids.join(',')}&vs_currencies=aud&${getApiKeyParam()}`;
+    apiUrl = `${getApiBaseUrl()}/simple/price?ids=${ids.join(',')}&vs_currencies=${getCoinGeckoCurrency()}&${getApiKeyParam()}`;
     console.log('API URL updated:', apiUrl);
 }
 
@@ -4558,15 +4581,15 @@ function updateHoldings(crypto) {
 
     if (!isNaN(amountToAdd) && amountToAdd > 0) {
         // Get current live price
-        const livePrice = cryptoPrices[crypto]?.aud || 0;
-        const audValue = amountToAdd * livePrice;
+        const livePrice = getPriceFromObject(cryptoPrices[crypto]);
+        const localValue = amountToAdd * livePrice;
 
         // Create new holdings entry (ADDITIVE - creates new entry instead of replacing)
         const entry = {
             id: uuidv4(),
             cryptoId: crypto,
             amount: amountToAdd,
-            audValueAtAdd: audValue,
+            localValueAtAdd: localValue,
             boughtPrice: livePrice,
             soldPrice: null,
             dateAdded: Date.now(),
@@ -4605,12 +4628,13 @@ function updateHoldings(crypto) {
 
 
 async function fetchPricesFromCoinGecko(cryptoId) {
-    const apiUrl = `${getApiBaseUrl()}/simple/price?ids=${cryptoId}&vs_currencies=aud&${getApiKeyParam()}`;
+    const currency = getCoinGeckoCurrency();
+    const apiUrl = `${getApiBaseUrl()}/simple/price?ids=${cryptoId}&vs_currencies=${currency}&${getApiKeyParam()}`;
 
     try {
         const data = await fetchWithApiKeyRotation(apiUrl);
         if (data[cryptoId]) {
-            return parseFloat(data[cryptoId].aud);
+            return parseFloat(data[cryptoId][currency]);
         } else {
             throw new Error(`No data found for ${cryptoId} in CoinGecko response`);
         }
@@ -4657,6 +4681,8 @@ async function fetchPrices() {
     }
 
     console.log('Fetching prices from CoinGecko...');
+    const currencyKey = getCoinGeckoCurrency();
+    const currencySymbol = getUserCurrencySymbol();
     try {
         const data = await fetchWithFallback(apiUrl); // Primary fetch from CoinGecko
         console.log('Prices fetched:', data);
@@ -4664,50 +4690,50 @@ async function fetchPrices() {
         let pricesChanged = false;
 
         for (let crypto of users[loggedInUser].cryptos) {
-            let priceAud = data[crypto.id]?.aud;
+            let priceLocal = data[crypto.id]?.[currencyKey];
 
             // Try MEXC WebSocket if CoinGecko price is not available
-            if (priceAud === undefined) {
+            if (priceLocal === undefined) {
                 console.log(`Falling back to MEXC for ${crypto.symbol}...`);
                 const mexcPriceUsd = await fetchMexcPrice(crypto.symbol);
                 if (mexcPriceUsd) {
-                    priceAud = mexcPriceUsd * conversionRate; // Conversion from USD to AUD
-                    console.log(`MEXC price for ${crypto.symbol}: ${priceAud} AUD`);
+                    priceLocal = mexcPriceUsd * conversionRate; // Conversion from USD to local currency
+                    console.log(`MEXC price for ${crypto.symbol}: ${priceLocal} ${currencyKey.toUpperCase()}`);
                 }
             }
 
             // Try Uniswap as the last backup if CoinGecko and MEXC fail
-            if (priceAud === undefined) {
+            if (priceLocal === undefined) {
                 console.log(`Falling back to Uniswap for ${crypto.symbol}...`);
                 const uniswapPriceUsd = await fetchPricesFromUniswap(crypto.symbol);
                 if (uniswapPriceUsd) {
-                    priceAud = uniswapPriceUsd * conversionRate; // Conversion from USD to AUD
-                    console.log(`Uniswap price for ${crypto.symbol}: ${priceAud} AUD`);
+                    priceLocal = uniswapPriceUsd * conversionRate; // Conversion from USD to local currency
+                    console.log(`Uniswap price for ${crypto.symbol}: ${priceLocal} ${currencyKey.toUpperCase()}`);
                 }
             }
 
             // If we still don't have a price, log an error and skip updating this crypto
-            if (priceAud === undefined) {
+            if (priceLocal === undefined) {
                 console.error(`Failed to fetch price for ${crypto.symbol}`);
                 continue;
             }
 
             // Update the DOM and app state with the fetched price
-            const previousPriceAud = parseFloat(document.getElementById(`${crypto.id}-price-aud`).textContent.replace(/,/g, '').replace('$', '')) || 0;
+            const previousPrice = parseFloat(document.getElementById(`${crypto.id}-price-aud`).textContent.replace(/,/g, '').replace(/^[^0-9]*/, '')) || 0;
             const priceElement = document.getElementById(`${crypto.id}-price-aud`);
             const triangleElement = document.getElementById(`${crypto.id}-triangle`);
 
-            if (priceAud !== previousPriceAud) {
+            if (priceLocal !== previousPrice) {
                 pricesChanged = true;
 
-                if (priceAud > previousPriceAud) {
+                if (priceLocal > previousPrice) {
                     priceElement.classList.remove('price-down', 'flash-red');
                     priceElement.classList.add('price-up');
                     flashColor(`${crypto.id}-price-aud`, 'flash-green');
                     triangleElement.classList.remove('triangle-down');
                     triangleElement.classList.add('triangle-up');
                     cryptoPriceDirections[crypto.id] = 'up'; // Store direction
-                } else if (priceAud < previousPriceAud) {
+                } else if (priceLocal < previousPrice) {
                     priceElement.classList.remove('price-up', 'flash-green');
                     priceElement.classList.add('price-down');
                     flashColor(`${crypto.id}-price-aud`, 'flash-red');
@@ -4716,7 +4742,7 @@ async function fetchPrices() {
                     cryptoPriceDirections[crypto.id] = 'down'; // Store direction
                 }
 
-                priceElement.textContent = `$${formatAudPrice(priceAud)}`;
+                priceElement.textContent = `${currencySymbol}${formatAudPrice(priceLocal)}`;
             }
 
             // Always recalculate AUD value, even if price hasn't changed
@@ -4733,15 +4759,15 @@ async function fetchPrices() {
                 console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
             }
 
-            const audValue = holdings * priceAud;
+            const localValue = holdings * priceLocal;
             const valueElement = document.getElementById(`${crypto.id}-value-aud`);
             if (valueElement) {
                 // For Bitcoin: only update display if price is valid (> 0)
                 // This prevents showing $0.00 when price hasn't loaded yet
-                if (crypto.id === 'bitcoin' && priceAud === 0) {
+                if (crypto.id === 'bitcoin' && priceLocal === 0) {
                     console.warn(`⚠️ fetchPrices BTC - NOT updating display because price is 0 (keeping stored value visible)`);
                 } else {
-                    valueElement.textContent = formatNumber(audValue.toFixed(2));
+                    valueElement.textContent = formatNumber(localValue.toFixed(2));
 
                     // Apply persistent color based on last price direction (no flashing)
                     const direction = cryptoPriceDirections[crypto.id];
@@ -4754,14 +4780,14 @@ async function fetchPrices() {
                         if (dollarSignElement) dollarSignElement.style.color = '#ff4444';
                     }
 
-                    // SAVE Bitcoin AUD to localStorage when price is valid
+                    // SAVE Bitcoin value to localStorage when price is valid
                     if (crypto.id === 'bitcoin') {
-                        setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
-                        console.log(`🔄 fetchPrices BTC - Updated & saved AUD: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
+                        setStorageItem(`${loggedInUser}_bitcoin_displayValue`, localValue);
+                        console.log(`🔄 fetchPrices BTC - Updated & saved value: ${localValue.toFixed(2)} (holdings: ${holdings}, price: ${priceLocal})`);
                     }
                 }
             }
-            console.log(`🔄 fetchPrices updated ${crypto.id} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceAud})`);
+            console.log(`🔄 fetchPrices updated ${crypto.id} value: ${localValue.toFixed(2)} (holdings: ${holdings}, price: ${priceLocal})`);
         }
 
         if (pricesChanged) {
@@ -4866,7 +4892,8 @@ function updateTotalHoldings() {
             }
         }
 
-        document.getElementById('total-holdings').textContent = `$${formatNumber(totalHoldings.toFixed(2))}`;
+        const currencySymbol = getUserCurrencySymbol();
+        document.getElementById('total-holdings').textContent = `${currencySymbol}${formatNumber(totalHoldings.toFixed(2))}`;
 
         if (totalHoldings > recordHigh) {
             recordHigh = totalHoldings;
@@ -4883,7 +4910,7 @@ function updateTotalHoldings() {
 
         updateRecordDisplay();
 
-        document.title = `CryptFolio v1.5 | $${formatNumber(totalHoldings.toFixed(2))} | Real-time Holdings Tracker`;
+        document.title = `CryptFolio v1.5 | ${currencySymbol}${formatNumber(totalHoldings.toFixed(2))} | Real-time Holdings Tracker`;
 
         updatePercentageChange(totalHoldings);
         previousTotalHoldings = totalHoldings;
@@ -5769,7 +5796,7 @@ function getTotalActiveHoldings(cryptoId) {
 
 // Calculate PnL for a single entry
 function calculateEntryPnL(entry) {
-    const livePrice = cryptoPrices[entry.cryptoId]?.aud || 0;
+    const livePrice = getPriceFromObject(cryptoPrices[entry.cryptoId]);
 
     // Unrealized PnL (based on live price)
     const unrealizedPnL = (livePrice - entry.boughtPrice) * entry.amount;
@@ -5870,7 +5897,7 @@ function updateHoldingsDisplayFromEntries(cryptoId) {
     }
 
     // Update AUD value
-    const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+    const livePrice = getPriceFromObject(cryptoPrices[cryptoId]);
     const valueElement = document.getElementById(`${cryptoId}-value-aud`);
     if (valueElement) {
         valueElement.textContent = formatNumber((totalAmount * livePrice).toFixed(2));
@@ -5895,7 +5922,7 @@ function migrateExistingHoldings(cryptoId) {
         const legacyHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
 
         if (legacyHoldings > 0) {
-            const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+            const livePrice = getPriceFromObject(cryptoPrices[cryptoId]);
             const entry = {
                 id: uuidv4(),
                 cryptoId: cryptoId,
@@ -6238,7 +6265,7 @@ function prevHistoryPage() {
 
 // Auto-fill sold price with current live price
 function autoFillSoldPrice(cryptoId, entryId) {
-    const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+    const livePrice = getPriceFromObject(cryptoPrices[cryptoId]);
     const input = document.getElementById(`sold-price-${entryId}`);
     if (input) {
         input.value = livePrice.toFixed(2);
@@ -7096,6 +7123,43 @@ const countriesList = [
     { name: 'Serbia', currency: 'RSD', language: 'Serbian' }
 ];
 
+// Currency symbols mapping
+const currencySymbols = {
+    'AUD': '$', 'USD': '$', 'CAD': '$', 'NZD': '$', 'SGD': 'S$', 'HKD': 'HK$',
+    'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CNY': '¥', 'KRW': '₩', 'INR': '₹',
+    'BRL': 'R$', 'ZAR': 'R', 'CHF': 'CHF ', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr',
+    'PLN': 'zł', 'CZK': 'Kč', 'HUF': 'Ft', 'RON': 'lei', 'THB': '฿',
+    'MYR': 'RM', 'IDR': 'Rp', 'PHP': '₱', 'VND': '₫', 'MXN': 'MX$', 'ARS': 'AR$',
+    'CLP': 'CL$', 'COP': 'CO$', 'PEN': 'S/', 'NGN': '₦', 'KES': 'KSh', 'EGP': 'E£',
+    'ILS': '₪', 'AED': 'د.إ', 'SAR': '﷼', 'TRY': '₺', 'RUB': '₽', 'UAH': '₴',
+    'PKR': '₨', 'BDT': '৳', 'LKR': 'Rs', 'NPR': 'Rs', 'ISK': 'kr', 'BGN': 'лв',
+    'RSD': 'дин', 'TWD': 'NT$'
+};
+
+// Get user's preferred currency (default to AUD)
+function getUserCurrency() {
+    const user = users[loggedInUser];
+    return user?.currency || 'AUD';
+}
+
+// Get currency symbol for user's currency
+function getUserCurrencySymbol() {
+    const currency = getUserCurrency();
+    return currencySymbols[currency] || '$';
+}
+
+// Get CoinGecko-compatible currency code (lowercase)
+function getCoinGeckoCurrency() {
+    return getUserCurrency().toLowerCase();
+}
+
+// Get price from a price object using user's currency
+function getPriceFromObject(priceObj) {
+    if (!priceObj) return 0;
+    const currencyKey = getCoinGeckoCurrency();
+    return priceObj[currencyKey] || 0;
+}
+
 // Selected country data (temporary storage before save)
 let selectedCountryData = null;
 
@@ -7163,12 +7227,76 @@ function selectCountry(countryName) {
     }
 }
 
+// ========== Registration Country Dropdown Functions ==========
+
+// Show registration country dropdown
+function showRegisterCountryDropdown() {
+    const dropdown = document.getElementById('register-country-dropdown');
+    const input = document.getElementById('register-country');
+    if (dropdown && input) {
+        filterRegisterCountryDropdown(input.value);
+        dropdown.style.display = 'block';
+    }
+}
+
+// Hide registration country dropdown
+function hideRegisterCountryDropdown() {
+    const dropdown = document.getElementById('register-country-dropdown');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+}
+
+// Filter registration country dropdown based on input
+function filterRegisterCountryDropdown(searchText) {
+    const dropdown = document.getElementById('register-country-dropdown');
+    if (!dropdown) return;
+
+    const filtered = searchText.trim() === ''
+        ? countriesList
+        : countriesList.filter(country =>
+            country.name.toLowerCase().includes(searchText.toLowerCase())
+        );
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = '<div class="country-dropdown-item" style="color: #888; cursor: default;">No countries found</div>';
+    } else {
+        dropdown.innerHTML = filtered.map(country => `
+            <div class="country-dropdown-item" onclick="selectRegisterCountry('${country.name}')">
+                <span class="country-name">${country.name}</span>
+                <span class="country-info">${country.currency} / ${country.language}</span>
+            </div>
+        `).join('');
+    }
+    dropdown.style.display = 'block';
+}
+
+// Select a country from registration dropdown
+function selectRegisterCountry(countryName) {
+    const country = countriesList.find(c => c.name === countryName);
+    if (country) {
+        // Update input field
+        const input = document.getElementById('register-country');
+        if (input) input.value = country.name;
+
+        // Hide dropdown
+        hideRegisterCountryDropdown();
+    }
+}
+
 // Close dropdown when clicking outside
 document.addEventListener('click', function(e) {
     const dropdown = document.getElementById('country-dropdown');
     const input = document.getElementById('account-country');
     if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
         hideCountryDropdown();
+    }
+
+    // Also close registration dropdown
+    const regDropdown = document.getElementById('register-country-dropdown');
+    const regInput = document.getElementById('register-country');
+    if (regDropdown && regInput && !regDropdown.contains(e.target) && e.target !== regInput) {
+        hideRegisterCountryDropdown();
     }
 });
 
@@ -7407,7 +7535,7 @@ function clearData() {
 
     clearCryptoContainers();
 
-    apiUrl = `${getApiBaseUrl()}/simple/price?vs_currencies=aud&${getApiKeyParam()}`;
+    apiUrl = `${getApiBaseUrl()}/simple/price?vs_currencies=${getCoinGeckoCurrency()}&${getApiKeyParam()}`;
 
     recordHigh = 0;
     recordLow = Infinity;
@@ -8143,15 +8271,16 @@ async function fetchUsdtToAudConversionRate() {
     const currentTime = Date.now();  // Get the current time
 
     // Check if 15 minutes have passed since the last API call
+    const currency = getCoinGeckoCurrency();
     if (currentTime - lastRateTimestamp < rateUpdateInterval) {
-        console.log(`Using cached USDT to AUD conversion rate: ${lastConversionRate}`);
+        console.log(`Using cached USDT to ${currency.toUpperCase()} conversion rate: ${lastConversionRate}`);
         return lastConversionRate;  // Return the cached rate
     }
 
     // If 15 minutes have passed, fetch a new rate
     let success = false;
     for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-        const apiUrl = `${getApiBaseUrl()}/simple/price?ids=tether&vs_currencies=aud&${getApiKeyParam()}`;
+        const apiUrl = `${getApiBaseUrl()}/simple/price?ids=tether&vs_currencies=${currency}&${getApiKeyParam()}`;
 
         try {
             const response = await fetch(apiUrl);
@@ -8163,9 +8292,9 @@ async function fetchUsdtToAudConversionRate() {
             if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
 
             const data = await response.json();
-            lastConversionRate = data.tether.aud || 1.52;  // Update conversion rate or fallback to 1.52
+            lastConversionRate = data.tether[currency] || 1.52;  // Update conversion rate or fallback to 1.52
             lastRateTimestamp = currentTime;  // Update the timestamp for the successful API call
-            console.log(`New USDT to AUD Conversion Rate Retrieved: ${lastConversionRate}`);  // Log the new rate
+            console.log(`New USDT to ${currency.toUpperCase()} Conversion Rate Retrieved: ${lastConversionRate}`);  // Log the new rate
             success = true;
             break;  // Exit the loop if successful
         } catch (error) {
@@ -10352,14 +10481,15 @@ async function openCandlestickModal(cryptoId) {
 // ✅ DEPRECATED: Live price is now updated by syncModalLivePrice() interval only
 // This function is no longer used but kept for reference
 async function fetchLivePrice(symbol) {
-    const apiUrl = `${getApiBaseUrl()}/simple/price?ids=${symbol}&vs_currencies=aud,usd&${getApiKeyParam()}`;
+    const currency = getCoinGeckoCurrency();
+    const apiUrl = `${getApiBaseUrl()}/simple/price?ids=${symbol}&vs_currencies=${currency},usd&${getApiKeyParam()}`;
 
     try {
         const response = await fetch(apiUrl);
         const data = await response.json();
 
-        // Retrieve both live prices for AUD and USD
-        const audPrice = data[symbol].aud;
+        // Retrieve both live prices for user currency and USD
+        const localPrice = data[symbol][currency];
         const usdPrice = data[symbol].usd;
 
         // ✅ FIX: Removed live price update - now handled by syncModalLivePrice() interval
@@ -14585,7 +14715,7 @@ async function executeAutoBuySolo(recommendations) {
             console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (${cooldownType} cooldown)`);
 
             // ✅ Update stats (same as manual buy)
-            const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
+            const btcPrice = getPriceFromObject(window.packageCryptoPrices?.['btc']) || 140000;
             const packagePrice = parseFloat(pkg.price) || 0;
 
             easyMiningData.allTimeStats.totalSpent += packagePrice * btcPrice;
@@ -14864,7 +14994,7 @@ async function executeAutoBuyTeam(recommendations) {
             }
 
             // Update stats
-            const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
+            const btcPrice = getPriceFromObject(window.packageCryptoPrices?.['btc']) || 140000;
             const totalPriceAUD = totalAmount * btcPrice;
             easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
             easyMiningData.todayStats.totalSpent += totalPriceAUD;
@@ -15215,15 +15345,15 @@ function updateTeamAlertCardValues(pkg) {
             mainRewardEl.textContent = `${myMainReward.toFixed(4)} ${pkg.mainCrypto}`;
         }
 
-        // Update combined reward value in AUD
+        // Update combined reward value in local currency
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
         if (rewardValueEl && totalShares > 0) {
-            const mergePrice = prices[pkg.mergeCrypto?.toLowerCase()]?.aud || 0;
-            const mainPrice = prices[pkg.mainCrypto?.toLowerCase()]?.aud || 0;
+            const mergePrice = getPriceFromObject(prices[pkg.mergeCrypto?.toLowerCase()]);
+            const mainPrice = getPriceFromObject(prices[pkg.mainCrypto?.toLowerCase()]);
             const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
-            const myRewardAUD = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
-            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
+            const myRewardLocal = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
+            rewardValueEl.textContent = `${getUserCurrencySymbol()}${formatNumber(myRewardLocal.toFixed(2))}`;
         }
     } else {
         // Single-crypto reward calculation
@@ -15234,22 +15364,22 @@ function updateTeamAlertCardValues(pkg) {
             mainRewardEl.textContent = `${myMainReward.toFixed(decimals)} ${pkg.crypto}`;
         }
 
-        // Update reward value in AUD
+        // Update reward value in local currency
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
         if (rewardValueEl && totalShares > 0) {
-            const cryptoPrice = prices[pkg.crypto?.toLowerCase()]?.aud || 0;
+            const cryptoPrice = getPriceFromObject(prices[pkg.crypto?.toLowerCase()]);
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
-            const myRewardAUD = myMainReward * cryptoPrice;
-            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
+            const myRewardLocal = myMainReward * cryptoPrice;
+            rewardValueEl.textContent = `${getUserCurrencySymbol()}${formatNumber(myRewardLocal.toFixed(2))}`;
         }
     }
 
-    // Update price in AUD
+    // Update price in local currency
     const priceEl = document.getElementById(`alert-price-${packageId}`);
     if (priceEl) {
         const sharePrice = 0.0001; // 1 share = 0.0001 BTC
-        const priceAUD = convertBTCtoAUD(myShares * sharePrice);
-        priceEl.textContent = `$${priceAUD.toFixed(2)}`;
+        const priceLocal = convertBTCtoAUD(myShares * sharePrice);
+        priceEl.textContent = `${getUserCurrencySymbol()}${priceLocal.toFixed(2)}`;
     }
 
     // ✅ SYNC: Update the share input field to reflect current owned shares
@@ -15285,20 +15415,22 @@ function createTeamPackageRecommendationCard(pkg) {
         try {
             // Calculate main crypto reward (LTC)
             const mainCryptoKey = pkg.mainCrypto.toLowerCase();
-            if (prices[mainCryptoKey] && prices[mainCryptoKey].aud) {
-                mainRewardAUD = parseFloat((pkg.blockReward * prices[mainCryptoKey].aud).toFixed(2));
+            const mainCryptoPrice = getPriceFromObject(prices[mainCryptoKey]);
+            if (mainCryptoPrice > 0) {
+                mainRewardAUD = parseFloat((pkg.blockReward * mainCryptoPrice).toFixed(2));
             }
 
             // Calculate merge crypto reward (DOGE)
             const mergeCryptoKey = pkg.mergeCrypto.toLowerCase();
-            if (prices[mergeCryptoKey] && prices[mergeCryptoKey].aud) {
-                mergeRewardAUD = parseFloat((pkg.mergeBlockReward * prices[mergeCryptoKey].aud).toFixed(2));
+            const mergeCryptoPrice = getPriceFromObject(prices[mergeCryptoKey]);
+            if (mergeCryptoPrice > 0) {
+                mergeRewardAUD = parseFloat((pkg.mergeBlockReward * mergeCryptoPrice).toFixed(2));
             }
 
-            // Total reward in AUD
+            // Total reward in local currency
             rewardAUD = (mainRewardAUD + mergeRewardAUD).toFixed(2);
         } catch (error) {
-            console.log('Could not calculate dual crypto reward AUD:', error);
+            console.log('Could not calculate dual crypto reward:', error);
             rewardAUD = 0;
         }
     } else {
@@ -15306,11 +15438,12 @@ function createTeamPackageRecommendationCard(pkg) {
         if (pkg.blockReward && pkg.crypto) {
             try {
                 const cryptoKey = pkg.crypto.toLowerCase();
-                if (prices[cryptoKey] && prices[cryptoKey].aud) {
-                    rewardAUD = (pkg.blockReward * prices[cryptoKey].aud).toFixed(2);
+                const cryptoPrice = getPriceFromObject(prices[cryptoKey]);
+                if (cryptoPrice > 0) {
+                    rewardAUD = (pkg.blockReward * cryptoPrice).toFixed(2);
                 }
             } catch (error) {
-                console.log('Could not calculate reward AUD:', error);
+                console.log('Could not calculate reward:', error);
                 rewardAUD = 0;
             }
         }
@@ -16079,7 +16212,7 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             console.log(`💰 Added ${amountToAdd} ${crypto} reward (${pkg.name})`);
 
             // Create holdings entry for tracking
-            const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+            const livePrice = getPriceFromObject(cryptoPrices[cryptoId]);
             const entry = {
                 id: uuidv4(),
                 cryptoId: cryptoId,
@@ -16187,7 +16320,7 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                         console.log(`💰 Added ${secondaryAmountToAdd} ${secondaryCrypto} reward (${pkg.name})`);
 
                         // Create holdings entry for tracking (secondary reward)
-                        const secondaryLivePrice = cryptoPrices[secondaryCryptoId]?.aud || 0;
+                        const secondaryLivePrice = getPriceFromObject(cryptoPrices[secondaryCryptoId]);
                         const secondaryEntry = {
                             id: uuidv4(),
                             cryptoId: secondaryCryptoId,
@@ -16967,7 +17100,7 @@ function createSoloPackageCard(pkg) {
     const duration = pkg.duration || 0;
 
     // Calculate price in AUD (assuming BTC price)
-    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
     const priceAUD = (packagePrice * btcPrice).toFixed(2);
 
     card.innerHTML = `
@@ -17189,7 +17322,7 @@ function createTeamPackageCard(pkg) {
     - My Bought Shares: ${myBoughtShares}`);
 
     // Calculate price in AUD (assuming BTC price)
-    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
     const pricePerShareAUD = (sharePrice * btcPrice).toFixed(2);
 
     // Generate unique ID for this card's share input
@@ -17319,7 +17452,7 @@ function updateShareCost(cardId) {
         const sharePrice = parseFloat(sharePriceMatch[1]);
         // Price display shows TOTAL cost of ALL shares in input (not just new shares)
         const totalBTC = (sharePrice * shares).toFixed(8);
-        const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+        const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
         const totalAUD = (sharePrice * shares * btcPrice).toFixed(2);
 
         costDisplay.textContent = `Total: ${totalBTC} BTC ($${totalAUD})`;
@@ -17369,7 +17502,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
         return;
     }
 
-    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
     const priceAUD = (packagePrice * btcPrice).toFixed(2);
 
     if (!confirm(`Purchase Solo Package for ${crypto}?\n\nCost: ${packagePrice.toFixed(8)} BTC ($${priceAUD})\n\nThis will create an order on NiceHash.`)) {
@@ -17526,7 +17659,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     const totalAmount = isDecrease ? 0 : (sharesToPurchase * sharePrice);
     const totalCostBTC = totalAmount.toFixed(8);
 
-    const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
+    const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
     const totalAUD = (totalAmount * btcPrice).toFixed(2);
 
     // 4. Get wallet address from localStorage
@@ -18289,17 +18422,19 @@ function getBuyPackagePrice(symbol) {
     };
 
     // Priority 1: Portfolio cache (freshest, from WebSocket)
+    const currency = getUserCurrency();
     const cache = window.portfolioPriceCache || {};
     if (cache[key] && cache[key] > 0) {
-        console.log(`💰 getBuyPackagePrice(${symbol}): $${cache[key]} AUD (from portfolio cache)`);
+        console.log(`💰 getBuyPackagePrice(${symbol}): ${getUserCurrencySymbol()}${cache[key]} ${currency} (from portfolio cache)`);
         return cache[key];
     }
 
     // Priority 2: packageCryptoPrices (from CoinGecko API)
     const pkgPrices = window.packageCryptoPrices || {};
-    if (pkgPrices[key]?.aud > 0) {
-        console.log(`💰 getBuyPackagePrice(${symbol}): $${pkgPrices[key].aud} AUD (from CoinGecko cache)`);
-        return pkgPrices[key].aud;
+    const pkgPrice = getPriceFromObject(pkgPrices[key]);
+    if (pkgPrice > 0) {
+        console.log(`💰 getBuyPackagePrice(${symbol}): ${getUserCurrencySymbol()}${pkgPrice} ${currency} (from CoinGecko cache)`);
+        return pkgPrice;
     }
 
     // Priority 3: Read live from portfolio DOM (for BTC especially)
@@ -18307,7 +18442,7 @@ function getBuyPackagePrice(symbol) {
     if (cryptoId) {
         const livePrice = getCurrentCryptoPrice(cryptoId);
         if (livePrice > 0) {
-            console.log(`💰 getBuyPackagePrice(${symbol}): $${livePrice} AUD (from live DOM)`);
+            console.log(`💰 getBuyPackagePrice(${symbol}): ${getUserCurrencySymbol()}${livePrice} ${currency} (from live DOM)`);
             return livePrice;
         }
     }
@@ -18372,7 +18507,7 @@ async function fetchPackageCryptoPrices(packages) {
     try {
         // Fetch all prices in one API call
         const ids = uniqueIds.join(',');
-        const apiUrl = `${getApiBaseUrl()}/simple/price?ids=${ids}&vs_currencies=aud&${getApiKeyParam()}`;
+        const apiUrl = `${getApiBaseUrl()}/simple/price?ids=${ids}&vs_currencies=${getCoinGeckoCurrency()}&${getApiKeyParam()}`;
 
         const data = await fetchWithApiKeyRotation(apiUrl);
         console.log('💰 Fetched price data:', data);
@@ -20314,7 +20449,7 @@ Do you want to continue?
         if (!isDecrease) {
             const sharesPurchased = shares;
             const totalPricePaid = sharesPurchased * sharePrice; // sharePrice is per share in BTC
-            const btcPrice = window.packageCryptoPrices?.['btc']?.aud || 140000;
+            const btcPrice = getPriceFromObject(window.packageCryptoPrices?.['btc']) || 140000;
             const totalPriceAUD = totalPricePaid * btcPrice;
 
             easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
