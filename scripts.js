@@ -13488,6 +13488,12 @@ function displayActivePackages() {
                 <span>Time:</span>
                 <span>${pkg.timeRemaining}</span>
             </div>
+            ${pkg.active && pkg.isTeam && pkg.hashrate ? `
+            <div class="package-card-stat">
+                <span>Hash Rate:</span>
+                <span style="color: #00ccff;">${pkg.hashrate}</span>
+            </div>
+            ` : ''}
             <div class="package-card-stat">
                 <span>Price:</span>
                 <span>$${priceAUD.toFixed(2)} AUD</span>
