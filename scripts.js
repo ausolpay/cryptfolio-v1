@@ -11609,11 +11609,11 @@ async function fetchEasyMiningData() {
                     console.log(`     - active: ${pkg.active}`);
                 });
 
-                // Capture initial values for hashrate/participants drop detection
+                // Capture initial values for hashrate/rigs drop detection (waits 5 mins into package)
                 captureInitialPackageValues(easyMiningData.activePackages);
 
                 // Check for significant drops and auto-clear if enabled
-                await checkForHashrateParticipantDrops(easyMiningData.activePackages);
+                await checkForHashrateRigsDrops(easyMiningData.activePackages);
 
             } catch (apiError) {
                 // Handle different types of API errors
@@ -13815,10 +13815,16 @@ function displayActivePackages() {
                 <span style="color: #4CAF50;">${pkg.numberOfParticipants}</span>
             </div>
             ` : ''}
-            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.participants ? `
+            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.hashrate ? `
             <div class="package-card-stat">
-                <span>Participants (OAS):</span>
-                <span style="color: #888;">${packageInitialValues[pkg.id].participants}</span>
+                <span>Hashrate (OAS):</span>
+                <span style="color: #888;">${packageInitialValues[pkg.id].hashrate}</span>
+            </div>
+            ` : ''}
+            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.rigs !== undefined ? `
+            <div class="package-card-stat">
+                <span>Rigs (OAS):</span>
+                <span style="color: #888;">${packageInitialValues[pkg.id].rigs}</span>
             </div>
             ` : ''}
             ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
@@ -20169,25 +20175,44 @@ function parseHashrateToNumeric(hashrateStr) {
     return value * (multipliers[unit] || 1);
 }
 
-// Capture initial values when package first appears with user shares
+// Capture initial values when package has been active for 5 minutes
 // ONLY captures for auto-bought packages (manual shares won't trigger auto-clear on drop)
+// Waits 5 minutes into package to allow initial hashrate/rigs to stabilize
 function captureInitialPackageValues(packages) {
     const now = Date.now();
+    const FIVE_MINUTES_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
+
     packages.forEach(pkg => {
         if (pkg.active && pkg.isTeam && pkg.ownedShares > 0) {
             // Only capture for AUTO-BOUGHT packages (still works if user adds more shares later)
             if (!isPackageAutoBought(pkg)) {
                 return; // Skip non-auto-bought packages
             }
+
             // Only capture if not already captured for this package
             if (!packageInitialValues[pkg.id]) {
+                // Check if package has been active for at least 5 minutes
+                const packageStartTime = pkg.startTs || pkg.startTime;
+                if (packageStartTime) {
+                    const startTimestamp = new Date(packageStartTime).getTime();
+                    const timeSinceStart = now - startTimestamp;
+
+                    if (timeSinceStart < FIVE_MINUTES_MS) {
+                        // Package hasn't been active for 5 minutes yet, skip
+                        const minutesRemaining = ((FIVE_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
+                        console.log(`⏳ Waiting to capture values for ${pkg.name}: ${minutesRemaining} mins until 5-min mark`);
+                        return;
+                    }
+                }
+
+                // Capture hashrate and rigs (not participants)
                 packageInitialValues[pkg.id] = {
                     hashrate: pkg.hashrate,
                     hashrateNumeric: parseHashrateToNumeric(pkg.hashrate),
-                    participants: pkg.numberOfParticipants || 0,
+                    rigs: pkg.rigsCount || 0,
                     capturedAt: now
                 };
-                console.log(`📊 Captured initial values for AUTO-BOUGHT ${pkg.name}: HR=${pkg.hashrate}, Participants=${pkg.numberOfParticipants}`);
+                console.log(`📊 Captured initial values for AUTO-BOUGHT ${pkg.name} (after 5-min mark): HR=${pkg.hashrate}, Rigs=${pkg.rigsCount || 0}`);
             }
         }
     });
@@ -20199,9 +20224,10 @@ function captureInitialPackageValues(packages) {
     });
 }
 
-// Check for significant drops in hashrate or participants and auto-clear if threshold exceeded
+// Check for significant drops in hashrate or rigs and auto-clear if threshold exceeded
 // ONLY works on auto-bought packages (even if user added more shares later)
-async function checkForHashrateParticipantDrops(packages) {
+// Values are captured after 5 minutes into package to allow initial stabilization
+async function checkForHashrateRigsDrops(packages) {
     if (!easyMiningSettings.autoClearOnDrop) return;
 
     const threshold = easyMiningSettings.autoClearDropThreshold || 50;
@@ -20215,27 +20241,27 @@ async function checkForHashrateParticipantDrops(packages) {
         }
 
         const initial = packageInitialValues[pkg.id];
-        if (!initial) continue;
+        if (!initial) continue; // No captured values yet (waiting for 5-min mark)
 
         const currentHashrate = parseHashrateToNumeric(pkg.hashrate);
-        const currentParticipants = pkg.numberOfParticipants || 0;
+        const currentRigs = pkg.rigsCount || 0;
 
         // Calculate drop percentages
         let hashrateDrop = 0;
-        let participantsDrop = 0;
+        let rigsDrop = 0;
 
         if (initial.hashrateNumeric > 0) {
             hashrateDrop = ((initial.hashrateNumeric - currentHashrate) / initial.hashrateNumeric) * 100;
         }
-        if (initial.participants > 0) {
-            participantsDrop = ((initial.participants - currentParticipants) / initial.participants) * 100;
+        if (initial.rigs > 0) {
+            rigsDrop = ((initial.rigs - currentRigs) / initial.rigs) * 100;
         }
 
         // Check if either exceeds threshold
-        if (hashrateDrop >= threshold || participantsDrop >= threshold) {
+        if (hashrateDrop >= threshold || rigsDrop >= threshold) {
             console.log(`⚠️ DROP DETECTED for ${pkg.name}:`);
             console.log(`   Hashrate: ${initial.hashrate} → ${pkg.hashrate} (${hashrateDrop.toFixed(1)}% drop)`);
-            console.log(`   Participants: ${initial.participants} → ${currentParticipants} (${participantsDrop.toFixed(1)}% drop)`);
+            console.log(`   Rigs: ${initial.rigs} → ${currentRigs} (${rigsDrop.toFixed(1)}% drop)`);
             console.log(`   Threshold: ${threshold}% - AUTO-CLEARING SHARES`);
 
             // Auto-clear shares
