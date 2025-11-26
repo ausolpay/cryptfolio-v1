@@ -17837,8 +17837,23 @@ async function buyTeamPackage(pkg, packageId) {
     console.log('🛒 Purchasing team package:', pkg.name);
 
     // Get desired total shares from input field
-    const inputId = `shares-${pkg.name.replace(/\s+/g, '-')}`;
-    const sharesInput = document.getElementById(inputId);
+    // Use context-aware search to handle duplicate cards for same package
+    let sharesInput = null;
+
+    // First try to find by card's data-package-id attribute (most reliable)
+    const card = document.querySelector(`[data-package-id="${packageId}"]`);
+    if (card) {
+        sharesInput = card.querySelector('.share-adjuster-input');
+        console.log(`📍 Found input via card data-package-id: ${packageId}`);
+    }
+
+    // Fallback to old ID-based method
+    if (!sharesInput) {
+        const inputId = `shares-${pkg.name.replace(/\s+/g, '-')}`;
+        sharesInput = document.getElementById(inputId);
+        console.log(`📍 Fallback: Found input via ID: ${inputId}`);
+    }
+
     const desiredTotalShares = sharesInput ? parseInt(sharesInput.value) || 0 : 0;
 
     if (desiredTotalShares <= 0) {
