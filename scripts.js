@@ -13381,7 +13381,7 @@ function createTeamPackageRecommendationCard(pkg) {
             // Use same ID logic as when saving shares
             const packageId = pkg.apiData?.id || pkg.id;
             const myBoughtShares = getMyTeamShares(packageId) || 0; // My previously bought shares
-            const myShares = 1; // Initial display for 1 share
+            const myShares = myBoughtShares || 1; // Show reward for owned shares, or 1 if none
 
             // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
             const othersBought = totalBoughtShares - myBoughtShares;
@@ -13428,7 +13428,7 @@ function createTeamPackageRecommendationCard(pkg) {
             // Use same ID logic as when saving shares
             const packageId = pkg.apiData?.id || pkg.id;
             const myBoughtShares = getMyTeamShares(packageId) || 0; // My previously bought shares
-            const myShares = 1; // Initial display for 1 share
+            const myShares = myBoughtShares || 1; // Show reward for owned shares, or 1 if none
 
             // Correct formula: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
             const othersBought = totalBoughtShares - myBoughtShares;
@@ -16583,7 +16583,7 @@ function updateTeamPackageCountdowns() {
 
     window.currentTeamPackages.forEach(pkg => {
         if (pkg.lifeTimeTill) {
-            const countdownElement = document.getElementById(`countdown-${pkg.id}`);
+            const countdownElement = document.getElementById(`countdown-buy-${pkg.id}`);
             if (countdownElement) {
                 const startTime = new Date(pkg.lifeTimeTill);
                 const now = new Date();
@@ -16825,7 +16825,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     countdownInfo = `
                         <div class="buy-package-stat">
                             <span>Starting:</span>
-                            <span id="countdown-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
+                            <span id="countdown-buy-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                         </div>
                     `;
                     console.log(`📅 ${pkg.name} - Participants: ${participants} (< 2) → Mining Lobby`);
@@ -16834,7 +16834,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     countdownInfo = `
                         <div class="buy-package-stat">
                             <span>Starting:</span>
-                            <span id="countdown-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
+                            <span id="countdown-buy-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
                         </div>
                     `;
                     console.log(`📅 ${pkg.name} - Participants: ${participants}, Time: ${Math.floor(timeUntilStart/1000)}s → Starting Soon!`);
@@ -16847,7 +16847,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     countdownInfo = `
                         <div class="buy-package-stat">
                             <span>Starting:</span>
-                            <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                            <span id="countdown-buy-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
                         </div>
                     `;
                     console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
@@ -16857,7 +16857,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 countdownInfo = `
                     <div class="buy-package-stat">
                         <span>Starting:</span>
-                        <span id="countdown-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
+                        <span id="countdown-buy-${pkg.id}" style="color: #4CAF50; font-weight: bold;">Starting Soon!</span>
                     </div>
                 `;
                 console.log(`📅 ${pkg.name} - Countdown ended → Starting Soon!`);
@@ -16867,7 +16867,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             countdownInfo = `
                 <div class="buy-package-stat">
                     <span>Starting:</span>
-                    <span id="countdown-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
+                    <span id="countdown-buy-${pkg.id}" class="mining-lobby-fade" style="color: #FFA500; font-weight: bold;">Mining Lobby</span>
                 </div>
             `;
             console.log(`📅 ${pkg.name} - No lifeTimeTill, Participants: ${participants} (< 2) → Mining Lobby`);
