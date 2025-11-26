@@ -12975,6 +12975,13 @@ async function executeAutoBuyTeam(recommendations) {
                 await loadBuyPackagesData();
             }
 
+            // 1.5. Refresh Buy Packages page if visible
+            const buyPackagesPage = document.getElementById('buy-packages-page');
+            if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+                console.log('📦 Refreshing Buy Packages page...');
+                await loadBuyPackagesDataOnPage();
+            }
+
             // 2. Refresh Team Alerts in EasyMining section
             console.log('📊 Refreshing team alerts in EasyMining section...');
             await updateRecommendations();
