@@ -13506,6 +13506,11 @@ function displayActivePackages() {
         const secondaryRewardDecimals = (pkg.cryptoSecondary === 'RVN' || pkg.cryptoSecondary === 'DOGE') ? 0 : 8;
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
+        // Calculate remaining price based on progress (decreases from start to 0 as package runs)
+        // Active packages: show remaining value, Completed packages: show $0
+        const progressPercent = pkg.progress || 0;
+        const remainingPriceAUD = pkg.active ? priceAUD * (1 - progressPercent / 100) : 0;
+
         // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
         // For Team Palladium dual mining, show both DOGE and LTC on separate lines
         let rewardDisplay;
@@ -13723,8 +13728,8 @@ function displayActivePackages() {
             </div>
             ` : ''}
             <div class="package-card-stat">
-                <span>Price:</span>
-                <span>$${priceAUD.toFixed(2)} AUD</span>
+                <span>${pkg.active ? 'Remaining:' : 'Price:'}</span>
+                <span style="color: ${pkg.active ? '#ffa500' : 'inherit'};">$${remainingPriceAUD.toFixed(2)} AUD</span>
             </div>
             <div class="package-progress-bar">
                 <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
@@ -16258,6 +16263,12 @@ function showPackageDetailPage(pkg) {
             <span class="stat-label">${pkg.isTeam ? 'BTC Spent:' : 'BTC Cost:'}</span>
             <span class="stat-value">${pkg.price.toFixed(8)} BTC</span>
         </div>
+        ${pkg.active ? `
+        <div class="stat-item">
+            <span class="stat-label">Remaining Value:</span>
+            <span class="stat-value" style="color: #ffa500;">$${(convertBTCtoAUD(pkg.price) * (1 - (pkg.progress || 0) / 100)).toFixed(2)} AUD</span>
+        </div>
+        ` : ''}
         ${pkg.blockFound && pkg.confirmedBlocks > 0 ? `
         <div class="stat-item">
             <span class="stat-label">Blocks Found:</span>
