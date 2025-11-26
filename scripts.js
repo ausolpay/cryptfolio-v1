@@ -13835,7 +13835,7 @@ function displayActivePackages() {
             ` : ''}
             ${pkg.active ? `
             <div class="package-card-stat">
-                <span>Share Price:</span>
+                <span>Shares Price:</span>
                 <span>$${priceAUD.toFixed(2)} AUD</span>
             </div>
             ` : ''}
