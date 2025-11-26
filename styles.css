@@ -538,6 +538,10 @@ body.light-mode .performer-name {
         text-align: center;
     }
 
+    .header-row .app-logo {
+        margin-top: 5px;
+    }
+
     .header-row .add-crypto {
         width: 100%;
         max-width: none;
@@ -545,7 +549,12 @@ body.light-mode .performer-name {
     }
 
     .header-row .autocomplete-wrapper {
+        flex: 1;
         max-width: none;
+    }
+
+    .header-row .add-crypto input[type="text"] {
+        width: 100%;
     }
 
     .portfolio-strip {
