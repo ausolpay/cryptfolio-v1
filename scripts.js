@@ -1042,6 +1042,13 @@ function showEasyMiningSettingsPage() {
     document.getElementById('include-pending-btc-toggle-page').checked = savedSettings.includePendingBTC || false;
     document.getElementById('auto-buy-cooldown-toggle-page').checked = savedSettings.autoBuyCooldown !== undefined ? savedSettings.autoBuyCooldown : true; // Default ON
     document.getElementById('auto-clear-team-shares-toggle-page').checked = savedSettings.autoClearTeamShares || false; // Default OFF
+    document.getElementById('auto-clear-exclude-team-gold').checked = savedSettings.autoClearExcludeTeamGold || false; // Default OFF (unchecked)
+    document.getElementById('auto-clear-exclude-team-gold').disabled = !savedSettings.autoClearTeamShares; // Disabled when main toggle is off
+    // Update label color based on disabled state
+    const excludeTeamGoldLabel = document.querySelector('label[for="auto-clear-exclude-team-gold"]');
+    if (excludeTeamGoldLabel) {
+        excludeTeamGoldLabel.style.color = savedSettings.autoClearTeamShares ? '' : '#888';
+    }
     document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked = savedSettings.autoBuyTgSafeHold || false; // Default OFF
 
     // Load auto-clear active shares settings
@@ -1052,6 +1059,22 @@ function showEasyMiningSettingsPage() {
     // Load Reward & Bail settings
     document.getElementById('rewardAndBailToggle').checked = savedSettings.rewardAndBail || false; // Default OFF
     document.getElementById('rewardAndBailIncludeManual').checked = savedSettings.rewardAndBailIncludeManual || false; // Default OFF
+}
+
+// Toggle function for "Exclude Team Gold from Auto-Clear" checkbox
+function toggleAutoClearTeamGoldCheckbox() {
+    const mainToggle = document.getElementById('auto-clear-team-shares-toggle-page');
+    const excludeCheckbox = document.getElementById('auto-clear-exclude-team-gold');
+    const excludeLabel = document.querySelector('label[for="auto-clear-exclude-team-gold"]');
+
+    if (mainToggle && excludeCheckbox) {
+        const isMainEnabled = mainToggle.checked;
+        excludeCheckbox.disabled = !isMainEnabled;
+        if (excludeLabel) {
+            excludeLabel.style.color = isMainEnabled ? '' : '#888';
+        }
+        console.log(`🔄 Auto-clear Team Gold checkbox ${isMainEnabled ? 'enabled' : 'disabled'}`);
+    }
 }
 
 // =============================================================================
@@ -8950,6 +8973,7 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.includePendingBTC = document.getElementById('include-pending-btc-toggle-page').checked;
     easyMiningSettings.autoBuyCooldown = document.getElementById('auto-buy-cooldown-toggle-page').checked;
     easyMiningSettings.autoClearTeamShares = document.getElementById('auto-clear-team-shares-toggle-page').checked;
+    easyMiningSettings.autoClearExcludeTeamGold = document.getElementById('auto-clear-exclude-team-gold')?.checked || false;
     easyMiningSettings.autoBuyTgSafeHold = document.getElementById('auto-buy-tg-safe-hold-toggle-page').checked;
     easyMiningSettings.autoClearActiveShares = document.getElementById('autoClearActiveShares')?.checked || false;
     easyMiningSettings.autoClearThreshold = parseInt(document.getElementById('autoClearThreshold')?.value) || 50;
@@ -16829,6 +16853,30 @@ function updateTeamPackageCountdowns() {
                         // Only clear if package has shares AND is NOT in recommendations (no longer meets thresholds)
                         const isStillRecommended = recommendedPackageIds.includes(packageId);
 
+                        // RE-ADD LOGIC: Check if previously cleared package is now back in recommendations
+                        if (myShares === 0 && isStillRecommended) {
+                            const clearedKey = `${loggedInUser}_autoClearedPackage_${packageId}`;
+                            const clearedDataStr = localStorage.getItem(clearedKey);
+                            if (clearedDataStr) {
+                                try {
+                                    const clearedData = JSON.parse(clearedDataStr);
+                                    if (clearedData.shares > 0) {
+                                        console.log(`🔄 Re-adding ${clearedData.shares} shares to ${pkg.name} - threshold returned!`);
+                                        // Re-buy the shares
+                                        reAddTeamShares(packageId, pkg.name, clearedData.shares, pkg).then(() => {
+                                            // Clear the storage on success
+                                            localStorage.removeItem(clearedKey);
+                                        }).catch(err => {
+                                            console.error('Re-add shares failed:', err);
+                                        });
+                                    }
+                                } catch (e) {
+                                    // Old format (just 'true' string), ignore - can't re-add without share count
+                                    console.log(`⚠️ Found old format cleared data for ${pkg.name}, cannot re-add (no share count stored)`);
+                                }
+                            }
+                        }
+
                         if (myShares > 0 && !isStillRecommended) {
                             // CHECK: Was this package auto-bought? (Only clear auto-bought packages)
                             const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
@@ -16876,6 +16924,13 @@ function updateTeamPackageCountdowns() {
 
                             console.log(`✅ Auto-clear eligible for ${pkg.name} - was auto-bought (${matchMethod})`);
 
+                            // Check if Team Gold should be excluded from auto-clear
+                            const excludeTeamGold = easyMiningSettings.autoClearExcludeTeamGold || false;
+                            if (excludeTeamGold && pkg.name.toLowerCase().includes('team gold')) {
+                                console.log(`⏭️ Skipping auto-clear for ${pkg.name} - Team Gold excluded by setting`);
+                                return; // Skip Team Gold packages when exclusion is enabled
+                            }
+
                             // Check if we haven't already cleared this package (to avoid duplicate clears)
                             const clearedKey = `${loggedInUser}_autoClearedPackage_${packageId}`;
                             const alreadyCleared = localStorage.getItem(clearedKey);
@@ -16887,8 +16942,14 @@ function updateTeamPackageCountdowns() {
                                     isStillRecommended: isStillRecommended
                                 });
 
-                                // Mark as cleared to prevent duplicate clears
-                                localStorage.setItem(clearedKey, 'true');
+                                // Mark as cleared and store share amount for potential re-add
+                                const clearedData = {
+                                    cleared: true,
+                                    shares: myShares,
+                                    packageName: pkg.name,
+                                    timestamp: Date.now()
+                                };
+                                localStorage.setItem(clearedKey, JSON.stringify(clearedData));
 
                                 // Call auto-clear function (async, no await to avoid blocking countdown updates)
                                 autoClearTeamShares(packageId, pkg.name).catch(err => {
@@ -18275,6 +18336,132 @@ async function autoClearTeamShares(packageId, packageName) {
     } catch (error) {
         console.error('❌ Error auto-clearing team shares:', error);
         // Don't show alert for auto-clear errors (silent failure)
+    }
+}
+
+// Re-add shares to a team package when threshold returns after auto-clear
+async function reAddTeamShares(packageId, packageName, shares, pkg) {
+    console.log(`🔄 Re-adding ${shares} shares to package: ${packageName} (ID: ${packageId})`);
+
+    try {
+        // 1. Validate API settings
+        if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
+            throw new Error('EasyMining API not configured');
+        }
+
+        // 2. Determine crypto type from package name
+        let crypto = 'BTC';
+        const nameLower = packageName.toLowerCase();
+        if (nameLower.includes('silver') || nameLower.includes('bch')) {
+            crypto = 'BCH';
+        } else if (nameLower.includes('chromium') || nameLower.includes('rvn')) {
+            crypto = 'RVN';
+        } else if (nameLower.includes('titanium') || nameLower.includes('kas')) {
+            crypto = 'KAS';
+        } else if (nameLower.includes('palladium doge') || nameLower.includes('doge')) {
+            crypto = 'DOGE';
+        } else if (nameLower.includes('palladium ltc') || nameLower.includes('ltc')) {
+            crypto = 'LTC';
+        }
+
+        // 3. Get wallet address from localStorage
+        const mainWalletAddress = getWithdrawalAddress(crypto);
+        if (!mainWalletAddress) {
+            throw new Error(`No ${crypto} withdrawal address configured`);
+        }
+
+        // 4. Calculate total amount (shares × 0.0001 BTC)
+        const sharePrice = 0.0001;
+        const totalAmount = shares * sharePrice;
+
+        // 5. Sync NiceHash time
+        await syncNiceHashTime();
+
+        // 6. Make POST request to buy shares
+        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+
+        const orderData = {
+            amount: totalAmount,
+            shares: {
+                small: shares,
+                medium: 0,
+                large: 0,
+                couponSmall: 0,
+                couponMedium: 0,
+                couponLarge: 0,
+                massBuy: 0
+            },
+            soloMiningRewardAddr: mainWalletAddress.trim()
+        };
+
+        const body = JSON.stringify(orderData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        console.log(`📦 Re-add shares request:`, {
+            endpoint: endpoint,
+            packageId: packageId,
+            shares: shares,
+            totalAmount: totalAmount,
+            crypto: crypto
+        });
+
+        let response;
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'POST',
+                    headers: headers,
+                    body: orderData
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Re-add shares successful:', result);
+
+        // 7. Update stored shares
+        saveMyTeamShares(packageId, shares);
+        console.log(`✅ Saved ${shares} shares for package ${packageId}`);
+
+        // 8. Track as auto-bought (for future auto-clear)
+        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        autoBoughtPackages[packageId] = {
+            type: 'team',
+            packageName: packageName,
+            shares: shares,
+            timestamp: Date.now(),
+            reAdded: true // Mark as re-added (not original auto-buy)
+        };
+        localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+
+        // 9. Refresh UI
+        await fetchEasyMiningData();
+
+        // 10. Refresh Buy Packages page if visible
+        const buyPackagesPage = document.getElementById('buy-packages-page');
+        if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+            await loadBuyPackagesDataOnPage();
+        }
+
+        console.log(`✅ Successfully re-added ${shares} shares to ${packageName}`);
+
+    } catch (error) {
+        console.error('❌ Error re-adding team shares:', error);
+        throw error; // Re-throw to allow caller to handle
     }
 }
 
