@@ -4712,17 +4712,16 @@ function updateTotalHoldings() {
 // ==================== PORTFOLIO STRIP FUNCTIONS ====================
 
 // Toggle portfolio details section
-function togglePortfolioDetails(event) {
-    event.stopPropagation(); // Prevent triggering the modal
+function togglePortfolioDetails() {
     const details = document.getElementById('portfolio-details');
     const arrow = document.getElementById('portfolio-arrow');
 
     if (details.classList.contains('collapsed')) {
         details.classList.remove('collapsed');
-        arrow.textContent = '▲';
+        arrow.classList.add('rotated');
     } else {
         details.classList.add('collapsed');
-        arrow.textContent = '▼';
+        arrow.classList.remove('rotated');
     }
 }
 
