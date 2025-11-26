@@ -2018,6 +2018,30 @@
                             <input type="text" id="account-last-name" class="settings-input" placeholder="Enter last name" style="margin-top: 0;">
                         </div>
                     </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Country</span>
+                            <span class="settings-row-desc">Select your country (sets currency & language)</span>
+                        </div>
+                        <div style="min-width: 200px; position: relative;">
+                            <input type="text" id="account-country" class="settings-input" placeholder="Type to search..." style="margin-top: 0;" autocomplete="off" oninput="filterCountryDropdown(this.value)" onfocus="showCountryDropdown()">
+                            <div id="country-dropdown" class="country-dropdown" style="display: none;"></div>
+                        </div>
+                    </div>
+                    <div class="settings-row" style="padding: 10px 0;">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                                <div>
+                                    <span style="color: #888; font-size: 12px;">Currency:</span>
+                                    <span id="account-currency-display" style="color: #4CAF50; font-weight: bold; margin-left: 5px;">-</span>
+                                </div>
+                                <div>
+                                    <span style="color: #888; font-size: 12px;">Language:</span>
+                                    <span id="account-language-display" style="color: #00ccff; font-weight: bold; margin-left: 5px;">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="settings-row" style="justify-content: flex-end; border-bottom: none;">
                         <button class="settings-action-btn" onclick="saveUserInfo()" style="background-color: #4CAF50;">Save Changes</button>
                     </div>

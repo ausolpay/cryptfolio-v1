@@ -6967,31 +6967,210 @@ function loadAccountSettings() {
     if (lastNameInput) {
         lastNameInput.value = user?.lastName || '';
     }
+
+    // Load country information
+    const countryInput = document.getElementById('account-country');
+    const currencyDisplay = document.getElementById('account-currency-display');
+    const languageDisplay = document.getElementById('account-language-display');
+
+    if (countryInput) {
+        countryInput.value = user?.country || '';
+    }
+    if (currencyDisplay) {
+        currencyDisplay.textContent = user?.currency || '-';
+    }
+    if (languageDisplay) {
+        languageDisplay.textContent = user?.language || '-';
+    }
 }
 
-// Save user information (first name, last name)
+// Save user information (first name, last name, country, currency, language)
 function saveUserInfo() {
     const firstNameInput = document.getElementById('account-first-name');
     const lastNameInput = document.getElementById('account-last-name');
+    const countryInput = document.getElementById('account-country');
 
     const firstName = firstNameInput?.value.trim() || '';
     const lastName = lastNameInput?.value.trim() || '';
+    const countryName = countryInput?.value.trim() || '';
+
+    // Find the country data
+    const countryData = countriesList.find(c => c.name.toLowerCase() === countryName.toLowerCase());
 
     // Update user object
     if (users[loggedInUser]) {
         users[loggedInUser].firstName = firstName;
         users[loggedInUser].lastName = lastName;
 
+        if (countryData) {
+            users[loggedInUser].country = countryData.name;
+            users[loggedInUser].currency = countryData.currency;
+            users[loggedInUser].language = countryData.language;
+        } else if (countryName === '') {
+            // Clear country data if input is empty
+            users[loggedInUser].country = '';
+            users[loggedInUser].currency = '';
+            users[loggedInUser].language = '';
+        }
+
         // Save to localStorage
         localStorage.setItem('users', JSON.stringify(users));
 
         // Show success message
         alert('User information saved successfully!');
-        console.log(`✅ Saved user info for ${loggedInUser}: ${firstName} ${lastName}`);
+        console.log(`✅ Saved user info for ${loggedInUser}: ${firstName} ${lastName}, Country: ${countryData?.name || 'None'}`);
     } else {
         alert('Error: User not found');
     }
 }
+
+// Countries list with currency and language
+const countriesList = [
+    { name: 'Australia', currency: 'AUD', language: 'English' },
+    { name: 'United States', currency: 'USD', language: 'English' },
+    { name: 'United Kingdom', currency: 'GBP', language: 'English' },
+    { name: 'Canada', currency: 'CAD', language: 'English' },
+    { name: 'New Zealand', currency: 'NZD', language: 'English' },
+    { name: 'Germany', currency: 'EUR', language: 'German' },
+    { name: 'France', currency: 'EUR', language: 'French' },
+    { name: 'Italy', currency: 'EUR', language: 'Italian' },
+    { name: 'Spain', currency: 'EUR', language: 'Spanish' },
+    { name: 'Portugal', currency: 'EUR', language: 'Portuguese' },
+    { name: 'Netherlands', currency: 'EUR', language: 'Dutch' },
+    { name: 'Belgium', currency: 'EUR', language: 'Dutch' },
+    { name: 'Austria', currency: 'EUR', language: 'German' },
+    { name: 'Ireland', currency: 'EUR', language: 'English' },
+    { name: 'Finland', currency: 'EUR', language: 'Finnish' },
+    { name: 'Greece', currency: 'EUR', language: 'Greek' },
+    { name: 'Switzerland', currency: 'CHF', language: 'German' },
+    { name: 'Sweden', currency: 'SEK', language: 'Swedish' },
+    { name: 'Norway', currency: 'NOK', language: 'Norwegian' },
+    { name: 'Denmark', currency: 'DKK', language: 'Danish' },
+    { name: 'Poland', currency: 'PLN', language: 'Polish' },
+    { name: 'Czech Republic', currency: 'CZK', language: 'Czech' },
+    { name: 'Hungary', currency: 'HUF', language: 'Hungarian' },
+    { name: 'Romania', currency: 'RON', language: 'Romanian' },
+    { name: 'Japan', currency: 'JPY', language: 'Japanese' },
+    { name: 'China', currency: 'CNY', language: 'Chinese' },
+    { name: 'South Korea', currency: 'KRW', language: 'Korean' },
+    { name: 'India', currency: 'INR', language: 'Hindi' },
+    { name: 'Singapore', currency: 'SGD', language: 'English' },
+    { name: 'Hong Kong', currency: 'HKD', language: 'Chinese' },
+    { name: 'Taiwan', currency: 'TWD', language: 'Chinese' },
+    { name: 'Thailand', currency: 'THB', language: 'Thai' },
+    { name: 'Malaysia', currency: 'MYR', language: 'Malay' },
+    { name: 'Indonesia', currency: 'IDR', language: 'Indonesian' },
+    { name: 'Philippines', currency: 'PHP', language: 'Filipino' },
+    { name: 'Vietnam', currency: 'VND', language: 'Vietnamese' },
+    { name: 'Brazil', currency: 'BRL', language: 'Portuguese' },
+    { name: 'Mexico', currency: 'MXN', language: 'Spanish' },
+    { name: 'Argentina', currency: 'ARS', language: 'Spanish' },
+    { name: 'Chile', currency: 'CLP', language: 'Spanish' },
+    { name: 'Colombia', currency: 'COP', language: 'Spanish' },
+    { name: 'Peru', currency: 'PEN', language: 'Spanish' },
+    { name: 'South Africa', currency: 'ZAR', language: 'English' },
+    { name: 'Nigeria', currency: 'NGN', language: 'English' },
+    { name: 'Kenya', currency: 'KES', language: 'Swahili' },
+    { name: 'Egypt', currency: 'EGP', language: 'Arabic' },
+    { name: 'Israel', currency: 'ILS', language: 'Hebrew' },
+    { name: 'United Arab Emirates', currency: 'AED', language: 'Arabic' },
+    { name: 'Saudi Arabia', currency: 'SAR', language: 'Arabic' },
+    { name: 'Turkey', currency: 'TRY', language: 'Turkish' },
+    { name: 'Russia', currency: 'RUB', language: 'Russian' },
+    { name: 'Ukraine', currency: 'UAH', language: 'Ukrainian' },
+    { name: 'Pakistan', currency: 'PKR', language: 'Urdu' },
+    { name: 'Bangladesh', currency: 'BDT', language: 'Bengali' },
+    { name: 'Sri Lanka', currency: 'LKR', language: 'Sinhala' },
+    { name: 'Nepal', currency: 'NPR', language: 'Nepali' },
+    { name: 'Iceland', currency: 'ISK', language: 'Icelandic' },
+    { name: 'Luxembourg', currency: 'EUR', language: 'French' },
+    { name: 'Malta', currency: 'EUR', language: 'Maltese' },
+    { name: 'Cyprus', currency: 'EUR', language: 'Greek' },
+    { name: 'Estonia', currency: 'EUR', language: 'Estonian' },
+    { name: 'Latvia', currency: 'EUR', language: 'Latvian' },
+    { name: 'Lithuania', currency: 'EUR', language: 'Lithuanian' },
+    { name: 'Slovakia', currency: 'EUR', language: 'Slovak' },
+    { name: 'Slovenia', currency: 'EUR', language: 'Slovenian' },
+    { name: 'Croatia', currency: 'EUR', language: 'Croatian' },
+    { name: 'Bulgaria', currency: 'BGN', language: 'Bulgarian' },
+    { name: 'Serbia', currency: 'RSD', language: 'Serbian' }
+];
+
+// Selected country data (temporary storage before save)
+let selectedCountryData = null;
+
+// Show country dropdown
+function showCountryDropdown() {
+    const dropdown = document.getElementById('country-dropdown');
+    const input = document.getElementById('account-country');
+    if (dropdown && input) {
+        filterCountryDropdown(input.value);
+        dropdown.style.display = 'block';
+    }
+}
+
+// Hide country dropdown
+function hideCountryDropdown() {
+    const dropdown = document.getElementById('country-dropdown');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+}
+
+// Filter country dropdown based on input
+function filterCountryDropdown(searchText) {
+    const dropdown = document.getElementById('country-dropdown');
+    if (!dropdown) return;
+
+    const filtered = searchText.trim() === ''
+        ? countriesList
+        : countriesList.filter(c =>
+            c.name.toLowerCase().includes(searchText.toLowerCase()) ||
+            c.currency.toLowerCase().includes(searchText.toLowerCase())
+        );
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = '<div class="country-dropdown-item" style="color: #888; cursor: default;">No countries found</div>';
+    } else {
+        dropdown.innerHTML = filtered.map(country => `
+            <div class="country-dropdown-item" onclick="selectCountry('${country.name}')">
+                <span class="country-name">${country.name}</span>
+                <span class="country-info">${country.currency} / ${country.language}</span>
+            </div>
+        `).join('');
+    }
+    dropdown.style.display = 'block';
+}
+
+// Select a country from dropdown
+function selectCountry(countryName) {
+    const country = countriesList.find(c => c.name === countryName);
+    if (country) {
+        selectedCountryData = country;
+
+        // Update input field
+        const input = document.getElementById('account-country');
+        if (input) input.value = country.name;
+
+        // Update currency and language displays
+        const currencyDisplay = document.getElementById('account-currency-display');
+        const languageDisplay = document.getElementById('account-language-display');
+        if (currencyDisplay) currencyDisplay.textContent = country.currency;
+        if (languageDisplay) languageDisplay.textContent = country.language;
+
+        // Hide dropdown
+        hideCountryDropdown();
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('country-dropdown');
+    const input = document.getElementById('account-country');
+    if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
+        hideCountryDropdown();
+    }
+});
 
 // Profile icon picker
 function showProfileIconPicker() {
