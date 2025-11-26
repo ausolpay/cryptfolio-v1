@@ -5548,17 +5548,24 @@ let currentHoldingsCryptoId = null; // Track which crypto's modal is open
 function toggleHoldingsTracking() {
     const content = document.getElementById('holdings-tracking-content');
     const icon = document.getElementById('holdings-collapse-icon');
+    const section = document.getElementById('holdings-tracking-section');
 
     if (content.style.display === 'none') {
         content.style.display = 'block';
-        icon.textContent = '▲';
+        icon.classList.add('expanded');
         // Load data when expanded
         if (currentHoldingsCryptoId) {
             displayHoldingsEntries(currentHoldingsCryptoId);
         }
+        // Smooth scroll to holdings tracker section
+        setTimeout(() => {
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
     } else {
         content.style.display = 'none';
-        icon.textContent = '▼';
+        icon.classList.remove('expanded');
     }
 }
 
