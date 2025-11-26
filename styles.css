@@ -397,6 +397,32 @@ body.light-mode .mobile-menu-divider {
     margin-top: 60px; /* Space from top (10px gap + 50px nav) */
 }
 
+/* Static Page Styles */
+.static-page {
+    min-height: calc(100vh - 60px);
+    display: flex;
+    flex-direction: column;
+}
+
+.static-page-content {
+    flex: 1;
+    padding: 40px 20px;
+    max-width: 1390px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.static-page-content h1 {
+    font-size: 32px;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+body.light-mode .static-page-content h1 {
+    color: #333;
+}
+
 /* =====================================================
    SETTINGS PAGE STYLES
    ===================================================== */

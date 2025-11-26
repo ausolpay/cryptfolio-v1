@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CryptFolio help and support. Find answers to common questions and get assistance.">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Help - CryptFolio">
+    <meta property="og:description" content="CryptFolio help and support.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cryptfolio.app/help.html">
+    <title>Help - CryptFolio</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- JSON-LD Schema -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Help",
+        "description": "CryptFolio help and support.",
+        "url": "https://cryptfolio.app/help.html",
+        "isPartOf": {
+            "@type": "WebSite",
+            "name": "CryptFolio",
+            "url": "https://cryptfolio.app"
+        }
+    }
+    </script>
+</head>
+<body class="dark-mode">
+    <!-- Top Navigation Strip -->
+    <nav class="top-nav" id="top-nav">
+        <div class="nav-content">
+            <!-- Mobile: Hamburger Button -->
+            <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+
+            <!-- Desktop: Navigation Links -->
+            <div class="nav-links">
+                <a href="about.html" class="nav-link">ABOUT</a>
+                <a href="index.html" class="nav-link">CRYPTFOLIO WEB APP</a>
+                <a href="docs.html" class="nav-link">DOCS</a>
+                <a href="contact.html" class="nav-link">CONTACT</a>
+            </div>
+
+            <!-- Right: Profile, Donate, Logo -->
+            <div class="nav-right">
+                <!-- Profile Dropdown (Desktop) -->
+                <div class="profile-dropdown desktop-only">
+                    <button class="profile-btn" onclick="toggleProfileDropdown()">
+                        <div class="profile-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </div>
+                    </button>
+                    <div class="dropdown-menu" id="profile-dropdown-menu">
+                        <a href="account-settings.html" class="dropdown-item">Account Settings</a>
+                        <a href="index.html" class="dropdown-item">App Settings</a>
+                        <a href="preferences.html" class="dropdown-item">Preferences</a>
+                        <a href="help.html" class="dropdown-item">Help</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="index.html" class="dropdown-item">Login</a>
+                    </div>
+                </div>
+
+                <!-- Donate Button (Desktop) -->
+                <a href="#" class="donate-btn desktop-only">Donate Dev</a>
+
+                <!-- Logo -->
+                <img src="ausolpay-logo.png" alt="Logo" class="nav-logo">
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu" id="mobile-menu">
+        <div class="mobile-menu-content">
+            <a href="about.html" class="mobile-menu-link" onclick="closeMobileMenu()">ABOUT</a>
+            <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">CRYPTFOLIO WEB APP</a>
+            <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
+            <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="account-settings.html" class="mobile-menu-link" onclick="closeMobileMenu()">Account Settings</a>
+            <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">App Settings</a>
+            <a href="preferences.html" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
+            <a href="help.html" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">Login</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="#" class="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
+        </div>
+    </div>
+
+    <!-- Page Content -->
+    <div class="container static-page">
+        <div class="static-page-content">
+            <h1>Help</h1>
+            <!-- Content placeholder -->
+        </div>
+
+        <!-- Footer -->
+        <div class="app-footer">
+            <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+            <span class="footer-separator"></span>
+            <div class="footer-text">
+                <span>CryptFolio v2 (Beta)</span>
+                <span class="footer-divider">|</span>
+                <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> &copy; <span class="current-year"></span></span>
+                <span class="footer-divider">|</span>
+                <span>Data by CoinGecko / MEXC</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts.js"></script>
+    <script>
+        document.querySelectorAll('.current-year').forEach(el => {
+            el.textContent = new Date().getFullYear();
+        });
+    </script>
+</body>
+</html>
