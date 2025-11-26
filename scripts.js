@@ -2429,6 +2429,14 @@ function displayDepositResults(lightningAddress, qrCodeSvg) {
         qrContainer.innerHTML = '<p style="color: #f44336;">QR code generation failed</p>';
     }
 
+    // Smooth scroll to the QR code section
+    setTimeout(() => {
+        const outputSection = document.getElementById('deposit-output-section');
+        if (outputSection) {
+            outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 100); // Small delay to ensure DOM is updated
+
     console.log('✅ Deposit address displayed successfully');
 }
 
