@@ -6514,33 +6514,36 @@ function updatePercentageChange(currentTotalHoldings) {
     const changeLabelElement = document.querySelector('.hero-change-values .change-label');
 
     if (percentageChange > 0) {
-        percentageChangeElement.classList.remove('negative');
+        percentageChangeElement.classList.remove('negative', 'neutral');
         percentageChangeElement.classList.add('positive');
         triangleElement.classList.remove('triangle-down');
         triangleElement.classList.add('triangle-up');
-        valueChangeElement.classList.remove('negative');
+        valueChangeElement.classList.remove('negative', 'neutral');
         valueChangeElement.classList.add('positive');
         if (changeLabelElement) {
-            changeLabelElement.classList.remove('negative');
+            changeLabelElement.classList.remove('negative', 'neutral');
             changeLabelElement.classList.add('positive');
         }
     } else if (percentageChange < 0) {
-        percentageChangeElement.classList.remove('positive');
+        percentageChangeElement.classList.remove('positive', 'neutral');
         percentageChangeElement.classList.add('negative');
         triangleElement.classList.remove('triangle-up');
         triangleElement.classList.add('triangle-down');
-        valueChangeElement.classList.remove('positive');
+        valueChangeElement.classList.remove('positive', 'neutral');
         valueChangeElement.classList.add('negative');
         if (changeLabelElement) {
-            changeLabelElement.classList.remove('positive');
+            changeLabelElement.classList.remove('positive', 'neutral');
             changeLabelElement.classList.add('negative');
         }
     } else {
         percentageChangeElement.classList.remove('positive', 'negative');
+        percentageChangeElement.classList.add('neutral');
         triangleElement.classList.remove('triangle-up', 'triangle-down');
         valueChangeElement.classList.remove('positive', 'negative');
+        valueChangeElement.classList.add('neutral');
         if (changeLabelElement) {
             changeLabelElement.classList.remove('positive', 'negative');
+            changeLabelElement.classList.add('neutral');
         }
     }
 
