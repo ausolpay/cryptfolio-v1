@@ -965,7 +965,7 @@ a {
     border: 1px solid #333;
     border-radius: 8px;
     padding: 20px;
-    margin: 0 auto 8px auto;
+    margin: 0 auto 10px auto;
     width: 1390px;
     max-width: 1390px;
     box-sizing: border-box;
@@ -1090,6 +1090,21 @@ body.light-mode .change-label.negative {
 .portfolio-strip #value-change {
     font-size: 18px;
     font-weight: 600;
+}
+
+.portfolio-strip #percentage-change.positive,
+.portfolio-strip #value-change.positive {
+    color: #00ff00 !important;
+}
+
+.portfolio-strip #percentage-change.negative,
+.portfolio-strip #value-change.negative {
+    color: #ff0000 !important;
+}
+
+.portfolio-strip #percentage-change.neutral,
+.portfolio-strip #value-change.neutral {
+    color: #888 !important;
 }
 
 /* Portfolio Stats Toggle */
