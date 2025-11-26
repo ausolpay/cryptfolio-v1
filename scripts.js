@@ -9757,11 +9757,12 @@ window.getRedditApiSettings = getRedditApiSettings;
 function toggleEasyMining() {
     const content = document.getElementById('easymining-content');
     const arrow = document.getElementById('easymining-arrow');
+    const section = document.getElementById('easymining-section');
 
     if (content.style.display === 'none') {
         content.style.display = 'block';
         arrow.classList.add('rotated');
-        window.scrollTo(0, 0);
+        if (section) section.scrollIntoView({ block: 'start' });
     } else {
         content.style.display = 'none';
         arrow.classList.remove('rotated');
