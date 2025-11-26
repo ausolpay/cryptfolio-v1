@@ -565,6 +565,27 @@
                             <span class="slider round"></span>
                         </label>
                     </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label" style="color: #ff6b6b;">Auto-Clear on Drop</span>
+                            <span class="settings-row-desc">Clear shares if hashrate or participants drops significantly</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="autoClearOnDropToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row" style="padding-left: 20px;">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Drop Threshold</span>
+                            <span class="settings-row-desc">Percentage drop that triggers auto-clear</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <input type="number" id="autoClearDropThreshold" min="10" max="90" value="50"
+                                   style="width: 60px; padding: 5px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; text-align: center;">
+                            <span style="color: #888;">%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

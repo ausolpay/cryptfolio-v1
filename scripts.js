@@ -1239,6 +1239,10 @@ function showEasyMiningSettingsPage() {
     // Load Reward & Bail settings
     document.getElementById('rewardAndBailToggle').checked = savedSettings.rewardAndBail || false; // Default OFF
     document.getElementById('rewardAndBailIncludeManual').checked = savedSettings.rewardAndBailIncludeManual || false; // Default OFF
+
+    // Load Auto-Clear on Drop settings
+    document.getElementById('autoClearOnDropToggle').checked = savedSettings.autoClearOnDrop || false; // Default OFF
+    document.getElementById('autoClearDropThreshold').value = savedSettings.autoClearDropThreshold || 50; // Default 50%
 }
 
 // Toggle function for "Exclude Team Gold from Auto-Clear" checkbox
@@ -10173,6 +10177,10 @@ let easyMiningData = {
     lastBlockCount: 0
 };
 
+// Track initial hashrate/participants for drop detection
+let packageInitialValues = {};
+// Structure: { "packageId": { hashrate: "10 TH", hashrateNumeric: 10, participants: 5, capturedAt: timestamp } }
+
 // Note: easyMiningPollingInterval, easyMiningAlertsPollingInterval, buyPackagesPollingInterval,
 // buyPackagesPollingPaused, buyPackagesPauseTimer are declared at the top of the file
 let showAllPackages = false;
@@ -10279,6 +10287,8 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.teamBailIncludeManual = document.getElementById('teamBailIncludeManual')?.checked || false;
     easyMiningSettings.rewardAndBail = document.getElementById('rewardAndBailToggle')?.checked || false;
     easyMiningSettings.rewardAndBailIncludeManual = document.getElementById('rewardAndBailIncludeManual')?.checked || false;
+    easyMiningSettings.autoClearOnDrop = document.getElementById('autoClearOnDropToggle')?.checked || false;
+    easyMiningSettings.autoClearDropThreshold = parseInt(document.getElementById('autoClearDropThreshold')?.value) || 50;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -11339,6 +11349,12 @@ async function fetchEasyMiningData() {
                     console.log(`     - btcEarnings: ${pkg.btcEarnings || 0} BTC`);
                     console.log(`     - active: ${pkg.active}`);
                 });
+
+                // Capture initial values for hashrate/participants drop detection
+                captureInitialPackageValues(easyMiningData.activePackages);
+
+                // Check for significant drops and auto-clear if enabled
+                await checkForHashrateParticipantDrops(easyMiningData.activePackages);
 
             } catch (apiError) {
                 // Handle different types of API errors
@@ -13500,6 +13516,12 @@ function displayActivePackages() {
             <div class="package-card-stat">
                 <span>Participants:</span>
                 <span style="color: #4CAF50;">${pkg.numberOfParticipants}</span>
+            </div>
+            ` : ''}
+            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.participants ? `
+            <div class="package-card-stat">
+                <span>Participants (OAS):</span>
+                <span style="color: #888;">${packageInitialValues[pkg.id].participants}</span>
             </div>
             ` : ''}
             ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
@@ -19769,6 +19791,94 @@ Do you want to continue?
     } catch (error) {
         console.error('❌ Error purchasing team package:', error);
         alert(`Failed to purchase team package: ${error.message}\n\nPlease check:\n- Your API credentials are correct\n- You have sufficient BTC balance\n- The wallet addresses are valid`);
+    }
+}
+
+// =============================================================================
+// HASHRATE/PARTICIPANTS DROP DETECTION
+// =============================================================================
+
+// Parse hashrate string to numeric value (normalized to TH)
+function parseHashrateToNumeric(hashrateStr) {
+    // "10 TH" -> 10, "500 GH" -> 0.5 (converted to TH)
+    if (!hashrateStr) return 0;
+    const match = hashrateStr.match(/([\d.]+)\s*(TH|GH|MH|PH)/i);
+    if (!match) return 0;
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    // Normalize to TH
+    const multipliers = { 'PH': 1000, 'TH': 1, 'GH': 0.001, 'MH': 0.000001 };
+    return value * (multipliers[unit] || 1);
+}
+
+// Capture initial values when package first appears with user shares
+function captureInitialPackageValues(packages) {
+    const now = Date.now();
+    packages.forEach(pkg => {
+        if (pkg.active && pkg.isTeam && pkg.ownedShares > 0) {
+            // Only capture if not already captured for this package
+            if (!packageInitialValues[pkg.id]) {
+                packageInitialValues[pkg.id] = {
+                    hashrate: pkg.hashrate,
+                    hashrateNumeric: parseHashrateToNumeric(pkg.hashrate),
+                    participants: pkg.numberOfParticipants || 0,
+                    capturedAt: now
+                };
+                console.log(`📊 Captured initial values for ${pkg.name}: HR=${pkg.hashrate}, Participants=${pkg.numberOfParticipants}`);
+            }
+        }
+    });
+    // Clean up entries for packages no longer active
+    Object.keys(packageInitialValues).forEach(pkgId => {
+        if (!packages.find(p => p.id === pkgId && p.active)) {
+            delete packageInitialValues[pkgId];
+        }
+    });
+}
+
+// Check for significant drops in hashrate or participants and auto-clear if threshold exceeded
+async function checkForHashrateParticipantDrops(packages) {
+    if (!easyMiningSettings.autoClearOnDrop) return;
+
+    const threshold = easyMiningSettings.autoClearDropThreshold || 50;
+
+    for (const pkg of packages) {
+        if (!pkg.active || !pkg.isTeam || pkg.ownedShares <= 0) continue;
+
+        const initial = packageInitialValues[pkg.id];
+        if (!initial) continue;
+
+        const currentHashrate = parseHashrateToNumeric(pkg.hashrate);
+        const currentParticipants = pkg.numberOfParticipants || 0;
+
+        // Calculate drop percentages
+        let hashrateDrop = 0;
+        let participantsDrop = 0;
+
+        if (initial.hashrateNumeric > 0) {
+            hashrateDrop = ((initial.hashrateNumeric - currentHashrate) / initial.hashrateNumeric) * 100;
+        }
+        if (initial.participants > 0) {
+            participantsDrop = ((initial.participants - currentParticipants) / initial.participants) * 100;
+        }
+
+        // Check if either exceeds threshold
+        if (hashrateDrop >= threshold || participantsDrop >= threshold) {
+            console.log(`⚠️ DROP DETECTED for ${pkg.name}:`);
+            console.log(`   Hashrate: ${initial.hashrate} → ${pkg.hashrate} (${hashrateDrop.toFixed(1)}% drop)`);
+            console.log(`   Participants: ${initial.participants} → ${currentParticipants} (${participantsDrop.toFixed(1)}% drop)`);
+            console.log(`   Threshold: ${threshold}% - AUTO-CLEARING SHARES`);
+
+            // Auto-clear shares
+            try {
+                await autoClearTeamShares(pkg.id, pkg.name);
+                console.log(`✅ Auto-cleared shares for ${pkg.name} due to drop`);
+                // Remove from tracking after clearing
+                delete packageInitialValues[pkg.id];
+            } catch (error) {
+                console.error(`❌ Failed to auto-clear shares for ${pkg.name}:`, error);
+            }
+        }
     }
 }
 
