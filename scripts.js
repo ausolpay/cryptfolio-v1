@@ -13511,6 +13511,12 @@ function displayActivePackages() {
         const progressPercent = pkg.progress || 0;
         const remainingPriceAUD = pkg.active ? priceAUD * (1 - progressPercent / 100) : priceAUD;
 
+        // Calculate color gradient from green (0% progress) to red (100% progress)
+        // Green = high remaining value, Red = low remaining value
+        const remainingColorRed = Math.round(255 * (progressPercent / 100));
+        const remainingColorGreen = Math.round(255 * (1 - progressPercent / 100));
+        const remainingPriceColor = pkg.active ? `rgb(${remainingColorRed}, ${remainingColorGreen}, 0)` : 'inherit';
+
         // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
         // For Team Palladium dual mining, show both DOGE and LTC on separate lines
         let rewardDisplay;
@@ -13735,7 +13741,7 @@ function displayActivePackages() {
             ` : ''}
             <div class="package-card-stat">
                 <span>${pkg.active ? 'Remaining:' : 'Price:'}</span>
-                <span style="color: ${pkg.active ? '#ffa500' : 'inherit'};">$${remainingPriceAUD.toFixed(2)} AUD</span>
+                <span style="color: ${remainingPriceColor};">$${remainingPriceAUD.toFixed(2)} AUD</span>
             </div>
             <div class="package-progress-bar">
                 <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
