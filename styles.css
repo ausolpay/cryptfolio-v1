@@ -204,8 +204,8 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
 .portfolio-stats-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .stat-item {
@@ -244,7 +244,7 @@ body.light-mode .stat-value {
 .portfolio-pnl-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1.5fr;
-    gap: 10px;
+    gap: 8px;
 }
 
 .pnl-item, .best-performer-item {
