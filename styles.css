@@ -46,28 +46,19 @@ a {
 
 /* Portfolio Strip Section */
 .portfolio-strip {
-    background-color: rgba(30, 30, 30, 0.6);
-    border-radius: 12px;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
     padding: 20px;
-    margin-bottom: 20px;
-    width: 100%;
+    margin: 0 auto 15px auto;
+    width: 1390px;
+    max-width: 1390px;
     box-sizing: border-box;
 }
 
 body.light-mode .portfolio-strip {
-    background-color: rgba(240, 240, 240, 0.8);
-    border: 1px solid #ddd;
-}
-
-.portfolio-strip-header h2 {
-    margin: 0 0 15px 0;
-    font-size: 18px;
-    color: #aaa;
-    font-weight: 500;
-}
-
-body.light-mode .portfolio-strip-header h2 {
-    color: #666;
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
 }
 
 /* Hero Section (Total Holdings) */
@@ -283,10 +274,22 @@ body.light-mode .performer-name {
 .portfolio-strip .negative { color: #f87171; }
 .portfolio-strip .neutral { color: #888; }
 
-/* Portfolio Strip Mobile Responsive */
-@media (max-width: 768px) {
-    .hero-value {
-        font-size: 36px;
+/* Portfolio Strip Responsive - Match EasyMining breakpoints */
+/* Wide Tablet - 3 crypto boxes wide */
+@media (max-width: 1390px) {
+    .portfolio-strip {
+        margin: 0 auto 15px auto;
+        width: 1040px;
+        max-width: 1040px;
+    }
+}
+
+/* Narrow Tablet - 2 crypto boxes wide */
+@media (max-width: 1040px) {
+    .portfolio-strip {
+        margin: 0 auto 15px auto;
+        width: 700px;
+        max-width: 700px;
     }
 
     .portfolio-stats-grid {
@@ -306,13 +309,29 @@ body.light-mode .performer-name {
     }
 }
 
-@media (max-width: 480px) {
+/* Mobile - 1 crypto box wide */
+@media (max-width: 700px) {
+    .portfolio-strip {
+        margin: 0 auto 15px auto;
+        width: 300px;
+        box-sizing: content-box;
+        padding: 20px;
+    }
+
     .hero-value {
         font-size: 32px;
     }
 
-    .portfolio-strip {
-        padding: 15px;
+    .portfolio-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .portfolio-pnl-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pnl-item, .best-performer-item {
+        grid-column: span 1;
     }
 }
 
