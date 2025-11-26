@@ -16128,8 +16128,8 @@ async function fetchPackageCryptoPrices(packages) {
 
     console.log('💰 Cryptos to fetch:', Array.from(cryptosToFetch));
 
-    // Convert symbols to CoinGecko IDs
-    const idsToFetch = Array.from(cryptosToFetch).map(symbol => cryptoIdMap[symbol]).filter(Boolean);
+    // Convert symbols to CoinGecko IDs (use toUpperCase to handle lowercase API responses)
+    const idsToFetch = Array.from(cryptosToFetch).map(symbol => cryptoIdMap[symbol.toUpperCase()]).filter(Boolean);
     const uniqueIds = [...new Set(idsToFetch)];
 
     console.log('💰 CoinGecko IDs to fetch:', uniqueIds);
