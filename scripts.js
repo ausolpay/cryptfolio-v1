@@ -6928,8 +6928,142 @@ function toggleMentionsBreakdown() {
 // Make toggle function globally accessible
 window.toggleMentionsBreakdown = toggleMentionsBreakdown;
 
+// =============================================================================
+// NEWS SLIDER FUNCTIONS (CryptoCompare)
+// =============================================================================
 
+// Fetch news articles from CryptoCompare for the news slider
+async function fetchCryptoCompareNews(cryptoSymbol, cryptoName) {
+    try {
+        const settings = getCryptoCompareApiSettings();
+        const apiKeyParam = settings.apiKey ? `&api_key=${settings.apiKey}` : '';
 
+        // Fetch news by category (symbol)
+        const url = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN${apiKeyParam}`;
+
+        console.log(`Fetching CryptoCompare news for ${cryptoSymbol}...`);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`CryptoCompare news API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.Data && Array.isArray(data.Data)) {
+            // Sort by published_on descending (newest first)
+            const articles = data.Data.sort((a, b) => b.published_on - a.published_on);
+            console.log(`Found ${articles.length} news articles for ${cryptoSymbol}`);
+            return articles.slice(0, 20); // Limit to 20 articles
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Error fetching CryptoCompare news:', error);
+        return [];
+    }
+}
+
+// Render news articles in the slider
+function renderNewsSlider(articles) {
+    const container = document.getElementById('news-slider-container');
+    if (!container) return;
+
+    // Clear existing content
+    container.innerHTML = '';
+
+    if (!articles || articles.length === 0) {
+        container.innerHTML = '<div class="news-slider-message">No news articles available for this cryptocurrency</div>';
+        return;
+    }
+
+    articles.forEach(article => {
+        const card = document.createElement('div');
+        card.className = 'news-card';
+        card.onclick = () => window.open(article.url, '_blank');
+
+        // Format the date
+        const publishDate = new Date(article.published_on * 1000);
+        const timeAgo = getNewsTimeAgo(publishDate);
+
+        // Escape HTML in title to prevent XSS
+        const safeTitle = escapeNewsHtml(article.title);
+
+        card.innerHTML = `
+            <img class="news-card-image" src="${article.imageurl || ''}"
+                 alt="" onerror="this.style.display='none'">
+            <div class="news-card-content">
+                <p class="news-card-title">${safeTitle}</p>
+                <span class="news-card-source">${article.source || 'Unknown'} • ${timeAgo}</span>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+
+    // Initialize drag scrolling for the news slider
+    initializeNewsSliderDrag(container);
+}
+
+// Helper: Get relative time string for news
+function getNewsTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+}
+
+// Helper: Escape HTML to prevent XSS
+function escapeNewsHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize drag scrolling for news slider
+function initializeNewsSliderDrag(container) {
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    container.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - container.offsetLeft;
+        scrollLeft = container.scrollLeft;
+        container.style.cursor = 'grabbing';
+    });
+
+    container.addEventListener('mouseleave', () => {
+        isDown = false;
+        container.style.cursor = 'grab';
+    });
+
+    container.addEventListener('mouseup', () => {
+        isDown = false;
+        container.style.cursor = 'grab';
+    });
+
+    container.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const walk = (x - startX) * 2;
+        container.scrollLeft = scrollLeft - walk;
+    });
+}
+
+// Wrapper function to fetch and render news
+async function fetchAndRenderNews(cryptoId, symbol) {
+    const articles = await fetchCryptoCompareNews(symbol, cryptoId);
+    renderNewsSlider(articles);
+}
 
 // Helper function to format large numbers (for both currency and supply amounts)
 function formatLargeNumber(value) {
@@ -8241,7 +8375,8 @@ async function openCandlestickModal(cryptoId) {
         await Promise.all([
             fetchCryptoInfo(cryptoId),
             fetchAndCalculateAdvancedSentiment(cryptoId),
-            fetchMentions30d(cryptoName, symbol.toUpperCase())
+            fetchMentions30d(cryptoName, symbol.toUpperCase()),
+            fetchAndRenderNews(cryptoId, symbol)
         ]);
         
         startAutoUpdateCryptoInfo(cryptoId);
