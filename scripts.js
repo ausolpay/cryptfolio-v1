@@ -13502,12 +13502,6 @@ function displayActivePackages() {
                 <span style="color: #4CAF50;">${pkg.numberOfParticipants}</span>
             </div>
             ` : ''}
-            ${pkg.active && pkg.isTeam && pkg.totalShares !== null ? `
-            <div class="package-card-stat">
-                <span>Total Shares:</span>
-                <span style="color: #ffa500;">${Math.round(pkg.totalShares)}</span>
-            </div>
-            ` : ''}
             ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
             <div class="package-card-stat">
                 <span>Total Cost:</span>
