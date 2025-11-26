@@ -2198,27 +2198,34 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
 
 @media (max-width: 480px) {
     .modal-hero .modal-change-values {
-        flex-direction: column;
-        gap: 5px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: clamp(16px, 3.5vw, 24px);
     }
 
     .holdings-modal-content {
-        padding: 15px;
+        padding: 10px;
+        padding-top: 0;
     }
 
     .holdings-modal-inner {
-        padding: 20px;
+        padding: 15px;
+        padding-top: 5px;
         width: 100%;
+        margin-top: -10px;
     }
 
     .modal-hero {
-        padding: 25px 20px;
-        width: calc(100% - 10px);
+        padding: 20px 15px;
+        width: calc(100% - 30px);
+        max-width: 320px;
         margin: 0 auto;
     }
 
     .modal-stats {
-        width: calc(100% - 10px);
+        width: calc(100% - 30px);
+        max-width: 320px;
         gap: 10px;
     }
 
