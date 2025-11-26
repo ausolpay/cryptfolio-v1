@@ -13727,6 +13727,12 @@ function displayActivePackages() {
                 <span style="color: #ffa500;">$${formatNumber(convertBTCtoAUD(pkg.totalCostBTC).toFixed(2))} AUD</span>
             </div>
             ` : ''}
+            ${pkg.active ? `
+            <div class="package-card-stat">
+                <span>Share Price:</span>
+                <span>$${priceAUD.toFixed(2)} AUD</span>
+            </div>
+            ` : ''}
             <div class="package-card-stat">
                 <span>${pkg.active ? 'Remaining:' : 'Price:'}</span>
                 <span style="color: ${pkg.active ? '#ffa500' : 'inherit'};">$${remainingPriceAUD.toFixed(2)} AUD</span>
