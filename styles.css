@@ -24,10 +24,101 @@ body.light-mode {
     margin-top: 40px; /* Add space from the top of the app */
 }
 
-.header {
+/* Header Row - transparent background, matches portfolio-strip widths */
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 15px 20px;
+    margin: 0 auto 15px auto;
+    width: 1390px;
+    max-width: 1390px;
+    box-sizing: border-box;
+}
+
+/* Left Group: Logo | Separator | Text */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Logo - smaller size */
+.header-row .app-logo {
+    width: 50px;
+    height: auto;
+}
+
+/* Vertical Separator Line */
+.header-separator {
+    width: 1px;
+    height: 40px;
+    background-color: #444;
+}
+
+body.light-mode .header-separator {
+    background-color: #ccc;
+}
+
+/* Text Group */
+.header-text {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
+}
+
+.header-tagline {
+    font-size: 14px;
+    color: #fff;
+    margin: 0;
+    font-weight: 500;
+}
+
+.header-subtitle {
+    font-size: 11px;
+    color: #888;
+    margin: 2px 0 0 0;
+}
+
+.header-subtitle a {
+    color: #888;
+}
+
+.header-subtitle a:hover {
+    color: #aaa;
+}
+
+body.light-mode .header-tagline {
+    color: #000;
+}
+
+body.light-mode .header-subtitle {
+    color: #666;
+}
+
+body.light-mode .header-subtitle a {
+    color: #666;
+}
+
+/* Add Crypto in header - tighter gap between input and button */
+.header-row .add-crypto {
+    display: flex;
     align-items: center;
+    gap: 5px;
+    flex: 1;
+    max-width: 400px;
+    margin: 0;
+    justify-content: flex-end;
+}
+
+.header-row .add-crypto input[type="text"] {
+    margin: 0;
+}
+
+.header-row .autocomplete-wrapper {
+    flex: 1;
+    max-width: 300px;
 }
 
 a {
@@ -35,9 +126,9 @@ a {
 }
 
 .app-logo {
-    width: 220px; /* Made the rocket logo bigger */
-    height: auto; /* Made the rocket logo bigger */
-    margin-bottom: 10px; /* Space below the logo */
+    width: 220px;
+    height: auto;
+    margin-bottom: 10px;
 }
 
 .app-title {
@@ -377,6 +468,11 @@ body.light-mode .performer-name {
 /* Portfolio Strip Responsive - Match EasyMining breakpoints */
 /* Wide Tablet - 3 crypto boxes wide */
 @media (max-width: 1390px) {
+    .header-row {
+        width: 1040px;
+        max-width: 1040px;
+    }
+
     .portfolio-strip {
         margin: 0 auto 15px auto;
         width: 1040px;
@@ -386,6 +482,11 @@ body.light-mode .performer-name {
 
 /* Narrow Tablet - 2 crypto boxes wide */
 @media (max-width: 1040px) {
+    .header-row {
+        width: 700px;
+        max-width: 700px;
+    }
+
     .portfolio-strip {
         margin: 0 auto 15px auto;
         width: 700px;
@@ -411,6 +512,41 @@ body.light-mode .performer-name {
 
 /* Mobile - 1 crypto box wide */
 @media (max-width: 700px) {
+    .header-row {
+        width: 300px;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        padding: 15px 20px;
+        box-sizing: content-box;
+    }
+
+    .header-left {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .header-separator {
+        width: 40px;
+        height: 1px;
+    }
+
+    .header-text {
+        align-items: center;
+        text-align: center;
+    }
+
+    .header-row .add-crypto {
+        width: 100%;
+        max-width: none;
+        justify-content: center;
+    }
+
+    .header-row .autocomplete-wrapper {
+        max-width: none;
+    }
+
     .portfolio-strip {
         margin: 0 auto 15px auto;
         width: 300px;

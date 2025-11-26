@@ -76,13 +76,18 @@
 
     <!-- App Page -->
     <div id="app-page" class="container" style="display: none;">
-        <div class="header">
-            <div>
+        <div class="header-row">
+            <!-- Left Group: Logo | Separator | Text -->
+            <div class="header-left">
                 <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v2</h1>
-                <p>Track your investments in real-time!<br>Add <a href="https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?usp=sharing" target="_blank">Crypto ID's</a> to get started.</p>
+                <div class="header-separator"></div>
+                <div class="header-text">
+                    <p class="header-tagline">Track your investments in real-time!</p>
+                    <p class="header-subtitle">Add <a href="https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?usp=sharing" target="_blank">Crypto ID's</a> to get started.</p>
+                </div>
             </div>
-            
+
+            <!-- Right: Add Crypto Input -->
             <div class="add-crypto">
                 <div class="autocomplete-wrapper">
                     <input type="text" id="crypto-id-input" placeholder="Enter Crypto ID" autocomplete="off">
