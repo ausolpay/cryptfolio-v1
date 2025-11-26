@@ -6324,6 +6324,8 @@ function updatePercentageChange(currentTotalHoldings) {
     valueChangeElement.textContent = `${valueChange >= 0 ? '(+$' + formatNumber(valueChange.toFixed(2)) + ')' : '(-$' + formatNumber(Math.abs(valueChange).toFixed(2)) + ')'}`;
     percentageChangeElement.prepend(triangleElement);
 
+    const changeLabelElement = document.querySelector('.hero-change-values .change-label');
+
     if (percentageChange > 0) {
         percentageChangeElement.classList.remove('negative');
         percentageChangeElement.classList.add('positive');
@@ -6331,6 +6333,10 @@ function updatePercentageChange(currentTotalHoldings) {
         triangleElement.classList.add('triangle-up');
         valueChangeElement.classList.remove('negative');
         valueChangeElement.classList.add('positive');
+        if (changeLabelElement) {
+            changeLabelElement.classList.remove('negative');
+            changeLabelElement.classList.add('positive');
+        }
     } else if (percentageChange < 0) {
         percentageChangeElement.classList.remove('positive');
         percentageChangeElement.classList.add('negative');
@@ -6338,10 +6344,17 @@ function updatePercentageChange(currentTotalHoldings) {
         triangleElement.classList.add('triangle-down');
         valueChangeElement.classList.remove('positive');
         valueChangeElement.classList.add('negative');
+        if (changeLabelElement) {
+            changeLabelElement.classList.remove('positive');
+            changeLabelElement.classList.add('negative');
+        }
     } else {
         percentageChangeElement.classList.remove('positive', 'negative');
         triangleElement.classList.remove('triangle-up', 'triangle-down');
         valueChangeElement.classList.remove('positive', 'negative');
+        if (changeLabelElement) {
+            changeLabelElement.classList.remove('positive', 'negative');
+        }
     }
 
     if (!getStorageItem(`${loggedInUser}_lastUpdated`) || Date.now() - parseInt(getStorageItem(`${loggedInUser}_lastUpdated`)) >= 86400000) {
@@ -6391,7 +6404,7 @@ function updateTotalHoldingsModal() {
                             ${percentageText.replace(/[▲▼]/g, '').trim()}
                         </span>
                         <span class="${valueClass}">${valueText}</span>
-                        <span class="change-label">24H</span>
+                        <span class="change-label ${percentageClass}">24H</span>
                     </div>
                 </div>
             </div>

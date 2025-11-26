@@ -151,8 +151,24 @@ body.light-mode .hero-change-values .neutral {
     font-weight: 500;
 }
 
+.change-label.positive {
+    color: #00ff00;
+}
+
+.change-label.negative {
+    color: #ff0000;
+}
+
 body.light-mode .change-label {
     color: #666;
+}
+
+body.light-mode .change-label.positive {
+    color: green;
+}
+
+body.light-mode .change-label.negative {
+    color: #ff0000;
 }
 
 .portfolio-strip #percentage-change,
@@ -1033,6 +1049,14 @@ body.light-mode .terms-conditions-content {
     font-weight: 500;
 }
 
+.modal-hero .modal-change-values .change-label.positive {
+    color: #00ff00;
+}
+
+.modal-hero .modal-change-values .change-label.negative {
+    color: #ff0000;
+}
+
 /* Stats Section in Modal */
 .modal-stats {
     display: grid;
@@ -1134,6 +1158,14 @@ body.light-mode .modal-hero .modal-change-values .neutral {
 
 body.light-mode .modal-hero .modal-change-values .change-label {
     color: #666;
+}
+
+body.light-mode .modal-hero .modal-change-values .change-label.positive {
+    color: green;
+}
+
+body.light-mode .modal-hero .modal-change-values .change-label.negative {
+    color: #ff0000;
 }
 
 /* Responsive */
