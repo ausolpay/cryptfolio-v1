@@ -6836,7 +6836,7 @@ function populateClearCryptoDropdown() {
     }
 }
 
-// Clear a specific crypto's holdings and history
+// Clear a specific crypto's holdings and history (keeps crypto box in UI)
 function clearSpecificCrypto() {
     const select = document.getElementById('clear-crypto-select');
     if (!select || !select.value) {
@@ -6854,38 +6854,36 @@ function clearSpecificCrypto() {
 
     const cryptoName = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
 
-    if (!confirm(`Are you sure you want to clear all holdings and history for ${cryptoName}?\n\nThis action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to clear all data for ${cryptoName}?\n\nThis will reset:\n- Holdings amount\n- History\n- Total cost\n- Deposit history\n\nThe crypto will remain in your portfolio.\n\nThis action cannot be undone.`)) {
         return;
     }
 
-    console.log(`🗑️ Clearing crypto: ${cryptoName} (${cryptoId})`);
+    console.log(`🗑️ Clearing data for crypto: ${cryptoName} (${cryptoId})`);
 
-    // Remove from user's cryptos array
-    users[loggedInUser].cryptos = users[loggedInUser].cryptos.filter(c => c.id !== cryptoId);
-
-    // Clear localStorage data for this crypto
+    // Clear localStorage data for this crypto (but keep in cryptos array)
     removeStorageItem(`${loggedInUser}_${cryptoId}Holdings`);
     removeStorageItem(`${loggedInUser}_${cryptoId}History`);
     removeStorageItem(`${loggedInUser}_${cryptoId}TotalCost`);
     removeStorageItem(`${loggedInUser}_${cryptoId}_depositHistory`);
 
-    // Save updated users object
-    localStorage.setItem('users', JSON.stringify(users));
-
-    // Remove the crypto box from UI if visible
-    const cryptoBox = document.getElementById(`crypto-box-${cryptoId}`);
-    if (cryptoBox) {
-        cryptoBox.remove();
+    // Reset the holdings display in the crypto box
+    const holdingsEl = document.getElementById(`${cryptoId}-holdings`);
+    if (holdingsEl) {
+        holdingsEl.textContent = '0';
     }
-
-    // Refresh the dropdown
-    populateClearCryptoDropdown();
+    const valueEl = document.getElementById(`${cryptoId}-value`);
+    if (valueEl) {
+        valueEl.textContent = '$0.00';
+    }
 
     // Update total holdings
     updateTotalHoldings();
 
-    alert(`${cryptoName} has been cleared from your holdings.`);
-    console.log(`✅ Successfully cleared ${cryptoName}`);
+    // Reset dropdown selection
+    select.value = '';
+
+    alert(`All data for ${cryptoName} has been cleared.\nThe crypto remains in your portfolio.`);
+    console.log(`✅ Successfully cleared data for ${cryptoName}`);
 }
 
 function closeSettingsPage() {
