@@ -131,6 +131,7 @@ body.light-mode .portfolio-hero:hover {
 .portfolio-stats-toggle {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     cursor: pointer;
     user-select: none;
