@@ -5361,6 +5361,12 @@ function setupActivityListeners() {
 
 // Initialize the script
 document.addEventListener('DOMContentLoaded', () => {
+    // Disable browser's automatic scroll restoration and scroll to top
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+
     // Initialize top navigation scroll behavior immediately
     initTopNavScrollBehavior();
     // Update nav auth state
