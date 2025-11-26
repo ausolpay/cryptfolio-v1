@@ -18002,8 +18002,8 @@ Do you want to continue?
         // Refresh package data immediately to show the new order
         await fetchEasyMiningData();
 
-        // Go back to app page
-        showAppPage();
+        // Stay on Buy Packages page for team purchases (don't navigate away)
+        console.log('✅ Team purchase complete - staying on Buy Packages page');
 
     } catch (error) {
         console.error('❌ Error purchasing team package:', error);
