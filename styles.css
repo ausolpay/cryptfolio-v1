@@ -1707,7 +1707,7 @@ body.light-mode .negative {
 .modal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
-    z-index: 1; /* Sit on top */
+    z-index: 1100; /* Above header (z-index: 1000) */
     left: 0;
     top: 0;
     right: 0;
