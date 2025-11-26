@@ -952,6 +952,7 @@ function loadUserData() {
 
 
 function showLoginPage() {
+    window.scrollTo(0, 0);
     document.getElementById('login-page').style.display = 'block';
     document.getElementById('register-page').style.display = 'none';
     document.getElementById('app-page').style.display = 'none';
@@ -962,6 +963,7 @@ function showLoginPage() {
 }
 
 function showRegisterPage() {
+    window.scrollTo(0, 0);
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'block';
     document.getElementById('app-page').style.display = 'none';
@@ -972,6 +974,7 @@ function showRegisterPage() {
 }
 
 function showAppPage() {
+    window.scrollTo(0, 0);
     // Stop buy packages polling when leaving the page
     stopBuyPackagesPolling();
 
@@ -1003,6 +1006,7 @@ function showAppPage() {
 }
 
 function showEasyMiningSettingsPage() {
+    window.scrollTo(0, 0);
     console.log('Showing EasyMining Settings Page');
 
     // Stop buy packages and alerts polling when leaving the page
@@ -1055,6 +1059,7 @@ function showEasyMiningSettingsPage() {
 // =============================================================================
 
 function showWithdrawalAddressesPage() {
+    window.scrollTo(0, 0);
     console.log('Showing Withdrawal Addresses Page');
 
     // Stop polling when leaving app page
@@ -1428,6 +1433,7 @@ async function fetchNiceHashVasps() {
  * Show the Travel Data management page
  */
 async function showTravelDataPage() {
+    window.scrollTo(0, 0);
     console.log('📍 Showing Travel Data Management Page');
 
     // Hide all other pages
@@ -1760,6 +1766,7 @@ let currentQrTokenIndex = 0;
 let depositsBalanceInterval = null;
 
 function showDepositsPage() {
+    window.scrollTo(0, 0);
     console.log('💰 Showing BTC Lightning Deposits Page');
 
     // Hide all other pages
@@ -2441,6 +2448,7 @@ function uuidv4() {
  * Show the BTC Withdraw page
  */
 function showWithdrawPage() {
+    window.scrollTo(0, 0);
     console.log('💸 Showing BTC Withdraw Page');
 
     // Hide all other pages
@@ -2936,6 +2944,7 @@ function displayWithdrawSuccess(result, addressData) {
 // ========================================
 
 async function showPackageAlertsPage() {
+    window.scrollTo(0, 0);
     console.log('Showing Package Alerts Page');
 
     // Stop buy packages and alerts polling when leaving the page
@@ -4176,6 +4185,7 @@ async function checkTeamRecommendations() {
 }
 
 function showBuyPackagesPage() {
+    window.scrollTo(0, 0);
     console.log('Showing Buy Packages Page');
 
     // Cache portfolio prices BEFORE leaving - these are WebSocket-updated and most accurate
@@ -9009,6 +9019,7 @@ window.clearAPICredentials = clearAPICredentials;
 // =============================================================================
 
 function showCoinGeckoApiSettingsPage() {
+    window.scrollTo(0, 0);
     console.log('Showing CoinGecko API Settings Page');
 
     // Stop polling when leaving app page
@@ -9229,6 +9240,7 @@ window.clearCoinGeckoApiKeys = clearCoinGeckoApiKeys;
 // =============================================================================
 
 function showApiKeysPage() {
+    window.scrollTo(0, 0);
     console.log('Showing API Keys Page');
 
     // Stop polling when leaving app page
@@ -9266,6 +9278,7 @@ window.closeApiKeysPage = closeApiKeysPage;
 // =============================================================================
 
 function showGoogleApiSettingsPage() {
+    window.scrollTo(0, 0);
     console.log('Showing Google API Settings Page');
 
     // Stop polling when leaving app page
@@ -9383,6 +9396,7 @@ window.getGoogleApiSettings = getGoogleApiSettings;
 // =============================================================================
 
 function showBraveApiSettingsPage() {
+    window.scrollTo(0, 0);
     console.log('Showing Brave API Settings Page');
 
     // Stop polling when leaving app page
@@ -9512,6 +9526,7 @@ window.getBraveApiKey = getBraveApiKey;
 // =============================================================================
 
 function showCryptoCompareApiSettingsPage() {
+    window.scrollTo(0, 0);
     console.log('Showing CryptoCompare API Settings Page');
 
     // Stop polling when leaving app page
@@ -9635,6 +9650,7 @@ window.getCryptoCompareApiSettings = getCryptoCompareApiSettings;
 // =============================================================================
 
 function showRedditApiSettingsPage() {
+    window.scrollTo(0, 0);
     console.log('Showing Reddit API Settings Page');
 
     stopBuyPackagesPolling();
@@ -9846,6 +9862,7 @@ function showEasyMiningLoadingBar() {
 }
 
 function hideEasyMiningLoadingBar() {
+    window.scrollTo(0, 0);
     const loadingBar = document.getElementById('easymining-loading-bar');
     const section = document.getElementById('easymining-section');
 
@@ -14489,6 +14506,7 @@ async function addCryptoById(cryptoId) {
 
 // Show package detail page (replaces modal)
 function showPackageDetailPage(pkg) {
+    window.scrollTo(0, 0);
     console.log('Showing Package Detail Page for:', pkg.name);
 
     // Stop polling when leaving app page
