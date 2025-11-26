@@ -13039,9 +13039,9 @@ async function fetchNiceHashOrders() {
                 totalShares: isTeamPackage ? totalShares : null,
                 sharePrice: isTeamPackage ? SHARE_COST : null,
                 userSharePercentage: userSharePercentage,
-                // Try multiple sources for participant count: direct field, sharedTicket field, then members array length
+                // Use sharedTicket.numberOfParticipants for actual participant count (refreshes every 5 sec)
                 numberOfParticipants: isTeamPackage
-                    ? (order.numberOfParticipants || order.sharedTicket?.numberOfParticipants || order.sharedTicket?.members?.length || 0)
+                    ? (order.sharedTicket?.numberOfParticipants || order.numberOfParticipants || 0)
                     : null,
                 totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
                 // Package metadata
