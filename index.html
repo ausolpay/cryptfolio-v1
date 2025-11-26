@@ -1929,6 +1929,18 @@
                         </div>
                         <button class="settings-danger-btn" onclick="showClearHoldingsModal()">Clear</button>
                     </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Clear Specific Crypto</span>
+                            <span class="settings-row-desc">Delete holdings and history for one crypto</span>
+                        </div>
+                        <div class="settings-row-controls" style="display: flex; gap: 10px; align-items: center;">
+                            <select id="clear-crypto-select" class="settings-select" style="min-width: 120px;">
+                                <option value="">Select...</option>
+                            </select>
+                            <button class="settings-danger-btn" onclick="clearSpecificCrypto()">Clear</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

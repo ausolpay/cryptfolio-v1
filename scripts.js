@@ -6811,7 +6811,81 @@ function showSettingsPage() {
     // Initialize fullscreen button
     initSettingsPageFullscreen();
 
+    // Populate clear crypto dropdown with user's holdings
+    populateClearCryptoDropdown();
+
     console.log('✅ Settings page shown');
+}
+
+// Populate the clear specific crypto dropdown with user's holdings
+function populateClearCryptoDropdown() {
+    const select = document.getElementById('clear-crypto-select');
+    if (!select) return;
+
+    // Clear existing options except the first one
+    select.innerHTML = '<option value="">Select...</option>';
+
+    // Get user's cryptos
+    if (users[loggedInUser] && users[loggedInUser].cryptos) {
+        users[loggedInUser].cryptos.forEach(crypto => {
+            const option = document.createElement('option');
+            option.value = crypto.id;
+            option.textContent = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
+            select.appendChild(option);
+        });
+    }
+}
+
+// Clear a specific crypto's holdings and history
+function clearSpecificCrypto() {
+    const select = document.getElementById('clear-crypto-select');
+    if (!select || !select.value) {
+        alert('Please select a cryptocurrency to clear.');
+        return;
+    }
+
+    const cryptoId = select.value;
+    const crypto = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
+
+    if (!crypto) {
+        alert('Cryptocurrency not found.');
+        return;
+    }
+
+    const cryptoName = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
+
+    if (!confirm(`Are you sure you want to clear all holdings and history for ${cryptoName}?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    console.log(`🗑️ Clearing crypto: ${cryptoName} (${cryptoId})`);
+
+    // Remove from user's cryptos array
+    users[loggedInUser].cryptos = users[loggedInUser].cryptos.filter(c => c.id !== cryptoId);
+
+    // Clear localStorage data for this crypto
+    removeStorageItem(`${loggedInUser}_${cryptoId}Holdings`);
+    removeStorageItem(`${loggedInUser}_${cryptoId}History`);
+    removeStorageItem(`${loggedInUser}_${cryptoId}TotalCost`);
+    removeStorageItem(`${loggedInUser}_${cryptoId}_depositHistory`);
+
+    // Save updated users object
+    localStorage.setItem('users', JSON.stringify(users));
+
+    // Remove the crypto box from UI if visible
+    const cryptoBox = document.getElementById(`crypto-box-${cryptoId}`);
+    if (cryptoBox) {
+        cryptoBox.remove();
+    }
+
+    // Refresh the dropdown
+    populateClearCryptoDropdown();
+
+    // Update total holdings
+    updateTotalHoldings();
+
+    alert(`${cryptoName} has been cleared from your holdings.`);
+    console.log(`✅ Successfully cleared ${cryptoName}`);
 }
 
 function closeSettingsPage() {
