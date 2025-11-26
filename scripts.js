@@ -17568,10 +17568,12 @@ function adjustShares(packageName, delta, buttonElement) {
 
     // Update reward value and price based on shares (works for both highlighted and non-highlighted packages)
     const packageId = packageName.replace(/\s+/g, '-');
-    const rewardValueElement = container.querySelector(`#reward-value-${packageId}`) || document.getElementById(`reward-value-${packageId}`);
-    const priceElement = container.querySelector(`#price-${packageId}`) || document.getElementById(`price-${packageId}`);
-    const mainRewardElement = container.querySelector(`#main-reward-${packageId}`) || document.getElementById(`main-reward-${packageId}`);
-    const mergeRewardElement = container.querySelector(`#merge-reward-${packageId}`) || document.getElementById(`merge-reward-${packageId}`);
+    // Use alert- prefix for EasyMining context, standard IDs for Buy Packages page
+    const idPrefix = isEasyMiningAlert ? 'alert-' : '';
+    const rewardValueElement = container.querySelector(`#${idPrefix}reward-value-${packageId}`) || document.getElementById(`${idPrefix}reward-value-${packageId}`);
+    const priceElement = container.querySelector(`#${idPrefix}price-${packageId}`) || document.getElementById(`${idPrefix}price-${packageId}`);
+    const mainRewardElement = container.querySelector(`#${idPrefix}main-reward-${packageId}`) || document.getElementById(`${idPrefix}main-reward-${packageId}`);
+    const mergeRewardElement = container.querySelector(`#${idPrefix}merge-reward-${packageId}`) || document.getElementById(`${idPrefix}merge-reward-${packageId}`);
 
     console.log(`🔍 Element lookup for packageId "${packageId}":`, {
         rewardValueFound: !!rewardValueElement,
