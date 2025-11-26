@@ -13023,6 +13023,7 @@ async function fetchNiceHashOrders() {
                 hashrate: order.acceptedCurrentSpeed !== undefined
                     ? `${order.acceptedCurrentSpeed} ${order.displayMarketFactor || 'TH'}`
                     : `${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`,
+                rigsCount: order.rigsCount || 0, // Number of active mining rigs
                 timeRemaining: calculateTimeRemaining(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 progress: calculateProgress(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 blockFound: blockFound,
@@ -13687,6 +13688,12 @@ function displayActivePackages() {
             <div class="package-card-stat">
                 <span>Hashrate:</span>
                 <span style="color: #00ccff;">${pkg.hashrate}</span>
+            </div>
+            ` : ''}
+            ${pkg.active && pkg.isTeam && pkg.rigsCount !== undefined ? `
+            <div class="package-card-stat">
+                <span>Rigs:</span>
+                <span style="color: #ff9800;">${pkg.rigsCount}</span>
             </div>
             ` : ''}
             ${pkg.active && pkg.isTeam && pkg.numberOfParticipants !== null ? `
