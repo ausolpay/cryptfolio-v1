@@ -6941,7 +6941,7 @@ async function fetchCryptoCompareNews(cryptoSymbol, cryptoName) {
         // Fetch news by category (symbol)
         const url = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN${apiKeyParam}`;
 
-        console.log(`Fetching CryptoCompare news for ${cryptoSymbol}...`);
+        console.log(`Fetching CryptoCompare news for ${cryptoSymbol} (${cryptoName})...`);
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -6951,9 +6951,28 @@ async function fetchCryptoCompareNews(cryptoSymbol, cryptoName) {
         const data = await response.json();
 
         if (data.Data && Array.isArray(data.Data)) {
+            // Filter articles that actually mention this specific crypto
+            const symbolUpper = cryptoSymbol.toUpperCase();
+            const nameLower = cryptoName.toLowerCase();
+
+            const filteredArticles = data.Data.filter(article => {
+                const title = (article.title || '').toLowerCase();
+                const body = (article.body || '').toLowerCase();
+                const tags = (article.tags || '').toLowerCase();
+                const categories = (article.categories || '').toLowerCase();
+
+                // Check if article mentions the crypto by name or symbol
+                const mentionsName = title.includes(nameLower) || body.includes(nameLower);
+                const mentionsSymbol = title.includes(symbolUpper.toLowerCase()) ||
+                                       tags.includes(symbolUpper.toLowerCase()) ||
+                                       categories.includes(symbolUpper.toLowerCase());
+
+                return mentionsName || mentionsSymbol;
+            });
+
             // Sort by published_on descending (newest first)
-            const articles = data.Data.sort((a, b) => b.published_on - a.published_on);
-            console.log(`Found ${articles.length} news articles for ${cryptoSymbol}`);
+            const articles = filteredArticles.sort((a, b) => b.published_on - a.published_on);
+            console.log(`Found ${data.Data.length} articles, ${articles.length} relevant to ${cryptoName}`);
             return articles.slice(0, 20); // Limit to 20 articles
         }
 
