@@ -51,7 +51,7 @@
                         </div>
                     </button>
                     <div class="dropdown-menu" id="profile-dropdown-menu">
-                        <a href="account-settings.html" class="dropdown-item">Account Settings</a>
+                        <a href="#" class="dropdown-item" onclick="showAccountSettingsPage(); closeProfileDropdown(); return false;">Account Settings</a>
                         <a href="#" class="dropdown-item" onclick="showSettingsPage(); closeProfileDropdown(); return false;">App Settings</a>
                         <a href="preferences.html" class="dropdown-item">Preferences</a>
                         <a href="help.html" class="dropdown-item">Help</a>
@@ -78,7 +78,7 @@
             <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
             <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
             <div class="mobile-menu-divider"></div>
-            <a href="account-settings.html" class="mobile-menu-link" onclick="closeMobileMenu()">Account Settings</a>
+            <a href="#" class="mobile-menu-link" onclick="showAccountSettingsPage(); closeMobileMenu(); return false;">Account Settings</a>
             <a href="#" class="mobile-menu-link" onclick="showSettingsPage(); closeMobileMenu(); return false;">App Settings</a>
             <a href="preferences.html" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
             <a href="help.html" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
@@ -1951,6 +1951,61 @@
         </div>
     </div>
 
+    <!-- Account Settings Page -->
+    <div id="account-settings-page" class="container" style="display: none;">
+        <div class="settings-page-content">
+            <div class="settings-page-header">
+                <button class="back-btn" onclick="closeAccountSettingsPage()">← Back</button>
+                <h1>Account Settings</h1>
+                <p class="settings-subtitle">Manage your profile and account</p>
+            </div>
+
+            <!-- Profile Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">Profile</h3>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Profile Icon</span>
+                            <span class="settings-row-desc">Choose your avatar</span>
+                        </div>
+                        <div class="current-profile-icon" id="current-profile-icon" onclick="showProfileIconPicker()">
+                            👤
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">Security</h3>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Change Password</span>
+                            <span class="settings-row-desc">Update your account password</span>
+                        </div>
+                        <button class="settings-action-btn" onclick="showChangePasswordModal()">Change</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="settings-section">
+                <h3 class="settings-section-title danger">Danger Zone</h3>
+                <div class="settings-card danger">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Delete Account</span>
+                            <span class="settings-row-desc">Permanently delete your account and all data</span>
+                        </div>
+                        <button class="settings-danger-btn" onclick="showDeleteAccountModal()">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
@@ -2297,6 +2352,49 @@
     </div>
 
     <!-- Buy Packages Modal -->
+
+    <!-- Profile Icon Picker Modal -->
+    <div id="profile-icon-picker-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" onclick="closeProfileIconPicker()">&times;</span>
+            <h2>Choose Profile Icon</h2>
+            <div class="profile-icon-grid" id="profile-icon-grid">
+                <!-- Icons populated by JS -->
+            </div>
+            <button class="modal-close-btn" onclick="closeProfileIconPicker()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="change-password-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" onclick="closeChangePasswordModal()">&times;</span>
+            <h2>Change Password</h2>
+            <input type="password" id="current-password" class="settings-input" placeholder="Current Password">
+            <input type="password" id="new-password" class="settings-input" placeholder="New Password">
+            <input type="password" id="confirm-new-password" class="settings-input" placeholder="Confirm New Password">
+            <div class="modal-buttons">
+                <button class="modal-close-btn" onclick="closeChangePasswordModal()">Cancel</button>
+                <button class="settings-action-btn" onclick="updatePassword()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Account Modal -->
+    <div id="delete-account-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" onclick="closeDeleteAccountModal()">&times;</span>
+            <h2 style="color: #f44336;">Delete Account</h2>
+            <p style="color: #888; margin-bottom: 15px;">This action cannot be undone. All your data will be permanently deleted.</p>
+            <p style="color: #fff; margin-bottom: 10px;">Type <strong>DELETE</strong> to confirm:</p>
+            <input type="text" id="delete-confirm-input" class="settings-input" placeholder="Type DELETE">
+            <div class="modal-buttons">
+                <button class="modal-close-btn" onclick="closeDeleteAccountModal()">Cancel</button>
+                <button class="settings-danger-btn" onclick="deleteAccount()">Delete Account</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Audio elements for notifications -->
     <!-- Holdings Sounds -->
     <audio id="good-sound" src="sounds/good-sound.mp3" preload="auto" muted></audio>

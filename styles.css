@@ -676,6 +676,80 @@ body.light-mode .settings-input:focus {
     flex: 1;
 }
 
+/* Profile Icon Grid */
+.profile-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.profile-icon-option {
+    width: 50px;
+    height: 50px;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2a2a2a;
+    border: 2px solid #444;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-icon-option:hover {
+    border-color: #ffa500;
+    transform: scale(1.1);
+}
+
+.profile-icon-option.selected {
+    border-color: #4CAF50;
+    background: #2d3a2d;
+}
+
+body.light-mode .profile-icon-option {
+    background: #f0f0f0;
+    border-color: #ddd;
+}
+
+body.light-mode .profile-icon-option.selected {
+    background: #e8f5e8;
+}
+
+.current-profile-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #333;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.current-profile-icon:hover {
+    background: #444;
+}
+
+body.light-mode .current-profile-icon {
+    background: #e0e0e0;
+}
+
+body.light-mode .current-profile-icon:hover {
+    background: #d0d0d0;
+}
+
+/* Modal buttons layout */
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
 /* App Footer with Logo */
 .app-footer {
     margin-top: 10px;

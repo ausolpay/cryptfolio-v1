@@ -846,6 +846,8 @@ function initializeApp() {
     initTopNavScrollBehavior();
     // Update nav auth state (login/logout buttons)
     updateNavAuthState();
+    // Update nav profile icon with user's selected emoji
+    updateNavProfileIcon();
 
     const notificationPermission = getStorageItem('notificationPermission');
     if (notificationPermission !== 'granted') {
@@ -4446,6 +4448,7 @@ function login() {
             console.log('⚠️ No CoinGecko API keys configured - showing settings page');
             showCoinGeckoApiSettingsPage();
             updateNavAuthState(); // Update nav login/logout buttons
+            updateNavProfileIcon(); // Update nav profile icon
             alert('⚠️ Welcome!\n\nPlease configure your CoinGecko API keys to use the app.\n\nAt least one API key is required to fetch cryptocurrency data.');
             return;
         }
@@ -4455,6 +4458,7 @@ function login() {
         showAppPage();
         updateAppContent(); // New function call
         updateNavAuthState(); // Update nav login/logout buttons
+        updateNavProfileIcon(); // Update nav profile icon
     } else {
         showModal('Invalid email or password. Please try again.');
     }
@@ -6795,6 +6799,7 @@ function showSettingsPage() {
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('account-settings-page').style.display = 'none';
 
     // Show settings page
     document.getElementById('settings-page').style.display = 'block';
@@ -6815,6 +6820,143 @@ function closeSettingsPage() {
     }
     showAppPage();
 }
+
+// ==================== Account Settings ====================
+
+// Profile icon options (emoji-based)
+const profileIconOptions = ['😀', '😎', '🤖', '👽', '🦊', '🐱', '🐶', '🦁', '🐸', '🎮', '💎', '🚀'];
+
+// Show/hide account settings page
+function showAccountSettingsPage() {
+    hideAllPages();
+    document.getElementById('account-settings-page').style.display = 'block';
+    loadAccountSettings();
+}
+
+function closeAccountSettingsPage() {
+    document.getElementById('account-settings-page').style.display = 'none';
+    showAppPage();
+}
+
+// Load current settings
+function loadAccountSettings() {
+    const user = users[loggedInUser];
+    const icon = user?.profileIcon || '👤';
+    document.getElementById('current-profile-icon').textContent = icon;
+}
+
+// Profile icon picker
+function showProfileIconPicker() {
+    const grid = document.getElementById('profile-icon-grid');
+    const currentIcon = users[loggedInUser]?.profileIcon || '👤';
+    grid.innerHTML = profileIconOptions.map(icon =>
+        `<div class="profile-icon-option ${icon === currentIcon ? 'selected' : ''}" onclick="selectProfileIcon('${icon}')">${icon}</div>`
+    ).join('');
+    document.getElementById('profile-icon-picker-modal').style.display = 'flex';
+}
+
+function closeProfileIconPicker() {
+    document.getElementById('profile-icon-picker-modal').style.display = 'none';
+}
+
+function selectProfileIcon(icon) {
+    users[loggedInUser].profileIcon = icon;
+    localStorage.setItem('users', JSON.stringify(users));
+    document.getElementById('current-profile-icon').textContent = icon;
+    updateNavProfileIcon();
+    closeProfileIconPicker();
+}
+
+function updateNavProfileIcon() {
+    const icon = users[loggedInUser]?.profileIcon;
+    const profileIcons = document.querySelectorAll('.profile-icon');
+    profileIcons.forEach(el => {
+        if (icon) {
+            el.innerHTML = `<span style="font-size: 18px;">${icon}</span>`;
+        } else {
+            el.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+        }
+    });
+}
+
+// Change password
+function showChangePasswordModal() {
+    document.getElementById('current-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-new-password').value = '';
+    document.getElementById('change-password-modal').style.display = 'flex';
+}
+
+function closeChangePasswordModal() {
+    document.getElementById('change-password-modal').style.display = 'none';
+}
+
+function updatePassword() {
+    const current = document.getElementById('current-password').value;
+    const newPass = document.getElementById('new-password').value;
+    const confirm = document.getElementById('confirm-new-password').value;
+
+    if (users[loggedInUser].password !== current) {
+        alert('Current password is incorrect.');
+        return;
+    }
+    if (newPass.length < 6) {
+        alert('New password must be at least 6 characters.');
+        return;
+    }
+    if (newPass !== confirm) {
+        alert('New passwords do not match.');
+        return;
+    }
+
+    users[loggedInUser].password = newPass;
+    localStorage.setItem('users', JSON.stringify(users));
+    closeChangePasswordModal();
+    alert('Password updated successfully!');
+}
+
+// Delete account
+function showDeleteAccountModal() {
+    document.getElementById('delete-confirm-input').value = '';
+    document.getElementById('delete-account-modal').style.display = 'flex';
+}
+
+function closeDeleteAccountModal() {
+    document.getElementById('delete-account-modal').style.display = 'none';
+}
+
+function deleteAccount() {
+    const confirmText = document.getElementById('delete-confirm-input').value;
+    if (confirmText !== 'DELETE') {
+        alert('Please type DELETE to confirm.');
+        return;
+    }
+
+    // Remove all user-specific data from localStorage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(loggedInUser)) {
+            keysToRemove.push(key);
+        }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // Remove user from users object
+    delete users[loggedInUser];
+    localStorage.setItem('users', JSON.stringify(users));
+
+    // Logout
+    loggedInUser = null;
+    removeStorageItem('loggedInUser');
+
+    closeDeleteAccountModal();
+    alert('Your account has been deleted.');
+    showLoginPage();
+    updateNavAuthState();
+}
+
+// ==================== End Account Settings ====================
 
 function syncSettingsPageToggles() {
     // Dark mode
