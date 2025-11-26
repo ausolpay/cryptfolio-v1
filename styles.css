@@ -883,7 +883,7 @@ input:checked + .slider:before {
     border-style: solid;
     margin-right: 8px;
     position: relative;
-    top: -3px;
+    top: -2px;
 }
 
 .triangle-up {
