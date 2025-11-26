@@ -1176,6 +1176,7 @@ function showAppPage() {
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
+    document.getElementById('account-settings-page').style.display = 'none';
 
     // Start EasyMining alerts polling if enabled
     if (easyMiningSettings && easyMiningSettings.enabled) {
@@ -6828,7 +6829,29 @@ const profileIconOptions = ['😀', '😎', '🤖', '👽', '🦊', '🐱', '�
 
 // Show/hide account settings page
 function showAccountSettingsPage() {
-    hideAllPages();
+    window.scrollTo(0, 0);
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('withdrawal-addresses-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('travel-data-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
+
+    // Show account settings page
     document.getElementById('account-settings-page').style.display = 'block';
     loadAccountSettings();
 }
