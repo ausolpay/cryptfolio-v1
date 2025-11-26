@@ -581,14 +581,18 @@ body.light-mode .settings-action-btn:hover {
 /* App Footer with Logo */
 .app-footer {
     margin-top: 30px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
     padding: 20px 0;
+    font-size: 12px;
+    color: #888;
 }
 
 .footer-logo {
-    width: 120px;
+    width: 80px;
     height: auto;
-    margin-bottom: 10px;
     opacity: 0.8;
 }
 
@@ -596,10 +600,30 @@ body.light-mode .footer-logo {
     content: url('ausolpay-logo-light.png');
 }
 
-.app-footer p {
-    margin: 5px 0;
-    font-size: 12px;
-    color: #888;
+.footer-separator {
+    width: 1px;
+    height: 30px;
+    background-color: #444;
+}
+
+body.light-mode .footer-separator {
+    background-color: #ccc;
+}
+
+.footer-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.footer-divider {
+    color: #555;
+}
+
+body.light-mode .footer-divider {
+    color: #aaa;
 }
 
 .app-footer a {
@@ -611,12 +635,34 @@ body.light-mode .footer-logo {
     color: #4CAF50;
 }
 
-body.light-mode .app-footer p {
+body.light-mode .app-footer {
     color: #666;
 }
 
 body.light-mode .app-footer a {
     color: #666;
+}
+
+/* Mobile footer - stack vertically */
+@media (max-width: 700px) {
+    .app-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .footer-separator {
+        width: 40px;
+        height: 1px;
+    }
+
+    .footer-text {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .footer-divider {
+        display: none;
+    }
 }
 
 .settings-page-footer {
