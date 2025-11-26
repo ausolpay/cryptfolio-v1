@@ -12840,6 +12840,7 @@ async function fetchNiceHashOrders() {
                 totalShares: isTeamPackage ? totalShares : null,
                 sharePrice: isTeamPackage ? SHARE_COST : null,
                 userSharePercentage: userSharePercentage,
+                numberOfParticipants: isTeamPackage ? (order.sharedTicket?.members?.length || 0) : null,
                 // Package metadata
                 active: isActive,
                 status: isActive ? 'active' : 'completed',
@@ -13492,6 +13493,12 @@ function displayActivePackages() {
             <div class="package-card-stat">
                 <span>Hash Rate:</span>
                 <span style="color: #00ccff;"><span class="live-indicator"></span>${pkg.hashrate}</span>
+            </div>
+            ` : ''}
+            ${pkg.active && pkg.isTeam && pkg.numberOfParticipants !== null ? `
+            <div class="package-card-stat">
+                <span>Participants:</span>
+                <span style="color: #4CAF50;"><span class="live-indicator"></span>${pkg.numberOfParticipants}</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
