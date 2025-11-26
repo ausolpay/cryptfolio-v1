@@ -15537,6 +15537,16 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         saveMyTeamShares(packageId, newTotalShares);
         console.log(`💾 Saved team shares for package ${packageId}: ${newTotalShares} shares (was ${currentShares})`);
 
+        // Clear cached input value so fresh shares are used on page refresh
+        if (window.packageShareValues) {
+            for (const key of Object.keys(window.packageShareValues)) {
+                if (key.includes(pkg.name.replace(/\s+/g, '-'))) {
+                    delete window.packageShareValues[key];
+                    console.log(`🗑️ Cleared cached input value for key: ${key}`);
+                }
+            }
+        }
+
         showModal(
             `✅ Purchase Complete!\n\n` +
             `Purchased: ${shares} share(s)\n` +
@@ -18084,6 +18094,16 @@ Do you want to continue?
         // Save the new total shares (input value = desired total)
         saveMyTeamShares(packageId, desiredTotalShares);
         console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${shares})`);
+
+        // Clear cached input value so fresh shares are used on page refresh
+        if (window.packageShareValues) {
+            for (const key of Object.keys(window.packageShareValues)) {
+                if (key.includes(pkg.name.replace(/\s+/g, '-'))) {
+                    delete window.packageShareValues[key];
+                    console.log(`🗑️ Cleared cached input value for key: ${key}`);
+                }
+            }
+        }
 
         // Build success message
         let successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
