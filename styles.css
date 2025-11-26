@@ -135,8 +135,22 @@ body.light-mode .portfolio-hero:hover {
     gap: 8px;
     cursor: pointer;
     user-select: none;
-    padding: 10px 0;
+    padding: 12px 20px;
     margin-top: 10px;
+    background-color: rgba(50, 50, 50, 0.5);
+    border-radius: 10px;
+}
+
+.portfolio-stats-toggle:hover {
+    background-color: rgba(60, 60, 60, 0.6);
+}
+
+body.light-mode .portfolio-stats-toggle {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+body.light-mode .portfolio-stats-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.9);
 }
 
 .portfolio-stats-toggle .arrow {
