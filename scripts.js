@@ -4745,10 +4745,13 @@ async function fetchPrices() {
 
                     // Apply persistent color based on last price direction (no flashing)
                     const direction = cryptoPriceDirections[crypto.id];
+                    const dollarSignElement = document.getElementById(`${crypto.id}-dollar-sign`);
                     if (direction === 'up') {
                         valueElement.style.color = '#00ff00'; // Green for price up
+                        if (dollarSignElement) dollarSignElement.style.color = '#00ff00';
                     } else if (direction === 'down') {
                         valueElement.style.color = '#ff4444'; // Red for price down
+                        if (dollarSignElement) dollarSignElement.style.color = '#ff4444';
                     }
 
                     // SAVE Bitcoin AUD to localStorage when price is valid
@@ -7345,7 +7348,7 @@ function addCryptoContainer(id, symbol, name, thumb) {
         <h2>${name} (${symbol.toUpperCase()})</h2>
         <p><span id="${id}-triangle" class="triangle"></span><span id="${id}-price-aud">$0.00000000</span></p>
         <p><span id="${id}-holdings">0.000</span> ${symbol.toUpperCase()}</p>
-        <p>$<span id="${id}-value-aud">0.00</span> AUD</p>
+        <p><span id="${id}-dollar-sign">$</span><span id="${id}-value-aud">0.00</span> AUD</p>
         <input type="number" id="${id}-input" style="margin-top: 15px;" placeholder="Enter ${name} holdings">
         <button style="margin-bottom: 15px;" onclick="updateHoldings('${id}')">Update Holdings</button>
         <button style="margin-bottom: 15px;" class="delete-button" onclick="showDeleteModal('${id}-container', '${id}')">Delete</button>
@@ -8065,9 +8068,12 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
 
                     // Update holdings value directly with persistent color
                     const valueElement = document.getElementById(`${coingeckoId}-value-aud`);
+                    const dollarSignElement = document.getElementById(`${coingeckoId}-dollar-sign`);
                     valueElement.textContent = formatNumber(holdingsValueAud.toFixed(2));
                     // Apply persistent color based on price direction (no flashing)
-                    valueElement.style.color = isPriceUp ? '#00ff00' : '#ff4444';
+                    const priceColor = isPriceUp ? '#00ff00' : '#ff4444';
+                    valueElement.style.color = priceColor;
+                    if (dollarSignElement) dollarSignElement.style.color = priceColor;
 
                     // For Bitcoin, save the AUD value to localStorage so it persists
                     if (coingeckoId === 'bitcoin' && priceInAud > 0) {
