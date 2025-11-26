@@ -96,18 +96,74 @@
             <lottie-player id="milestone-animation" src="https://lottie.host/ffe369c1-ce7f-4005-a652-528160576322/Eki4u779U6.json" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
         </div>
 
-        <div class="ui-holdings">
-            <h3>
-                <span id="percentage-change" class="neutral"><span class="triangle"></span> 0.00%</span>
-                <span id="value-change" class="neutral">($0.00)</span>
-            </h3>
-            <h1><span id="total-holdings">0.00</span></h1>
-            <h3>
-                <span id="record-high" class="neutral"><span class="triangle"></span> $0.00</span>
-                <span> &nbsp; | &nbsp; </span>
-                <span id="record-low" class="neutral"><span class="triangle"></span> $0.00</span>
-            </h3>
-            <h3 id="daily-milestone">$0,000.00</h3>
+        <div class="portfolio-strip">
+            <div class="portfolio-strip-header">
+                <h2>Portfolio Overview</h2>
+            </div>
+            <div class="portfolio-strip-content">
+                <!-- Row 1: Total Holdings (Hero) - Clickable to open fullscreen modal -->
+                <div class="portfolio-hero">
+                    <div class="hero-main">
+                        <span id="total-holdings" class="hero-value">$0.00</span>
+                        <span class="hero-label">Total Holdings</span>
+                    </div>
+                    <div class="hero-change">
+                        <span id="percentage-change" class="neutral">
+                            <span class="triangle"></span> 0.00%
+                        </span>
+                        <span id="value-change" class="neutral">($0.00)</span>
+                        <span class="hero-sublabel">24h Change</span>
+                    </div>
+                </div>
+
+                <!-- Row 2: Stats Grid -->
+                <div class="portfolio-stats-grid">
+                    <div class="stat-item">
+                        <span id="crypto-count" class="stat-value">0</span>
+                        <span class="stat-label">Cryptos</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="added-today" class="stat-value neutral">$0.00</span>
+                        <span class="stat-label">Added Today</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="record-high" class="stat-value positive">
+                            <span class="triangle triangle-up"></span> $0.00
+                        </span>
+                        <span class="stat-label">Record High</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="record-low" class="stat-value negative">
+                            <span class="triangle triangle-down"></span> $0.00
+                        </span>
+                        <span class="stat-label">Record Low</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="daily-milestone" class="stat-value">$0.00</span>
+                        <span class="stat-label">Target</span>
+                    </div>
+                </div>
+
+                <!-- Row 3: PnL + Best Performer -->
+                <div class="portfolio-pnl-grid">
+                    <div class="pnl-item">
+                        <span id="strip-unrealized-pnl" class="pnl-value neutral">$0.00</span>
+                        <span class="pnl-label">Unrealized PnL</span>
+                    </div>
+                    <div class="pnl-item">
+                        <span id="strip-realized-pnl" class="pnl-value neutral">$0.00</span>
+                        <span class="pnl-label">Realized PnL</span>
+                    </div>
+                    <div class="best-performer-item">
+                        <div class="performer-display">
+                            <img id="best-performer-icon" src="" alt="" class="performer-icon" style="display: none;">
+                            <span id="best-performer-name" class="performer-name">--</span>
+                            <span id="best-performer-change" class="performer-change neutral">0.00%</span>
+                        </div>
+                        <span class="performer-label">Best Performer</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- EasyMining Section -->

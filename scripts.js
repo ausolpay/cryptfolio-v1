@@ -226,6 +226,11 @@ let totalHoldings24hAgo = null;
 let recordHigh = 0;
 let recordLow = Infinity;
 
+// Portfolio strip daily tracking (resets at midnight)
+let dailyAddedValue = 0;
+let lastMidnightReset = null;
+let cryptoPriceChanges = {}; // Store 24h changes for each crypto
+
 let socket;
 let lastWebSocketUpdate = Date.now();
 const twoMinutes = 2 * 60 * 1000;
@@ -834,6 +839,11 @@ function initializeApp() {
         });
 
         totalHoldings24hAgo = parseFloat(getStorageItem(`${loggedInUser}_totalHoldings24hAgo`)) || null;
+
+        // Load portfolio strip daily tracking
+        dailyAddedValue = parseFloat(getStorageItem(`${loggedInUser}_dailyAddedValue`)) || 0;
+        lastMidnightReset = parseInt(getStorageItem(`${loggedInUser}_lastMidnightReset`)) || null;
+        checkMidnightReset(); // Check if we need to reset daily tracking
 
         updateTotalHoldings();
         updatePercentageChange(previousTotalHoldings);
@@ -4389,6 +4399,9 @@ function updateHoldings(crypto) {
         input.value = '';
         input.blur();
 
+        // Track for "Added Today" metric
+        trackHoldingsChange(crypto, 0, amountToAdd, livePrice);
+
         console.log(`✅ Added ${amountToAdd} ${crypto.toUpperCase()} at $${livePrice.toFixed(2)} AUD`);
     } else if (!isNaN(amountToAdd) && amountToAdd === 0) {
         // Clear input if 0 entered
@@ -4675,8 +4688,132 @@ function updateTotalHoldings() {
         if (easyMiningData && easyMiningData.activePackages && easyMiningData.activePackages.length > 0) {
             updateStats();
         }
+
+        // Update portfolio strip with all metrics
+        updatePortfolioStrip();
     }
 }
+
+// ==================== PORTFOLIO STRIP FUNCTIONS ====================
+
+// Check if we need to reset daily tracking at midnight
+function checkMidnightReset() {
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    if (!lastMidnightReset || lastMidnightReset < todayMidnight) {
+        // Reset daily tracking
+        dailyAddedValue = 0;
+        lastMidnightReset = todayMidnight;
+        setStorageItem(`${loggedInUser}_dailyAddedValue`, '0');
+        setStorageItem(`${loggedInUser}_lastMidnightReset`, todayMidnight.toString());
+        console.log('📅 Daily tracking reset at midnight');
+    }
+}
+
+// Track holdings changes for "Added Today" metric
+function trackHoldingsChange(cryptoId, oldAmount, newAmount, priceAud) {
+    checkMidnightReset(); // Always check before tracking
+    const delta = (newAmount - oldAmount) * priceAud;
+    dailyAddedValue += delta;
+    setStorageItem(`${loggedInUser}_dailyAddedValue`, dailyAddedValue.toString());
+    console.log(`📊 Holdings change tracked: ${cryptoId} delta = $${delta.toFixed(2)}, daily total = $${dailyAddedValue.toFixed(2)}`);
+    updateAddedTodayDisplay();
+}
+
+// Update the "Added Today" display
+function updateAddedTodayDisplay() {
+    const addedEl = document.getElementById('added-today');
+    if (!addedEl) return;
+
+    const sign = dailyAddedValue >= 0 ? '+' : '';
+    addedEl.textContent = `${sign}$${formatNumber(Math.abs(dailyAddedValue).toFixed(2))}`;
+    addedEl.className = `stat-value ${dailyAddedValue >= 0 ? 'positive' : 'negative'}`;
+}
+
+// Update strip PnL display
+function updateStripPnL() {
+    const pnl = calculateTotalPnL();
+    if (!pnl) return;
+
+    const unrealizedEl = document.getElementById('strip-unrealized-pnl');
+    const realizedEl = document.getElementById('strip-realized-pnl');
+
+    if (unrealizedEl) {
+        const sign = pnl.totalUnrealized >= 0 ? '+' : '';
+        unrealizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalUnrealized).toFixed(2))}`;
+        unrealizedEl.className = `pnl-value ${pnl.totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+    }
+
+    if (realizedEl) {
+        const sign = pnl.totalRealized >= 0 ? '+' : '';
+        realizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalRealized).toFixed(2))}`;
+        realizedEl.className = `pnl-value ${pnl.totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+    }
+}
+
+// Update best performer display
+function updateBestPerformer() {
+    const user = users[loggedInUser];
+    if (!user || !user.cryptos || user.cryptos.length === 0) return;
+
+    let bestCrypto = null;
+    let bestChange = -Infinity;
+
+    // Find crypto with highest 24h change from stored data
+    for (const crypto of user.cryptos) {
+        const change24h = cryptoPriceChanges[crypto.id] || 0;
+        if (change24h > bestChange) {
+            bestChange = change24h;
+            bestCrypto = crypto;
+        }
+    }
+
+    const iconEl = document.getElementById('best-performer-icon');
+    const nameEl = document.getElementById('best-performer-name');
+    const changeEl = document.getElementById('best-performer-change');
+
+    if (bestCrypto && iconEl && nameEl && changeEl) {
+        iconEl.src = bestCrypto.image || '';
+        iconEl.style.display = bestCrypto.image ? 'inline-block' : 'none';
+        nameEl.textContent = bestCrypto.symbol?.toUpperCase() || bestCrypto.id.toUpperCase();
+
+        const sign = bestChange >= 0 ? '+' : '';
+        changeEl.textContent = `${sign}${bestChange.toFixed(2)}%`;
+        changeEl.className = `performer-change ${bestChange >= 0 ? 'positive' : 'negative'}`;
+    } else if (nameEl && changeEl) {
+        // No cryptos or no price data yet
+        nameEl.textContent = '--';
+        changeEl.textContent = '0.00%';
+        changeEl.className = 'performer-change neutral';
+        if (iconEl) iconEl.style.display = 'none';
+    }
+}
+
+// Update portfolio strip with all metrics
+function updatePortfolioStrip() {
+    const user = users[loggedInUser];
+    if (!user || !user.cryptos) return;
+
+    // 1. Update crypto count
+    const cryptoCount = user.cryptos.length;
+    const countEl = document.getElementById('crypto-count');
+    if (countEl) countEl.textContent = cryptoCount;
+
+    // 2. Check midnight reset for "Added Today"
+    checkMidnightReset();
+
+    // 3. Update "Added Today" display
+    updateAddedTodayDisplay();
+
+    // 4. Update PnL from existing calculations
+    updateStripPnL();
+
+    // 5. Update best performer
+    updateBestPerformer();
+}
+
+// ==================== END PORTFOLIO STRIP FUNCTIONS ====================
 
 function flashColor(elementId, className) {
     const element = document.getElementById(elementId);
@@ -5079,6 +5216,9 @@ async function fetchInitialPercentageChanges(cryptoId) {
         const percentageChange24h = data.market_data.price_change_percentage_24h || 0;
         const percentageChange7d = data.market_data.price_change_percentage_7d;
 
+        // Store 24h change for best performer tracking
+        cryptoPriceChanges[cryptoId] = percentageChange24h;
+
         if (!users[loggedInUser].percentageThresholds) {
             users[loggedInUser].percentageThresholds = {};
         }
@@ -5118,6 +5258,9 @@ async function fetchPercentageChanges(cryptoId) {
         const percentageChange24h = data.market_data.price_change_percentage_24h || 0;
         const percentageChange7d = data.market_data.price_change_percentage_7d;
         const percentageChange30d = data.market_data.price_change_percentage_30d;
+
+        // Store 24h change for best performer tracking
+        cryptoPriceChanges[cryptoId] = percentageChange24h;
 
         updatePercentageChangeUI(cryptoId, percentageChange7d, percentageChange30d);
 
@@ -5911,6 +6054,9 @@ function deleteHoldingsEntryUI(cryptoId, entryId) {
         markHoldingsEntrySold(cryptoId, entryId, soldPrice);
         addToHoldingsHistory('remove', { ...entry, soldPrice, dateSold: Date.now() });
 
+        // Track for "Added Today" metric (negative since holdings removed)
+        trackHoldingsChange(cryptoId, entry.amount, 0, soldPrice);
+
         // Update displays
         displayHoldingsEntries(cryptoId);
         updateHoldingsDisplayFromEntries(cryptoId);
@@ -6543,6 +6689,9 @@ async function addCrypto() {
         document.getElementById('crypto-id-input').value = '';
         showModal('Crypto successfully added!');
         closeModal(1500);
+
+        // Update portfolio strip (crypto count changed)
+        updatePortfolioStrip();
     } catch (error) {
         showModal(error.message);
         console.error('Error adding new cryptocurrency:', error);
@@ -6612,6 +6761,9 @@ function deleteContainer(containerId, cryptoId) {
     fetchPrices();
     updateTotalHoldings();
     sortContainersByValue();
+
+    // Update portfolio strip (crypto count changed)
+    updatePortfolioStrip();
 }
 
 function formatNumber(number, isPrice = false) {
@@ -14978,6 +15130,10 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             };
             addHoldingsEntry(cryptoId, entry);
             addToHoldingsHistory('add', entry, { packageName: pkg.name });
+
+            // Track for "Added Today" metric (EasyMining reward)
+            trackHoldingsChange(cryptoId, 0, amountToAdd, livePrice);
+
             console.log(`📝 Created holdings entry for ${amountToAdd} ${crypto} from ${pkg.name}`);
 
             // For Bitcoin, use updateBTCHoldings() to include NiceHash balance
@@ -15082,6 +15238,10 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                         };
                         addHoldingsEntry(secondaryCryptoId, secondaryEntry);
                         addToHoldingsHistory('add', secondaryEntry, { packageName: pkg.name });
+
+                        // Track for "Added Today" metric (EasyMining secondary reward)
+                        trackHoldingsChange(secondaryCryptoId, 0, secondaryAmountToAdd, secondaryLivePrice);
+
                         console.log(`📝 Created holdings entry for ${secondaryAmountToAdd} ${secondaryCrypto} from ${pkg.name}`);
 
                         // Update holdings display

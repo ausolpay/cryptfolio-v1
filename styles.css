@@ -44,9 +44,240 @@ a {
     font-size: 42px;
 }
 
-.ui-holdings {
-    margin-bottom: 40px;
+/* Portfolio Strip Section */
+.portfolio-strip {
+    background-color: rgba(30, 30, 30, 0.6);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+body.light-mode .portfolio-strip {
+    background-color: rgba(240, 240, 240, 0.8);
+    border: 1px solid #ddd;
+}
+
+.portfolio-strip-header h2 {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    color: #aaa;
+    font-weight: 500;
+}
+
+body.light-mode .portfolio-strip-header h2 {
+    color: #666;
+}
+
+/* Hero Section (Total Holdings) */
+.portfolio-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: rgba(50, 50, 50, 0.5);
+    border-radius: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
     cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.portfolio-hero:hover {
+    background-color: rgba(60, 60, 60, 0.6);
+}
+
+body.light-mode .portfolio-hero {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+body.light-mode .portfolio-hero:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+.hero-main {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.hero-value {
+    font-size: 42px;
+    font-weight: 700;
+    color: #ffa500;
+}
+
+.hero-label, .hero-sublabel {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hero-change {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.portfolio-strip #percentage-change,
+.portfolio-strip #value-change {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Stats Grid */
+.portfolio-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    background-color: rgba(50, 50, 50, 0.4);
+    border-radius: 8px;
+    text-align: center;
+}
+
+body.light-mode .stat-item {
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+body.light-mode .stat-value {
+    color: #333;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* PnL Grid */
+.portfolio-pnl-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.5fr;
+    gap: 10px;
+}
+
+.pnl-item, .best-performer-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    background-color: rgba(50, 50, 50, 0.4);
+    border-radius: 8px;
+    text-align: center;
+}
+
+body.light-mode .pnl-item,
+body.light-mode .best-performer-item {
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+.pnl-value {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.pnl-label, .performer-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Best Performer */
+.performer-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.performer-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.performer-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+body.light-mode .performer-name {
+    color: #333;
+}
+
+.performer-change {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Portfolio Strip Color Classes */
+.portfolio-strip .positive { color: #4ade80; }
+.portfolio-strip .negative { color: #f87171; }
+.portfolio-strip .neutral { color: #888; }
+
+/* Portfolio Strip Mobile Responsive */
+@media (max-width: 768px) {
+    .portfolio-hero {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hero-change {
+        align-items: center;
+    }
+
+    .hero-value {
+        font-size: 36px;
+    }
+
+    .portfolio-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .portfolio-stats-grid .stat-item:last-child {
+        grid-column: span 2;
+    }
+
+    .portfolio-pnl-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .best-performer-item {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-value {
+        font-size: 32px;
+    }
+
+    .portfolio-strip {
+        padding: 15px;
+    }
 }
 
 button {
