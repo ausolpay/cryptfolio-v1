@@ -2165,9 +2165,9 @@ function updateDepositsBalance() {
         if (existingAvailableBTC && existingAvailableAUD && existingPendingBTC && existingPendingAUD) {
             // Update existing elements (no flicker)
             existingAvailableBTC.textContent = `${availableBalance.toFixed(8)} BTC`;
-            existingAvailableAUD.textContent = `≈ $${availableAUD} AUD`;
+            existingAvailableAUD.textContent = `≈ $${availableAUD}`;
             existingPendingBTC.textContent = `${pendingBalance.toFixed(8)} BTC`;
-            existingPendingAUD.textContent = `≈ $${pendingAUD} AUD`;
+            existingPendingAUD.textContent = `≈ $${pendingAUD}`;
         } else {
             // First render - create full HTML with IDs
             balanceSection.innerHTML = `
@@ -2176,12 +2176,12 @@ function updateDepositsBalance() {
                         <div style="flex: 1; text-align: center;">
                             <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
                             <div id="deposits-available-btc" style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                            <div id="deposits-available-aud" style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
+                            <div id="deposits-available-aud" style="color: #888; font-size: 13px;">≈ $${availableAUD}</div>
                         </div>
                         <div style="flex: 1; text-align: center;">
                             <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
                             <div id="deposits-pending-btc" style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
-                            <div id="deposits-pending-aud" style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
+                            <div id="deposits-pending-aud" style="color: #888; font-size: 13px;">≈ $${pendingAUD}</div>
                         </div>
                     </div>
                 </div>
@@ -2885,9 +2885,9 @@ function updateFeeAudDisplay() {
 
     if (btcPriceAud > 0) {
         const feeAud = TRANSACTION_FEE * btcPriceAud;
-        feeAudDisplay.textContent = `$${feeAud.toFixed(2)} AUD`;
+        feeAudDisplay.textContent = `$${feeAud.toFixed(2)}`;
     } else {
-        feeAudDisplay.textContent = '$0.00 AUD';
+        feeAudDisplay.textContent = '$0.00';
     }
 }
 
@@ -4883,7 +4883,7 @@ function updateTotalHoldings() {
 
         updateRecordDisplay();
 
-        document.title = `CryptFolio v1.5 | $${formatNumber(totalHoldings.toFixed(2))} AUD | Real-time Holdings Tracker`;
+        document.title = `CryptFolio v1.5 | $${formatNumber(totalHoldings.toFixed(2))} | Real-time Holdings Tracker`;
 
         updatePercentageChange(totalHoldings);
         previousTotalHoldings = totalHoldings;
@@ -7178,7 +7178,7 @@ function clearData() {
     user.percentageThresholds = {};
     localStorage.setItem('users', JSON.stringify(users));
 
-    document.getElementById('total-holdings').textContent = '0.00 AUD';
+    document.getElementById('total-holdings').textContent = '$0.00';
     document.getElementById('percentage-change').textContent = '0.00%';
     document.getElementById('value-change').textContent = '(+$0.00)';
     document.getElementById('record-high').innerHTML = `<span class="triangle triangle-up"></span><span class="positive">$0.00</span>`;
@@ -7348,7 +7348,7 @@ function addCryptoContainer(id, symbol, name, thumb) {
         <h2>${name} (${symbol.toUpperCase()})</h2>
         <p><span id="${id}-triangle" class="triangle"></span><span id="${id}-price-aud">$0.00000000</span></p>
         <p><span id="${id}-holdings">0.000</span> ${symbol.toUpperCase()}</p>
-        <p><span id="${id}-dollar-sign">$</span><span id="${id}-value-aud">0.00</span> AUD</p>
+        <p><span id="${id}-dollar-sign">$</span><span id="${id}-value-aud">0.00</span></p>
         <input type="number" id="${id}-input" style="margin-top: 15px;" placeholder="Enter ${name} holdings">
         <button style="margin-bottom: 15px;" onclick="updateHoldings('${id}')">Update Holdings</button>
         <button style="margin-bottom: 15px;" class="delete-button" onclick="showDeleteModal('${id}-container', '${id}')">Delete</button>
@@ -8091,7 +8091,7 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                             maximumFractionDigits: 2
                         });
                         holdingsElement.innerHTML = `
-                            <span><strong>${formattedHoldingsWs}</strong> ${crypto.symbol.toUpperCase()} = <strong id="holdings-value">$${formattedAudWs}</strong> AUD</span>
+                            <span><strong>${formattedHoldingsWs}</strong> ${crypto.symbol.toUpperCase()} = <strong id="holdings-value">$${formattedAudWs}</strong></span>
                         `;
 
                         // ✅ FIX: Live price is now updated by syncModalLivePrice() interval only
@@ -8828,7 +8828,7 @@ function syncModalLivePrice() {
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
             });
-            livePriceElement.innerHTML = `<b>$${formattedPrice} AUD</b>`;
+            livePriceElement.innerHTML = `<b>$${formattedPrice}</b>`;
 
             // Flash green/red on price change
             if (previousModalPrice > 0 && displayPriceAud !== previousModalPrice) {
@@ -10068,7 +10068,7 @@ async function openCandlestickModal(cryptoId) {
         });
 
         holdingsElement.innerHTML = `
-            <span><strong>${formattedHoldings}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${formattedAudValue}</strong> AUD</span>
+            <span><strong>${formattedHoldings}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${formattedAudValue}</strong></span>
         `;
 
         // Initialize conversion calculator with current price
@@ -13777,7 +13777,7 @@ function displayActivePackages() {
                     if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
                         totalAUD += convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary);
                     }
-                    return '$' + formatNumber(totalAUD.toFixed(2)) + ' AUD';
+                    return '$' + formatNumber(totalAUD.toFixed(2));
                 })()}</span>
             </div>
             ` : ''}
@@ -13790,7 +13790,7 @@ function displayActivePackages() {
             ${pkg.active && pkg.potentialReward > 0 ? `
             <div class="package-card-stat">
                 <span>Potential:</span>
-                <span style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))} AUD${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))} AUD` : ''}</span>
+                <span style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))}${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))}` : ''}</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
@@ -13830,18 +13830,18 @@ function displayActivePackages() {
             ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
             <div class="package-card-stat">
                 <span>Total Cost:</span>
-                <span style="color: #ffa500;">$${formatNumber(convertBTCtoAUD(pkg.totalCostBTC).toFixed(2))} AUD</span>
+                <span style="color: #ffa500;">$${formatNumber(convertBTCtoAUD(pkg.totalCostBTC).toFixed(2))}</span>
             </div>
             ` : ''}
             ${pkg.active ? `
             <div class="package-card-stat">
                 <span>Shares Price:</span>
-                <span>$${priceAUD.toFixed(2)} AUD</span>
+                <span>$${priceAUD.toFixed(2)}</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
                 <span>${pkg.active ? 'Remaining:' : 'Price:'}</span>
-                <span style="color: ${remainingPriceColor};">$${remainingPriceAUD.toFixed(2)} AUD</span>
+                <span style="color: ${remainingPriceColor};">$${remainingPriceAUD.toFixed(2)}</span>
             </div>
             <div class="package-progress-bar">
                 <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
@@ -15003,7 +15003,7 @@ function updateTeamAlertCardValues(pkg) {
             const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
             const myRewardAUD = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
-            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))} AUD`;
+            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
         }
     } else {
         // Single-crypto reward calculation
@@ -15020,7 +15020,7 @@ function updateTeamAlertCardValues(pkg) {
             const cryptoPrice = prices[pkg.crypto?.toLowerCase()]?.aud || 0;
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
             const myRewardAUD = myMainReward * cryptoPrice;
-            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))} AUD`;
+            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
         }
     }
 
@@ -15029,7 +15029,7 @@ function updateTeamAlertCardValues(pkg) {
     if (priceEl) {
         const sharePrice = 0.0001; // 1 share = 0.0001 BTC
         const priceAUD = convertBTCtoAUD(myShares * sharePrice);
-        priceEl.textContent = `$${priceAUD.toFixed(2)} AUD`;
+        priceEl.textContent = `$${priceAUD.toFixed(2)}`;
     }
 
     // ✅ SYNC: Update the share input field to reflect current owned shares
@@ -15270,7 +15270,7 @@ function createTeamPackageRecommendationCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))} AUD</span>
+                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))}</span>
             </div>
         `;
     } else if (pkg.blockReward) {
@@ -15308,7 +15308,7 @@ function createTeamPackageRecommendationCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))} AUD</span>
+                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))}</span>
             </div>
         `;
     }
@@ -15470,7 +15470,7 @@ function createTeamPackageRecommendationCard(pkg) {
             ${rewardInfo}
             <div class="buy-package-stat">
                 <span>Price:</span>
-                <span id="alert-price-${packageId}">$${priceAUD} AUD</span>
+                <span id="alert-price-${packageId}">$${priceAUD}</span>
             </div>
         </div>
         ${teamShareSelector}
@@ -16369,7 +16369,7 @@ function showPackageDetailPage(pkg) {
         ` : ''}
         <div class="stat-item">
             <span class="stat-label">${pkg.isTeam ? 'Amount Spent:' : 'Price Spent:'}</span>
-            <span class="stat-value">$${convertBTCtoAUD(pkg.price).toFixed(2)} AUD</span>
+            <span class="stat-value">$${convertBTCtoAUD(pkg.price).toFixed(2)}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">${pkg.isTeam ? 'BTC Spent:' : 'BTC Cost:'}</span>
@@ -16378,7 +16378,7 @@ function showPackageDetailPage(pkg) {
         ${pkg.active ? `
         <div class="stat-item">
             <span class="stat-label">Remaining Value:</span>
-            <span class="stat-value" style="color: #ffa500;">$${(convertBTCtoAUD(pkg.price) * (1 - (pkg.progress || 0) / 100)).toFixed(2)} AUD</span>
+            <span class="stat-value" style="color: #ffa500;">$${(convertBTCtoAUD(pkg.price) * (1 - (pkg.progress || 0) / 100)).toFixed(2)}</span>
         </div>
         ` : ''}
         ${pkg.blockFound && pkg.confirmedBlocks > 0 ? `
@@ -16443,7 +16443,7 @@ function showPackageDetailPage(pkg) {
         </div>
         <div class="stat-item">
             <span class="stat-label">BTC in AUD:</span>
-            <span class="stat-value" style="color: #00ff00;">$${convertBTCtoAUD(pkg.btcEarnings).toFixed(2)} AUD</span>
+            <span class="stat-value" style="color: #00ff00;">$${convertBTCtoAUD(pkg.btcEarnings).toFixed(2)}</span>
         </div>
         ` : `
         <div class="stat-item">
@@ -16454,12 +16454,12 @@ function showPackageDetailPage(pkg) {
         ${pkg.active && pkg.potentialReward > 0 ? `
         <div class="stat-item">
             <span class="stat-label">Potential Reward:</span>
-            <span class="stat-value" style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))} AUD (${pkg.potentialReward.toFixed(8)} ${pkg.crypto})</span>
+            <span class="stat-value" style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))} (${pkg.potentialReward.toFixed(8)} ${pkg.crypto})</span>
         </div>
         ${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `
         <div class="stat-item">
             <span class="stat-label">Potential Secondary:</span>
-            <span class="stat-value" style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))} AUD (${pkg.potentialRewardSecondary.toFixed(8)} ${pkg.cryptoSecondary})</span>
+            <span class="stat-value" style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))} (${pkg.potentialRewardSecondary.toFixed(8)} ${pkg.cryptoSecondary})</span>
         </div>
         ` : ''}
         ` : ''}
@@ -16764,7 +16764,7 @@ function createSoloPackageCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Cost (AUD):</span>
-                <span>$${priceAUD} AUD</span>
+                <span>$${priceAUD}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Potential Reward:</span>
@@ -16993,7 +16993,7 @@ function createTeamPackageCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Share Price (AUD):</span>
-                <span>$${pricePerShareAUD} AUD</span>
+                <span>$${pricePerShareAUD}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Block Reward:</span>
@@ -17102,7 +17102,7 @@ function updateShareCost(cardId) {
         const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
         const totalAUD = (sharePrice * shares * btcPrice).toFixed(2);
 
-        costDisplay.textContent = `Total: ${totalBTC} BTC ($${totalAUD} AUD)`;
+        costDisplay.textContent = `Total: ${totalBTC} BTC ($${totalAUD})`;
         costDisplay.style.color = '#4CAF50';
 
         // Calculate and update reward display
@@ -17117,7 +17117,7 @@ function updateShareCost(cardId) {
             shareDistDisplay.textContent = `(${shares}/${newTotalBought}/${totalAvailableShares})`;
         }
     } else {
-        costDisplay.textContent = 'Total: 0 BTC ($0.00 AUD)';
+        costDisplay.textContent = 'Total: 0 BTC ($0.00)';
         costDisplay.style.color = '#ffa500';
 
         // Show current reward when no new shares being bought
@@ -17152,7 +17152,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
     const btcPrice = cryptoPrices['bitcoin']?.aud || 140000;
     const priceAUD = (packagePrice * btcPrice).toFixed(2);
 
-    if (!confirm(`Purchase Solo Package for ${crypto}?\n\nCost: ${packagePrice.toFixed(8)} BTC ($${priceAUD} AUD)\n\nThis will create an order on NiceHash.`)) {
+    if (!confirm(`Purchase Solo Package for ${crypto}?\n\nCost: ${packagePrice.toFixed(8)} BTC ($${priceAUD})\n\nThis will create an order on NiceHash.`)) {
         return;
     }
 
@@ -17334,7 +17334,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         confirmText = `Purchase team shares for ${crypto}?\n\n` +
             `Buying: ${sharesToPurchase} share(s)\n` +
             `Total after purchase: ${desiredTotalShares} share(s)\n\n` +
-            `Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
+            `Cost: ${totalCostBTC} BTC ($${totalAUD})\n` +
             `Withdrawal Address: ${mainWalletAddress}\n\n` +
             `Click OK to proceed with purchase.`;
     }
@@ -17444,7 +17444,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             showModal(
                 `✅ Purchase Complete!\n\n` +
                 `Purchased: ${sharesToPurchase} share(s)\n` +
-                `Cost: ${totalCostBTC} BTC ($${totalAUD} AUD)\n` +
+                `Cost: ${totalCostBTC} BTC ($${totalAUD})\n` +
                 `Total Shares Owned: ${desiredTotalShares}\n` +
                 `Order ID: ${result.id || result.orderId || 'N/A'}\n\n` +
                 `Order is now active and mining.`
@@ -17484,7 +17484,7 @@ async function buyPackage(pkg) {
         return;
     }
 
-    if (!confirm(`Purchase ${pkg.name} for $${pkg.price} AUD?\n\nThis will create an order on NiceHash.`)) {
+    if (!confirm(`Purchase ${pkg.name} for $${pkg.price}?\n\nThis will create an order on NiceHash.`)) {
         return;
     }
 
@@ -18263,7 +18263,7 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
 
             if (totalShares > 0) {
                 const myRewardAUD = (rewardAUD / totalShares) * myShares;
-                rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))} AUD`;
+                rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
             }
         }
 
@@ -18535,10 +18535,10 @@ async function loadBuyPackagesDataOnPage() {
                         const myRewardAUD = (rewardPerShareAUD * myShares).toFixed(2);
 
                         if (rewardValueElement) {
-                            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)} AUD`;
+                            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)}`;
                         }
                         if (priceElement) {
-                            priceElement.textContent = `$${newPriceAUD} AUD`;
+                            priceElement.textContent = `$${newPriceAUD}`;
                         }
 
                         // Update crypto reward amounts with CORRECT formula
@@ -19675,8 +19675,8 @@ function adjustShares(packageName, delta, buttonElement) {
         // Update AUD displays
         if (rewardValueElement) {
             const oldReward = rewardValueElement.textContent;
-            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)} AUD`;
-            console.log(`✅ Updated reward value: ${oldReward} → $${formatNumber(myRewardAUD)} AUD`);
+            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)}`;
+            console.log(`✅ Updated reward value: ${oldReward} → $${formatNumber(myRewardAUD)}`);
             // Verify the update actually happened
             console.log(`✔️ Verification - reward element now shows: "${rewardValueElement.textContent}"`);
         } else {
@@ -19685,8 +19685,8 @@ function adjustShares(packageName, delta, buttonElement) {
 
         if (priceElement) {
             const oldPrice = priceElement.textContent;
-            priceElement.textContent = `$${newPriceAUD} AUD`;
-            console.log(`✅ Updated price: ${oldPrice} → $${newPriceAUD} AUD`);
+            priceElement.textContent = `$${newPriceAUD}`;
+            console.log(`✅ Updated price: ${oldPrice} → $${newPriceAUD}`);
             // Verify the update actually happened
             console.log(`✔️ Verification - price element now shows: "${priceElement.textContent}"`);
         } else {
@@ -19728,8 +19728,8 @@ function adjustShares(packageName, delta, buttonElement) {
 
         if (priceElement) {
             const oldPrice = priceElement.textContent;
-            priceElement.textContent = `$${priceAUD.toFixed(2)} AUD`;
-            console.log(`✅ Alert price updated: ${oldPrice} → $${priceAUD.toFixed(2)} AUD`);
+            priceElement.textContent = `$${priceAUD.toFixed(2)}`;
+            console.log(`✅ Alert price updated: ${oldPrice} → $${priceAUD.toFixed(2)}`);
         } else {
             console.warn(`⚠️ Price element not found for alert: ${packageName}`);
         }
