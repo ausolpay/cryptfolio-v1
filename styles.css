@@ -578,6 +578,47 @@ body.light-mode .settings-action-btn:hover {
     background-color: #d32f2f;
 }
 
+/* App Footer with Logo */
+.app-footer {
+    margin-top: 30px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.footer-logo {
+    width: 40px;
+    height: auto;
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+body.light-mode .footer-logo {
+    content: url('ausolpay-logo-light.png');
+}
+
+.app-footer p {
+    margin: 5px 0;
+    font-size: 12px;
+    color: #888;
+}
+
+.app-footer a {
+    color: #888;
+    text-decoration: none;
+}
+
+.app-footer a:hover {
+    color: #4CAF50;
+}
+
+body.light-mode .app-footer p {
+    color: #666;
+}
+
+body.light-mode .app-footer a {
+    color: #666;
+}
+
 .settings-page-footer {
     margin-top: 30px;
     text-align: center;
