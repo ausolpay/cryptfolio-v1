@@ -230,6 +230,12 @@ body.light-mode .dropdown-divider {
     min-width: auto;
     min-height: auto;
     cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hamburger-btn:focus {
+    outline: none;
 }
 
 .hamburger-line {

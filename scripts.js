@@ -809,6 +809,8 @@ function toggleMobileMenu() {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = '';
+            // Remove focus from button when closing
+            hamburgerBtn.blur();
         }
     }
 }
@@ -823,6 +825,8 @@ function closeMobileMenu() {
     }
     if (hamburgerBtn) {
         hamburgerBtn.classList.remove('active');
+        // Remove focus from button
+        hamburgerBtn.blur();
     }
     document.body.style.overflow = '';
 }
