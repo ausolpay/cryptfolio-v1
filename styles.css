@@ -19,9 +19,197 @@ body.light-mode {
     color: #000000;
 }
 
+/* Top Navigation Strip */
+.top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #333;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+}
+
+.top-nav.hidden {
+    transform: translateY(-100%);
+}
+
+body.light-mode .top-nav {
+    background-color: #ffffff;
+    border-bottom: 1px solid #ddd;
+}
+
+.nav-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 0 20px;
+    max-width: 1430px;
+    margin: 0 auto;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.nav-link {
+    color: #888;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+    color: #fff;
+}
+
+body.light-mode .nav-link {
+    color: #666;
+}
+
+body.light-mode .nav-link:hover {
+    color: #000;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
+    position: relative;
+}
+
+.profile-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-width: auto;
+    min-height: auto;
+    cursor: pointer;
+}
+
+.profile-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.profile-icon:hover {
+    background-color: #444;
+    color: #fff;
+}
+
+body.light-mode .profile-icon {
+    background-color: #e0e0e0;
+    color: #666;
+}
+
+body.light-mode .profile-icon:hover {
+    background-color: #d0d0d0;
+    color: #000;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    min-width: 180px;
+    padding: 8px 0;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+body.light-mode .dropdown-menu {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item {
+    display: block;
+    padding: 10px 16px;
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+body.light-mode .dropdown-item {
+    color: #333;
+}
+
+body.light-mode .dropdown-item:hover {
+    background-color: #f5f5f5;
+    color: #000;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #444;
+    margin: 8px 0;
+}
+
+body.light-mode .dropdown-divider {
+    background-color: #ddd;
+}
+
+/* Donate Button */
+.donate-btn {
+    background-color: #ff6b00;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: background-color 0.2s ease;
+}
+
+.donate-btn:hover {
+    background-color: #ff8533;
+    color: #fff;
+}
+
+/* Nav Logo */
+.nav-logo {
+    height: 30px;
+    width: auto;
+}
+
 .container {
     text-align: center;
-    margin-top: 40px; /* Add space from the top of the app */
+    margin-top: 90px; /* Add space from the top of the app (40px + 50px nav) */
 }
 
 /* Header Row - transparent background, matches portfolio-strip widths */

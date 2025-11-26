@@ -684,8 +684,108 @@ async function fetchWithApiKeyRotation(url) {
     throw new Error('All API keys failed');
 }
 
+// =============================================================================
+// TOP NAVIGATION - SCROLL BEHAVIOR & DROPDOWN
+// =============================================================================
+
+let lastScrollTop = 0;
+let navScrollThreshold = 50; // Minimum scroll before hiding nav
+
+function initTopNavScrollBehavior() {
+    const topNav = document.getElementById('top-nav');
+    if (!topNav) return;
+
+    window.addEventListener('scroll', function() {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+        // Only hide/show after scrolling past threshold
+        if (scrollTop > navScrollThreshold) {
+            if (scrollTop > lastScrollTop) {
+                // Scrolling down - hide nav
+                topNav.classList.add('hidden');
+                // Close dropdown if open
+                closeProfileDropdown();
+            } else {
+                // Scrolling up - show nav
+                topNav.classList.remove('hidden');
+            }
+        } else {
+            // At top of page - always show nav
+            topNav.classList.remove('hidden');
+        }
+
+        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+    }, { passive: true });
+}
+
+function toggleProfileDropdown() {
+    const dropdown = document.getElementById('profile-dropdown-menu');
+    if (dropdown) {
+        dropdown.classList.toggle('show');
+    }
+}
+
+function closeProfileDropdown() {
+    const dropdown = document.getElementById('profile-dropdown-menu');
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+}
+
+// Navigate to app page (if logged in) or login page
+function goToAppPage() {
+    closeProfileDropdown();
+    if (loggedInUser) {
+        showAppPage();
+    } else {
+        showLoginPage();
+    }
+}
+
+// Nav login - show login page
+function navLogin() {
+    closeProfileDropdown();
+    showLoginPage();
+}
+
+// Nav logout - logout and show login page
+function navLogout() {
+    closeProfileDropdown();
+    logout();
+}
+
+// Update nav auth buttons based on login state
+function updateNavAuthState() {
+    const loginBtn = document.getElementById('nav-login-btn');
+    const logoutBtn = document.getElementById('nav-logout-btn');
+
+    if (loginBtn && logoutBtn) {
+        if (loggedInUser) {
+            loginBtn.style.display = 'none';
+            logoutBtn.style.display = 'block';
+        } else {
+            loginBtn.style.display = 'block';
+            logoutBtn.style.display = 'none';
+        }
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const profileDropdown = document.querySelector('.profile-dropdown');
+    const dropdown = document.getElementById('profile-dropdown-menu');
+
+    if (profileDropdown && dropdown && !profileDropdown.contains(event.target)) {
+        dropdown.classList.remove('show');
+    }
+});
 
 function initializeApp() {
+    // Initialize top navigation scroll behavior
+    initTopNavScrollBehavior();
+    // Update nav auth state (login/logout buttons)
+    updateNavAuthState();
+
     const notificationPermission = getStorageItem('notificationPermission');
     if (notificationPermission !== 'granted') {
         requestNotificationPermission();
@@ -4272,6 +4372,7 @@ function login() {
         if (userKeys.length === 0) {
             console.log('⚠️ No CoinGecko API keys configured - showing settings page');
             showCoinGeckoApiSettingsPage();
+            updateNavAuthState(); // Update nav login/logout buttons
             alert('⚠️ Welcome!\n\nPlease configure your CoinGecko API keys to use the app.\n\nAt least one API key is required to fetch cryptocurrency data.');
             return;
         }
@@ -4280,6 +4381,7 @@ function login() {
         setStorageItem('modalMessage', 'Successfully logged in!');
         showAppPage();
         updateAppContent(); // New function call
+        updateNavAuthState(); // Update nav login/logout buttons
     } else {
         showModal('Invalid email or password. Please try again.');
     }
@@ -4345,6 +4447,7 @@ function logout() {
     setStorageItem('modalMessage', 'Successfully logged out!');
     showLoginPage();
     updateAppContent(); // New function call
+    updateNavAuthState(); // Update nav login/logout buttons
 }
 
 
