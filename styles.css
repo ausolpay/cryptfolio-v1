@@ -1357,6 +1357,79 @@ body:not(.dark-mode) .holdings-info {
     width: 100%;
   }
 
+  /* News Slider Edge Hover Scroll Zones (Desktop) */
+  .news-slider-wrapper {
+    position: relative;
+    overflow: visible;
+  }
+
+  .news-scroll-zone {
+    position: absolute;
+    top: 0;
+    width: 40px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+    pointer-events: auto;
+  }
+
+  .news-scroll-zone:hover {
+    opacity: 1;
+  }
+
+  .news-scroll-left {
+    left: 0;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.6), transparent);
+    border-radius: 8px 0 0 8px;
+  }
+
+  .news-scroll-right {
+    right: 0;
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.6), transparent);
+    border-radius: 0 8px 8px 0;
+  }
+
+  body.light-mode .news-scroll-left {
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.8), transparent);
+  }
+
+  body.light-mode .news-scroll-right {
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.8), transparent);
+  }
+
+  .news-scroll-arrow {
+    font-size: 24px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    user-select: none;
+  }
+
+  body.light-mode .news-scroll-arrow {
+    color: #333;
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+  }
+
+  /* Show scroll zones on hover over the slider section */
+  .news-slider-section:hover .news-scroll-zone {
+    opacity: 0.7;
+  }
+
+  .news-slider-section:hover .news-scroll-zone:hover {
+    opacity: 1;
+  }
+
+  /* Hide scroll zones on touch devices */
+  @media (hover: none) and (pointer: coarse) {
+    .news-scroll-zone {
+      display: none;
+    }
+  }
+
   /* RSI Bar Styles */
   .rsi-bar-section {
     padding: 15px 20px 10px 20px;

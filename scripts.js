@@ -7046,12 +7046,17 @@ function escapeNewsHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize drag scrolling for news slider
+// Initialize drag scrolling and edge hover scrolling for news slider
 function initializeNewsSliderDrag(container) {
+    // Skip if already initialized
+    if (container.dataset.dragInitialized) return;
+    container.dataset.dragInitialized = 'true';
+
     let isDown = false;
     let startX;
     let scrollLeft;
 
+    // Drag scrolling
     container.addEventListener('mousedown', (e) => {
         isDown = true;
         startX = e.pageX - container.offsetLeft;
@@ -7076,6 +7081,79 @@ function initializeNewsSliderDrag(container) {
         const walk = (x - startX) * 2;
         container.scrollLeft = scrollLeft - walk;
     });
+
+    // Edge hover scrolling for desktop
+    initializeEdgeHoverScroll(container);
+}
+
+// Add edge hover zones for smooth scrolling on desktop
+function initializeEdgeHoverScroll(container) {
+    // Don't add on touch devices
+    if ('ontouchstart' in window) return;
+
+    const section = container.parentElement;
+    if (!section || section.querySelector('.news-scroll-zone')) return;
+
+    // Create left scroll zone
+    const leftZone = document.createElement('div');
+    leftZone.className = 'news-scroll-zone news-scroll-left';
+    leftZone.innerHTML = '<span class="news-scroll-arrow">&#8249;</span>';
+
+    // Create right scroll zone
+    const rightZone = document.createElement('div');
+    rightZone.className = 'news-scroll-zone news-scroll-right';
+    rightZone.innerHTML = '<span class="news-scroll-arrow">&#8250;</span>';
+
+    // Add zones to the section
+    section.style.position = 'relative';
+    section.appendChild(leftZone);
+    section.appendChild(rightZone);
+
+    let scrollInterval = null;
+    const scrollSpeed = 3; // pixels per frame
+
+    // Left zone hover
+    leftZone.addEventListener('mouseenter', () => {
+        scrollInterval = setInterval(() => {
+            container.scrollLeft -= scrollSpeed;
+        }, 16); // ~60fps
+    });
+
+    leftZone.addEventListener('mouseleave', () => {
+        if (scrollInterval) {
+            clearInterval(scrollInterval);
+            scrollInterval = null;
+        }
+    });
+
+    // Right zone hover
+    rightZone.addEventListener('mouseenter', () => {
+        scrollInterval = setInterval(() => {
+            container.scrollLeft += scrollSpeed;
+        }, 16);
+    });
+
+    rightZone.addEventListener('mouseleave', () => {
+        if (scrollInterval) {
+            clearInterval(scrollInterval);
+            scrollInterval = null;
+        }
+    });
+
+    // Update zone visibility based on scroll position
+    function updateZoneVisibility() {
+        const atStart = container.scrollLeft <= 0;
+        const atEnd = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1;
+
+        leftZone.style.opacity = atStart ? '0' : '1';
+        leftZone.style.pointerEvents = atStart ? 'none' : 'auto';
+
+        rightZone.style.opacity = atEnd ? '0' : '1';
+        rightZone.style.pointerEvents = atEnd ? 'none' : 'auto';
+    }
+
+    container.addEventListener('scroll', updateZoneVisibility);
+    updateZoneVisibility();
 }
 
 // Wrapper function to fetch and render news
