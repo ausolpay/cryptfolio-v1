@@ -402,10 +402,12 @@ body.light-mode .mobile-menu-divider {
    ===================================================== */
 
 .settings-page-content {
-    max-width: 600px;
+    width: 1390px;
+    max-width: 1390px;
     margin: 0 auto;
     padding: 20px;
     text-align: left;
+    box-sizing: border-box;
 }
 
 .settings-page-header {
@@ -578,9 +580,79 @@ body.light-mode .settings-action-btn:hover {
     background-color: #d32f2f;
 }
 
+/* Settings Info Box */
+.settings-info-box {
+    padding: 16px 20px;
+}
+
+.settings-info-box p {
+    margin: 0 0 8px 0;
+    color: #fff;
+    font-size: 14px;
+}
+
+.settings-info-box p:last-child {
+    margin-bottom: 0;
+}
+
+.settings-info-box .settings-info-hint {
+    color: #888;
+    font-size: 13px;
+}
+
+.settings-info-box a {
+    color: #ffa500;
+    text-decoration: none;
+}
+
+.settings-info-box a:hover {
+    text-decoration: underline;
+}
+
+body.light-mode .settings-info-box p {
+    color: #333;
+}
+
+body.light-mode .settings-info-box .settings-info-hint {
+    color: #666;
+}
+
+/* Settings Input */
+.settings-input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 8px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background-color: #2a2a2a;
+    color: #fff;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: #ffa500;
+}
+
+body.light-mode .settings-input {
+    background-color: #f5f5f5;
+    border-color: #ddd;
+    color: #333;
+}
+
+body.light-mode .settings-input:focus {
+    border-color: #ffa500;
+}
+
+/* Settings row with inputs - stack vertically */
+.settings-row .settings-row-info[style*="flex: 1"] {
+    flex: 1;
+}
+
 /* App Footer with Logo */
 .app-footer {
-    margin-top: 30px;
+    margin-top: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -709,10 +781,27 @@ body.light-mode .settings-page-copyright {
     color: #888;
 }
 
-/* Settings Page Mobile */
+/* Settings Page Responsive - matches portfolio-strip breakpoints */
+@media (max-width: 1390px) {
+    .settings-page-content {
+        width: 1040px;
+        max-width: 1040px;
+    }
+}
+
+@media (max-width: 1040px) {
+    .settings-page-content {
+        width: 700px;
+        max-width: 700px;
+    }
+}
+
 @media (max-width: 700px) {
     .settings-page-content {
-        padding: 15px;
+        width: 300px;
+        max-width: 300px;
+        padding: 15px 20px;
+        box-sizing: content-box;
     }
 
     .settings-page-header h1 {
