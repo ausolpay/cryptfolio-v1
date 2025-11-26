@@ -13019,8 +13019,8 @@ async function fetchNiceHashOrders() {
                 totalBlocks: totalBlocks,
                 algorithm: algorithmCode,
                 algorithmName: algoInfo.name,
-                // Use acceptedCurrentSpeed if available (actual live speed), otherwise use limit (pool capacity)
-                hashrate: order.acceptedCurrentSpeed
+                // Use acceptedCurrentSpeed (actual live speed) - check !== undefined since 0 is valid
+                hashrate: order.acceptedCurrentSpeed !== undefined
                     ? `${order.acceptedCurrentSpeed} ${order.displayMarketFactor || 'TH'}`
                     : `${order.limit || '0'} ${order.displayMarketFactor || 'TH'}`,
                 timeRemaining: calculateTimeRemaining(order), // Pass full order object to use estimateDurationInSeconds for active packages
