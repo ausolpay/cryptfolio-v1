@@ -191,7 +191,7 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
     max-height: 500px;
     transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
     opacity: 1;
-    margin-top: 15px;
+    margin-top: 8px;
 }
 
 .portfolio-details.collapsed {
