@@ -2159,25 +2159,60 @@ body.light-mode .loading-bar-text {
 }
 
 .easymining-header {
-    cursor: pointer;
-    user-select: none;
-}
-
-.easymining-header h2 {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin: 0;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    padding: 12px 20px;
+    margin-bottom: 10px;
+    background-color: rgba(50, 50, 50, 0.5);
+    border-radius: 10px;
 }
 
-.arrow {
+.easymining-header:hover {
+    background-color: rgba(60, 60, 60, 0.6);
+}
+
+body.light-mode .easymining-header {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+body.light-mode .easymining-header:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+.easymining-header .arrow {
     display: inline-block;
     transition: transform 0.3s ease;
-    font-size: 20px;
+    font-size: 12px;
+    color: #888;
 }
 
-.arrow.rotated {
+.easymining-header .arrow.rotated {
     transform: rotate(90deg);
+}
+
+.easymining-header .toggle-text {
+    font-size: 14px;
+    color: #888;
+    font-weight: 500;
+}
+
+.easymining-header:hover .arrow,
+.easymining-header:hover .toggle-text {
+    color: #aaa;
+}
+
+body.light-mode .easymining-header .arrow,
+body.light-mode .easymining-header .toggle-text {
+    color: #666;
+}
+
+body.light-mode .easymining-header:hover .arrow,
+body.light-mode .easymining-header:hover .toggle-text {
+    color: #333;
 }
 
 .easymining-content {
