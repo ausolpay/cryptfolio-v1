@@ -12841,6 +12841,7 @@ async function fetchNiceHashOrders() {
                 sharePrice: isTeamPackage ? SHARE_COST : null,
                 userSharePercentage: userSharePercentage,
                 numberOfParticipants: isTeamPackage ? (order.sharedTicket?.members?.length || 0) : null,
+                totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
                 // Package metadata
                 active: isActive,
                 status: isActive ? 'active' : 'completed',
@@ -13499,6 +13500,18 @@ function displayActivePackages() {
             <div class="package-card-stat">
                 <span>Participants:</span>
                 <span style="color: #4CAF50;"><span class="live-indicator"></span>${pkg.numberOfParticipants}</span>
+            </div>
+            ` : ''}
+            ${pkg.active && pkg.isTeam && pkg.totalShares !== null ? `
+            <div class="package-card-stat">
+                <span>Total Shares:</span>
+                <span style="color: #ffa500;"><span class="live-indicator"></span>${Math.round(pkg.totalShares)}</span>
+            </div>
+            ` : ''}
+            ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
+            <div class="package-card-stat">
+                <span>Total Cost:</span>
+                <span style="color: #ffa500;"><span class="live-indicator"></span>$${formatNumber(convertBTCtoAUD(pkg.totalCostBTC).toFixed(2))} AUD</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
