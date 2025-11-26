@@ -12557,6 +12557,11 @@ async function fetchNiceHashOrders() {
             console.log(`      sharePrice: ${order.sharePrice}`);
             console.log(`      numberOfShares: ${order.numberOfShares}`);
             console.log(`      myShares: ${order.myShares}`);
+            console.log(`   👥 Participant Data:`);
+            console.log(`      numberOfParticipants (direct): ${order.numberOfParticipants}`);
+            console.log(`      sharedTicket.members.length: ${order.sharedTicket?.members?.length}`);
+            console.log(`      sharedTicket.numberOfParticipants: ${order.sharedTicket?.numberOfParticipants}`);
+            console.log(`      pool.rigsCount: ${order.pool?.rigsCount}`);
 
             // Check if this is a team package - detect by name starting with "team" (case-insensitive)
             const packageName = order.packageName || '';
@@ -13034,7 +13039,10 @@ async function fetchNiceHashOrders() {
                 totalShares: isTeamPackage ? totalShares : null,
                 sharePrice: isTeamPackage ? SHARE_COST : null,
                 userSharePercentage: userSharePercentage,
-                numberOfParticipants: isTeamPackage ? (order.sharedTicket?.members?.length || 0) : null,
+                // Try multiple sources for participant count: direct field, sharedTicket field, then members array length
+                numberOfParticipants: isTeamPackage
+                    ? (order.numberOfParticipants || order.sharedTicket?.numberOfParticipants || order.sharedTicket?.members?.length || 0)
+                    : null,
                 totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
                 // Package metadata
                 active: isActive,
