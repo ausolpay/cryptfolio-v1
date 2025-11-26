@@ -249,6 +249,10 @@ body.light-mode .stat-value {
     padding-bottom: 5px;
 }
 
+.stat-item:last-child {
+    padding-bottom: 10px;
+}
+
 /* PnL Grid */
 .portfolio-pnl-grid {
     display: grid;
