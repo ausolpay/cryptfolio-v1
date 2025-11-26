@@ -10436,9 +10436,11 @@ let easyMiningData = {
     lastBlockCount: 0
 };
 
-// Track initial hashrate/participants for drop detection
+// Track initial hashrate/rigs for drop detection (persisted to localStorage)
 let packageInitialValues = {};
-// Structure: { "packageId": { hashrate: "10 TH", hashrateNumeric: 10, participants: 5, capturedAt: timestamp } }
+// Structure: { "packageId": { hashrate: "10 TH", hashrateNumeric: 10, rigs: 5, capturedAt: timestamp } }
+// Track packages that missed their 5-min capture window (won't be monitored for drops)
+let packagesMissedCaptureWindow = {};
 
 // Note: easyMiningPollingInterval, easyMiningAlertsPollingInterval, buyPackagesPollingInterval,
 // buyPackagesPollingPaused, buyPackagesPauseTimer are declared at the top of the file
@@ -20178,9 +20180,39 @@ function parseHashrateToNumeric(hashrateStr) {
 // Capture initial values when package has been active for 5 minutes
 // ONLY captures for auto-bought packages (manual shares won't trigger auto-clear on drop)
 // Waits 5 minutes into package to allow initial hashrate/rigs to stabilize
+// Values are persisted to localStorage to survive page refreshes
 function captureInitialPackageValues(packages) {
     const now = Date.now();
     const FIVE_MINUTES_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    // Load stored values from localStorage on first run (if not already loaded)
+    if (Object.keys(packageInitialValues).length === 0 && loggedInUser) {
+        const storedValues = getStorageItem(`${loggedInUser}_packageInitialValues`);
+        if (storedValues) {
+            try {
+                packageInitialValues = JSON.parse(storedValues);
+                console.log(`📂 Loaded ${Object.keys(packageInitialValues).length} stored package initial values from localStorage`);
+            } catch (e) {
+                console.warn('Failed to parse stored package initial values:', e);
+                packageInitialValues = {};
+            }
+        }
+    }
+
+    // Load skipped packages list from localStorage
+    if (Object.keys(packagesMissedCaptureWindow).length === 0 && loggedInUser) {
+        const storedSkipped = getStorageItem(`${loggedInUser}_packagesMissedCaptureWindow`);
+        if (storedSkipped) {
+            try {
+                packagesMissedCaptureWindow = JSON.parse(storedSkipped);
+            } catch (e) {
+                packagesMissedCaptureWindow = {};
+            }
+        }
+    }
+
+    let valuesChanged = false;
+    let skippedChanged = false;
 
     packages.forEach(pkg => {
         if (pkg.active && pkg.isTeam && pkg.ownedShares > 0) {
@@ -20189,39 +20221,81 @@ function captureInitialPackageValues(packages) {
                 return; // Skip non-auto-bought packages
             }
 
-            // Only capture if not already captured for this package
-            if (!packageInitialValues[pkg.id]) {
-                // Check if package has been active for at least 5 minutes
-                const packageStartTime = pkg.startTs || pkg.startTime;
-                if (packageStartTime) {
-                    const startTimestamp = new Date(packageStartTime).getTime();
-                    const timeSinceStart = now - startTimestamp;
+            // If values already exist (from this session or loaded from localStorage), use them
+            if (packageInitialValues[pkg.id]) {
+                return; // Already have values for this package
+            }
 
-                    if (timeSinceStart < FIVE_MINUTES_MS) {
-                        // Package hasn't been active for 5 minutes yet, skip
-                        const minutesRemaining = ((FIVE_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
-                        console.log(`⏳ Waiting to capture values for ${pkg.name}: ${minutesRemaining} mins until 5-min mark`);
-                        return;
-                    }
+            // If this package was already marked as missed, skip it
+            if (packagesMissedCaptureWindow[pkg.id]) {
+                return; // Already skipped this package
+            }
+
+            // Check if package has been active for at least 5 minutes
+            const packageStartTime = pkg.startTs || pkg.startTime;
+            if (packageStartTime) {
+                const startTimestamp = new Date(packageStartTime).getTime();
+                const timeSinceStart = now - startTimestamp;
+
+                if (timeSinceStart < FIVE_MINUTES_MS) {
+                    // Package hasn't been active for 5 minutes yet, wait
+                    const minutesRemaining = ((FIVE_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
+                    console.log(`⏳ Waiting to capture values for ${pkg.name}: ${minutesRemaining} mins until 5-min mark`);
+                    return;
                 }
 
-                // Capture hashrate and rigs (not participants)
-                packageInitialValues[pkg.id] = {
-                    hashrate: pkg.hashrate,
-                    hashrateNumeric: parseHashrateToNumeric(pkg.hashrate),
-                    rigs: pkg.rigsCount || 0,
-                    capturedAt: now
-                };
-                console.log(`📊 Captured initial values for AUTO-BOUGHT ${pkg.name} (after 5-min mark): HR=${pkg.hashrate}, Rigs=${pkg.rigsCount || 0}`);
+                // Package has passed 5-min mark - check if we were present at the 5-min mark
+                // If we're just opening the app now and package already passed 5 mins, skip it
+                const GRACE_PERIOD_MS = 60 * 1000; // 1 minute grace period after 5-min mark
+                if (timeSinceStart > FIVE_MINUTES_MS + GRACE_PERIOD_MS) {
+                    // Package has been active for more than 6 minutes and we don't have values
+                    // This means the app wasn't open at the 5-min mark - skip this package
+                    packagesMissedCaptureWindow[pkg.id] = {
+                        packageName: pkg.name,
+                        skippedAt: now,
+                        reason: 'App was not open at 5-min capture window'
+                    };
+                    skippedChanged = true;
+                    console.log(`⏭️ SKIPPING ${pkg.name} for auto-clear drop - app wasn't open at 5-min capture window (${(timeSinceStart / 60000).toFixed(1)} mins since start)`);
+                    return;
+                }
             }
+
+            // Capture hashrate and rigs (not participants)
+            packageInitialValues[pkg.id] = {
+                hashrate: pkg.hashrate,
+                hashrateNumeric: parseHashrateToNumeric(pkg.hashrate),
+                rigs: pkg.rigsCount || 0,
+                capturedAt: now
+            };
+            valuesChanged = true;
+            console.log(`📊 Captured initial values for AUTO-BOUGHT ${pkg.name} (after 5-min mark): HR=${pkg.hashrate}, Rigs=${pkg.rigsCount || 0}`);
         }
     });
+
     // Clean up entries for packages no longer active
     Object.keys(packageInitialValues).forEach(pkgId => {
         if (!packages.find(p => p.id === pkgId && p.active)) {
             delete packageInitialValues[pkgId];
+            valuesChanged = true;
         }
     });
+
+    // Clean up skipped entries for packages no longer active
+    Object.keys(packagesMissedCaptureWindow).forEach(pkgId => {
+        if (!packages.find(p => p.id === pkgId && p.active)) {
+            delete packagesMissedCaptureWindow[pkgId];
+            skippedChanged = true;
+        }
+    });
+
+    // Save to localStorage if changed
+    if (valuesChanged && loggedInUser) {
+        setStorageItem(`${loggedInUser}_packageInitialValues`, JSON.stringify(packageInitialValues));
+    }
+    if (skippedChanged && loggedInUser) {
+        setStorageItem(`${loggedInUser}_packagesMissedCaptureWindow`, JSON.stringify(packagesMissedCaptureWindow));
+    }
 }
 
 // Check for significant drops in hashrate or rigs and auto-clear if threshold exceeded
