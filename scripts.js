@@ -4512,7 +4512,7 @@ async function fetchPrices() {
                     triangleElement.classList.add('triangle-down');
                 }
 
-                priceElement.textContent = `$${formatNumber(priceAud.toFixed(8), true)}`;
+                priceElement.textContent = `$${formatAudPrice(priceAud)}`;
             }
 
             // Always recalculate AUD value, even if price hasn't changed
@@ -6632,6 +6632,32 @@ function formatNumber(number, isPrice = false) {
     return parts.join('.');
 }
 
+// ============================================================
+// DYNAMIC DECIMAL PRECISION FOR AUD PRICES
+// Adapts decimal places based on price magnitude
+// ============================================================
+
+function getOptimalDecimals(price) {
+    if (price === 0) return 2;
+
+    const absPrice = Math.abs(price);
+
+    if (absPrice >= 1000) return 2;      // $130,142.12
+    if (absPrice >= 100) return 2;       // $142.12
+    if (absPrice >= 10) return 3;        // $12.345
+    if (absPrice >= 1) return 4;         // $1.2345
+    if (absPrice >= 0.1) return 5;       // $0.12345
+    if (absPrice >= 0.01) return 6;      // $0.012345
+    if (absPrice >= 0.001) return 7;     // $0.0012345
+    return 8;                            // $0.00012345
+}
+
+function formatAudPrice(price) {
+    const decimals = getOptimalDecimals(price);
+    const formatted = price.toFixed(decimals);
+    return formatNumber(formatted, true);
+}
+
 function sortContainersByValue() {
     const containers = Array.from(document.getElementsByClassName('crypto-container'));
     const containerParent = document.getElementById('crypto-containers');
@@ -7238,7 +7264,7 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                     triangleElement.classList.toggle('triangle-up', isPriceUp);
                     triangleElement.classList.toggle('triangle-down', !isPriceUp);
 
-                    priceElement.textContent = `$${formatNumber(priceInAud.toFixed(8), true)}`; // Update price
+                    priceElement.textContent = `$${formatAudPrice(priceInAud)}`; // Update price
 
                     // Get current holdings from DOM (reflects real-time value including EasyMining)
                     // Don't read from localStorage to avoid showing stale NiceHash balance
@@ -8002,10 +8028,11 @@ function syncModalLivePrice() {
         const displayPriceAud = parseFloat(holdingsPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
 
         if (displayPriceAud > 0) {
-            // Format with commas and 2 decimals: 131,142.12
+            // Format with commas and dynamic decimals based on price magnitude
+            const decimals = getOptimalDecimals(displayPriceAud);
             const formattedPrice = displayPriceAud.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
             });
             livePriceElement.innerHTML = `<b>$${formattedPrice} AUD</b>`;
 
@@ -8750,7 +8777,7 @@ async function checkWebSocketUpdate() {
                 const previousPrice = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
 
                 if (priceInAud !== previousPrice) {
-                    priceElement.textContent = `$${formatNumber(priceInAud.toFixed(8), true)}`;
+                    priceElement.textContent = `$${formatAudPrice(priceInAud)}`;
                     updateCryptoValue(crypto.id);
                     updateTotalHoldings();
                     console.log(`Fetched CoinGecko price for ${crypto.symbol}: $${priceInAud} AUD`);
@@ -15297,7 +15324,7 @@ async function addCryptoById(cryptoId) {
                 const priceAud = data.market_data.current_price.aud;
                 const priceElement = document.getElementById(`${crypto.id}-price-aud`);
                 if (priceElement) {
-                    priceElement.textContent = `$${formatNumber(priceAud.toFixed(8), true)}`;
+                    priceElement.textContent = `$${formatAudPrice(priceAud)}`;
                     console.log(`✅ Set initial price for ${crypto.id}: ${priceAud} AUD`);
                     console.log(`✅ Price element now shows: "${priceElement.textContent}"`);
                 } else {
