@@ -3713,7 +3713,7 @@ body.light-mode .api-hub-button .api-desc {
 }
 
 .holdings-collapse-icon.expanded {
-    transform: rotate(90deg);
+    transform: rotate(-90deg);
 }
 
 .holdings-tracking-content {
