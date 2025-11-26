@@ -2197,11 +2197,23 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
 }
 
 @media (max-width: 480px) {
+    .modal-hero .modal-total-holdings {
+        font-size: clamp(28px, 10vw, 48px);
+        margin-bottom: 10px;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+    }
+
     .modal-hero .modal-change-values {
         flex-direction: row;
         flex-wrap: wrap;
         gap: 8px;
-        font-size: clamp(16px, 3.5vw, 24px);
+        font-size: clamp(14px, 3.5vw, 20px);
+    }
+
+    .modal-hero .modal-change-values .change-label {
+        font-size: clamp(12px, 3vw, 16px);
     }
 
     .holdings-modal-content {
@@ -2210,14 +2222,14 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     }
 
     .holdings-modal-inner {
-        padding: 15px;
-        padding-top: 5px;
+        padding: 10px;
+        padding-top: 0;
         width: 100%;
         margin-top: -10px;
     }
 
     .modal-hero {
-        padding: 20px 15px;
+        padding: 10px 12px;
         width: calc(100% - 30px);
         max-width: 320px;
         margin: 0 auto 10px auto;
@@ -2230,7 +2242,15 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     }
 
     .modal-stat-card {
-        padding: 15px 10px;
+        padding: 12px 8px;
+    }
+
+    .modal-stat-card .stat-value {
+        font-size: clamp(18px, 5vw, 28px);
+    }
+
+    .modal-stat-card .stat-label {
+        font-size: 10px;
     }
 }
 
