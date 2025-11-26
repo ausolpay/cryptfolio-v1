@@ -13495,6 +13495,11 @@ function displayActivePackages() {
             <div class="package-progress-bar">
                 <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
             </div>
+            ${pkg.active && pkg.isTeam && pkg.ownedShares > 0 ? `
+            <button class="clear-shares-btn" onclick="event.stopPropagation(); clearTeamSharesManual('${pkg.id}', '${pkg.name}')">
+                Clear Shares
+            </button>
+            ` : ''}
         `;
 
         container.appendChild(card);

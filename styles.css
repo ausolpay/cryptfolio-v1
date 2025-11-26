@@ -4019,6 +4019,33 @@ body.light-mode .package-progress-bar {
     transition: width 0.5s ease;
 }
 
+/* Clear Shares button for active team packages */
+.clear-shares-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.clear-shares-btn:hover {
+    background-color: #b71c1c;
+}
+
+body.light-mode .clear-shares-btn {
+    background-color: #c62828;
+}
+
+body.light-mode .clear-shares-btn:hover {
+    background-color: #b71c1c;
+}
+
 .block-found-indicator {
     position: absolute;
     top: 5px;
