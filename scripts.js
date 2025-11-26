@@ -6907,12 +6907,6 @@ function showTotalHoldingsModal() {
     document.getElementById('total-holdings-modal').style.display = 'block';
 }
 
-// Click handler for portfolio hero section (replaced .ui-holdings)
-const portfolioHeroEl = document.querySelector('.portfolio-hero');
-if (portfolioHeroEl) {
-    portfolioHeroEl.addEventListener('click', showTotalHoldingsModal);
-}
-
 document.getElementById('password-login').addEventListener('keyup', function(event) {
     if (event.key === 'Enter') {
         login();
