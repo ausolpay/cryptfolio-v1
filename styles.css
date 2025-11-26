@@ -42,11 +42,12 @@ body.light-mode {
     display: flex;
     align-items: center;
     gap: 15px;
+    margin-top: 10px;
 }
 
-/* Logo - smaller size */
+/* Logo - larger size */
 .header-row .app-logo {
-    width: 50px;
+    width: 150px;
     height: auto;
 }
 
