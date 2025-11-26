@@ -52,6 +52,7 @@
                     </button>
                     <div class="dropdown-menu" id="profile-dropdown-menu">
                         <a href="#" class="dropdown-item">Account Settings</a>
+                        <a href="#" class="dropdown-item" onclick="showSettingsPage(); closeProfileDropdown(); return false;">App Settings</a>
                         <a href="#" class="dropdown-item">Preferences</a>
                         <a href="#" class="dropdown-item">Help</a>
                         <div class="dropdown-divider"></div>
@@ -78,6 +79,7 @@
             <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
             <div class="mobile-menu-divider"></div>
             <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">Account Settings</a>
+            <a href="#" class="mobile-menu-link" onclick="showSettingsPage(); closeMobileMenu(); return false;">App Settings</a>
             <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
             <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
             <div class="mobile-menu-divider"></div>
@@ -378,7 +380,7 @@
         </div>
 
         <div class="buttons">
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -527,7 +529,7 @@
 
         <div class="buttons">
             <button onclick="showAppPage()">← Back</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1026,7 +1028,7 @@
 
         <div class="buttons">
             <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1084,7 +1086,7 @@
 
         <div class="buttons">
             <button onclick="showAppPage()">&#8592; Back</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1152,7 +1154,7 @@
 
         <div class="buttons">
             <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1208,7 +1210,7 @@
 
         <div class="buttons">
             <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1265,7 +1267,7 @@
 
         <div class="buttons">
             <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1335,7 +1337,7 @@
 
         <div class="buttons">
             <button onclick="showApiKeysPage()">&#8592; Back to API Keys</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1375,7 +1377,7 @@
 
         <div class="buttons">
             <button onclick="showAppPage()">← Back</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
@@ -1407,13 +1409,181 @@
 
         <div class="buttons">
             <button onclick="showAppPage()">← Back</button>
-            <button id="settings-button" onclick="showSettingsModal()">Settings</button>
+            <button id="settings-button" onclick="showSettingsPage()">Settings</button>
             <button id="logout-button" class="delete-button" onclick="confirmLogout()">Logout</button>
         </div>
 
         <div>
             <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
             <p>Data by CoinGecko / MEXC</p>
+        </div>
+    </div>
+
+    <!-- Settings Page -->
+    <div id="settings-page" class="container" style="display: none;">
+        <div class="settings-page-content">
+            <div class="settings-page-header">
+                <h1>App Settings</h1>
+                <p>Manage your CryptFolio preferences</p>
+            </div>
+
+            <!-- Appearance Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">Appearance</h3>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Dark Mode</span>
+                            <span class="settings-row-desc">Switch between dark and light theme</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="dark-mode-toggle-page" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Fullscreen Mode</span>
+                            <span class="settings-row-desc">Enter fullscreen view</span>
+                        </div>
+                        <button class="settings-action-btn" id="fullscreenBtn-page">Enter</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio & Notifications Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">Audio & Notifications</h3>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Holdings Audio</span>
+                            <span class="settings-row-desc">Play sounds for holdings updates</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="holdings-audio-toggle-page">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Holdings Vibration</span>
+                            <span class="settings-row-desc">Vibrate on holdings changes</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="holdings-vibrate-toggle-page">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">EasyMining Audio</span>
+                            <span class="settings-row-desc">Play sounds for mining alerts</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="easymining-audio-toggle-page">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">EasyMining Vibration</span>
+                            <span class="settings-row-desc">Vibrate on mining events</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="easymining-vibrate-toggle-page">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integrations Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">Integrations</h3>
+                <div class="settings-card">
+                    <div class="settings-row clickable" onclick="closeSettingsPage(); showEasyMiningSettingsPage();">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">EasyMining Settings</span>
+                            <span class="settings-row-desc">Configure NiceHash EasyMining</span>
+                        </div>
+                        <span class="settings-arrow">→</span>
+                    </div>
+                    <div class="settings-row clickable" onclick="closeSettingsPage(); showApiKeysPage();">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">API Keys</span>
+                            <span class="settings-row-desc">Manage CoinGecko API keys</span>
+                        </div>
+                        <span class="settings-arrow">→</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Management Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">Data Management</h3>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Reset Percentage</span>
+                            <span class="settings-row-desc">Reset 24h change percentage tracking</span>
+                        </div>
+                        <button class="settings-action-btn" onclick="confirmResetPercentage()">Reset</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Reset High/Low</span>
+                            <span class="settings-row-desc">Reset all-time high and low values</span>
+                        </div>
+                        <button class="settings-action-btn" onclick="confirmResetHighLow()">Reset</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Reset Milestone</span>
+                            <span class="settings-row-desc">Reset milestone achievements</span>
+                        </div>
+                        <button class="settings-action-btn" onclick="confirmResetMilestone()">Reset</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Clear Mentions Cache</span>
+                            <span class="settings-row-desc">Clear cached social mentions data</span>
+                        </div>
+                        <button class="settings-action-btn" onclick="clearMentionsCache()">Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title danger">Danger Zone</h3>
+                <div class="settings-card danger">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Clear All Data</span>
+                            <span class="settings-row-desc">Reset app to default state</span>
+                        </div>
+                        <button class="settings-danger-btn" onclick="confirmClearData()">Clear</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Clear All Holdings</span>
+                            <span class="settings-row-desc">Delete all cryptocurrency holdings</span>
+                        </div>
+                        <button class="settings-danger-btn" onclick="showClearHoldingsModal()">Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back Button -->
+            <div class="settings-page-footer">
+                <button class="settings-back-btn" onclick="closeSettingsPage()">← Back to Portfolio</button>
+            </div>
+
+            <div class="settings-page-copyright">
+                <p>CryptFolio v2 (Beta) | <a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></p>
+                <p>Data by CoinGecko / MEXC</p>
+            </div>
         </div>
     </div>
 

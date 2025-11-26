@@ -397,6 +397,254 @@ body.light-mode .mobile-menu-divider {
     margin-top: 90px; /* Add space from the top of the app (40px + 50px nav) */
 }
 
+/* =====================================================
+   SETTINGS PAGE STYLES
+   ===================================================== */
+
+.settings-page-content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: left;
+}
+
+.settings-page-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.settings-page-header h1 {
+    font-size: 28px;
+    color: #ffa500;
+    margin: 0 0 8px 0;
+}
+
+.settings-page-header p {
+    color: #888;
+    font-size: 14px;
+    margin: 0;
+}
+
+body.light-mode .settings-page-header p {
+    color: #666;
+}
+
+.settings-section {
+    margin-bottom: 25px;
+}
+
+.settings-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 10px 5px;
+}
+
+.settings-section-title.danger {
+    color: #f44336;
+}
+
+body.light-mode .settings-section-title {
+    color: #666;
+}
+
+.settings-card {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.settings-card.danger {
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+body.light-mode .settings-card {
+    background-color: #fff;
+    border-color: #ddd;
+}
+
+body.light-mode .settings-card.danger {
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #333;
+}
+
+.settings-row:last-child {
+    border-bottom: none;
+}
+
+.settings-row.clickable {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.settings-row.clickable:hover {
+    background-color: #2a2a2a;
+}
+
+body.light-mode .settings-row {
+    border-bottom-color: #eee;
+}
+
+body.light-mode .settings-row.clickable:hover {
+    background-color: #f5f5f5;
+}
+
+.settings-row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.settings-row-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+}
+
+body.light-mode .settings-row-label {
+    color: #000;
+}
+
+.settings-row-desc {
+    font-size: 12px;
+    color: #888;
+}
+
+body.light-mode .settings-row-desc {
+    color: #666;
+}
+
+.settings-arrow {
+    font-size: 18px;
+    color: #666;
+}
+
+body.light-mode .settings-arrow {
+    color: #999;
+}
+
+.settings-action-btn {
+    background-color: #333;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    min-width: 70px;
+    min-height: 36px;
+    margin: 0;
+}
+
+.settings-action-btn:hover {
+    background-color: #444;
+}
+
+body.light-mode .settings-action-btn {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+body.light-mode .settings-action-btn:hover {
+    background-color: #d0d0d0;
+}
+
+.settings-danger-btn {
+    background-color: #f44336;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    min-width: 70px;
+    min-height: 36px;
+    margin: 0;
+}
+
+.settings-danger-btn:hover {
+    background-color: #d32f2f;
+}
+
+.settings-page-footer {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.settings-back-btn {
+    background-color: #333;
+    color: #fff;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.settings-back-btn:hover {
+    background-color: #444;
+}
+
+body.light-mode .settings-back-btn {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+body.light-mode .settings-back-btn:hover {
+    background-color: #d0d0d0;
+}
+
+.settings-page-copyright {
+    margin-top: 30px;
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+}
+
+.settings-page-copyright a {
+    color: #888;
+}
+
+body.light-mode .settings-page-copyright {
+    color: #888;
+}
+
+/* Settings Page Mobile */
+@media (max-width: 700px) {
+    .settings-page-content {
+        padding: 15px;
+    }
+
+    .settings-page-header h1 {
+        font-size: 24px;
+    }
+
+    .settings-row {
+        padding: 14px 16px;
+    }
+
+    .settings-row-label {
+        font-size: 14px;
+    }
+
+    .settings-row-desc {
+        font-size: 11px;
+    }
+}
+
 /* Header Row - transparent background, matches portfolio-strip widths */
 .header-row {
     display: flex;

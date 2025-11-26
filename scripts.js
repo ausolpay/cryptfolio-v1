@@ -1173,6 +1173,7 @@ function showAppPage() {
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Start EasyMining alerts polling if enabled
     if (easyMiningSettings && easyMiningSettings.enabled) {
@@ -1202,6 +1203,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show EasyMining settings page
     document.getElementById('easymining-settings-page').style.display = 'block';
@@ -1275,6 +1277,7 @@ function showWithdrawalAddressesPage() {
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show withdrawal addresses page
     document.getElementById('withdrawal-addresses-page').style.display = 'block';
@@ -1644,6 +1647,7 @@ async function showTravelDataPage() {
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show travel data page
     document.getElementById('travel-data-page').style.display = 'block';
@@ -1979,6 +1983,7 @@ function showDepositsPage() {
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show deposits page
     document.getElementById('deposits-page').style.display = 'block';
@@ -2668,6 +2673,7 @@ function showWithdrawPage() {
     document.getElementById('package-alerts-page').style.display = 'none';
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show withdraw page
     document.getElementById('withdraw-page').style.display = 'block';
@@ -3167,6 +3173,7 @@ async function showPackageAlertsPage() {
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('withdrawal-addresses-page').style.display = 'none';
     document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show Package Alerts page
     document.getElementById('package-alerts-page').style.display = 'block';
@@ -4410,6 +4417,7 @@ function showBuyPackagesPage() {
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show Buy Packages page
     document.getElementById('buy-packages-page').style.display = 'block';
@@ -6743,6 +6751,121 @@ function showSettingsModal() {
     const modal = document.getElementById('settings-modal');
     modal.style.display = 'block';
 }
+
+// Settings Page Functions
+function showSettingsPage() {
+    window.scrollTo(0, 0);
+
+    // Stop polling when leaving main app
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('withdrawal-addresses-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('travel-data-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('withdraw-page').style.display = 'none';
+
+    // Show settings page
+    document.getElementById('settings-page').style.display = 'block';
+
+    // Sync toggle states from localStorage
+    syncSettingsPageToggles();
+
+    // Initialize fullscreen button
+    initSettingsPageFullscreen();
+
+    console.log('✅ Settings page shown');
+}
+
+function closeSettingsPage() {
+    const settingsPage = document.getElementById('settings-page');
+    if (settingsPage) {
+        settingsPage.style.display = 'none';
+    }
+    showAppPage();
+}
+
+function syncSettingsPageToggles() {
+    // Dark mode
+    const darkModeTogglePage = document.getElementById('dark-mode-toggle-page');
+    if (darkModeTogglePage) {
+        darkModeTogglePage.checked = document.body.classList.contains('dark-mode');
+        darkModeTogglePage.addEventListener('change', function() {
+            toggleDarkMode();
+        });
+    }
+
+    // Holdings audio
+    const holdingsAudioTogglePage = document.getElementById('holdings-audio-toggle-page');
+    const holdingsAudioToggle = document.getElementById('holdings-audio-toggle');
+    if (holdingsAudioTogglePage && holdingsAudioToggle) {
+        holdingsAudioTogglePage.checked = holdingsAudioToggle.checked;
+        holdingsAudioTogglePage.addEventListener('change', function() {
+            holdingsAudioToggle.checked = this.checked;
+            saveAudioSetting('holdings', this.checked);
+        });
+    }
+
+    // Holdings vibrate
+    const holdingsVibrateTogglePage = document.getElementById('holdings-vibrate-toggle-page');
+    const holdingsVibrateToggle = document.getElementById('holdings-vibrate-toggle');
+    if (holdingsVibrateTogglePage && holdingsVibrateToggle) {
+        holdingsVibrateTogglePage.checked = holdingsVibrateToggle.checked;
+        holdingsVibrateTogglePage.addEventListener('change', function() {
+            holdingsVibrateToggle.checked = this.checked;
+            saveVibrateSetting('holdings', this.checked);
+        });
+    }
+
+    // EasyMining audio
+    const easyminingAudioTogglePage = document.getElementById('easymining-audio-toggle-page');
+    const easyminingAudioToggle = document.getElementById('easymining-audio-toggle');
+    if (easyminingAudioTogglePage && easyminingAudioToggle) {
+        easyminingAudioTogglePage.checked = easyminingAudioToggle.checked;
+        easyminingAudioTogglePage.addEventListener('change', function() {
+            easyminingAudioToggle.checked = this.checked;
+            saveAudioSetting('easymining', this.checked);
+        });
+    }
+
+    // EasyMining vibrate
+    const easyminingVibrateTogglePage = document.getElementById('easymining-vibrate-toggle-page');
+    const easyminingVibrateToggle = document.getElementById('easymining-vibrate-toggle');
+    if (easyminingVibrateTogglePage && easyminingVibrateToggle) {
+        easyminingVibrateTogglePage.checked = easyminingVibrateToggle.checked;
+        easyminingVibrateTogglePage.addEventListener('change', function() {
+            easyminingVibrateToggle.checked = this.checked;
+            saveVibrateSetting('easymining', this.checked);
+        });
+    }
+}
+
+function initSettingsPageFullscreen() {
+    const fullscreenBtnPage = document.getElementById('fullscreenBtn-page');
+    if (fullscreenBtnPage) {
+        fullscreenBtnPage.addEventListener('click', function() {
+            toggleFullScreen();
+        });
+    }
+}
+
+// Make settings page functions globally accessible
+window.showSettingsPage = showSettingsPage;
+window.closeSettingsPage = closeSettingsPage;
 
 function confirmClearData() {
     showModal('Are you sure you want to clear all data?', 'clearData');
@@ -10226,6 +10349,7 @@ function showCoinGeckoApiSettingsPage() {
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
     document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show CoinGecko API settings page
     document.getElementById('coingecko-settings-page').style.display = 'block';
@@ -10447,6 +10571,7 @@ function showApiKeysPage() {
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
     document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show API Keys page
     document.getElementById('api-keys-page').style.display = 'block';
@@ -10485,6 +10610,7 @@ function showGoogleApiSettingsPage() {
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
     document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show Google API settings page
     document.getElementById('google-settings-page').style.display = 'block';
@@ -10603,6 +10729,7 @@ function showBraveApiSettingsPage() {
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('cryptocompare-settings-page').style.display = 'none';
     document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show Brave API settings page
     document.getElementById('brave-settings-page').style.display = 'block';
@@ -10733,6 +10860,7 @@ function showCryptoCompareApiSettingsPage() {
     document.getElementById('google-settings-page').style.display = 'none';
     document.getElementById('brave-settings-page').style.display = 'none';
     document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     // Show CryptoCompare API settings page
     document.getElementById('cryptocompare-settings-page').style.display = 'block';
@@ -10854,6 +10982,7 @@ function showRedditApiSettingsPage() {
     document.getElementById('buy-packages-page').style.display = 'none';
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
 
     document.getElementById('reddit-settings-page').style.display = 'block';
 
