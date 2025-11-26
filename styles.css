@@ -226,7 +226,7 @@ body.light-mode .stat-item {
     font-size: 16px;
     font-weight: 600;
     color: #fff;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 body.light-mode .stat-value {
@@ -265,7 +265,7 @@ body.light-mode .best-performer-item {
 .pnl-value {
     font-size: 18px;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .pnl-label, .performer-label {
@@ -279,8 +279,9 @@ body.light-mode .best-performer-item {
 .performer-display {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .performer-icon {
