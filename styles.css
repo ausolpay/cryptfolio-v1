@@ -1996,11 +1996,11 @@ body.light-mode .terms-conditions-content {
 /* Hero Section in Modal */
 .modal-hero {
     background-color: rgba(50, 50, 50, 0.5);
-    border-radius: 16px;
-    padding: 40px 60px;
-    margin-bottom: 30px;
+    border-radius: 24px;
+    padding: 60px 100px;
+    margin-bottom: 40px;
     width: 100%;
-    max-width: 800px;
+    max-width: 1000px;
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -2009,23 +2009,23 @@ body.light-mode .terms-conditions-content {
 }
 
 .modal-hero .modal-total-holdings {
-    font-size: clamp(48px, 12vw, 120px);
+    font-size: clamp(48px, 15vw, 180px);
     font-weight: 700;
     color: #ffa500;
     line-height: 1.1;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
 .modal-hero .modal-change-section {
-    margin-top: 15px;
+    margin-top: 20px;
 }
 
 .modal-hero .modal-change-values {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 15px;
-    font-size: clamp(20px, 4vw, 32px);
+    gap: 25px;
+    font-size: clamp(20px, 5vw, 48px);
     font-weight: 600;
 }
 
@@ -2042,7 +2042,7 @@ body.light-mode .terms-conditions-content {
 }
 
 .modal-hero .modal-change-values .change-label {
-    font-size: clamp(14px, 2.5vw, 20px);
+    font-size: clamp(14px, 3vw, 36px);
     color: #888;
     font-weight: 500;
 }
@@ -2059,29 +2059,29 @@ body.light-mode .terms-conditions-content {
 .modal-stats {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
+    gap: 25px;
     width: 100%;
-    max-width: 600px;
+    max-width: 900px;
 }
 
 .modal-stat-card {
     background-color: rgba(50, 50, 50, 0.5);
-    border-radius: 12px;
-    padding: 20px 30px;
+    border-radius: 16px;
+    padding: 35px 50px;
     text-align: center;
 }
 
 .modal-stat-card .stat-value {
-    font-size: clamp(24px, 5vw, 36px);
+    font-size: clamp(24px, 6vw, 56px);
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
 }
 
 .modal-stat-card .stat-label {
-    font-size: 12px;
+    font-size: clamp(12px, 2vw, 20px);
     color: #888;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
 }
 
 /* Color classes */
@@ -2220,7 +2220,7 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
         padding: 20px 15px;
         width: calc(100% - 30px);
         max-width: 320px;
-        margin: 0 auto;
+        margin: 0 auto 10px auto;
     }
 
     .modal-stats {
