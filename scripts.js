@@ -16889,7 +16889,33 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     }
 
     // 2. Get share count from input (this is the DESIRED TOTAL, not increment)
-    const input = document.getElementById(`${cardId}-shares`);
+    // Use robust multi-method lookup like buyTeamPackage() does
+    let input = document.getElementById(`${cardId}-shares`);
+
+    // Fallback: Try by package-id attribute with class selector
+    if (!input && packageId) {
+        const card = document.querySelector(`[data-package-id="${packageId}"]`);
+        if (card) {
+            input = card.querySelector('.share-adjuster-input');
+        }
+    }
+
+    // Additional fallback: Try alert ID format using package name
+    if (!input) {
+        const packageCard = document.getElementById(cardId);
+        if (packageCard) {
+            const packageName = packageCard.querySelector('h4')?.textContent?.replace(' (Team)', '');
+            if (packageName) {
+                input = document.getElementById(`shares-${packageName.replace(/\s+/g, '-')}`);
+            }
+        }
+    }
+
+    if (!input) {
+        showModal(`Error: Could not find share input for this package.`);
+        return;
+    }
+
     const desiredTotalShares = parseInt(input.value) || 0;
 
     if (desiredTotalShares <= 0) {
