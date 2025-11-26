@@ -5327,6 +5327,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.current-year').forEach(element => {
         element.textContent = currentYear;
     });
+
+    // Handle URL parameters for page navigation
+    const urlParams = new URLSearchParams(window.location.search);
+    const pageParam = urlParams.get('page');
+    if (pageParam === 'settings' && typeof showSettingsPage === 'function') {
+        // Small delay to ensure page is fully loaded
+        setTimeout(() => {
+            showSettingsPage();
+        }, 100);
+    }
 });
 
 
