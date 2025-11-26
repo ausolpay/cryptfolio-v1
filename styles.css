@@ -539,11 +539,13 @@ body.light-mode .performer-name {
     }
 
     .header-row .app-logo {
-        margin-top: 5px;
+        margin-top: 15px;
     }
 
     .header-row .add-crypto {
-        width: 100%;
+        width: calc(100% + 40px);
+        margin-left: -20px;
+        margin-right: -20px;
         max-width: none;
         justify-content: center;
     }
