@@ -1107,6 +1107,18 @@ body.light-mode .change-label.negative {
     color: #888 !important;
 }
 
+.portfolio-strip .change-label.positive {
+    color: #00ff00 !important;
+}
+
+.portfolio-strip .change-label.negative {
+    color: #ff0000 !important;
+}
+
+.portfolio-strip .change-label.neutral {
+    color: #888 !important;
+}
+
 /* Portfolio Stats Toggle */
 .portfolio-stats-toggle {
     display: flex;
