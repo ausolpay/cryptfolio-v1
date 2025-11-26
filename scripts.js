@@ -13507,9 +13507,9 @@ function displayActivePackages() {
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
         // Calculate remaining price based on progress (decreases from start to 0 as package runs)
-        // Active packages: show remaining value, Completed packages: show $0
+        // Active packages: show remaining value, Completed packages: show original price
         const progressPercent = pkg.progress || 0;
-        const remainingPriceAUD = pkg.active ? priceAUD * (1 - progressPercent / 100) : 0;
+        const remainingPriceAUD = pkg.active ? priceAUD * (1 - progressPercent / 100) : priceAUD;
 
         // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
         // For Team Palladium dual mining, show both DOGE and LTC on separate lines
