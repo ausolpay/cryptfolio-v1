@@ -13021,6 +13021,11 @@ async function updateRecommendations() {
             }
         });
 
+        // Update team alert card values (probability, hashrate, participants, shares, rewards)
+        teamRecommendations.forEach(pkg => {
+            updateTeamAlertCardValues(pkg);
+        });
+
         return; // Skip full re-render
     }
 
@@ -13194,6 +13199,109 @@ function updateSoloAlertCardValues(pkg) {
     console.log(`✅ Updated values for ${pkg.name}: probability=${pkg.probability || `${pkg.mergeProbability}/${pkg.mainProbability}`}, hashrate=${pkg.hashrate}`);
 }
 
+/**
+ * Update team alert card values without re-rendering the entire card
+ * Uses alert- prefixed element IDs to avoid conflict with Buy Packages page
+ */
+function updateTeamAlertCardValues(pkg) {
+    const packageId = pkg.name.replace(/\s+/g, '-');
+
+    // Update probability values
+    if (pkg.isDualCrypto) {
+        const mergeProbEl = document.getElementById(`alert-merge-probability-${packageId}`);
+        const mainProbEl = document.getElementById(`alert-main-probability-${packageId}`);
+        if (mergeProbEl) mergeProbEl.textContent = pkg.mergeProbability;
+        if (mainProbEl) mainProbEl.textContent = pkg.mainProbability;
+    } else {
+        const probEl = document.getElementById(`alert-probability-${packageId}`);
+        if (probEl) probEl.textContent = pkg.probability;
+    }
+
+    // Update hashrate
+    const hashrateEl = document.getElementById(`alert-hashrate-${packageId}`);
+    if (hashrateEl && pkg.hashrate) hashrateEl.textContent = pkg.hashrate;
+
+    // Update participants
+    const participantsEl = document.getElementById(`alert-participants-${packageId}`);
+    if (participantsEl) participantsEl.textContent = pkg.numberOfParticipants || 0;
+
+    // Update share distribution
+    const shareDistEl = document.getElementById(`alert-share-distribution-${packageId}`);
+    if (shareDistEl) {
+        const apiPackageId = pkg.apiData?.id || pkg.id;
+        const myBoughtShares = getMyTeamShares(apiPackageId) || 0;
+        const totalBoughtShares = Math.round((pkg.addedAmount || 0) * 10000);
+        const totalAvailable = Math.round((pkg.fullAmount || 0) * 10000);
+        shareDistEl.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailable})`;
+    }
+
+    // Calculate reward values using current share count
+    const apiPackageId = pkg.apiData?.id || pkg.id;
+    const myBoughtShares = getMyTeamShares(apiPackageId) || 0;
+    const myShares = myBoughtShares || 1; // Show reward for owned shares, or 1 if none
+    const totalBoughtShares = Math.round((pkg.addedAmount || 0) * 10000);
+    const othersBought = totalBoughtShares - myBoughtShares;
+    const totalShares = othersBought + myShares;
+
+    // Get crypto prices for reward calculation
+    const prices = window.packageCryptoPrices || {};
+    const audRate = parseFloat(localStorage.getItem('btcAudRate')) || 150000;
+
+    if (pkg.isDualCrypto) {
+        // Dual-crypto reward calculation
+        const mergeRewardEl = document.getElementById(`alert-merge-reward-${packageId}`);
+        const mainRewardEl = document.getElementById(`alert-main-reward-${packageId}`);
+
+        if (mergeRewardEl && totalShares > 0) {
+            const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
+            const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
+            mergeRewardEl.textContent = `${myMergeReward.toFixed(mergeDecimals)} ${pkg.mergeCrypto}`;
+        }
+        if (mainRewardEl && totalShares > 0) {
+            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+            mainRewardEl.textContent = `${myMainReward.toFixed(4)} ${pkg.mainCrypto}`;
+        }
+
+        // Update combined reward value in AUD
+        const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
+        if (rewardValueEl && totalShares > 0) {
+            const mergePrice = prices[pkg.mergeCrypto?.toLowerCase()] || 0;
+            const mainPrice = prices[pkg.mainCrypto?.toLowerCase()] || 0;
+            const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
+            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+            const myRewardAUD = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
+            rewardValueEl.textContent = `$${myRewardAUD.toFixed(2)} AUD`;
+        }
+    } else {
+        // Single-crypto reward calculation
+        const mainRewardEl = document.getElementById(`alert-main-reward-${packageId}`);
+        if (mainRewardEl && totalShares > 0) {
+            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+            const decimals = ['BTC', 'BCH'].includes(pkg.crypto) ? 4 : 2;
+            mainRewardEl.textContent = `${myMainReward.toFixed(decimals)} ${pkg.crypto}`;
+        }
+
+        // Update reward value in AUD
+        const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
+        if (rewardValueEl && totalShares > 0) {
+            const cryptoPrice = prices[pkg.crypto?.toLowerCase()] || 0;
+            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+            const myRewardAUD = myMainReward * cryptoPrice;
+            rewardValueEl.textContent = `$${myRewardAUD.toFixed(2)} AUD`;
+        }
+    }
+
+    // Update price in AUD
+    const priceEl = document.getElementById(`alert-price-${packageId}`);
+    if (priceEl) {
+        const sharePrice = 0.0001; // 1 share = 0.0001 BTC
+        const priceAUD = convertBTCtoAUD(myShares * sharePrice);
+        priceEl.textContent = `$${priceAUD.toFixed(2)} AUD`;
+    }
+
+    console.log(`✅ Updated team alert values for ${pkg.name}: participants=${pkg.numberOfParticipants}, shares=${myBoughtShares}`);
+}
+
 function createTeamPackageRecommendationCard(pkg) {
     const card = document.createElement('div');
     card.className = 'buy-package-card recommended team-package';
@@ -13323,21 +13431,23 @@ function createTeamPackageRecommendationCard(pkg) {
         console.log(`📅 ${pkg.name} alert - No lifeTimeTill, Participants: ${participants} (< 2) → Mining Lobby`);
     }
 
+    // Element ID for alert cards (using normalized package name)
+    const packageId = pkg.name.replace(/\s+/g, '-');
+
+    // Calculate share data for display
+    const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+    const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
+    const apiPackageId = pkg.apiData?.id || pkg.id;
+    const myBoughtShares = getMyTeamShares(apiPackageId) || 0;
+
     const sharesInfo = `
         <div class="buy-package-stat">
             <span>Participants:</span>
-            <span style="color: #4CAF50;">${pkg.numberOfParticipants || 0}</span>
+            <span id="alert-participants-${packageId}" style="color: #4CAF50;">${pkg.numberOfParticipants || 0}</span>
         </div>
         <div class="buy-package-stat">
             <span>Share Distribution:</span>
-            <span style="color: #ffa500;">${(() => {
-                const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
-                const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
-                // Use same ID logic as when saving shares
-                const packageId = pkg.apiData?.id || pkg.id;
-                const myBoughtShares = getMyTeamShares(packageId) || 0;
-                return `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
-            })()}</span>
+            <span id="alert-share-distribution-${packageId}" style="color: #ffa500;">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
         </div>
         ${countdownInfo}
     `;
@@ -13349,11 +13459,11 @@ function createTeamPackageRecommendationCard(pkg) {
         probabilityInfo = `
             <div class="buy-package-stat">
                 <span>Probability ${pkg.mergeCrypto}:</span>
-                <span>${pkg.mergeProbability}</span>
+                <span id="alert-merge-probability-${packageId}">${pkg.mergeProbability}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Probability ${pkg.mainCrypto}:</span>
-                <span>${pkg.mainProbability}</span>
+                <span id="alert-main-probability-${packageId}">${pkg.mainProbability}</span>
             </div>
         `;
     } else if (pkg.probability) {
@@ -13361,14 +13471,13 @@ function createTeamPackageRecommendationCard(pkg) {
         probabilityInfo = `
             <div class="buy-package-stat">
                 <span>Probability:</span>
-                <span>${pkg.probability}</span>
+                <span id="alert-probability-${packageId}">${pkg.probability}</span>
             </div>
         `;
     }
 
     // Potential reward section - handle dual-crypto packages
     let rewardInfo = '';
-    const packageId = pkg.name.replace(/\s+/g, '-');
 
     if (pkg.isDualCrypto) {
         // Calculate rewards for 1 share using division formula
@@ -13407,15 +13516,15 @@ function createTeamPackageRecommendationCard(pkg) {
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mergeCrypto}:</span>
-                <span id="merge-reward-${packageId}" style="color: #4CAF50;">${myMergeReward.toFixed(mergeDecimals)} ${pkg.mergeCrypto}</span>
+                <span id="alert-merge-reward-${packageId}" style="color: #4CAF50;">${myMergeReward.toFixed(mergeDecimals)} ${pkg.mergeCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward ${pkg.mainCrypto}:</span>
-                <span id="main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(4)} ${pkg.mainCrypto}</span>
+                <span id="alert-main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(4)} ${pkg.mainCrypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
             </div>
         `;
     } else if (pkg.blockReward) {
@@ -13449,11 +13558,11 @@ function createTeamPackageRecommendationCard(pkg) {
         rewardInfo = `
             <div class="buy-package-stat">
                 <span>Reward:</span>
-                <span id="main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
+                <span id="alert-main-reward-${packageId}" style="color: #4CAF50;">${myMainReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2)} ${pkg.crypto}</span>
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
             </div>
         `;
     }
@@ -13467,9 +13576,7 @@ function createTeamPackageRecommendationCard(pkg) {
     const initialShareValue = myCurrentShares || 1; // Input starts at owned shares, or 1 if none owned
     console.log(`📊 Team alert "${pkg.name}" - ID: ${alertPackageId}, My shares: ${myCurrentShares}, Initial value: ${initialShareValue}`);
 
-    // Calculate share data for team packages (matching buy packages page)
-    const totalBoughtShares = pkg.addedAmount && pkg.addedAmount > 0 ? Math.round(pkg.addedAmount * 10000) : 0;
-    const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 9999;
+    // Note: totalBoughtShares, totalAvailableShares already calculated above for sharesInfo
     const blockReward = pkg.blockReward || 0;
 
     // Recalculate initial price to show cost of all shares in input (total, not new)
@@ -13599,7 +13706,7 @@ function createTeamPackageRecommendationCard(pkg) {
     const hashrateInfo = pkg.hashrate ? `
         <div class="buy-package-stat">
             <span>Hashrate:</span>
-            <span>${pkg.hashrate}</span>
+            <span id="alert-hashrate-${packageId}">${pkg.hashrate}</span>
         </div>
     ` : '';
 
@@ -13617,7 +13724,7 @@ function createTeamPackageRecommendationCard(pkg) {
             ${rewardInfo}
             <div class="buy-package-stat">
                 <span>Price:</span>
-                <span id="price-${packageId}">$${priceAUD} AUD</span>
+                <span id="alert-price-${packageId}">$${priceAUD} AUD</span>
             </div>
         </div>
         ${teamShareSelector}
