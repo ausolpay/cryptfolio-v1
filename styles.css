@@ -3671,3 +3671,509 @@ body:not(.dark-mode) .api-hub-button .api-desc,
 body.light-mode .api-hub-button .api-desc {
     color: #666;
 }
+
+/* ============================================================
+   HOLDINGS TRACKING SECTION STYLES
+   ============================================================ */
+
+.holdings-tracking-section {
+    margin-top: 20px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(30, 30, 30, 0.5);
+}
+
+.holdings-tracking-header {
+    background: rgba(255, 165, 0, 0.1);
+    padding: 12px 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #444;
+    transition: background 0.3s ease;
+}
+
+.holdings-tracking-header:hover {
+    background: rgba(255, 165, 0, 0.2);
+}
+
+.holdings-tracking-header span:first-child {
+    font-weight: 600;
+    color: #ffa500;
+    font-size: 14px;
+}
+
+.holdings-collapse-icon {
+    transition: transform 0.3s ease;
+    color: #ffa500;
+}
+
+.holdings-collapse-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.holdings-tracking-content {
+    padding: 15px;
+}
+
+/* Holdings Tabs */
+.holdings-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #444;
+    padding-bottom: 10px;
+}
+
+.holdings-tab {
+    background: transparent;
+    border: none;
+    color: #aaa;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+}
+
+.holdings-tab:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.holdings-tab.active {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+    border-bottom: 2px solid #ffa500;
+}
+
+.holdings-tab .tab-count {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.holdings-tab.active .tab-count {
+    background: rgba(255, 165, 0, 0.3);
+    color: #ffa500;
+}
+
+/* Holdings Entries Container */
+.holdings-entries-container,
+.history-entries-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 15px;
+    min-height: 100px;
+}
+
+/* Holdings Entry Card */
+.holdings-entry-card,
+.history-entry-card {
+    background: rgba(40, 40, 40, 0.8);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #444;
+    transition: all 0.3s ease;
+}
+
+.holdings-entry-card:hover,
+.history-entry-card:hover {
+    border-color: #ffa500;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 165, 0, 0.2);
+}
+
+.holdings-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.holdings-entry-amount {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffa500;
+}
+
+.holdings-entry-date {
+    font-size: 11px;
+    color: #888;
+}
+
+.holdings-entry-aud {
+    font-size: 13px;
+    color: #4CAF50;
+    margin-bottom: 8px;
+}
+
+.holdings-entry-source {
+    font-size: 11px;
+    color: #888;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.holdings-entry-source.manual {
+    background: rgba(100, 100, 255, 0.2);
+    color: #8888ff;
+}
+
+.holdings-entry-source.easymining-reward {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+}
+
+/* Price Inputs Section */
+.holdings-entry-prices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.price-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.price-input-group label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.price-input-group input {
+    background: rgba(30, 30, 30, 0.8);
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: #fff;
+    font-size: 12px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.price-input-group input:focus {
+    outline: none;
+    border-color: #ffa500;
+}
+
+.price-input-wrapper {
+    display: flex;
+    gap: 4px;
+}
+
+.price-input-wrapper input {
+    flex: 1;
+    min-width: 0;
+}
+
+.live-price-btn {
+    background: rgba(255, 165, 0, 0.2);
+    border: 1px solid #ffa500;
+    color: #ffa500;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.live-price-btn:hover {
+    background: rgba(255, 165, 0, 0.4);
+}
+
+/* PnL Display */
+.holdings-entry-pnl {
+    background: rgba(30, 30, 30, 0.6);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 10px;
+    font-size: 11px;
+}
+
+.pnl-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.pnl-row:last-child {
+    margin-bottom: 0;
+}
+
+.pnl-label {
+    color: #888;
+}
+
+.pnl-value.positive {
+    color: #4CAF50;
+}
+
+.pnl-value.negative {
+    color: #f44336;
+}
+
+.pnl-value.neutral {
+    color: #888;
+}
+
+/* Entry Actions */
+.holdings-entry-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.holdings-entry-actions button {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.update-btn {
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    color: white;
+}
+
+.update-btn:hover {
+    background: linear-gradient(135deg, #388E3C 0%, #2E7D32 100%);
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white;
+}
+
+.delete-btn:hover {
+    background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+}
+
+/* History Entry Specifics */
+.history-entry-card {
+    opacity: 0.9;
+}
+
+.history-entry-action {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.history-entry-action.add {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.history-entry-action.update {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+}
+
+.history-entry-action.remove {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+/* Carousel Controls */
+.holdings-carousel-controls,
+.history-carousel-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 15px;
+    padding: 0 5px;
+    gap: 10px;
+}
+
+.holdings-arrow,
+.history-arrow {
+    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(255, 165, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.holdings-arrow:hover:not(:disabled),
+.history-arrow:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ff8c00 0%, #ff7700 100%);
+    box-shadow: 0 4px 10px rgba(255, 165, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+.holdings-arrow:disabled,
+.history-arrow:disabled {
+    background: #444;
+    color: #888;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.5;
+}
+
+.holdings-page-count,
+.history-page-count {
+    color: #ffa500;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    flex: 1;
+}
+
+/* PnL Summary */
+.holdings-pnl-summary {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px;
+    background: rgba(30, 30, 30, 0.6);
+    border-radius: 8px;
+    margin-top: 15px;
+    font-size: 13px;
+}
+
+.holdings-pnl-summary span {
+    color: #888;
+}
+
+#total-unrealized-pnl.positive,
+#total-realized-pnl.positive {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+#total-unrealized-pnl.negative,
+#total-realized-pnl.negative {
+    color: #f44336;
+    font-weight: bold;
+}
+
+/* Empty State */
+.holdings-empty-state,
+.history-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 30px;
+    color: #888;
+    font-size: 14px;
+}
+
+/* Light Mode Styles */
+body.light-mode .holdings-tracking-section {
+    border-color: #ddd;
+    background: rgba(245, 245, 245, 0.8);
+}
+
+body.light-mode .holdings-tracking-header {
+    background: rgba(255, 165, 0, 0.08);
+    border-bottom-color: #ddd;
+}
+
+body.light-mode .holdings-tabs {
+    border-bottom-color: #ddd;
+}
+
+body.light-mode .holdings-tab {
+    color: #666;
+}
+
+body.light-mode .holdings-tab:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #000;
+}
+
+body.light-mode .holdings-tab.active {
+    background: rgba(255, 165, 0, 0.15);
+    color: #ff8c00;
+    border-bottom-color: #ff8c00;
+}
+
+body.light-mode .holdings-entry-card,
+body.light-mode .history-entry-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #ddd;
+}
+
+body.light-mode .holdings-entry-card:hover,
+body.light-mode .history-entry-card:hover {
+    border-color: #ff8c00;
+}
+
+body.light-mode .price-input-group input {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #ddd;
+    color: #333;
+}
+
+body.light-mode .holdings-entry-pnl {
+    background: rgba(245, 245, 245, 0.8);
+}
+
+body.light-mode .holdings-pnl-summary {
+    background: rgba(245, 245, 245, 0.8);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 600px) {
+    .holdings-entries-container,
+    .history-entries-container {
+        grid-template-columns: 1fr;
+    }
+
+    .holdings-entry-prices {
+        grid-template-columns: 1fr;
+    }
+
+    .holdings-tabs {
+        flex-direction: row;
+    }
+
+    .holdings-tab {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .holdings-pnl-summary {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .holdings-entry-header {
+        flex-direction: column;
+        gap: 4px;
+    }
+}

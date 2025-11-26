@@ -4355,33 +4355,43 @@ function updateApiUrl() {
 
 function updateHoldings(crypto) {
     const input = document.getElementById(`${crypto}-input`);
-    const holdings = parseFloat(input.value);
+    const amountToAdd = parseFloat(input.value);
 
-    if (!isNaN(holdings)) {
-        // Save the updated MANUAL holdings in storage
-        setStorageItem(`${loggedInUser}_${crypto}Holdings`, holdings);
+    if (!isNaN(amountToAdd) && amountToAdd > 0) {
+        // Get current live price
+        const livePrice = cryptoPrices[crypto]?.aud || 0;
+        const audValue = amountToAdd * livePrice;
 
-        // For Bitcoin, update display to include NiceHash balance
-        if (crypto === 'bitcoin' && typeof updateBTCHoldings === 'function') {
-            // Call updateBTCHoldings which will display manual + NiceHash
-            updateBTCHoldings();
-        } else {
-            // For other cryptos, update normally
-            document.getElementById(`${crypto}-holdings`).textContent = formatNumber(holdings.toFixed(3));
+        // Create new holdings entry (ADDITIVE - creates new entry instead of replacing)
+        const entry = {
+            id: uuidv4(),
+            cryptoId: crypto,
+            amount: amountToAdd,
+            audValueAtAdd: audValue,
+            boughtPrice: livePrice,
+            soldPrice: null,
+            dateAdded: Date.now(),
+            dateSold: null,
+            source: 'manual',
+            status: 'active'
+        };
 
-            // Get the current price in AUD
-            const priceElement = document.getElementById(`${crypto}-price-aud`);
-            const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
+        // Save entry
+        addHoldingsEntry(crypto, entry);
 
-            // Update the value in AUD
-            document.getElementById(`${crypto}-value-aud`).textContent = formatNumber((holdings * priceInAud).toFixed(2));
-        }
+        // Add to history
+        addToHoldingsHistory('add', entry);
 
-        // Update the total holdings and re-sort containers by value
-        updateTotalHoldings();
-        sortContainersByValue();
+        // Update holdings display (sum of all active entries)
+        updateHoldingsDisplayFromEntries(crypto);
 
         // Clear the input value and remove focus
+        input.value = '';
+        input.blur();
+
+        console.log(`✅ Added ${amountToAdd} ${crypto.toUpperCase()} at $${livePrice.toFixed(2)} AUD`);
+    } else if (!isNaN(amountToAdd) && amountToAdd === 0) {
+        // Clear input if 0 entered
         input.value = '';
         input.blur();
     }
@@ -5308,6 +5318,651 @@ function removeStorageItem(key) {
     sessionStorage.removeItem(key);
 }
 
+// =============================================================================
+// HOLDINGS ENTRIES MANAGEMENT (PnL Tracking System)
+// =============================================================================
+
+// Get all holdings entries for a crypto
+function getHoldingsEntries(cryptoId) {
+    const key = `${loggedInUser}_${cryptoId}_holdingsEntries`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+}
+
+// Save all holdings entries for a crypto
+function saveHoldingsEntries(cryptoId, entries) {
+    const key = `${loggedInUser}_${cryptoId}_holdingsEntries`;
+    localStorage.setItem(key, JSON.stringify(entries));
+
+    // Also update the legacy total holdings for backward compatibility
+    const totalAmount = entries
+        .filter(e => e.status === 'active')
+        .reduce((sum, e) => sum + e.amount, 0);
+    setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, totalAmount);
+}
+
+// Add a new holdings entry
+function addHoldingsEntry(cryptoId, entry) {
+    const entries = getHoldingsEntries(cryptoId);
+    entries.push(entry);
+    saveHoldingsEntries(cryptoId, entries);
+    console.log(`✅ Added holdings entry for ${cryptoId}:`, entry);
+}
+
+// Get a specific holdings entry by ID
+function getHoldingsEntryById(cryptoId, entryId) {
+    const entries = getHoldingsEntries(cryptoId);
+    return entries.find(e => e.id === entryId);
+}
+
+// Update an existing holdings entry
+function updateHoldingsEntry(cryptoId, entryId, updates) {
+    const entries = getHoldingsEntries(cryptoId);
+    const index = entries.findIndex(e => e.id === entryId);
+    if (index !== -1) {
+        entries[index] = { ...entries[index], ...updates };
+        saveHoldingsEntries(cryptoId, entries);
+        console.log(`✅ Updated holdings entry ${entryId}:`, entries[index]);
+        return entries[index];
+    }
+    return null;
+}
+
+// Delete a holdings entry (mark as sold)
+function markHoldingsEntrySold(cryptoId, entryId, soldPrice) {
+    return updateHoldingsEntry(cryptoId, entryId, {
+        status: 'sold',
+        soldPrice: soldPrice,
+        dateSold: Date.now()
+    });
+}
+
+// Get total active holdings amount for a crypto
+function getTotalActiveHoldings(cryptoId) {
+    const entries = getHoldingsEntries(cryptoId);
+    return entries
+        .filter(e => e.status === 'active')
+        .reduce((sum, e) => sum + e.amount, 0);
+}
+
+// Calculate PnL for a single entry
+function calculateEntryPnL(entry) {
+    const livePrice = cryptoPrices[entry.cryptoId]?.aud || 0;
+
+    // Unrealized PnL (based on live price)
+    const unrealizedPnL = (livePrice - entry.boughtPrice) * entry.amount;
+    const unrealizedPercent = entry.boughtPrice > 0
+        ? ((livePrice - entry.boughtPrice) / entry.boughtPrice) * 100
+        : 0;
+
+    // Realized PnL (only when sold)
+    let realizedPnL = null;
+    let realizedPercent = null;
+    if (entry.soldPrice && entry.soldPrice > 0) {
+        realizedPnL = (entry.soldPrice - entry.boughtPrice) * entry.amount;
+        realizedPercent = entry.boughtPrice > 0
+            ? ((entry.soldPrice - entry.boughtPrice) / entry.boughtPrice) * 100
+            : 0;
+    }
+
+    return { unrealizedPnL, unrealizedPercent, realizedPnL, realizedPercent };
+}
+
+// Calculate total PnL for a crypto
+function calculateTotalPnL(cryptoId) {
+    const entries = getHoldingsEntries(cryptoId);
+    let totalUnrealized = 0;
+    let totalRealized = 0;
+
+    entries.forEach(entry => {
+        const pnl = calculateEntryPnL(entry);
+        if (entry.status === 'active') {
+            totalUnrealized += pnl.unrealizedPnL;
+        }
+        if (pnl.realizedPnL !== null) {
+            totalRealized += pnl.realizedPnL;
+        }
+    });
+
+    return { totalUnrealized, totalRealized };
+}
+
+// =============================================================================
+// HOLDINGS HISTORY MANAGEMENT
+// =============================================================================
+
+// Get all history entries (across all cryptos)
+function getHoldingsHistory() {
+    const key = `${loggedInUser}_holdingsHistory`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+}
+
+// Get history for a specific crypto
+function getHoldingsHistoryByCrypto(cryptoId) {
+    const history = getHoldingsHistory();
+    return history.filter(h => h.cryptoId === cryptoId);
+}
+
+// Add entry to history
+function addToHoldingsHistory(action, entry, details = {}) {
+    const history = getHoldingsHistory();
+    const historyEntry = {
+        id: uuidv4(),
+        holdingId: entry.id,
+        action: action, // 'add', 'update', 'remove'
+        cryptoId: entry.cryptoId,
+        amount: entry.amount,
+        boughtPrice: entry.boughtPrice,
+        soldPrice: entry.soldPrice,
+        audValue: entry.audValueAtAdd || (entry.amount * (cryptoPrices[entry.cryptoId]?.aud || 0)),
+        timestamp: Date.now(),
+        details: details
+    };
+    history.push(historyEntry);
+    localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(history));
+    console.log(`📜 Added to history (${action}):`, historyEntry);
+}
+
+// Clear all holdings history
+function clearHoldingsHistory() {
+    localStorage.removeItem(`${loggedInUser}_holdingsHistory`);
+    console.log('🗑️ Cleared all holdings history');
+}
+
+// =============================================================================
+// HOLDINGS DISPLAY UPDATE
+// =============================================================================
+
+// Update holdings display for a crypto (sum of all active entries)
+function updateHoldingsDisplayFromEntries(cryptoId) {
+    const totalAmount = getTotalActiveHoldings(cryptoId);
+    const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
+
+    if (holdingsElement) {
+        if (cryptoId === 'bitcoin') {
+            holdingsElement.textContent = totalAmount.toFixed(8);
+        } else {
+            holdingsElement.textContent = formatNumber(totalAmount.toFixed(3));
+        }
+    }
+
+    // Update AUD value
+    const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+    const valueElement = document.getElementById(`${cryptoId}-value-aud`);
+    if (valueElement) {
+        valueElement.textContent = formatNumber((totalAmount * livePrice).toFixed(2));
+    }
+
+    // For Bitcoin, also update with NiceHash balance
+    if (cryptoId === 'bitcoin' && typeof updateBTCHoldings === 'function') {
+        updateBTCHoldings();
+    }
+
+    // Update totals
+    updateTotalHoldings();
+    sortContainersByValue();
+}
+
+// Migrate existing holdings to new entry format (one-time migration)
+function migrateExistingHoldings(cryptoId) {
+    const entries = getHoldingsEntries(cryptoId);
+
+    // Only migrate if no entries exist yet
+    if (entries.length === 0) {
+        const legacyHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+
+        if (legacyHoldings > 0) {
+            const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+            const entry = {
+                id: uuidv4(),
+                cryptoId: cryptoId,
+                amount: legacyHoldings,
+                audValueAtAdd: legacyHoldings * livePrice,
+                boughtPrice: livePrice, // Best guess - current price
+                soldPrice: null,
+                dateAdded: Date.now(),
+                dateSold: null,
+                source: 'migrated',
+                status: 'active'
+            };
+
+            addHoldingsEntry(cryptoId, entry);
+            addToHoldingsHistory('add', entry, { note: 'Migrated from legacy holdings' });
+            console.log(`📦 Migrated legacy holdings for ${cryptoId}: ${legacyHoldings}`);
+        }
+    }
+}
+
+// =============================================================================
+// HOLDINGS TRACKING UI (Chart Modal)
+// =============================================================================
+
+let currentHoldingsTab = 'holdings';
+let currentHoldingsPage = 1;
+let currentHistoryPage = 1;
+const holdingsEntriesPerPage = 6;
+let currentHoldingsCryptoId = null; // Track which crypto's modal is open
+
+// Toggle holdings tracking section collapse
+function toggleHoldingsTracking() {
+    const content = document.getElementById('holdings-tracking-content');
+    const icon = document.getElementById('holdings-collapse-icon');
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▲';
+        // Load data when expanded
+        if (currentHoldingsCryptoId) {
+            displayHoldingsEntries(currentHoldingsCryptoId);
+        }
+    } else {
+        content.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}
+
+// Switch between Holdings and History tabs
+function switchHoldingsTab(tab) {
+    currentHoldingsTab = tab;
+
+    // Reset pagination when switching tabs
+    if (tab === 'holdings') {
+        currentHoldingsPage = 1;
+    } else {
+        currentHistoryPage = 1;
+    }
+
+    // Update tab UI
+    document.querySelectorAll('.holdings-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.closest('.holdings-tab').classList.add('active');
+
+    // Show/hide content
+    document.getElementById('holdings-tab-content').style.display = tab === 'holdings' ? 'block' : 'none';
+    document.getElementById('history-tab-content').style.display = tab === 'history' ? 'block' : 'none';
+
+    // Refresh display
+    if (currentHoldingsCryptoId) {
+        if (tab === 'holdings') {
+            displayHoldingsEntries(currentHoldingsCryptoId);
+        } else {
+            displayHistoryEntries(currentHoldingsCryptoId);
+        }
+    }
+}
+
+// Display holdings entries for a crypto
+function displayHoldingsEntries(cryptoId) {
+    currentHoldingsCryptoId = cryptoId;
+    const container = document.getElementById('holdings-entries-container');
+    if (!container) return;
+
+    // Migrate existing holdings if needed
+    migrateExistingHoldings(cryptoId);
+
+    const entries = getHoldingsEntries(cryptoId);
+    const activeEntries = entries.filter(e => e.status === 'active');
+
+    // Update tab count
+    const countEl = document.getElementById('holdings-tab-count');
+    if (countEl) countEl.textContent = activeEntries.length;
+
+    // Calculate pagination
+    const isDesktop = window.innerWidth > 600;
+    const cardsPerPage = isDesktop ? 6 : 3;
+    const totalPages = Math.ceil(activeEntries.length / cardsPerPage) || 1;
+
+    // Ensure current page is valid
+    if (currentHoldingsPage > totalPages) currentHoldingsPage = totalPages;
+    if (currentHoldingsPage < 1) currentHoldingsPage = 1;
+
+    const startIndex = (currentHoldingsPage - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    const pageEntries = activeEntries.slice(startIndex, endIndex);
+
+    // Get crypto info for display
+    const crypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+    const symbol = crypto?.symbol?.toUpperCase() || cryptoId.toUpperCase();
+
+    // Render cards
+    container.innerHTML = pageEntries.length === 0
+        ? '<div class="no-holdings-message">No holdings entries yet. Add holdings from the crypto card to track your P&L.</div>'
+        : pageEntries.map(entry => renderHoldingsEntryCard(entry, symbol)).join('');
+
+    // Update pagination controls
+    updateHoldingsPagination(activeEntries.length, cardsPerPage, totalPages);
+
+    // Update total PnL
+    updateTotalPnLDisplay(cryptoId);
+}
+
+// Render a single holdings entry card
+function renderHoldingsEntryCard(entry, symbol) {
+    const pnl = calculateEntryPnL(entry);
+    const dateAdded = new Date(entry.dateAdded).toLocaleDateString('en-AU', {
+        day: 'numeric', month: 'short', year: 'numeric'
+    });
+
+    const unrealizedClass = pnl.unrealizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative';
+    const unrealizedSign = pnl.unrealizedPnL >= 0 ? '+' : '';
+
+    const sourceLabel = entry.source === 'easymining-reward' ? 'EasyMining' : 'Manual';
+    const sourceClass = entry.source === 'easymining-reward' ? 'source-easymining' : 'source-manual';
+
+    return `
+        <div class="holdings-entry-card" data-entry-id="${entry.id}">
+            <div class="entry-header">
+                <span class="entry-amount">${entry.amount.toFixed(6)} ${symbol}</span>
+                <span class="entry-source ${sourceClass}">${sourceLabel}</span>
+            </div>
+            <div class="entry-date">Added: ${dateAdded}</div>
+            <div class="entry-aud-value">Value at Add: $${formatNumber(entry.audValueAtAdd.toFixed(2))}</div>
+
+            <div class="entry-prices">
+                <div class="price-input-group">
+                    <label>Bought Price:</label>
+                    <input type="number" class="bought-price-input" id="bought-price-${entry.id}"
+                        value="${entry.boughtPrice.toFixed(2)}" step="0.01" placeholder="0.00">
+                </div>
+                <div class="price-input-group">
+                    <label>Sold Price:</label>
+                    <div class="sold-price-wrapper">
+                        <input type="number" class="sold-price-input" id="sold-price-${entry.id}"
+                            value="${entry.soldPrice ? entry.soldPrice.toFixed(2) : ''}" step="0.01" placeholder="Not sold">
+                        <button class="live-price-btn" onclick="autoFillSoldPrice('${entry.cryptoId}', '${entry.id}')" title="Use current live price">Live</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="entry-pnl">
+                <div class="pnl-row">
+                    <span class="pnl-label">Unrealized:</span>
+                    <span class="${unrealizedClass}">${unrealizedSign}$${formatNumber(Math.abs(pnl.unrealizedPnL).toFixed(2))} (${unrealizedSign}${pnl.unrealizedPercent.toFixed(2)}%)</span>
+                </div>
+                <div class="pnl-row">
+                    <span class="pnl-label">Realized:</span>
+                    <span class="${pnl.realizedPnL !== null ? (pnl.realizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative') : 'pnl-na'}">
+                        ${pnl.realizedPnL !== null
+                            ? `${pnl.realizedPnL >= 0 ? '+' : ''}$${formatNumber(Math.abs(pnl.realizedPnL).toFixed(2))} (${pnl.realizedPnL >= 0 ? '+' : ''}${pnl.realizedPercent.toFixed(2)}%)`
+                            : '-- (not sold)'}
+                    </span>
+                </div>
+            </div>
+
+            <div class="entry-actions">
+                <button class="update-entry-btn" onclick="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">Update</button>
+                <button class="delete-entry-btn" onclick="deleteHoldingsEntryUI('${entry.cryptoId}', '${entry.id}')" title="Remove holding (requires sold price)">✕</button>
+            </div>
+        </div>
+    `;
+}
+
+// Update pagination controls for holdings
+function updateHoldingsPagination(totalEntries, cardsPerPage, totalPages) {
+    const controls = document.getElementById('holdings-carousel-controls');
+    const pageCount = document.getElementById('holdings-page-count');
+    const leftArrow = document.getElementById('holdings-arrow-left');
+    const rightArrow = document.getElementById('holdings-arrow-right');
+
+    if (totalEntries > cardsPerPage) {
+        controls.style.display = 'flex';
+        pageCount.textContent = `${currentHoldingsPage} of ${totalPages}`;
+        leftArrow.disabled = currentHoldingsPage === 1;
+        rightArrow.disabled = currentHoldingsPage >= totalPages;
+    } else {
+        controls.style.display = 'none';
+    }
+}
+
+// Pagination navigation
+function nextHoldingsPage() {
+    const entries = getHoldingsEntries(currentHoldingsCryptoId);
+    const activeEntries = entries.filter(e => e.status === 'active');
+    const isDesktop = window.innerWidth > 600;
+    const cardsPerPage = isDesktop ? 6 : 3;
+    const totalPages = Math.ceil(activeEntries.length / cardsPerPage);
+
+    if (currentHoldingsPage < totalPages) {
+        currentHoldingsPage++;
+        displayHoldingsEntries(currentHoldingsCryptoId);
+    }
+}
+
+function prevHoldingsPage() {
+    if (currentHoldingsPage > 1) {
+        currentHoldingsPage--;
+        displayHoldingsEntries(currentHoldingsCryptoId);
+    }
+}
+
+// Display history entries
+function displayHistoryEntries(cryptoId) {
+    const container = document.getElementById('history-entries-container');
+    if (!container) return;
+
+    const history = getHoldingsHistoryByCrypto(cryptoId);
+
+    // Update tab count
+    const countEl = document.getElementById('history-tab-count');
+    if (countEl) countEl.textContent = history.length;
+
+    // Sort by timestamp descending (newest first)
+    history.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Calculate pagination
+    const isDesktop = window.innerWidth > 600;
+    const cardsPerPage = isDesktop ? 6 : 3;
+    const totalPages = Math.ceil(history.length / cardsPerPage) || 1;
+
+    if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
+    if (currentHistoryPage < 1) currentHistoryPage = 1;
+
+    const startIndex = (currentHistoryPage - 1) * cardsPerPage;
+    const endIndex = startIndex + cardsPerPage;
+    const pageHistory = history.slice(startIndex, endIndex);
+
+    // Get crypto info
+    const crypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+    const symbol = crypto?.symbol?.toUpperCase() || cryptoId.toUpperCase();
+
+    // Render cards
+    container.innerHTML = pageHistory.length === 0
+        ? '<div class="no-holdings-message">No history yet.</div>'
+        : pageHistory.map(h => renderHistoryCard(h, symbol)).join('');
+
+    // Update pagination controls
+    updateHistoryPagination(history.length, cardsPerPage, totalPages);
+}
+
+// Render a single history card
+function renderHistoryCard(historyEntry, symbol) {
+    const date = new Date(historyEntry.timestamp).toLocaleDateString('en-AU', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const actionLabels = {
+        'add': 'Added',
+        'update': 'Updated',
+        'remove': 'Sold/Removed'
+    };
+
+    const actionClasses = {
+        'add': 'action-add',
+        'update': 'action-update',
+        'remove': 'action-remove'
+    };
+
+    return `
+        <div class="history-entry-card ${actionClasses[historyEntry.action]}">
+            <div class="history-header">
+                <span class="history-action">${actionLabels[historyEntry.action] || historyEntry.action}</span>
+                <span class="history-date">${date}</span>
+            </div>
+            <div class="history-amount">${historyEntry.amount.toFixed(6)} ${symbol}</div>
+            <div class="history-details">
+                <div>Bought: $${formatNumber(historyEntry.boughtPrice?.toFixed(2) || '0.00')}</div>
+                ${historyEntry.soldPrice ? `<div>Sold: $${formatNumber(historyEntry.soldPrice.toFixed(2))}</div>` : ''}
+                <div>Value: $${formatNumber(historyEntry.audValue?.toFixed(2) || '0.00')}</div>
+            </div>
+            ${historyEntry.details?.note ? `<div class="history-note">${historyEntry.details.note}</div>` : ''}
+        </div>
+    `;
+}
+
+// Update pagination controls for history
+function updateHistoryPagination(totalEntries, cardsPerPage, totalPages) {
+    const controls = document.getElementById('history-carousel-controls');
+    const pageCount = document.getElementById('history-page-count');
+    const leftArrow = document.getElementById('history-arrow-left');
+    const rightArrow = document.getElementById('history-arrow-right');
+
+    if (totalEntries > cardsPerPage) {
+        controls.style.display = 'flex';
+        pageCount.textContent = `${currentHistoryPage} of ${totalPages}`;
+        leftArrow.disabled = currentHistoryPage === 1;
+        rightArrow.disabled = currentHistoryPage >= totalPages;
+    } else {
+        controls.style.display = 'none';
+    }
+}
+
+function nextHistoryPage() {
+    const history = getHoldingsHistoryByCrypto(currentHoldingsCryptoId);
+    const isDesktop = window.innerWidth > 600;
+    const cardsPerPage = isDesktop ? 6 : 3;
+    const totalPages = Math.ceil(history.length / cardsPerPage);
+
+    if (currentHistoryPage < totalPages) {
+        currentHistoryPage++;
+        displayHistoryEntries(currentHoldingsCryptoId);
+    }
+}
+
+function prevHistoryPage() {
+    if (currentHistoryPage > 1) {
+        currentHistoryPage--;
+        displayHistoryEntries(currentHoldingsCryptoId);
+    }
+}
+
+// Auto-fill sold price with current live price
+function autoFillSoldPrice(cryptoId, entryId) {
+    const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+    const input = document.getElementById(`sold-price-${entryId}`);
+    if (input) {
+        input.value = livePrice.toFixed(2);
+    }
+}
+
+// Update holdings entry prices
+function updateHoldingsEntryPrices(cryptoId, entryId) {
+    const boughtInput = document.getElementById(`bought-price-${entryId}`);
+    const soldInput = document.getElementById(`sold-price-${entryId}`);
+
+    const boughtPrice = parseFloat(boughtInput?.value) || 0;
+    const soldPrice = parseFloat(soldInput?.value) || null;
+
+    const entry = getHoldingsEntryById(cryptoId, entryId);
+    if (!entry) return;
+
+    // Update entry
+    const updates = { boughtPrice };
+    if (soldPrice !== null && soldPrice > 0) {
+        updates.soldPrice = soldPrice;
+    }
+
+    updateHoldingsEntry(cryptoId, entryId, updates);
+
+    // Add to history
+    addToHoldingsHistory('update', { ...entry, ...updates });
+
+    // Refresh display
+    displayHoldingsEntries(cryptoId);
+
+    console.log(`✅ Updated entry ${entryId}: bought=$${boughtPrice}, sold=$${soldPrice || 'n/a'}`);
+}
+
+// Delete holdings entry (requires sold price)
+function deleteHoldingsEntryUI(cryptoId, entryId) {
+    const soldInput = document.getElementById(`sold-price-${entryId}`);
+    const soldPrice = parseFloat(soldInput?.value);
+
+    if (!soldPrice || soldPrice <= 0) {
+        alert('Please enter a sold price before removing this holding.\n\nClick the "Live" button to use the current market price.');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to remove this holding?\n\nSold at: $${soldPrice.toFixed(2)}`)) {
+        return;
+    }
+
+    // Mark as sold
+    const entry = getHoldingsEntryById(cryptoId, entryId);
+    if (entry) {
+        markHoldingsEntrySold(cryptoId, entryId, soldPrice);
+        addToHoldingsHistory('remove', { ...entry, soldPrice, dateSold: Date.now() });
+
+        // Update displays
+        displayHoldingsEntries(cryptoId);
+        updateHoldingsDisplayFromEntries(cryptoId);
+
+        console.log(`✅ Removed holding entry ${entryId} at $${soldPrice}`);
+    }
+}
+
+// Update total PnL display
+function updateTotalPnLDisplay(cryptoId) {
+    const pnl = calculateTotalPnL(cryptoId);
+
+    const unrealizedEl = document.getElementById('total-unrealized-pnl');
+    const realizedEl = document.getElementById('total-realized-pnl');
+
+    if (unrealizedEl) {
+        const sign = pnl.totalUnrealized >= 0 ? '+' : '';
+        unrealizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalUnrealized).toFixed(2))}`;
+        unrealizedEl.className = `pnl-value ${pnl.totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+    }
+
+    if (realizedEl) {
+        const sign = pnl.totalRealized >= 0 ? '+' : '';
+        realizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalRealized).toFixed(2))}`;
+        realizedEl.className = `pnl-value ${pnl.totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+    }
+}
+
+// Initialize holdings tracking when chart modal opens
+function initHoldingsTracking(cryptoId) {
+    currentHoldingsCryptoId = cryptoId;
+    currentHoldingsPage = 1;
+    currentHistoryPage = 1;
+    currentHoldingsTab = 'holdings';
+
+    // Reset tab UI
+    document.querySelectorAll('.holdings-tab').forEach((btn, i) => {
+        btn.classList.toggle('active', i === 0);
+    });
+    document.getElementById('holdings-tab-content').style.display = 'block';
+    document.getElementById('history-tab-content').style.display = 'none';
+
+    // Collapse by default
+    document.getElementById('holdings-tracking-content').style.display = 'none';
+    document.getElementById('holdings-collapse-icon').textContent = '▼';
+
+    // Update counts
+    migrateExistingHoldings(cryptoId);
+    const entries = getHoldingsEntries(cryptoId);
+    const activeCount = entries.filter(e => e.status === 'active').length;
+    const historyCount = getHoldingsHistoryByCrypto(cryptoId).length;
+
+    document.getElementById('holdings-tab-count').textContent = activeCount;
+    document.getElementById('history-tab-count').textContent = historyCount;
+
+    // Update PnL
+    updateTotalPnLDisplay(cryptoId);
+}
+
 
 async function autoResetPercentage() {
     const resetHour = 0; // Set to 12:00 AM (midnight)
@@ -5765,14 +6420,85 @@ function closeSettingsModal() {
 
 document.querySelector('#settings-modal .close').addEventListener('click', closeSettingsModal);
 
+// ============================================================
+// CLEAR HOLDINGS MODAL FUNCTIONS
+// ============================================================
+
+function showClearHoldingsModal() {
+    closeSettingsModal();
+    const modal = document.getElementById('clear-holdings-modal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function closeClearHoldingsModal() {
+    const modal = document.getElementById('clear-holdings-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function confirmClearAllHoldings() {
+    if (!loggedInUser) {
+        alert('No user logged in.');
+        return;
+    }
+
+    console.log('🗑️ Clearing all holdings and history...');
+
+    // Clear all holdings entries for all cryptos
+    const cryptos = users[loggedInUser]?.cryptos || [];
+    cryptos.forEach(crypto => {
+        // Clear holdings entries array
+        localStorage.removeItem(`${loggedInUser}_${crypto.id}_holdingsEntries`);
+        // Clear legacy holdings value
+        localStorage.removeItem(`${loggedInUser}_${crypto.id}Holdings`);
+        console.log(`   ✓ Cleared holdings for ${crypto.id}`);
+    });
+
+    // Clear all history
+    localStorage.removeItem(`${loggedInUser}_holdingsHistory`);
+    console.log('   ✓ Cleared holdings history');
+
+    // Clear tracked EasyMining rewards (so they can be re-added)
+    localStorage.removeItem(`${loggedInUser}_easyMiningAddedRewards`);
+    console.log('   ✓ Cleared EasyMining tracked rewards');
+
+    // Update all displays to show 0
+    cryptos.forEach(crypto => {
+        const holdingsElement = document.getElementById(`${crypto.id}-holdings`);
+        if (holdingsElement) {
+            holdingsElement.textContent = '0';
+        }
+        const valueElement = document.getElementById(`${crypto.id}-value-aud`);
+        if (valueElement) {
+            valueElement.textContent = '0.00';
+        }
+    });
+
+    // Update total holdings
+    updateTotalHoldings();
+
+    // Close modal
+    closeClearHoldingsModal();
+
+    console.log('✅ All holdings and history cleared successfully');
+    alert('All holdings and history have been cleared.');
+}
+
 window.onclick = function(event) {
     const popupModal = document.getElementById('popup-modal');
     const totalHoldingsModal = document.getElementById('total-holdings-modal');
     const settingsModal = document.getElementById('settings-modal');
     const candlestickModal = document.getElementById('candlestick-modal');
+    const clearHoldingsModal = document.getElementById('clear-holdings-modal');
 
     if (event.target === popupModal || event.target === totalHoldingsModal || event.target === settingsModal || event.target === candlestickModal) {
         closeModal();
+    }
+    if (event.target === clearHoldingsModal) {
+        closeClearHoldingsModal();
     }
 };
 
@@ -8565,6 +9291,9 @@ async function openCandlestickModal(cryptoId) {
 
         // Initial sync
         syncModalLivePrice();
+
+        // Initialize holdings tracking for this crypto
+        initHoldingsTracking(cryptoId);
 
     } catch (error) {
         console.error('Error fetching or displaying candlestick data:', error);
@@ -14173,6 +14902,26 @@ async function autoUpdateCryptoHoldings(newBlocks) {
             setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
             console.log(`💰 Added ${amountToAdd} ${crypto} reward (${pkg.name})`);
 
+            // Create holdings entry for tracking
+            const livePrice = cryptoPrices[cryptoId]?.aud || 0;
+            const entry = {
+                id: uuidv4(),
+                cryptoId: cryptoId,
+                amount: amountToAdd,
+                audValueAtAdd: amountToAdd * livePrice,
+                boughtPrice: livePrice,
+                soldPrice: null,
+                dateAdded: Date.now(),
+                dateSold: null,
+                source: 'easymining-reward',
+                status: 'active',
+                packageName: pkg.name,
+                packageId: pkg.id
+            };
+            addHoldingsEntry(cryptoId, entry);
+            addToHoldingsHistory('add', entry, { packageName: pkg.name });
+            console.log(`📝 Created holdings entry for ${amountToAdd} ${crypto} from ${pkg.name}`);
+
             // For Bitcoin, use updateBTCHoldings() to include NiceHash balance
             if (cryptoId === 'bitcoin' && typeof updateBTCHoldings === 'function') {
                 updateBTCHoldings();
@@ -14256,6 +15005,26 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                         // Save to localStorage
                         setStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`, newSecondaryHoldings);
                         console.log(`💰 Added ${secondaryAmountToAdd} ${secondaryCrypto} reward (${pkg.name})`);
+
+                        // Create holdings entry for tracking (secondary reward)
+                        const secondaryLivePrice = cryptoPrices[secondaryCryptoId]?.aud || 0;
+                        const secondaryEntry = {
+                            id: uuidv4(),
+                            cryptoId: secondaryCryptoId,
+                            amount: secondaryAmountToAdd,
+                            audValueAtAdd: secondaryAmountToAdd * secondaryLivePrice,
+                            boughtPrice: secondaryLivePrice,
+                            soldPrice: null,
+                            dateAdded: Date.now(),
+                            dateSold: null,
+                            source: 'easymining-reward',
+                            status: 'active',
+                            packageName: pkg.name,
+                            packageId: pkg.id
+                        };
+                        addHoldingsEntry(secondaryCryptoId, secondaryEntry);
+                        addToHoldingsHistory('add', secondaryEntry, { packageName: pkg.name });
+                        console.log(`📝 Created holdings entry for ${secondaryAmountToAdd} ${secondaryCrypto} from ${pkg.name}`);
 
                         // Update holdings display
                         const secondaryHoldingsElement = document.getElementById(`${secondaryCryptoId}-holdings`);
