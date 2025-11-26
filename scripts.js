@@ -7109,36 +7109,55 @@ function initializeEdgeHoverScroll(container) {
     section.appendChild(leftZone);
     section.appendChild(rightZone);
 
-    let scrollInterval = null;
-    const scrollSpeed = 3; // pixels per frame
+    // Scroll speed settings with acceleration
+    const minSpeed = 0.5;      // Starting speed (slow)
+    const maxSpeed = 8;        // Maximum speed (fast)
+    const acceleration = 0.15; // How fast speed increases per frame
+
+    let currentSpeed = minSpeed;
+    let scrollDirection = 0; // -1 for left, 1 for right, 0 for stopped
+    let animationId = null;
+
+    // Animation loop with smooth acceleration
+    function scrollAnimation() {
+        if (scrollDirection === 0) {
+            animationId = null;
+            return;
+        }
+
+        // Gradually increase speed while hovering
+        if (currentSpeed < maxSpeed) {
+            currentSpeed = Math.min(currentSpeed + acceleration, maxSpeed);
+        }
+
+        container.scrollLeft += scrollDirection * currentSpeed;
+        animationId = requestAnimationFrame(scrollAnimation);
+    }
+
+    function startScrolling(direction) {
+        scrollDirection = direction;
+        currentSpeed = minSpeed; // Reset to slow speed
+        if (!animationId) {
+            animationId = requestAnimationFrame(scrollAnimation);
+        }
+    }
+
+    function stopScrolling() {
+        scrollDirection = 0;
+        currentSpeed = minSpeed; // Reset speed for next hover
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+    }
 
     // Left zone hover
-    leftZone.addEventListener('mouseenter', () => {
-        scrollInterval = setInterval(() => {
-            container.scrollLeft -= scrollSpeed;
-        }, 16); // ~60fps
-    });
-
-    leftZone.addEventListener('mouseleave', () => {
-        if (scrollInterval) {
-            clearInterval(scrollInterval);
-            scrollInterval = null;
-        }
-    });
+    leftZone.addEventListener('mouseenter', () => startScrolling(-1));
+    leftZone.addEventListener('mouseleave', stopScrolling);
 
     // Right zone hover
-    rightZone.addEventListener('mouseenter', () => {
-        scrollInterval = setInterval(() => {
-            container.scrollLeft += scrollSpeed;
-        }, 16);
-    });
-
-    rightZone.addEventListener('mouseleave', () => {
-        if (scrollInterval) {
-            clearInterval(scrollInterval);
-            scrollInterval = null;
-        }
-    });
+    rightZone.addEventListener('mouseenter', () => startScrolling(1));
+    rightZone.addEventListener('mouseleave', stopScrolling);
 
     // Update zone visibility based on scroll position
     function updateZoneVisibility() {
