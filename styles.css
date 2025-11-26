@@ -2431,6 +2431,7 @@ body.light-mode .loading-bar-text {
     cursor: pointer;
     user-select: none;
     padding: 12px 20px;
+    margin-top: 10px;
     margin-bottom: 10px;
     background-color: rgba(50, 50, 50, 0.5);
     border-radius: 10px;
