@@ -7704,7 +7704,7 @@ function addCryptoContainer(id, symbol, name, thumb) {
         <input type="number" id="${id}-input" style="margin-top: 15px;" placeholder="Enter ${name} holdings">
         <button style="margin-bottom: 15px;" onclick="updateHoldings('${id}')">Update Holdings</button>
         <button style="margin-bottom: 15px;" class="delete-button" onclick="showDeleteModal('${id}-container', '${id}')">Delete</button>
-        <p>7D: <span id="${id}-triangle-7d" class="triangle"></span><span id="${id}-percentage-change-7d">0.00%</span> 30D: <span id="${id}-triangle-30d" class="triangle"></span><span id="${id}-percentage-change-30d">0.00%</span></p>
+        <p style="margin-top: -5px;">7D: <span id="${id}-triangle-7d" class="triangle"></span><span id="${id}-percentage-change-7d">0.00%</span> 30D: <span id="${id}-triangle-30d" class="triangle"></span><span id="${id}-percentage-change-30d">0.00%</span></p>
         <div class="mini-rsi-bar" id="${id}-mini-rsi">
             <span class="mini-rsi-label sell">SELL</span>
             <div class="mini-rsi-track">
