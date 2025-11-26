@@ -4178,6 +4178,9 @@ async function checkTeamRecommendations() {
 function showBuyPackagesPage() {
     console.log('Showing Buy Packages Page');
 
+    // Cache portfolio prices BEFORE leaving - these are WebSocket-updated and most accurate
+    cachePortfolioPrices();
+
     // Stop EasyMining alerts polling when leaving main app page
     stopEasyMiningAlertsPolling();
 
@@ -16096,6 +16099,78 @@ async function fetchNiceHashTeamPackages() {
     }
 }
 
+// =============================================================================
+// BUY PACKAGES PRICE HELPERS (Portfolio Cache + Fallbacks)
+// =============================================================================
+
+// Get current crypto price from portfolio DOM element (WebSocket-updated)
+function getCurrentCryptoPrice(cryptoId) {
+    const priceElement = document.getElementById(`${cryptoId}-price-aud`);
+    if (priceElement) {
+        const price = parseFloat(priceElement.textContent.replace(/[$,]/g, '')) || 0;
+        if (price > 0) {
+            console.log(`📊 getCurrentCryptoPrice(${cryptoId}): $${price} AUD (from DOM)`);
+        }
+        return price;
+    }
+    return 0;
+}
+
+// Unified price getter for Buy Packages with fallback chain
+function getBuyPackagePrice(symbol) {
+    const key = symbol.toLowerCase();
+    const cryptoIdMap = {
+        btc: 'bitcoin',
+        bch: 'bitcoin-cash',
+        doge: 'dogecoin',
+        ltc: 'litecoin',
+        rvn: 'ravencoin',
+        kas: 'kaspa'
+    };
+
+    // Priority 1: Portfolio cache (freshest, from WebSocket)
+    const cache = window.portfolioPriceCache || {};
+    if (cache[key] && cache[key] > 0) {
+        console.log(`💰 getBuyPackagePrice(${symbol}): $${cache[key]} AUD (from portfolio cache)`);
+        return cache[key];
+    }
+
+    // Priority 2: packageCryptoPrices (from CoinGecko API)
+    const pkgPrices = window.packageCryptoPrices || {};
+    if (pkgPrices[key]?.aud > 0) {
+        console.log(`💰 getBuyPackagePrice(${symbol}): $${pkgPrices[key].aud} AUD (from CoinGecko cache)`);
+        return pkgPrices[key].aud;
+    }
+
+    // Priority 3: Read live from portfolio DOM (for BTC especially)
+    const cryptoId = cryptoIdMap[key];
+    if (cryptoId) {
+        const livePrice = getCurrentCryptoPrice(cryptoId);
+        if (livePrice > 0) {
+            console.log(`💰 getBuyPackagePrice(${symbol}): $${livePrice} AUD (from live DOM)`);
+            return livePrice;
+        }
+    }
+
+    console.warn(`⚠️ getBuyPackagePrice(${symbol}): No price found in any source`);
+    return 0;
+}
+
+// Cache all portfolio prices for Buy Packages page
+function cachePortfolioPrices() {
+    console.log('📦 Caching portfolio prices for Buy Packages...');
+    window.portfolioPriceCache = {
+        btc: getCurrentCryptoPrice('bitcoin'),
+        bch: getCurrentCryptoPrice('bitcoin-cash'),
+        doge: getCurrentCryptoPrice('dogecoin'),
+        ltc: getCurrentCryptoPrice('litecoin'),
+        rvn: getCurrentCryptoPrice('ravencoin'),
+        kas: getCurrentCryptoPrice('kaspa'),
+        timestamp: Date.now()
+    };
+    console.log('✅ Portfolio prices cached:', window.portfolioPriceCache);
+}
+
 // Fetch prices for package cryptocurrencies
 async function fetchPackageCryptoPrices(packages) {
     console.log('💰 Fetching prices for package cryptocurrencies...');
@@ -16214,26 +16289,25 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             }
         }
 
-        // Update reward values if prices changed
-        const prices = window.packageCryptoPrices || {};
+        // Update reward values using unified price getter (portfolio cache → CoinGecko → live DOM)
         let rewardAUD = 0;
 
         if (pkg.isDualCrypto) {
-            const mainCryptoKey = pkg.mainCrypto?.toLowerCase();
-            const mergeCryptoKey = pkg.mergeCrypto?.toLowerCase();
             let mainRewardAUD = 0, mergeRewardAUD = 0;
 
-            if (prices[mainCryptoKey]?.aud) {
-                mainRewardAUD = pkg.blockReward * prices[mainCryptoKey].aud;
+            const mainPrice = getBuyPackagePrice(pkg.mainCrypto);
+            if (mainPrice > 0) {
+                mainRewardAUD = pkg.blockReward * mainPrice;
             }
-            if (prices[mergeCryptoKey]?.aud) {
-                mergeRewardAUD = pkg.mergeBlockReward * prices[mergeCryptoKey].aud;
+            const mergePrice = getBuyPackagePrice(pkg.mergeCrypto);
+            if (mergePrice > 0) {
+                mergeRewardAUD = pkg.mergeBlockReward * mergePrice;
             }
             rewardAUD = mainRewardAUD + mergeRewardAUD;
         } else if (pkg.blockReward && pkg.crypto) {
-            const cryptoKey = pkg.crypto.toLowerCase();
-            if (prices[cryptoKey]?.aud) {
-                rewardAUD = pkg.blockReward * prices[cryptoKey].aud;
+            const cryptoPrice = getBuyPackagePrice(pkg.crypto);
+            if (cryptoPrice > 0) {
+                rewardAUD = pkg.blockReward * cryptoPrice;
             }
         }
 
@@ -16378,12 +16452,12 @@ async function loadBuyPackagesDataOnPage() {
 
     const availableBalance = window.niceHashBalance?.available || 0;
     const pendingBalance = window.niceHashBalance?.pending || 0;
-    const availableAUD = window.packageCryptoPrices?.['btc']?.aud
-        ? (availableBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
-        : '0.00';
-    const pendingAUD = window.packageCryptoPrices?.['btc']?.aud
-        ? (pendingBalance * window.packageCryptoPrices['btc'].aud).toFixed(2)
-        : '0.00';
+
+    // Use unified price getter (portfolio cache → CoinGecko → live DOM)
+    const btcPrice = getBuyPackagePrice('btc');
+    const availableAUD = btcPrice > 0 ? (availableBalance * btcPrice).toFixed(2) : '0.00';
+    const pendingAUD = btcPrice > 0 ? (pendingBalance * btcPrice).toFixed(2) : '0.00';
+    console.log(`💵 Balance section BTC price: $${btcPrice} AUD`);
 
     balanceSection.innerHTML = `
         <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
@@ -16863,10 +16937,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Add data-package-id for smart re-rendering (avoids destroying countdown elements)
     card.setAttribute('data-package-id', pkg.id);
 
-    // Use package crypto prices (fetched specifically for buy packages page)
-    const prices = window.packageCryptoPrices || {};
-
-    // Calculate reward in AUD based on crypto prices
+    // Calculate reward in AUD using unified price getter (portfolio cache → CoinGecko → live DOM)
     let rewardAUD = 0;
     let mainRewardAUD = 0;
     let mergeRewardAUD = 0;
@@ -16875,15 +16946,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Dual-crypto package (e.g., DOGE+LTC)
         try {
             // Calculate main crypto reward (LTC)
-            const mainCryptoKey = pkg.mainCrypto.toLowerCase();
-            if (prices[mainCryptoKey] && prices[mainCryptoKey].aud) {
-                mainRewardAUD = parseFloat((pkg.blockReward * prices[mainCryptoKey].aud).toFixed(2));
+            const mainPrice = getBuyPackagePrice(pkg.mainCrypto);
+            if (mainPrice > 0) {
+                mainRewardAUD = parseFloat((pkg.blockReward * mainPrice).toFixed(2));
             }
 
             // Calculate merge crypto reward (DOGE)
-            const mergeCryptoKey = pkg.mergeCrypto.toLowerCase();
-            if (prices[mergeCryptoKey] && prices[mergeCryptoKey].aud) {
-                mergeRewardAUD = parseFloat((pkg.mergeBlockReward * prices[mergeCryptoKey].aud).toFixed(2));
+            const mergePrice = getBuyPackagePrice(pkg.mergeCrypto);
+            if (mergePrice > 0) {
+                mergeRewardAUD = parseFloat((pkg.mergeBlockReward * mergePrice).toFixed(2));
             }
 
             // Total reward in AUD
@@ -16892,9 +16963,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             console.log(`💰 ${pkg.name} Dual Reward Calc:`, {
                 mainCrypto: pkg.mainCrypto,
                 mainBlockReward: pkg.blockReward,
+                mainPrice: mainPrice,
                 mainRewardAUD: mainRewardAUD,
                 mergeCrypto: pkg.mergeCrypto,
                 mergeBlockReward: pkg.mergeBlockReward,
+                mergePrice: mergePrice,
                 mergeRewardAUD: mergeRewardAUD,
                 totalRewardAUD: rewardAUD
             });
@@ -16906,17 +16979,17 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Single crypto package
         if (pkg.blockReward && pkg.crypto) {
             try {
-                const cryptoKey = pkg.crypto.toLowerCase();
-                if (prices[cryptoKey] && prices[cryptoKey].aud) {
-                    rewardAUD = (pkg.blockReward * prices[cryptoKey].aud).toFixed(2);
+                const cryptoPrice = getBuyPackagePrice(pkg.crypto);
+                if (cryptoPrice > 0) {
+                    rewardAUD = (pkg.blockReward * cryptoPrice).toFixed(2);
                     console.log(`💰 ${pkg.name} Reward Calc:`, {
                         blockReward: pkg.blockReward,
                         crypto: pkg.crypto,
-                        cryptoPrice_AUD: prices[cryptoKey].aud,
+                        cryptoPrice_AUD: cryptoPrice,
                         rewardAUD: rewardAUD
                     });
                 } else {
-                    console.log(`⚠️ ${pkg.name} - Missing price data for ${cryptoKey}. Available prices:`, Object.keys(prices));
+                    console.log(`⚠️ ${pkg.name} - No price found for ${pkg.crypto}`);
                 }
             } catch (error) {
                 console.log('Could not calculate reward AUD:', error);
