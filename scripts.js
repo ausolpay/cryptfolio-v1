@@ -13708,6 +13708,9 @@ async function executeAutoBuyTeam(recommendations) {
             saveMyTeamShares(packageId, newTotalShares);
             console.log(`💾 Saved team shares: ${newTotalShares} (was ${currentShares}, added ${sharesToBuy})`);
 
+            // ✅ SYNC: Update share inputs on both UIs (Alert cards & Buy Packages page)
+            syncTeamShareInputs(packageId, pkg.name, newTotalShares);
+
             // Mark this package as auto-bought (use order ID from API response, not ticket ID)
             const orderIdReturned = result.id || result.orderId;
             const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
@@ -14129,6 +14132,19 @@ function updateTeamAlertCardValues(pkg) {
         const sharePrice = 0.0001; // 1 share = 0.0001 BTC
         const priceAUD = convertBTCtoAUD(myShares * sharePrice);
         priceEl.textContent = `$${priceAUD.toFixed(2)} AUD`;
+    }
+
+    // ✅ SYNC: Update the share input field to reflect current owned shares
+    const shareInput = document.getElementById(`shares-${packageId}`);
+    if (shareInput && myBoughtShares > 0) {
+        shareInput.value = myBoughtShares;
+        shareInput.min = myBoughtShares;
+        shareInput.dataset.myBought = myBoughtShares;
+        // Update cached value too
+        if (window.packageShareValues) {
+            window.packageShareValues[pkg.name] = myBoughtShares;
+        }
+        console.log(`🔄 Synced alert card input for ${pkg.name}: ${myBoughtShares} shares`);
     }
 
     console.log(`✅ Updated team alert values for ${pkg.name}: participants=${pkg.numberOfParticipants}, shares=${myBoughtShares}`);
@@ -15889,6 +15905,60 @@ function saveMyTeamShares(packageId, shares) {
 }
 
 /**
+ * Sync team share inputs across both UIs (Alert cards & Buy Packages page)
+ * Call this after any share purchase to keep both UIs in sync
+ */
+function syncTeamShareInputs(packageId, packageName, newShares) {
+    console.log(`🔄 Syncing share inputs: packageId=${packageId}, name=${packageName}, shares=${newShares}`);
+
+    // 1. Update Alert Card input (ID format: shares-PackageName-With-Dashes)
+    const alertInputId = `shares-${packageName.replace(/\s+/g, '-')}`;
+    const alertInput = document.getElementById(alertInputId);
+    if (alertInput) {
+        alertInput.value = newShares;
+        alertInput.min = newShares;
+        alertInput.dataset.myBought = newShares;
+        console.log(`   ✅ Updated alert card input: ${alertInputId} = ${newShares}`);
+    }
+
+    // 2. Update Buy Packages page inputs (multiple possible ID formats)
+    // Format 1: team-{packageId}-shares
+    const buyInput1 = document.getElementById(`team-${packageId}-shares`);
+    if (buyInput1) {
+        buyInput1.value = newShares;
+        buyInput1.min = newShares;
+        buyInput1.dataset.myBought = newShares;
+        console.log(`   ✅ Updated buy packages input: team-${packageId}-shares = ${newShares}`);
+    }
+
+    // Format 2: {packageName}-shares (with dashes)
+    const buyInput2 = document.getElementById(`${packageName.replace(/\s+/g, '-')}-shares`);
+    if (buyInput2 && buyInput2 !== alertInput) {
+        buyInput2.value = newShares;
+        buyInput2.min = newShares;
+        buyInput2.dataset.myBought = newShares;
+        console.log(`   ✅ Updated buy packages input: ${packageName.replace(/\s+/g, '-')}-shares = ${newShares}`);
+    }
+
+    // 3. Update cached share values
+    if (window.packageShareValues) {
+        window.packageShareValues[packageName] = newShares;
+        window.packageShareValues[packageName.replace(/\s+/g, '-')] = newShares;
+        console.log(`   ✅ Updated cached share values`);
+    }
+
+    // 4. Also update any inputs that have the packageId in data attribute
+    document.querySelectorAll('input[data-package-id]').forEach(input => {
+        if (input.dataset.packageId === packageId) {
+            input.value = newShares;
+            input.min = newShares;
+            input.dataset.myBought = newShares;
+            console.log(`   ✅ Updated input with data-package-id: ${input.id} = ${newShares}`);
+        }
+    });
+}
+
+/**
  * Clean up old auto-bought package entries (older than 30 days)
  * Prevents localStorage from growing indefinitely
  */
@@ -16398,15 +16468,13 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         saveMyTeamShares(packageId, desiredTotalShares);
         console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${sharesToPurchase})`);
 
-        // Clear cached input value so fresh shares are used on page refresh
-        if (window.packageShareValues) {
-            for (const key of Object.keys(window.packageShareValues)) {
-                if (key.includes(packageId)) {
-                    delete window.packageShareValues[key];
-                    console.log(`🗑️ Cleared cached input value for key: ${key}`);
-                }
-            }
-        }
+        // ✅ SYNC: Update share inputs on both UIs
+        // Try to get package name from the card element
+        const cardElement = document.getElementById(cardId);
+        const packageName = cardElement?.querySelector('.card-title')?.textContent ||
+                           cardElement?.dataset?.packageName ||
+                           cardId.replace('team-', '').replace(/-shares$/, '');
+        syncTeamShareInputs(packageId, packageName, desiredTotalShares);
 
         showModal(
             `✅ Purchase Complete!\n\n` +
@@ -18994,15 +19062,8 @@ Do you want to continue?
         saveMyTeamShares(packageId, desiredTotalShares);
         console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${shares})`);
 
-        // Clear cached input value so fresh shares are used on page refresh
-        if (window.packageShareValues) {
-            for (const key of Object.keys(window.packageShareValues)) {
-                if (key.includes(pkg.name.replace(/\s+/g, '-'))) {
-                    delete window.packageShareValues[key];
-                    console.log(`🗑️ Cleared cached input value for key: ${key}`);
-                }
-            }
-        }
+        // ✅ SYNC: Update share inputs on both UIs (Alert cards & Buy Packages page)
+        syncTeamShareInputs(packageId, pkg.name, desiredTotalShares);
 
         // Build success message
         let successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
