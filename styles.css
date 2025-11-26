@@ -889,6 +889,7 @@ input:checked + .slider:before {
 .triangle-up {
     border-width: 0 5px 7px 5px;
     border-color: transparent transparent #00ff00 transparent;
+    top: -3px;
 }
 
 .triangle-down {
