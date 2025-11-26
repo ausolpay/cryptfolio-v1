@@ -13274,7 +13274,7 @@ function updateTeamAlertCardValues(pkg) {
             const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
             const myRewardAUD = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
-            rewardValueEl.textContent = `$${myRewardAUD.toFixed(2)} AUD`;
+            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))} AUD`;
         }
     } else {
         // Single-crypto reward calculation
@@ -13291,7 +13291,7 @@ function updateTeamAlertCardValues(pkg) {
             const cryptoPrice = prices[pkg.crypto?.toLowerCase()]?.aud || 0;
             const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
             const myRewardAUD = myMainReward * cryptoPrice;
-            rewardValueEl.textContent = `$${myRewardAUD.toFixed(2)} AUD`;
+            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))} AUD`;
         }
     }
 
@@ -13528,7 +13528,7 @@ function createTeamPackageRecommendationCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))} AUD</span>
             </div>
         `;
     } else if (pkg.blockReward) {
@@ -13566,7 +13566,7 @@ function createTeamPackageRecommendationCard(pkg) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+                <span id="alert-reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))} AUD</span>
             </div>
         `;
     }
@@ -16323,7 +16323,7 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
 
             if (totalShares > 0) {
                 const myRewardAUD = (rewardAUD / totalShares) * myShares;
-                rewardValueEl.textContent = `$${myRewardAUD.toFixed(2)} AUD`;
+                rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))} AUD`;
             }
         }
 
@@ -16595,7 +16595,7 @@ async function loadBuyPackagesDataOnPage() {
                         const myRewardAUD = (rewardPerShareAUD * myShares).toFixed(2);
 
                         if (rewardValueElement) {
-                            rewardValueElement.textContent = `$${myRewardAUD} AUD`;
+                            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)} AUD`;
                         }
                         if (priceElement) {
                             priceElement.textContent = `$${newPriceAUD} AUD`;
@@ -17201,7 +17201,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))} AUD</span>
             </div>
         `;
     } else if (pkg.blockReward) {
@@ -17238,7 +17238,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
             <div class="buy-package-stat">
                 <span>Reward Value:</span>
-                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${myRewardValueAUD.toFixed(2)} AUD</span>
+                <span id="reward-value-${packageId}" style="color: #4CAF50;">$${formatNumber(myRewardValueAUD.toFixed(2))} AUD</span>
             </div>
         `;
     }
@@ -17697,8 +17697,8 @@ function adjustShares(packageName, delta, buttonElement) {
         // Update AUD displays
         if (rewardValueElement) {
             const oldReward = rewardValueElement.textContent;
-            rewardValueElement.textContent = `$${myRewardAUD} AUD`;
-            console.log(`✅ Updated reward value: ${oldReward} → $${myRewardAUD} AUD`);
+            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)} AUD`;
+            console.log(`✅ Updated reward value: ${oldReward} → $${formatNumber(myRewardAUD)} AUD`);
             // Verify the update actually happened
             console.log(`✔️ Verification - reward element now shows: "${rewardValueElement.textContent}"`);
         } else {
