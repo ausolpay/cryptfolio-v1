@@ -136,6 +136,44 @@ body.light-mode .portfolio-hero:hover {
     font-weight: 600;
 }
 
+/* Portfolio Toggle Arrow */
+.portfolio-toggle {
+    cursor: pointer;
+    padding: 5px 15px;
+    margin-top: 5px;
+}
+
+.portfolio-arrow {
+    font-size: 14px;
+    color: #888;
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+.portfolio-details.collapsed + .portfolio-hero .portfolio-arrow,
+.portfolio-strip:has(.portfolio-details.collapsed) .portfolio-arrow {
+    transform: rotate(0deg);
+}
+
+.portfolio-strip:has(.portfolio-details:not(.collapsed)) .portfolio-arrow {
+    transform: rotate(180deg);
+}
+
+/* Collapsible Details Section */
+.portfolio-details {
+    overflow: hidden;
+    max-height: 500px;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+    opacity: 1;
+    margin-top: 15px;
+}
+
+.portfolio-details.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+}
+
 /* Stats Grid */
 .portfolio-stats-grid {
     display: grid;
