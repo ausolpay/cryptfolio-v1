@@ -2340,8 +2340,8 @@ body.light-mode .conversion-input-group input {
     background-color: #1e1e1e;
     border: 1px solid #333;
     border-radius: 8px;
-    padding: 20px;
-    margin: 0 auto 15px auto; /* Center the section and maintain bottom margin */
+    padding: 20px 20px 10px 20px;
+    margin: 0 auto 10px auto; /* Center the section and maintain bottom margin */
     width: 1390px; /* Match width of 4 crypto boxes */
     max-width: 1390px; /* Match width of 4 crypto boxes */
     display: block;
