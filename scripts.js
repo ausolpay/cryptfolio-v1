@@ -13493,25 +13493,25 @@ function displayActivePackages() {
             ${pkg.active && pkg.isTeam && pkg.hashrate ? `
             <div class="package-card-stat">
                 <span>Hash Rate:</span>
-                <span style="color: #00ccff;"><span class="live-indicator"></span>${pkg.hashrate}</span>
+                <span style="color: #00ccff;">${pkg.hashrate}</span>
             </div>
             ` : ''}
             ${pkg.active && pkg.isTeam && pkg.numberOfParticipants !== null ? `
             <div class="package-card-stat">
                 <span>Participants:</span>
-                <span style="color: #4CAF50;"><span class="live-indicator"></span>${pkg.numberOfParticipants}</span>
+                <span style="color: #4CAF50;">${pkg.numberOfParticipants}</span>
             </div>
             ` : ''}
             ${pkg.active && pkg.isTeam && pkg.totalShares !== null ? `
             <div class="package-card-stat">
                 <span>Total Shares:</span>
-                <span style="color: #ffa500;"><span class="live-indicator"></span>${Math.round(pkg.totalShares)}</span>
+                <span style="color: #ffa500;">${Math.round(pkg.totalShares)}</span>
             </div>
             ` : ''}
             ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
             <div class="package-card-stat">
                 <span>Total Cost:</span>
-                <span style="color: #ffa500;"><span class="live-indicator"></span>$${formatNumber(convertBTCtoAUD(pkg.totalCostBTC).toFixed(2))} AUD</span>
+                <span style="color: #ffa500;">$${formatNumber(convertBTCtoAUD(pkg.totalCostBTC).toFixed(2))} AUD</span>
             </div>
             ` : ''}
             <div class="package-card-stat">
