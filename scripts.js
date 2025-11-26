@@ -9757,10 +9757,11 @@ window.getRedditApiSettings = getRedditApiSettings;
 function toggleEasyMining() {
     const content = document.getElementById('easymining-content');
     const arrow = document.getElementById('easymining-arrow');
-    
+
     if (content.style.display === 'none') {
         content.style.display = 'block';
         arrow.classList.add('rotated');
+        window.scrollTo(0, 0);
     } else {
         content.style.display = 'none';
         arrow.classList.remove('rotated');
@@ -9862,7 +9863,6 @@ function showEasyMiningLoadingBar() {
 }
 
 function hideEasyMiningLoadingBar() {
-    window.scrollTo(0, 0);
     const loadingBar = document.getElementById('easymining-loading-bar');
     const section = document.getElementById('easymining-section');
 
