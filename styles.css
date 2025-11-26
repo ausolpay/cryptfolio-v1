@@ -394,7 +394,7 @@ body.light-mode .mobile-menu-divider {
 
 .container {
     text-align: center;
-    margin-top: 90px; /* Add space from the top of the app (40px + 50px nav) */
+    margin-top: 60px; /* Space from top (10px gap + 50px nav) */
 }
 
 /* =====================================================
