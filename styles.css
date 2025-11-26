@@ -121,6 +121,40 @@ body.light-mode .portfolio-hero:hover {
     gap: 10px;
 }
 
+.hero-change-values .positive {
+    color: #00ff00;
+}
+
+.hero-change-values .negative {
+    color: #ff0000;
+}
+
+.hero-change-values .neutral {
+    color: #888;
+}
+
+body.light-mode .hero-change-values .positive {
+    color: green;
+}
+
+body.light-mode .hero-change-values .negative {
+    color: #ff0000;
+}
+
+body.light-mode .hero-change-values .neutral {
+    color: #666;
+}
+
+.change-label {
+    font-size: 14px;
+    color: #888;
+    font-weight: 500;
+}
+
+body.light-mode .change-label {
+    color: #666;
+}
+
 .portfolio-strip #percentage-change,
 .portfolio-strip #value-change {
     font-size: 18px;
@@ -972,14 +1006,6 @@ body.light-mode .terms-conditions-content {
     margin-top: 15px;
 }
 
-.modal-hero .modal-change-label {
-    font-size: 14px;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-}
-
 .modal-hero .modal-change-values {
     display: flex;
     align-items: center;
@@ -987,6 +1013,24 @@ body.light-mode .terms-conditions-content {
     gap: 15px;
     font-size: clamp(20px, 4vw, 32px);
     font-weight: 600;
+}
+
+.modal-hero .modal-change-values .positive {
+    color: #00ff00;
+}
+
+.modal-hero .modal-change-values .negative {
+    color: #ff0000;
+}
+
+.modal-hero .modal-change-values .neutral {
+    color: #888;
+}
+
+.modal-hero .modal-change-values .change-label {
+    font-size: clamp(14px, 2.5vw, 20px);
+    color: #888;
+    font-weight: 500;
 }
 
 /* Stats Section in Modal */
@@ -1074,6 +1118,22 @@ body.light-mode .holdings-modal-content .close {
 
 body.light-mode .holdings-modal-content .close:hover {
     color: #000;
+}
+
+body.light-mode .modal-hero .modal-change-values .positive {
+    color: green;
+}
+
+body.light-mode .modal-hero .modal-change-values .negative {
+    color: #ff0000;
+}
+
+body.light-mode .modal-hero .modal-change-values .neutral {
+    color: #666;
+}
+
+body.light-mode .modal-hero .modal-change-values .change-label {
+    color: #666;
 }
 
 /* Responsive */

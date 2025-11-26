@@ -6385,13 +6385,13 @@ function updateTotalHoldingsModal() {
                     ${totalHoldings}
                 </div>
                 <div class="modal-change-section">
-                    <div class="modal-change-label">24h Change</div>
                     <div class="modal-change-values">
                         <span class="${percentageClass}">
                             ${triangleClass ? `<span class="triangle ${triangleClass}"></span>` : ''}
                             ${percentageText.replace(/[▲▼]/g, '').trim()}
                         </span>
                         <span class="${valueClass}">${valueText}</span>
+                        <span class="change-label">24H</span>
                     </div>
                 </div>
             </div>
