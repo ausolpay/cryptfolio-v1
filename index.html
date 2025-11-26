@@ -1446,13 +1446,13 @@
     </div>
 
     <!-- Modal for total holdings -->
-    <div id="total-holdings-modal" class="modal">
-        <div class="modal-content total-holdings-modal-content">
+    <div id="total-holdings-modal" class="modal holdings-modal">
+        <div class="holdings-modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <div id="total-holdings-content">
                 <!-- Total holdings content will be dynamically inserted here -->
             </div>
-            <div id="modal-lottie-container" style="position: absolute; bottom: 100; height: 100vh; width: auto; overflow: hidden; display: none;">
+            <div id="modal-lottie-container" style="position: absolute; bottom: 0; left: 0; right: 0; height: 100%; width: 100%; overflow: hidden; display: none; pointer-events: none;">
                 <lottie-player id="modal-milestone-animation" src="https://lottie.host/ffe369c1-ce7f-4005-a652-528160576322/Eki4u779U6.json" background="transparent" speed="1" style="width: 100%; height: 100%;" loop autoplay></lottie-player>
             </div>
         </div>

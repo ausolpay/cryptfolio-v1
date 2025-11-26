@@ -904,41 +904,213 @@ body.light-mode .terms-conditions-content {
     margin: 0 auto;
 }
 
-.total-holdings-modal-content .modal-total-holdings {
-    font-size: max(8vw, 6vh, 35px); /* Adapts font size from 55px to 120px based on viewport width */
-    font-weight: bold;
-    position: relative;
-    margin: clamp(10px, 2vmin, 20px) 0;
+/* Fullscreen Holdings Modal */
+.holdings-modal {
+    background-color: rgba(0, 0, 0, 0.95);
 }
 
-.total-holdings-modal-content .modal-percentage-change,
-.total-holdings-modal-content .modal-records {
-    font-size: max(4vw, 3vh, 15px); /* Adapts font size from 25px to 55px based on viewport width */
-    font-weight: bold;
-    margin: clamp(2px, 1vmin, 10px) 0;
+.holdings-modal-content {
     position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 20px;
+    background-color: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
-.total-holdings-modal-content .triangle {
+.holdings-modal-content .close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 40px;
+    color: #888;
+    z-index: 10;
+}
+
+.holdings-modal-content .close:hover {
+    color: #fff;
+}
+
+/* Modal Inner Content */
+.holdings-modal-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    max-width: 1200px;
+    padding: 40px;
+}
+
+/* Hero Section in Modal */
+.modal-hero {
+    background-color: rgba(50, 50, 50, 0.5);
+    border-radius: 16px;
+    padding: 40px 60px;
+    margin-bottom: 30px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.modal-hero .modal-total-holdings {
+    font-size: clamp(48px, 12vw, 120px);
+    font-weight: 700;
+    color: #ffa500;
+    line-height: 1.1;
+    margin-bottom: 20px;
+}
+
+.modal-hero .modal-change-section {
+    margin-top: 15px;
+}
+
+.modal-hero .modal-change-label {
+    font-size: 14px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.modal-hero .modal-change-values {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    font-size: clamp(20px, 4vw, 32px);
+    font-weight: 600;
+}
+
+/* Stats Section in Modal */
+.modal-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    width: 100%;
+    max-width: 600px;
+}
+
+.modal-stat-card {
+    background-color: rgba(50, 50, 50, 0.5);
+    border-radius: 12px;
+    padding: 20px 30px;
+    text-align: center;
+}
+
+.modal-stat-card .stat-value {
+    font-size: clamp(24px, 5vw, 36px);
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.modal-stat-card .stat-label {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Color classes */
+.modal-hero .positive,
+.modal-stats .positive {
+    color: #00ff00;
+}
+
+.modal-hero .negative,
+.modal-stats .negative {
+    color: #ff0000;
+}
+
+.modal-hero .neutral {
+    color: #888;
+}
+
+/* Triangle icons in modal */
+.holdings-modal-inner .triangle {
+    display: inline-block;
     width: 0;
     height: 0;
     border-style: solid;
-    margin-right: 5px;
-    margin-bottom: clamp(0, 2vw, 10px); /* Adapts the margin-bottom size */
-    position: relative;
-    top: -2px;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
-.total-holdings-modal-content .triangle-up {
-    border-width: clamp(8px, 1vw, 14px) clamp(5px, 0.75vw, 10px) clamp(6px, 1.5vw, 15px) clamp(5px, 0.75vw, 10px); /* Adapts the triangle size */
+.holdings-modal-inner .triangle-up {
+    border-width: 0 8px 12px 8px;
     border-color: transparent transparent #00ff00 transparent;
-    margin-right: 10px;
 }
 
-.total-holdings-modal-content .triangle-down {
-    border-width: clamp(8px, 1vw, 14px) clamp(5px, 0.75vw, 10px) clamp(6px, 1.5vw, 15px) clamp(5px, 0.75vw, 10px);
+.holdings-modal-inner .triangle-down {
+    border-width: 12px 8px 0 8px;
     border-color: #ff0000 transparent transparent transparent;
-    margin-right: 10px;
+}
+
+/* Light mode */
+body.light-mode .holdings-modal {
+    background-color: rgba(255, 255, 255, 0.98);
+}
+
+body.light-mode .holdings-modal-content {
+    background-color: #f5f5f5;
+}
+
+body.light-mode .modal-hero,
+body.light-mode .modal-stat-card {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ddd;
+}
+
+body.light-mode .holdings-modal-content .close {
+    color: #666;
+}
+
+body.light-mode .holdings-modal-content .close:hover {
+    color: #000;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .holdings-modal-content {
+        padding: 15px;
+    }
+
+    .holdings-modal-inner {
+        padding: 20px;
+    }
+
+    .modal-hero {
+        padding: 30px 20px;
+    }
+
+    .modal-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .modal-stat-card {
+        padding: 15px;
+    }
+
+    .holdings-modal-content .close {
+        top: 15px;
+        right: 20px;
+        font-size: 32px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-hero .modal-change-values {
+        flex-direction: column;
+        gap: 5px;
+    }
 }
 
 /* Align buttons in modals */

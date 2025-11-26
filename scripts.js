@@ -6356,24 +6356,54 @@ function updatePercentageChange(currentTotalHoldings) {
 
 function updateTotalHoldingsModal() {
     const totalHoldings = document.getElementById('total-holdings').textContent;
-    const percentageChange = document.getElementById('percentage-change').outerHTML;
-    const valueChange = document.getElementById('value-change').outerHTML;
-    const recordHigh = document.getElementById('record-high').outerHTML;
-    const recordLow = document.getElementById('record-low').outerHTML;
+    const percentageEl = document.getElementById('percentage-change');
+    const valueChangeEl = document.getElementById('value-change');
+    const recordHighEl = document.getElementById('record-high');
+    const recordLowEl = document.getElementById('record-low');
 
-    const formattedTotalHoldings = `${totalHoldings}`;
+    // Get color classes
+    const percentageClass = percentageEl.classList.contains('positive') ? 'positive' :
+                           percentageEl.classList.contains('negative') ? 'negative' : 'neutral';
+    const valueClass = valueChangeEl.classList.contains('positive') ? 'positive' :
+                      valueChangeEl.classList.contains('negative') ? 'negative' : 'neutral';
+
+    // Get text content
+    const percentageText = percentageEl.textContent.trim();
+    const valueText = valueChangeEl.textContent.trim();
+    const recordHighText = recordHighEl.textContent.trim();
+    const recordLowText = recordLowEl.textContent.trim();
+
+    // Determine triangle direction
+    const triangleClass = percentageClass === 'positive' ? 'triangle-up' :
+                         percentageClass === 'negative' ? 'triangle-down' : '';
 
     const modalMessage = document.getElementById('total-holdings-content');
     modalMessage.innerHTML = `
-        <div class="total-holdings-modal-content">
-            <div class="modal-percentage-change">
-                ${percentageChange} ${valueChange}
+        <div class="holdings-modal-inner">
+            <div class="modal-hero">
+                <div id="modal-total-holdings" class="modal-total-holdings">
+                    ${totalHoldings}
+                </div>
+                <div class="modal-change-section">
+                    <div class="modal-change-label">24h Change</div>
+                    <div class="modal-change-values">
+                        <span class="${percentageClass}">
+                            ${triangleClass ? `<span class="triangle ${triangleClass}"></span>` : ''}
+                            ${percentageText.replace(/[▲▼]/g, '').trim()}
+                        </span>
+                        <span class="${valueClass}">${valueText}</span>
+                    </div>
+                </div>
             </div>
-            <div id="modal-total-holdings" class="modal-total-holdings">
-               ${formattedTotalHoldings}
-            </div>
-            <div class="modal-records">
-                ${recordHigh} &nbsp; | &nbsp; ${recordLow}
+            <div class="modal-stats">
+                <div class="modal-stat-card">
+                    <div class="stat-value positive">${recordHighText.replace(/[▲▼]/g, '').trim()}</div>
+                    <div class="stat-label">Record High</div>
+                </div>
+                <div class="modal-stat-card">
+                    <div class="stat-value negative">${recordLowText.replace(/[▲▼]/g, '').trim()}</div>
+                    <div class="stat-label">Record Low</div>
+                </div>
             </div>
         </div>
     `;
