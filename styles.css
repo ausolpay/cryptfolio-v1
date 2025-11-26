@@ -621,6 +621,15 @@ body.light-mode input[type="number"], body.light-mode .add-crypto input[type="te
     to { background-color: transparent; }
 }
 
+/* Persistent holdings color */
+.holdings-up {
+    color: #00ff00;
+}
+
+.holdings-down {
+    color: #ff0000;
+}
+
 .neutral {
     color: #ffffff;
 }

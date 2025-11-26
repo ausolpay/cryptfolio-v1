@@ -4649,6 +4649,10 @@ function updateTotalHoldings() {
     if (totalHoldings !== previousTotalHoldings) {
         if (totalHoldings > previousTotalHoldings) {
             playSound('good-sound');
+            // Add persistent color
+            const holdingsEl = document.getElementById('total-holdings');
+            holdingsEl.classList.remove('holdings-down');
+            holdingsEl.classList.add('holdings-up');
             flashColor('total-holdings', 'flash-green');
             flashColor('modal-total-holdings', 'flash-green');
             if (isHoldingsVibrateEnabled && "vibrate" in navigator) {
@@ -4656,6 +4660,10 @@ function updateTotalHoldings() {
             }
         } else if (totalHoldings < previousTotalHoldings) {
             playSound('bad-sound');
+            // Add persistent color
+            const holdingsEl = document.getElementById('total-holdings');
+            holdingsEl.classList.remove('holdings-up');
+            holdingsEl.classList.add('holdings-down');
             flashColor('total-holdings', 'flash-red');
             flashColor('modal-total-holdings', 'flash-red');
             if (isHoldingsVibrateEnabled && "vibrate" in navigator) {
