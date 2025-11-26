@@ -15554,6 +15554,12 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         // Refresh data
         await fetchEasyMiningData();
 
+        // Refresh Buy Packages page to show Clear Shares button
+        const buyPackagesPage = document.getElementById('buy-packages-page');
+        if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+            loadBuyPackagesDataOnPage();
+        }
+
     } catch (error) {
         console.error('❌ Error purchasing team package:', error);
         showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
@@ -18094,6 +18100,12 @@ Do you want to continue?
 
         // Refresh package data immediately to show the new order
         await fetchEasyMiningData();
+
+        // Refresh Buy Packages page to show Clear Shares button
+        const buyPackagesPage = document.getElementById('buy-packages-page');
+        if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+            loadBuyPackagesDataOnPage();
+        }
 
         // Stay on Buy Packages page for team purchases (don't navigate away)
         console.log('✅ Team purchase complete - staying on Buy Packages page');
