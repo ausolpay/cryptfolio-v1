@@ -24,7 +24,14 @@
     <!-- Top Navigation Strip -->
     <nav class="top-nav" id="top-nav">
         <div class="nav-content">
-            <!-- Left: Navigation Links -->
+            <!-- Mobile: Hamburger Button -->
+            <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+
+            <!-- Desktop: Navigation Links -->
             <div class="nav-links">
                 <a href="#" class="nav-link">ABOUT</a>
                 <a href="#" class="nav-link" onclick="goToAppPage(); return false;">CRYPTFOLIO WEB APP</a>
@@ -34,8 +41,8 @@
 
             <!-- Right: Profile, Donate, Logo -->
             <div class="nav-right">
-                <!-- Profile Dropdown -->
-                <div class="profile-dropdown">
+                <!-- Profile Dropdown (Desktop) -->
+                <div class="profile-dropdown desktop-only">
                     <button class="profile-btn" onclick="toggleProfileDropdown()">
                         <div class="profile-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
@@ -53,14 +60,33 @@
                     </div>
                 </div>
 
-                <!-- Donate Button -->
-                <a href="#" class="donate-btn">Donate Dev</a>
+                <!-- Donate Button (Desktop) -->
+                <a href="#" class="donate-btn desktop-only">Donate Dev</a>
 
                 <!-- Logo -->
                 <img src="ausolpay-logo.png" alt="Logo" class="nav-logo">
             </div>
         </div>
     </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu" id="mobile-menu">
+        <div class="mobile-menu-content">
+            <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">ABOUT</a>
+            <a href="#" class="mobile-menu-link" onclick="goToAppPage(); closeMobileMenu(); return false;">CRYPTFOLIO WEB APP</a>
+            <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
+            <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">Account Settings</a>
+            <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
+            <a href="#" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="#" class="mobile-menu-link" id="mobile-login-btn" onclick="navLogin(); closeMobileMenu(); return false;" style="display: none;">Login</a>
+            <a href="#" class="mobile-menu-link" id="mobile-logout-btn" onclick="navLogout(); closeMobileMenu(); return false;">Logout</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="#" class="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
+        </div>
+    </div>
 
     <!-- Login Page -->
     <div id="login-page" class="container">

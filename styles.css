@@ -207,6 +207,176 @@ body.light-mode .dropdown-divider {
     width: auto;
 }
 
+/* Hamburger Button - Hidden on Desktop */
+.hamburger-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    padding: 8px;
+    margin: 0;
+    min-width: auto;
+    min-height: auto;
+    cursor: pointer;
+}
+
+.hamburger-line {
+    width: 22px;
+    height: 2px;
+    background-color: #888;
+    transition: all 0.3s ease;
+}
+
+.hamburger-btn:hover .hamburger-line {
+    background-color: #fff;
+}
+
+body.light-mode .hamburger-line {
+    background-color: #666;
+}
+
+body.light-mode .hamburger-btn:hover .hamburger-line {
+    background-color: #000;
+}
+
+/* Hamburger Animation when Open */
+.hamburger-btn.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu {
+    display: none;
+    position: fixed;
+    top: 50px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(18, 18, 18, 0.98);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.mobile-menu.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+body.light-mode .mobile-menu {
+    background-color: rgba(255, 255, 255, 0.98);
+}
+
+.mobile-menu-content {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 5px;
+}
+
+.mobile-menu-link {
+    display: block;
+    padding: 15px 20px;
+    color: #ccc;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.mobile-menu-link:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+body.light-mode .mobile-menu-link {
+    color: #333;
+}
+
+body.light-mode .mobile-menu-link:hover {
+    background-color: #f0f0f0;
+    color: #000;
+}
+
+.mobile-menu-divider {
+    height: 1px;
+    background-color: #333;
+    margin: 10px 0;
+}
+
+body.light-mode .mobile-menu-divider {
+    background-color: #ddd;
+}
+
+.mobile-donate-btn {
+    display: block;
+    padding: 15px 20px;
+    background-color: #ff6b00;
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    text-align: center;
+    transition: background-color 0.2s ease;
+}
+
+.mobile-donate-btn:hover {
+    background-color: #ff8533;
+    color: #fff;
+}
+
+/* Desktop Only Helper */
+.desktop-only {
+    display: flex;
+}
+
+/* Mobile Navigation Styles */
+@media (max-width: 768px) {
+    .hamburger-btn {
+        display: flex;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-menu {
+        display: block;
+    }
+
+    .nav-content {
+        justify-content: space-between;
+    }
+
+    .nav-right {
+        gap: 15px;
+    }
+
+    .nav-logo {
+        height: 25px;
+    }
+}
+
 .container {
     text-align: center;
     margin-top: 90px; /* Add space from the top of the app (40px + 50px nav) */

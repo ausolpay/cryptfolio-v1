@@ -756,18 +756,56 @@ function navLogout() {
 
 // Update nav auth buttons based on login state
 function updateNavAuthState() {
+    // Desktop buttons
     const loginBtn = document.getElementById('nav-login-btn');
     const logoutBtn = document.getElementById('nav-logout-btn');
+    // Mobile buttons
+    const mobileLoginBtn = document.getElementById('mobile-login-btn');
+    const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
 
-    if (loginBtn && logoutBtn) {
-        if (loggedInUser) {
-            loginBtn.style.display = 'none';
-            logoutBtn.style.display = 'block';
+    if (loggedInUser) {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'block';
+        if (mobileLoginBtn) mobileLoginBtn.style.display = 'none';
+        if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'block';
+    } else {
+        if (loginBtn) loginBtn.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+        if (mobileLoginBtn) mobileLoginBtn.style.display = 'block';
+        if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'none';
+    }
+}
+
+// Toggle mobile menu
+function toggleMobileMenu() {
+    const mobileMenu = document.getElementById('mobile-menu');
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+
+    if (mobileMenu && hamburgerBtn) {
+        mobileMenu.classList.toggle('show');
+        hamburgerBtn.classList.toggle('active');
+
+        // Prevent body scroll when menu is open
+        if (mobileMenu.classList.contains('show')) {
+            document.body.style.overflow = 'hidden';
         } else {
-            loginBtn.style.display = 'block';
-            logoutBtn.style.display = 'none';
+            document.body.style.overflow = '';
         }
     }
+}
+
+// Close mobile menu
+function closeMobileMenu() {
+    const mobileMenu = document.getElementById('mobile-menu');
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+
+    if (mobileMenu) {
+        mobileMenu.classList.remove('show');
+    }
+    if (hamburgerBtn) {
+        hamburgerBtn.classList.remove('active');
+    }
+    document.body.style.overflow = '';
 }
 
 // Close dropdown when clicking outside
