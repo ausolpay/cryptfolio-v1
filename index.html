@@ -1987,6 +1987,43 @@
                 </div>
             </div>
 
+            <!-- User Information Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">User Information</h3>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Email Address</span>
+                            <span class="settings-row-desc">Your account email (cannot be changed)</span>
+                        </div>
+                        <div style="min-width: 200px;">
+                            <input type="email" id="account-email" class="settings-input" readonly disabled style="background-color: #333; color: #888; cursor: not-allowed; margin-top: 0;">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">First Name</span>
+                            <span class="settings-row-desc">Your first name</span>
+                        </div>
+                        <div style="min-width: 200px;">
+                            <input type="text" id="account-first-name" class="settings-input" placeholder="Enter first name" style="margin-top: 0;">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Last Name</span>
+                            <span class="settings-row-desc">Your last name</span>
+                        </div>
+                        <div style="min-width: 200px;">
+                            <input type="text" id="account-last-name" class="settings-input" placeholder="Enter last name" style="margin-top: 0;">
+                        </div>
+                    </div>
+                    <div class="settings-row" style="justify-content: flex-end; border-bottom: none;">
+                        <button class="settings-action-btn" onclick="saveUserInfo()" style="background-color: #4CAF50;">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Security Section -->
             <div class="settings-section">
                 <h3 class="settings-section-title">Security</h3>

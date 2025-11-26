@@ -6952,6 +6952,45 @@ function loadAccountSettings() {
     const user = users[loggedInUser];
     const icon = user?.profileIcon || '👤';
     document.getElementById('current-profile-icon').textContent = icon;
+
+    // Load user information
+    const emailInput = document.getElementById('account-email');
+    const firstNameInput = document.getElementById('account-first-name');
+    const lastNameInput = document.getElementById('account-last-name');
+
+    if (emailInput) {
+        emailInput.value = user?.email || loggedInUser || '';
+    }
+    if (firstNameInput) {
+        firstNameInput.value = user?.firstName || '';
+    }
+    if (lastNameInput) {
+        lastNameInput.value = user?.lastName || '';
+    }
+}
+
+// Save user information (first name, last name)
+function saveUserInfo() {
+    const firstNameInput = document.getElementById('account-first-name');
+    const lastNameInput = document.getElementById('account-last-name');
+
+    const firstName = firstNameInput?.value.trim() || '';
+    const lastName = lastNameInput?.value.trim() || '';
+
+    // Update user object
+    if (users[loggedInUser]) {
+        users[loggedInUser].firstName = firstName;
+        users[loggedInUser].lastName = lastName;
+
+        // Save to localStorage
+        localStorage.setItem('users', JSON.stringify(users));
+
+        // Show success message
+        alert('User information saved successfully!');
+        console.log(`✅ Saved user info for ${loggedInUser}: ${firstName} ${lastName}`);
+    } else {
+        alert('Error: User not found');
+    }
 }
 
 // Profile icon picker
