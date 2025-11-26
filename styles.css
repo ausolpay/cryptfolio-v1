@@ -3394,6 +3394,26 @@ body.light-mode .easymining-header:hover {
     background-color: rgba(255, 255, 255, 0.9);
 }
 
+/* Non-collapsible strip heading (same style as easymining-header but static) */
+.easymining-subheader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    background-color: rgba(50, 50, 50, 0.5);
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+}
+
+body.light-mode .easymining-subheader {
+    background-color: rgba(255, 255, 255, 0.7);
+    color: #333;
+}
+
 .easymining-header .arrow {
     display: inline-block;
     transition: transform 0.3s ease;
