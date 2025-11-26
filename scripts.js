@@ -13491,7 +13491,7 @@ function displayActivePackages() {
             ${pkg.active && pkg.isTeam && pkg.hashrate ? `
             <div class="package-card-stat">
                 <span>Hash Rate:</span>
-                <span style="color: #00ccff;">${pkg.hashrate}</span>
+                <span style="color: #00ccff;"><span class="live-indicator"></span>${pkg.hashrate}</span>
             </div>
             ` : ''}
             <div class="package-card-stat">

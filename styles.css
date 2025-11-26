@@ -4031,6 +4031,29 @@ body.light-mode .package-progress-bar {
     transition: width 0.5s ease;
 }
 
+/* Live indicator for hash rate (pulsing dot) */
+.live-indicator {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background-color: #00ff00;
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: live-pulse 1.5s ease-in-out infinite;
+    vertical-align: middle;
+}
+
+@keyframes live-pulse {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 4px #00ff00;
+    }
+    50% {
+        opacity: 0.4;
+        box-shadow: 0 0 8px #00ff00;
+    }
+}
+
 /* Clear Shares button for active team packages */
 .clear-shares-btn {
     width: 100%;
