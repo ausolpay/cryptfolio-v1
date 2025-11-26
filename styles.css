@@ -30,8 +30,8 @@ body.light-mode {
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    padding: 15px 20px;
-    margin: 0 auto 15px auto;
+    padding: 5px 20px;
+    margin: 0 auto 5px auto;
     width: 1390px;
     max-width: 1390px;
     box-sizing: border-box;
@@ -42,7 +42,7 @@ body.light-mode {
     display: flex;
     align-items: center;
     gap: 15px;
-    margin-top: 10px;
+    margin-top: 0;
 }
 
 /* Logo - larger size */
