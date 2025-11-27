@@ -14162,7 +14162,7 @@ function displayActivePackages() {
                 <span>Time:</span>
                 <span>${pkg.timeRemaining}</span>
             </div>
-            ${pkg.active && pkg.isTeam && pkg.hashrate ? `
+            ${pkg.active && pkg.hashrate ? `
             <div class="package-card-stat">
                 <span>Hashrate:</span>
                 <span style="color: #00ccff;">${pkg.hashrate}</span>
@@ -14174,7 +14174,7 @@ function displayActivePackages() {
                 <span style="color: #888;">${packageInitialValues[pkg.id].hashrate}</span>
             </div>
             ` : ''}
-            ${pkg.active && pkg.isTeam && pkg.rigsCount !== undefined ? `
+            ${pkg.active && pkg.rigsCount !== undefined ? `
             <div class="package-card-stat">
                 <span>Rigs:</span>
                 <span style="color: #ff9800;">${pkg.rigsCount}</span>
