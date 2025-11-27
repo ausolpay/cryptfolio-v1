@@ -17938,6 +17938,9 @@ function updateMiningProgressChart(pkg) {
                     height = 120;
                     rewardBarsShown++;
                     bar.dataset.percentage = rewardPercent.toFixed(0);
+
+                    // Add percentage circle with rocket above (appended after bar creation)
+                    bar._rewardPercent = rewardPercent;
                 } else if (isFutureSlot) {
                     // Future slot - show as empty/placeholder
                     barClass += ' future-slot';
@@ -17976,8 +17979,15 @@ function updateMiningProgressChart(pkg) {
 
                 bar.className = barClass;
                 bar.style.height = `${height}px`;
-                bar.style.animationDelay = `${Math.min(i, 50) * 5}ms`; // Cap animation delay
                 barsContainer.appendChild(bar);
+
+                // Add percentage circle for reward-found bars (rocket above, circle with %)
+                if (bar._rewardPercent) {
+                    const circle = document.createElement('div');
+                    circle.className = 'bar-percentage-circle reward-circle';
+                    circle.textContent = `${bar._rewardPercent.toFixed(0)}%`;
+                    bar.appendChild(circle);
+                }
             }
 
             // Highlight closest-to-reward bar (highest percentage 60%+)

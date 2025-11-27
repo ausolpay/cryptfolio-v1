@@ -4954,17 +4954,6 @@ body.light-mode .live-metric-range {
     transition: height 0.3s ease, background-color 0.3s ease;
     position: relative;
     z-index: 1;
-    animation: barGrow 0.5s ease forwards;
-}
-
-@keyframes barGrow {
-    from {
-        height: 0 !important;
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
 }
 
 /* Current poll interval - highlighted yellow/orange with pulse */
@@ -4992,32 +4981,42 @@ body.light-mode .live-metric-range {
     min-width: 6px;
 }
 
+/* Rocket icon positioned above the percentage circle */
 .mining-bar.reward-found::before {
     content: '🚀';
     position: absolute;
-    top: -25px;
+    top: -52px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 16px;
+    font-size: 18px;
+    z-index: 12;
     animation: rocketBounce 1s ease-in-out infinite;
-}
-
-.mining-bar.reward-found::after {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 20px;
-    height: 20px;
-    background-color: #4CAF50;
-    border-radius: 50%;
-    z-index: 4;
 }
 
 @keyframes rocketBounce {
     0%, 100% { transform: translateX(-50%) translateY(0); }
     50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+/* Percentage circle on reward-found bars */
+.bar-percentage-circle.reward-circle {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #4CAF50;
+    color: #fff;
+    font-size: 9px;
+    font-weight: bold;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    z-index: 11;
 }
 
 /* Newly elapsed bar animation - grows from small to full height */
