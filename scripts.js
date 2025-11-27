@@ -18413,9 +18413,9 @@ function updateMiningProgressChart(pkg) {
                     height = (basePercent / 100) * maxBarHeight; // Scale for mobile
                     bar.dataset.percentage = basePercent.toFixed(0);
 
-                    // Track highest percentage bar (60%+ threshold)
+                    // Track highest percentage bar (10%+ threshold)
                     // ONLY update if this bar's percentage is STRICTLY HIGHER than stored
-                    if (basePercent >= 60 && basePercent > storedHighest.percentage) {
+                    if (basePercent >= 10 && basePercent > storedHighest.percentage) {
                         highestBar = { index: i, percentage: basePercent, element: bar };
                     }
                     // If this is the stored highest bar, keep the element reference
@@ -18449,7 +18449,7 @@ function updateMiningProgressChart(pkg) {
             }
 
             // Add line + circle to the highest non-reward bar (closest to reward)
-            if (highestBar.percentage >= 60 && highestBar.element) {
+            if (highestBar.percentage >= 10 && highestBar.element) {
                 // Mark as closest-to-reward
                 highestBar.element.classList.add('closest-to-reward');
 
@@ -18466,7 +18466,7 @@ function updateMiningProgressChart(pkg) {
 
                 chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
                 updateProgressBarDisplay(highestBar.percentage);
-            } else if (storedHighest.percentage >= 60 && storedHighest.index >= 0) {
+            } else if (storedHighest.percentage >= 10 && storedHighest.index >= 0) {
                 // Use stored highest - find the bar element
                 const storedBar = document.getElementById(`mining-bar-${pkgId}-${storedHighest.index}`);
                 if (storedBar && !storedBar.classList.contains('reward-found')) {
