@@ -18471,41 +18471,47 @@ function updateMiningProgressChart(pkg) {
                 bar.style.height = `${height}px`;
                 barsContainer.appendChild(bar);
 
-                // Add line + percentage circle for reward-found bars (with rocket above)
+                // Add line + circle with rocket for reward-found bars
                 if (bar._rewardPercent) {
-                    // Add vertical line
+                    // Add vertical line (green for rewards)
                     const line = document.createElement('div');
                     line.className = 'bar-reward-line';
                     bar.appendChild(line);
 
-                    // Add percentage circle
+                    // Add circle with rocket emoji instead of percentage
                     const circle = document.createElement('div');
                     circle.className = 'bar-percentage-circle reward-circle';
-                    circle.textContent = `${bar._rewardPercent.toFixed(0)}%`;
+                    circle.textContent = '🚀';
+                    circle.title = `Block found at ${bar._rewardPercent.toFixed(0)}% progress`;
                     bar.appendChild(circle);
                 }
             }
 
             // Add line + circle to the highest non-reward bar (closest to reward)
-            if (highestBar.percentage >= 10 && highestBar.element) {
-                // Mark as closest-to-reward
+            // Only show this progress indicator if NO rewards have been found yet
+            // Once a reward is found, the rocket indicators on reward bars take over
+            const hasRewards = rewardBarsShown > 0 || (chartData.rewardSlots && chartData.rewardSlots.length > 0);
+
+            if (!hasRewards && highestBar.percentage >= 10 && highestBar.element) {
+                // Mark as closest-to-reward (only when no rewards found)
                 highestBar.element.classList.add('closest-to-reward');
 
-                // Add vertical line
+                // Add vertical line (cyan for progress)
                 const progressLine = document.createElement('div');
                 progressLine.className = 'bar-progress-line';
                 highestBar.element.appendChild(progressLine);
 
-                // Add percentage circle
+                // Add percentage circle showing progress toward block
                 const progressCircle = document.createElement('div');
                 progressCircle.className = 'bar-percentage-circle progress-circle';
                 progressCircle.textContent = `${highestBar.percentage.toFixed(0)}%`;
+                progressCircle.title = 'Progress toward finding a block';
                 highestBar.element.appendChild(progressCircle);
 
                 chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
                 updateProgressBarDisplay(highestBar.percentage);
-            } else if (storedHighest.percentage >= 10 && storedHighest.index >= 0) {
-                // Use stored highest - find the bar element
+            } else if (!hasRewards && storedHighest.percentage >= 10 && storedHighest.index >= 0) {
+                // Use stored highest - find the bar element (only when no rewards found)
                 const storedBar = document.getElementById(`mining-bar-${pkgId}-${storedHighest.index}`);
                 if (storedBar && !storedBar.classList.contains('reward-found')) {
                     storedBar.classList.add('closest-to-reward');
@@ -18519,11 +18525,15 @@ function updateMiningProgressChart(pkg) {
                     const progressCircle = document.createElement('div');
                     progressCircle.className = 'bar-percentage-circle progress-circle';
                     progressCircle.textContent = `${storedHighest.percentage.toFixed(0)}%`;
+                    progressCircle.title = 'Progress toward finding a block';
                     storedBar.appendChild(progressCircle);
                 }
                 updateProgressBarDisplay(storedHighest.percentage);
+            } else if (hasRewards) {
+                // Rewards found - update progress bar to show 100%+ (success!)
+                updateProgressBarDisplay(100);
             } else {
-                // Use time progress for the progress bar
+                // No rewards and no high bar - use time progress for the progress bar
                 updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
             }
 
