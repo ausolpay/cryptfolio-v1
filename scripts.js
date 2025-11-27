@@ -22468,6 +22468,305 @@ function formatHashrateFromTH(thValue) {
     }
 }
 
+// =============================================================================
+// DYNAMIC HASHRATE UNIT SYSTEM
+// Handles proper unit display for different algorithms and currencies
+// =============================================================================
+
+// Cache for algorithm data from NiceHash API
+let algorithmDataCache = null;
+let algorithmDataCacheTime = 0;
+const ALGORITHM_CACHE_TTL = 300000; // 5 minutes
+
+/**
+ * Algorithm to displayMarketFactor mapping (fallback when API unavailable)
+ * Based on NiceHash /main/api/v2/mining/algorithms response
+ * Format: algorithm -> { displayMarketFactor, marketFactor, displayMiningFactor, miningFactor }
+ */
+const ALGORITHM_UNIT_MAP = {
+    // SHA256 family (BTC, BCH)
+    'SHA256': { displayMarketFactor: 'PH', marketFactor: 1e15, displayMiningFactor: 'TH', miningFactor: 1e12 },
+    'SHA256ASICBOOST': { displayMarketFactor: 'PH', marketFactor: 1e15, displayMiningFactor: 'TH', miningFactor: 1e12 },
+
+    // Scrypt family (LTC, DOGE)
+    'SCRYPT': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+
+    // KAWPOW (RVN)
+    'KAWPOW': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+
+    // kHeavyHash (KAS)
+    'KHEAVYHASH': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+
+    // Ethash variants
+    'DAGGERHASHIMOTO': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+    'ETCHASH': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+
+    // Equihash variants
+    'EQUIHASH': { displayMarketFactor: 'MSol', marketFactor: 1e6, displayMiningFactor: 'kSol', miningFactor: 1e3 },
+    'ZHASH': { displayMarketFactor: 'MSol', marketFactor: 1e6, displayMiningFactor: 'kSol', miningFactor: 1e3 },
+
+    // Others
+    'BLAKE2S': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+    'X16R': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+    'LYRA2REV3': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+    'OCTOPUS': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 },
+    'AUTOLYKOS': { displayMarketFactor: 'TH', marketFactor: 1e12, displayMiningFactor: 'GH', miningFactor: 1e9 }
+};
+
+/**
+ * Currency to algorithm mapping (for EasyMining packages)
+ */
+const CURRENCY_TO_ALGORITHM = {
+    'BTC': 'SHA256',
+    'BCH': 'SHA256',
+    'LTC': 'SCRYPT',
+    'DOGE': 'SCRYPT',
+    'RVN': 'KAWPOW',
+    'KAS': 'KHEAVYHASH',
+    'ETH': 'DAGGERHASHIMOTO',
+    'ETC': 'ETCHASH',
+    'ZEC': 'EQUIHASH',
+    'ERGO': 'AUTOLYKOS'
+};
+
+/**
+ * Fetch algorithm data from NiceHash API (caches result)
+ * Endpoint: /main/api/v2/mining/algorithms
+ */
+async function fetchAlgorithmData() {
+    const now = Date.now();
+
+    // Return cached data if still valid
+    if (algorithmDataCache && (now - algorithmDataCacheTime) < ALGORITHM_CACHE_TTL) {
+        return algorithmDataCache;
+    }
+
+    try {
+        const endpoint = '/main/api/v2/mining/algorithms';
+        let response;
+
+        if (typeof USE_VERCEL_PROXY !== 'undefined' && USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'GET',
+                    headers: {},
+                    isPublic: true
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`);
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+
+        if (data.miningAlgorithms && Array.isArray(data.miningAlgorithms)) {
+            // Build lookup map
+            algorithmDataCache = {};
+            data.miningAlgorithms.forEach(algo => {
+                algorithmDataCache[algo.algorithm] = {
+                    displayMarketFactor: algo.displayMarketFactor,
+                    marketFactor: parseFloat(algo.marketFactor) || 1e12,
+                    displayMiningFactor: algo.displayMiningFactor,
+                    miningFactor: parseFloat(algo.miningFactor) || 1e9
+                };
+            });
+            algorithmDataCacheTime = now;
+            console.log(`✅ Fetched algorithm data for ${Object.keys(algorithmDataCache).length} algorithms`);
+            return algorithmDataCache;
+        }
+    } catch (error) {
+        console.warn('⚠️ Failed to fetch algorithm data, using fallback map:', error.message);
+    }
+
+    return null;
+}
+
+/**
+ * Get the display unit for an algorithm
+ * @param {string} algorithm - Algorithm name (e.g., 'SHA256', 'SCRYPT')
+ * @param {string} type - 'market' for orders/packages, 'mining' for hashrate display
+ * @returns {Object} { unit: 'TH', factor: 1e12 }
+ */
+function getAlgorithmUnit(algorithm, type = 'market') {
+    const algoUpper = (algorithm || '').toUpperCase();
+
+    // Try cached API data first
+    if (algorithmDataCache && algorithmDataCache[algoUpper]) {
+        const data = algorithmDataCache[algoUpper];
+        return type === 'market'
+            ? { unit: data.displayMarketFactor || 'TH', factor: data.marketFactor || 1e12 }
+            : { unit: data.displayMiningFactor || 'GH', factor: data.miningFactor || 1e9 };
+    }
+
+    // Fallback to static map
+    if (ALGORITHM_UNIT_MAP[algoUpper]) {
+        const data = ALGORITHM_UNIT_MAP[algoUpper];
+        return type === 'market'
+            ? { unit: data.displayMarketFactor, factor: data.marketFactor }
+            : { unit: data.displayMiningFactor, factor: data.miningFactor };
+    }
+
+    // Default fallback
+    return type === 'market'
+        ? { unit: 'TH', factor: 1e12 }
+        : { unit: 'GH', factor: 1e9 };
+}
+
+/**
+ * Get display unit from currency (uses currency -> algorithm mapping)
+ * @param {string} currency - Currency code (e.g., 'BTC', 'LTC', 'KAS')
+ * @param {string} type - 'market' or 'mining'
+ * @returns {Object} { unit: 'TH', factor: 1e12 }
+ */
+function getUnitForCurrency(currency, type = 'market') {
+    const currUpper = (currency || '').toUpperCase();
+    const algorithm = CURRENCY_TO_ALGORITHM[currUpper] || 'SHA256';
+    return getAlgorithmUnit(algorithm, type);
+}
+
+/**
+ * Format a raw hashrate value with the correct unit for display
+ * Auto-detects the best unit based on value magnitude and algorithm
+ *
+ * @param {number} value - Raw hashrate value (in the base unit from API)
+ * @param {Object} options - Formatting options
+ * @param {string} options.algorithm - Algorithm name (e.g., 'SCRYPT')
+ * @param {string} options.currency - Currency code (e.g., 'LTC') - used if algorithm not provided
+ * @param {string} options.providedUnit - Unit provided by API (e.g., 'TH') - takes precedence
+ * @param {number} options.decimals - Decimal places (default: 4)
+ * @param {boolean} options.autoScale - Auto-scale to appropriate unit (default: true)
+ * @returns {string} Formatted hashrate (e.g., "1.2345 TH/s")
+ */
+function formatHashrate(value, options = {}) {
+    const {
+        algorithm = null,
+        currency = null,
+        providedUnit = null,
+        decimals = 4,
+        autoScale = true
+    } = options;
+
+    // If value is already a string with unit, just return it
+    if (typeof value === 'string' && /[a-zA-Z]/.test(value)) {
+        return value.includes('/s') ? value : `${value}/s`;
+    }
+
+    const numValue = parseFloat(value) || 0;
+
+    // If unit is provided by API, use it directly
+    if (providedUnit) {
+        return `${numValue.toFixed(decimals)} ${providedUnit}/s`;
+    }
+
+    // Get expected unit from algorithm or currency
+    let baseUnit;
+    if (algorithm) {
+        baseUnit = getAlgorithmUnit(algorithm, 'market');
+    } else if (currency) {
+        baseUnit = getUnitForCurrency(currency, 'market');
+    } else {
+        baseUnit = { unit: 'TH', factor: 1e12 };
+    }
+
+    // If auto-scaling is disabled, use the base unit
+    if (!autoScale) {
+        return `${numValue.toFixed(decimals)} ${baseUnit.unit}/s`;
+    }
+
+    // Auto-scale based on value magnitude (assuming value is in the base unit)
+    // Unit hierarchy: H -> KH -> MH -> GH -> TH -> PH -> EH
+    const units = [
+        { unit: 'EH', threshold: 1000000 },
+        { unit: 'PH', threshold: 1000 },
+        { unit: 'TH', threshold: 1 },
+        { unit: 'GH', threshold: 0.001 },
+        { unit: 'MH', threshold: 0.000001 },
+        { unit: 'KH', threshold: 0.000000001 },
+        { unit: 'H', threshold: 0 }
+    ];
+
+    // Find appropriate unit
+    for (const u of units) {
+        if (numValue >= u.threshold) {
+            const scaledValue = numValue / u.threshold;
+            const decPlaces = u.threshold >= 1 ? decimals : 2;
+            return `${scaledValue.toFixed(decPlaces)} ${u.unit}/s`;
+        }
+    }
+
+    return `${numValue.toFixed(decimals)} ${baseUnit.unit}/s`;
+}
+
+/**
+ * Get display market factor for a package (combines multiple sources)
+ * Priority: pkg.displayMarketFactor > algorithm lookup > currency lookup > 'TH'
+ *
+ * @param {Object} pkg - Package object
+ * @returns {string} Display unit (e.g., 'TH', 'PH', 'GH')
+ */
+function getPackageDisplayUnit(pkg) {
+    // Check if package already has displayMarketFactor
+    if (pkg.displayMarketFactor) {
+        return pkg.displayMarketFactor;
+    }
+
+    // Check currencyAlgo for displayMarketFactor
+    if (pkg.currencyAlgo?.displayMarketFactor) {
+        return pkg.currencyAlgo.displayMarketFactor;
+    }
+
+    // Check currencyAlgoTicket (for buy packages)
+    if (pkg.currencyAlgoTicket?.displayMarketFactor) {
+        return pkg.currencyAlgoTicket.displayMarketFactor;
+    }
+
+    // Try to determine from algorithm
+    const algorithm = pkg.algorithm || pkg.currencyAlgo?.algorithm || pkg.currencyAlgoTicket?.currencyAlgo?.algorithm;
+    if (algorithm) {
+        return getAlgorithmUnit(algorithm, 'market').unit;
+    }
+
+    // Try to determine from currency
+    const currency = pkg.currency || pkg.currencyAlgo?.currency || pkg.currencyAlgoTicket?.currencyAlgo?.currency;
+    if (currency) {
+        return getUnitForCurrency(currency, 'market').unit;
+    }
+
+    // Default fallback
+    return 'TH';
+}
+
+/**
+ * Format package speed/hashrate with proper unit
+ * Works for both active packages and buy packages
+ *
+ * @param {Object} pkg - Package object
+ * @param {string} speedField - Field to use ('projectedSpeed', 'acceptedCurrentSpeed', 'speedLimit')
+ * @returns {string} Formatted speed (e.g., "1.2345 TH/s")
+ */
+function formatPackageSpeed(pkg, speedField = 'projectedSpeed') {
+    const speed = parseFloat(pkg[speedField]) || 0;
+    const unit = getPackageDisplayUnit(pkg);
+
+    // Determine decimal places based on unit
+    const decimals = (unit === 'EH' || unit === 'PH') ? 2 : 4;
+
+    return `${speed.toFixed(decimals)} ${unit}/s`;
+}
+
+// Initialize algorithm data on load (non-blocking)
+(function initAlgorithmData() {
+    // Delay to avoid blocking initial page load
+    setTimeout(() => {
+        fetchAlgorithmData().catch(err => console.warn('Algorithm data fetch failed:', err));
+    }, 2000);
+})();
+
 // Capture OAS (On Active Snapshot) values with timed captures:
 // - Rigs (OAS): Captured at 10 minute mark
 // - HR (OAS): Average of hashrate samples from 15-20 minute window
