@@ -17245,30 +17245,38 @@ function updateMiningProgressChart(pkg) {
 
     console.log(`   - hashrateRatio: ${hashrateRatio.toFixed(2)}, normalizedDifficulty: ${normalizedDifficulty.toFixed(1)}%`);
 
-    // Calculate close to reward percentage based on hashrate movement
-    // Higher hashrate = closer to reward
-    let closeToRewardPercent = Math.min(99, timeProgress * hashrateRatio);
-    if (pkg.blockFound) {
-        closeToRewardPercent = 100;
-    }
-
-    // Update close to reward progress bar
+    // Get elements for progress bar (will update after bar calculations)
     const fillElement = document.getElementById('close-to-reward-fill');
     const percentElement = document.getElementById('close-to-reward-percentage');
     const iconElement = document.getElementById('close-to-reward-icon');
 
-    if (fillElement && percentElement && iconElement) {
-        fillElement.style.width = `${Math.min(closeToRewardPercent, 100)}%`;
-        percentElement.textContent = `${closeToRewardPercent.toFixed(0)}%`;
+    // Helper function to update progress bar with highest bar percentage
+    function updateProgressBarDisplay(highestPercent) {
+        if (!fillElement || !percentElement || !iconElement) return;
+
+        let displayPercent = pkg.blockFound ? 100 : highestPercent;
+
+        fillElement.style.width = `${Math.min(displayPercent, 100)}%`;
+        percentElement.textContent = `${displayPercent.toFixed(0)}%`;
+
+        // Dynamically position the percentage box along the bar
+        // Clamp between 10% and 95% to keep it visible within the bar
+        const positionPercent = Math.max(10, Math.min(95, displayPercent));
+        percentElement.style.left = `${positionPercent}%`;
 
         if (pkg.blockFound) {
             iconElement.classList.add('found');
             iconElement.style.backgroundColor = '#FFD700';
+            // At 100%, slide to the end (near the Bitcoin icon)
+            percentElement.style.left = '95%';
         } else {
             iconElement.classList.remove('found');
             iconElement.style.backgroundColor = '#4CAF50';
         }
     }
+
+    // Use stored highest bar percentage as initial display (will update after bar calc)
+    let closeToRewardPercent = chartData.highestBar?.percentage || Math.min(99, timeProgress * hashrateRatio);
 
     // Update countdown timer
     const countdownElement = document.getElementById('mining-countdown');
@@ -17417,6 +17425,12 @@ function updateMiningProgressChart(pkg) {
             circle.className = 'bar-percentage-circle';
             circle.textContent = `${highestBar.percentage.toFixed(0)}%`;
             highestBar.element.appendChild(circle);
+
+            // Update progress bar to show highest bar's percentage (smooth slide animation)
+            updateProgressBarDisplay(highestBar.percentage);
+        } else {
+            // If no bar above 60%, use time progress
+            updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
         }
 
         // Store chart data for completed packages
@@ -17574,21 +17588,30 @@ function updateMiningChartLive(pkg) {
         blocksEl.style.color = pkg.blockFound ? '#00ff00' : '#888';
     }
 
-    // Update progress bar with hashrate influence
-    let closeToRewardPercent = Math.min(99, timeProgress * hashrateRatio);
-    if (pkg.blockFound) closeToRewardPercent = 100;
-
+    // Get elements for progress bar (will update after bar calculations)
     const fillElement = document.getElementById('close-to-reward-fill');
     const percentElement = document.getElementById('close-to-reward-percentage');
     const iconElement = document.getElementById('close-to-reward-icon');
 
-    if (fillElement && percentElement) {
-        fillElement.style.width = `${Math.min(closeToRewardPercent, 100)}%`;
-        percentElement.textContent = `${closeToRewardPercent.toFixed(0)}%`;
+    // Helper function to update progress bar with sliding animation
+    function updateProgressBarDisplay(highestPercent) {
+        if (!fillElement || !percentElement) return;
+
+        let displayPercent = pkg.blockFound ? 100 : highestPercent;
+
+        fillElement.style.width = `${Math.min(displayPercent, 100)}%`;
+        percentElement.textContent = `${displayPercent.toFixed(0)}%`;
+
+        // Dynamically position the percentage box along the bar
+        // Clamp between 10% and 95% to keep it visible within the bar
+        const positionPercent = Math.max(10, Math.min(95, displayPercent));
+        percentElement.style.left = `${positionPercent}%`;
 
         if (iconElement && pkg.blockFound) {
             iconElement.classList.add('found');
             iconElement.style.backgroundColor = '#FFD700';
+            // At 100%, slide to the end (near the Bitcoin icon)
+            percentElement.style.left = '95%';
         }
     }
 
@@ -17680,6 +17703,13 @@ function updateMiningChartLive(pkg) {
         highestBar.element.appendChild(circle);
 
         chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
+
+        // Update progress bar to show highest bar's percentage (smooth slide animation)
+        updateProgressBarDisplay(highestBar.percentage);
+    } else {
+        // If no bar above 60%, use time progress or stored highest bar
+        const fallbackPercent = chartData.highestBar?.percentage || Math.min(99, timeProgress * hashrateRatio);
+        updateProgressBarDisplay(fallbackPercent);
     }
 
     // Update probability line
