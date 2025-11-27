@@ -18278,7 +18278,14 @@ function updateMiningProgressChart(pkg) {
             // =============================================================================
 
             const INTERVAL_SECONDS = 30; // Each bar represents 30 seconds
-            const containerWidth = barsContainer.offsetWidth || 600; // Fallback width
+
+            // Get container width with better fallback for mobile
+            let containerWidth = barsContainer.offsetWidth;
+            if (!containerWidth || containerWidth < 100) {
+                // Fallback: use viewport width minus padding for mobile
+                const isMobile = window.innerWidth <= 768;
+                containerWidth = isMobile ? Math.max(280, window.innerWidth - 60) : 600;
+            }
 
             // Calculate total expected bars for the entire remaining duration
             const remainingSeconds = remainingMs / 1000;
@@ -18293,15 +18300,22 @@ function updateMiningProgressChart(pkg) {
             const totalBarsForDuration = Math.ceil(totalDurationSeconds / INTERVAL_SECONDS);
 
             // Calculate dynamic bar width to fit all bars
-            // Account for gap (1px) between bars
+            // Account for gap (1px) between bars - use larger min on mobile for visibility
             const gapWidth = 1;
-            const minBarWidth = 1;
-            const maxBarWidth = 8;
+            const isMobileView = window.innerWidth <= 768;
+            const isSmallMobile = window.innerWidth <= 480;
+            const minBarWidth = isMobileView ? 2 : 1;
+            const maxBarWidth = isMobileView ? 6 : 8;
             let barWidth = Math.max(minBarWidth, Math.min(maxBarWidth,
                 (containerWidth - (totalBarsForDuration * gapWidth)) / totalBarsForDuration));
 
-            console.log(`📊 [BAR CHART] Duration: ${totalDurationSeconds}s, Bars: ${totalBarsForDuration}, Width: ${barWidth.toFixed(1)}px`);
-            console.log(`   - Elapsed: ${elapsedBars} bars, Remaining: ${totalExpectedBars} bars`);
+            // Scale bar heights for mobile
+            const heightScale = isSmallMobile ? 0.6 : (isMobileView ? 0.75 : 1);
+            const maxBarHeight = 200 * heightScale;
+            const rewardBarHeight = 240 * heightScale;
+
+            console.log(`📊 [BAR CHART] Duration: ${totalDurationSeconds}s, Bars: ${totalBarsForDuration}, Width: ${barWidth.toFixed(1)}px, Mobile: ${isMobileView}`);
+            console.log(`   - Elapsed: ${elapsedBars} bars, Remaining: ${totalExpectedBars} bars, Container: ${containerWidth}px`);
 
             // Track highest percentage bar (for closest-to-reward highlight)
             // PERSIST: Only update if NEW bar has HIGHER percentage than stored value
@@ -18363,7 +18377,7 @@ function updateMiningProgressChart(pkg) {
                     chartData[`rewardPercent_${i}`] = rewardPercent; // Persist the percentage
 
                     barClass += ' reward-found';
-                    height = 240; // Doubled for taller chart
+                    height = rewardBarHeight; // Scaled for mobile
                     rewardBarsShown++;
                     bar.dataset.percentage = rewardPercent.toFixed(0);
 
@@ -18384,7 +18398,7 @@ function updateMiningProgressChart(pkg) {
                         basePercent = Math.min(95, Math.max(10, hashrateRatio * 80));
                     }
                     barClass += ' current-mining';
-                    height = (basePercent / 100) * 200; // Scale to 200px for doubled chart height
+                    height = (basePercent / 100) * maxBarHeight; // Scale for mobile
                     bar.dataset.percentage = basePercent.toFixed(0);
                 } else if (slotDataPoints.length > 0) {
                     // Past slot with data - render based on collected data
@@ -18396,7 +18410,7 @@ function updateMiningProgressChart(pkg) {
                     }
                     basePercent = chartData[`barPercent_${i}`];
 
-                    height = (basePercent / 100) * 200; // Scale to 200px for doubled chart height
+                    height = (basePercent / 100) * maxBarHeight; // Scale for mobile
                     bar.dataset.percentage = basePercent.toFixed(0);
 
                     // Track highest percentage bar (60%+ threshold)
@@ -18534,10 +18548,6 @@ function updateMiningProgressChart(pkg) {
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Blocks</div>
                 <div class="mining-stat-value" id="stat-blocks-${pkgId}" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${actualBlocks}</div>
-            </div>
-            <div class="mining-stat-item">
-                <div class="mining-stat-label">Expected</div>
-                <div class="mining-stat-value" id="stat-expected-${pkgId}" style="color: #888;">${miningMetrics.expectedBlocks.toFixed(3)} blocks</div>
             </div>
         `;
     }
