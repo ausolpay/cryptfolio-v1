@@ -264,6 +264,8 @@ let intentionalClose = false;
 
 // Polling intervals (store IDs for proper cleanup)
 let mexcPricePollingInterval = null;
+let mexcBTCPriceInterval = null;
+let liveBTCPriceUSD = 0; // Live BTC price from MEXC for mining charts
 let autoResetInterval = null;
 let conversionRateInterval = null;
 
@@ -1172,6 +1174,8 @@ function showAppPage() {
     // Stop package detail live timer and polling when leaving the page
     stopPackageDetailTimer();
     stopPackageDetailPolling();
+    // Stop BTC price polling for mining charts
+    stopMEXCBTCPricePolling();
 
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
@@ -8188,6 +8192,40 @@ function stopMEXCPricePolling() {
         clearInterval(mexcPricePollingInterval);
         mexcPricePollingInterval = null;
         console.log('⏹️ MEXC polling stopped');
+    }
+}
+
+// Dedicated BTC price fetcher for mining charts (runs independently)
+function startMEXCBTCPricePolling() {
+    if (mexcBTCPriceInterval) return; // Already running
+
+    const fetchBTCPrice = async () => {
+        try {
+            const url = USE_VERCEL_PROXY
+                ? '/api/mexc?endpoint=ticker/price&symbol=BTCUSDT'
+                : 'https://api.mexc.com/api/v3/ticker/price?symbol=BTCUSDT';
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.price) {
+                liveBTCPriceUSD = parseFloat(data.price);
+            }
+        } catch (error) {
+            // Silent fail - will retry next interval
+        }
+    };
+
+    // Fetch immediately then every 2 seconds
+    fetchBTCPrice();
+    mexcBTCPriceInterval = setInterval(fetchBTCPrice, 2000);
+    console.log('📈 Started MEXC BTC price polling for mining charts');
+}
+
+function stopMEXCBTCPricePolling() {
+    if (mexcBTCPriceInterval) {
+        clearInterval(mexcBTCPriceInterval);
+        mexcBTCPriceInterval = null;
     }
 }
 
@@ -16974,6 +17012,9 @@ function showPackageDetailPage(pkg) {
     window.scrollTo(0, 0);
     console.log('Showing Package Detail Page for:', pkg.name);
 
+    // Start BTC price polling for live price graph
+    startMEXCBTCPricePolling();
+
     // Stop polling when leaving app page
     stopBuyPackagesPolling();
     stopEasyMiningAlertsPolling();
@@ -17250,9 +17291,9 @@ function collectChartDataPoint(pkg) {
     const probability = parseFloat(pkg.probabilityPrecision) || 100;
     const remainingSeconds = pkg.estimateDurationInSeconds || 0;
 
-    // Get current crypto price for the package
-    const cryptoId = pkg.crypto ? pkg.crypto.toLowerCase() : 'btc';
-    const cryptoPrice = getCryptoPriceAUD(cryptoId) || 0;
+    // Get current BTC price from MEXC (USD) for the package
+    // Use live BTC price from dedicated MEXC polling
+    const cryptoPrice = liveBTCPriceUSD || getCryptoPriceAUD('btc') || 0;
 
     // Create data point
     const dataPoint = {
@@ -17875,8 +17916,13 @@ function updateMiningProgressChart(pkg) {
             console.log(`   - Elapsed: ${elapsedBars} bars, Remaining: ${totalExpectedBars} bars`);
 
             // Track highest percentage bar (for closest-to-reward highlight)
-            let highestBar = { index: -1, percentage: 0, element: null };
+            // PERSIST: Only update if NEW bar has HIGHER percentage than stored value
+            const storedHighest = chartData.highestBar || { index: -1, percentage: 0 };
+            let highestBar = { index: storedHighest.index, percentage: storedHighest.percentage, element: null };
             let rewardBarsShown = 0;
+
+            // Initialize reward slots tracking (persists reward positions)
+            if (!chartData.rewardSlots) chartData.rewardSlots = [];
 
             // Create bars for elapsed intervals (map data points to 30-second slots)
             const packageStartMs = startTime;
@@ -17914,9 +17960,20 @@ function updateMiningProgressChart(pkg) {
                 let height;
                 let basePercent = 0;
 
-                if (rewardInSlot) {
-                    // Block found in this slot!
-                    const rewardPercent = 100 + Math.random() * 10;
+                // Check if this slot is a stored reward slot (persisted)
+                const isStoredReward = chartData.rewardSlots.includes(i);
+
+                if (rewardInSlot || isStoredReward) {
+                    // Block found in this slot! (or was found previously)
+                    // Store this slot as a reward slot if not already stored
+                    if (!chartData.rewardSlots.includes(i)) {
+                        chartData.rewardSlots.push(i);
+                    }
+
+                    // Use stored percentage if available, otherwise generate new
+                    const rewardPercent = chartData[`rewardPercent_${i}`] || (100 + Math.random() * 10);
+                    chartData[`rewardPercent_${i}`] = rewardPercent; // Persist the percentage
+
                     barClass += ' reward-found';
                     height = 240; // Doubled for taller chart
                     rewardBarsShown++;
@@ -17944,13 +18001,24 @@ function updateMiningProgressChart(pkg) {
                 } else if (slotDataPoints.length > 0) {
                     // Past slot with data - render based on collected data
                     const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
-                    basePercent = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 5 - 2.5)));
+
+                    // Use stored percentage for this slot if available (keeps bars stable)
+                    if (!chartData[`barPercent_${i}`]) {
+                        chartData[`barPercent_${i}`] = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 5 - 2.5)));
+                    }
+                    basePercent = chartData[`barPercent_${i}`];
+
                     height = (basePercent / 100) * 200; // Scale to 200px for doubled chart height
                     bar.dataset.percentage = basePercent.toFixed(0);
 
                     // Track highest percentage bar (60%+ threshold)
-                    if (basePercent >= 60 && basePercent > highestBar.percentage) {
+                    // ONLY update if this bar's percentage is STRICTLY HIGHER than stored
+                    if (basePercent >= 60 && basePercent > storedHighest.percentage) {
                         highestBar = { index: i, percentage: basePercent, element: bar };
+                    }
+                    // If this is the stored highest bar, keep the element reference
+                    else if (i === storedHighest.index) {
+                        highestBar.element = bar;
                     }
                 } else {
                     // Past slot without data - show as gray minimal bar
@@ -17973,18 +18041,28 @@ function updateMiningProgressChart(pkg) {
             }
 
             // Highlight closest-to-reward bar (highest percentage 60%+)
-            if (highestBar.element && !pkg.blockFound) {
-                highestBar.element.classList.add('closest-to-reward');
-                chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
+            // IMPORTANT: Keep showing closest-to-reward even when blocks are found
+            // The closest-to-reward only moves when a NEW HIGHER percentage bar appears
+            if (highestBar.element && highestBar.percentage >= 60) {
+                // Don't add closest-to-reward class if this bar already has reward-found
+                if (!highestBar.element.classList.contains('reward-found')) {
+                    highestBar.element.classList.add('closest-to-reward');
 
-                // Add percentage circle indicator
-                const circle = document.createElement('div');
-                circle.className = 'bar-percentage-circle';
-                circle.textContent = `${highestBar.percentage.toFixed(0)}%`;
-                highestBar.element.appendChild(circle);
+                    // Add percentage circle indicator
+                    const circle = document.createElement('div');
+                    circle.className = 'bar-percentage-circle';
+                    circle.textContent = `${highestBar.percentage.toFixed(0)}%`;
+                    highestBar.element.appendChild(circle);
+                }
+
+                // Persist the highest bar state
+                chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
 
                 // Update progress bar to show highest bar's percentage
                 updateProgressBarDisplay(highestBar.percentage);
+            } else if (storedHighest.percentage >= 60) {
+                // Use stored highest even if element wasn't found this render
+                updateProgressBarDisplay(storedHighest.percentage);
             } else {
                 // If no bar above 60%, use time progress
                 updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
