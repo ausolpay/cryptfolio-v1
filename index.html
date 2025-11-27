@@ -489,7 +489,7 @@
                     <div class="settings-row">
                         <div class="settings-row-info">
                             <span class="settings-row-label">Auto-buy Bot Cooldowns</span>
-                            <span class="settings-row-desc">Automatically purchase cooldowns</span>
+                            <span class="settings-row-desc">Smart cooldowns based on package duration</span>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="auto-buy-cooldown-toggle-page" checked>
@@ -499,7 +499,7 @@
                     <div class="settings-row">
                         <div class="settings-row-info">
                             <span class="settings-row-label">Auto-buy Bot Clear Shares (TP)</span>
-                            <span class="settings-row-desc">Clear team shares on take profit</span>
+                            <span class="settings-row-desc">Clear shares if countdown package drops from alerts</span>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="auto-clear-team-shares-toggle-page" onchange="toggleAutoClearTeamGoldCheckbox()">
@@ -519,7 +519,7 @@
                     <div class="settings-row">
                         <div class="settings-row-info" style="flex: 1;">
                             <span class="settings-row-label">Auto-buy Bot Bail (TP)</span>
-                            <span class="settings-row-desc">Bail at threshold percentage</span>
+                            <span class="settings-row-desc">Clear shares when package reaches threshold %</span>
                             <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
                                 <input type="number" id="autoClearThreshold" min="0" max="100" value="50" placeholder="50"
                                        style="width: 60px; padding: 5px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; text-align: center;">
@@ -544,7 +544,7 @@
                     <div class="settings-row">
                         <div class="settings-row-info">
                             <span class="settings-row-label">Auto-buy Bot - Reward & Bail (TP)</span>
-                            <span class="settings-row-desc">Reward and bail on take profit</span>
+                            <span class="settings-row-desc">Clear shares 1 minute after block is found</span>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="rewardAndBailToggle">
@@ -564,7 +564,7 @@
                     <div class="settings-row">
                         <div class="settings-row-info">
                             <span class="settings-row-label">Auto Buy - TG Safe Hold</span>
-                            <span class="settings-row-desc">Safe hold for Team Gold packages</span>
+                            <span class="settings-row-desc">Reserve balance for Team Gold purchases</span>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="auto-buy-tg-safe-hold-toggle-page">
@@ -574,7 +574,7 @@
                     <div class="settings-row">
                         <div class="settings-row-info">
                             <span class="settings-row-label" style="color: #ff6b6b;">Auto-Clear on Drop</span>
-                            <span class="settings-row-desc">Clear shares if hashrate or participants drops significantly</span>
+                            <span class="settings-row-desc">Clear shares on hashrate/rigs drop</span>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="autoClearOnDropToggle">

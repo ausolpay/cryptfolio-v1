@@ -239,6 +239,10 @@ let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 
+// Pending share purchases - holds user input for up to 10 seconds until API confirms
+// Structure: { packageId: { shares: number, timestamp: number } }
+const pendingSharePurchases = {};
+
 let socket;
 let lastWebSocketUpdate = Date.now();
 const twoMinutes = 2 * 60 * 1000;
@@ -17142,8 +17146,69 @@ function createSoloPackageCard(pkg) {
     return card;
 }
 
-// Helper function to get user's bought shares for a team package
-function getMyTeamShares(packageId) {
+// ==================== PENDING SHARES MANAGEMENT ====================
+// Holds user input for up to 10 seconds until API confirms the purchase
+
+// Set pending shares after a purchase (max 10 second hold)
+function setPendingShares(packageId, shares) {
+    pendingSharePurchases[packageId] = {
+        shares: shares,
+        timestamp: Date.now()
+    };
+    console.log(`⏳ Set pending shares: ${packageId} = ${shares} (hold for up to 10s)`);
+}
+
+// Get pending shares if still valid (within 10 seconds)
+function getPendingShares(packageId) {
+    const pending = pendingSharePurchases[packageId];
+    if (!pending) return null;
+
+    const elapsed = Date.now() - pending.timestamp;
+    if (elapsed >= 10000) {
+        delete pendingSharePurchases[packageId];
+        return null;
+    }
+
+    return pending.shares;
+}
+
+// Clear pending if API confirms OR timeout exceeded
+function clearPendingIfConfirmed(packageId, apiShares) {
+    const pending = pendingSharePurchases[packageId];
+    if (!pending) return;
+
+    const elapsed = Date.now() - pending.timestamp;
+    const maxHold = 10000; // 10 seconds
+
+    // Clear if: API matches or exceeds expected shares OR timeout exceeded
+    if (apiShares >= pending.shares || elapsed >= maxHold) {
+        console.log(`✅ Cleared pending shares for ${packageId}: API=${apiShares}, expected=${pending.shares}, elapsed=${elapsed}ms`);
+        delete pendingSharePurchases[packageId];
+    }
+}
+
+// Get user's shares from easyMiningData.activePackages by package ID
+function getMyTeamSharesFromActivePackages(packageId) {
+    if (!easyMiningData?.activePackages) return null;
+
+    // Match by various ID formats used across the codebase
+    const pkg = easyMiningData.activePackages.find(p =>
+        p.id === packageId ||
+        p.apiData?.id === packageId ||
+        p.orderId === packageId ||
+        p.sharedTicket?.id === packageId ||
+        p.fullOrderData?.sharedTicket?.id === packageId
+    );
+
+    if (pkg && pkg.ownedShares !== null && pkg.ownedShares !== undefined) {
+        return pkg.ownedShares;
+    }
+
+    return null;
+}
+
+// Helper function to get user's bought shares from localStorage (fallback)
+function getMyTeamSharesFromStorage(packageId) {
     const storageKey = `${loggedInUser}_teamPackageShares`;
     const sharesData = getStorageItem(storageKey);
     if (!sharesData) return 0;
@@ -17155,6 +17220,37 @@ function getMyTeamShares(packageId) {
         console.error('Error parsing team shares data:', e);
         return 0;
     }
+}
+
+// Main function to get user's bought shares for a team package
+// Priority: 1. Pending (recent purchase) 2. API data 3. localStorage fallback
+function getMyTeamShares(packageId) {
+    // 1. Check for pending shares (recent purchase, within 10s)
+    const pendingShares = getPendingShares(packageId);
+
+    // 2. Get API shares from easyMiningData.activePackages
+    const apiShares = getMyTeamSharesFromActivePackages(packageId);
+
+    // 3. If API has data, check if it confirms pending purchase
+    if (apiShares !== null) {
+        clearPendingIfConfirmed(packageId, apiShares);
+
+        // If pending still valid and higher than API, use pending (API hasn't caught up yet)
+        const stillPending = getPendingShares(packageId);
+        if (stillPending !== null && stillPending > apiShares) {
+            return stillPending;
+        }
+        return apiShares;
+    }
+
+    // 4. If no API data but pending exists, use pending
+    if (pendingShares !== null) {
+        return pendingShares;
+    }
+
+    // 5. Fallback to localStorage for packages not in activePackages
+    // (e.g., countdown packages user hasn't joined yet)
+    return getMyTeamSharesFromStorage(packageId);
 }
 
 // Helper function to save user's bought shares for a team package
@@ -17780,8 +17876,9 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             throw new Error(`Purchase failed: Invalid response from NiceHash (no order ID returned)`);
         }
 
-        // 8. Update tracking - save the desired total (input value is already total)
-        saveMyTeamShares(packageId, desiredTotalShares);
+        // 8. Update tracking - set pending hold and save to localStorage
+        setPendingShares(packageId, desiredTotalShares); // Hold for up to 10s until API confirms
+        saveMyTeamShares(packageId, desiredTotalShares); // Backup to localStorage
         console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${sharesToPurchase})`);
 
         // ✅ SYNC: Update share inputs on both UIs
@@ -20424,8 +20521,9 @@ Do you want to continue?
         const result = await response.json();
         console.log(`✅ Purchase successful:`, result);
 
-        // Save the new total shares (input value = desired total)
-        saveMyTeamShares(packageId, desiredTotalShares);
+        // Save the new total shares - set pending hold and backup to localStorage
+        setPendingShares(packageId, desiredTotalShares); // Hold for up to 10s until API confirms
+        saveMyTeamShares(packageId, desiredTotalShares); // Backup to localStorage
         console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${shares})`);
 
         // ✅ SYNC: Update share inputs on both UIs (Alert cards & Buy Packages page)
