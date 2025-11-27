@@ -18401,7 +18401,7 @@ function updateMiningProgressChart(pkg) {
                 } else if (isFutureSlot) {
                     // Future slot - show as empty/placeholder
                     barClass += ' future-slot';
-                    height = 5; // Minimal height for future slots
+                    height = isSmallMobile ? 6 : (isMobileView ? 8 : 5); // Taller on mobile for visibility
                     bar.dataset.percentage = '0';
                 } else if (isCurrentSlot && pkg.active) {
                     // Current active slot - flashing
@@ -18440,7 +18440,7 @@ function updateMiningProgressChart(pkg) {
                 } else {
                     // Past slot without data - show as gray minimal bar
                     barClass += ' no-data';
-                    height = 15;
+                    height = isSmallMobile ? 10 : (isMobileView ? 12 : 15); // Slightly shorter on mobile but still visible
                     bar.dataset.percentage = '0';
                 }
 

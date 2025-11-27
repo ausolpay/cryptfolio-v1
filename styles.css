@@ -4606,6 +4606,26 @@ body.light-mode .package-card.block-confirmed {
     }
 }
 
+/* Package Detail Page - Very small screens (under 400px) */
+@media (max-width: 400px) {
+    #package-detail-page {
+        width: calc(100vw - 30px); /* Full width minus small margin */
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 15px;
+        padding-bottom: 70px;
+    }
+
+    .mining-chart-container {
+        padding: 8px;
+        margin-top: 10px;
+    }
+
+    .mining-chart-bars {
+        min-height: 120px;
+    }
+}
+
 /* ===== TABLET STYLES (768px - 1024px) ===== */
 @media (min-width: 769px) and (max-width: 1024px) {
     /* Recommendations container for alerts - 2 cards per row on tablet */
@@ -5223,16 +5243,31 @@ body.light-mode .live-metric-range {
 @media (max-width: 768px) {
     .mining-chart-container {
         padding: 10px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .mining-chart-bars {
         min-height: 200px;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        width: 100%;
     }
 
     .mining-bar {
         min-width: 2px !important;
+        min-height: 8px !important;
+    }
+
+    /* Increase visibility of low-opacity bars on mobile */
+    .mining-bar.future-slot {
+        opacity: 0.5;
+        min-height: 6px !important;
+    }
+
+    .mining-bar.no-data {
+        opacity: 0.7;
+        min-height: 8px !important;
     }
 
     .mining-chart-legend {
@@ -5282,10 +5317,20 @@ body.light-mode .live-metric-range {
 
     .mining-chart-bars {
         min-height: 150px;
+        width: 100%;
     }
 
     .mining-bar {
         min-width: 2px !important;
+        min-height: 6px !important;
+    }
+
+    .mining-bar.future-slot {
+        min-height: 4px !important;
+    }
+
+    .mining-bar.no-data {
+        min-height: 6px !important;
     }
 
     .bar-percentage-circle,
