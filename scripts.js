@@ -14168,28 +14168,28 @@ function displayActivePackages() {
                 <span style="color: #00ccff;">${pkg.hashrate}</span>
             </div>
             ` : ''}
+            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.ready && packageInitialValues[pkg.id]?.hashrate ? `
+            <div class="package-card-stat">
+                <span>HR (OAS):</span>
+                <span style="color: #888;">${packageInitialValues[pkg.id].hashrate}</span>
+            </div>
+            ` : ''}
             ${pkg.active && pkg.isTeam && pkg.rigsCount !== undefined ? `
             <div class="package-card-stat">
                 <span>Rigs:</span>
                 <span style="color: #ff9800;">${pkg.rigsCount}</span>
             </div>
             ` : ''}
+            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.ready && packageInitialValues[pkg.id]?.rigs !== undefined ? `
+            <div class="package-card-stat">
+                <span>Rigs (OAS):</span>
+                <span style="color: #888;">${packageInitialValues[pkg.id].rigs}</span>
+            </div>
+            ` : ''}
             ${pkg.active && pkg.isTeam && pkg.numberOfParticipants !== null ? `
             <div class="package-card-stat">
                 <span>Participants:</span>
                 <span style="color: #4CAF50;">${pkg.numberOfParticipants}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.hashrate ? `
-            <div class="package-card-stat">
-                <span>Hashrate (OAS):</span>
-                <span style="color: #888;">${packageInitialValues[pkg.id].hashrate}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.rigs !== undefined ? `
-            <div class="package-card-stat">
-                <span>Rigs (OAS):</span>
-                <span style="color: #888;">${packageInitialValues[pkg.id].rigs}</span>
             </div>
             ` : ''}
             ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
@@ -20809,13 +20809,33 @@ function parseHashrateToNumeric(hashrateStr) {
     return value * (multipliers[unit] || 1);
 }
 
-// Capture initial values when package has been active for 5 minutes
+// Convert numeric TH value to human-readable string with appropriate unit
+function formatHashrateFromTH(thValue) {
+    if (thValue >= 1000000) {
+        return `${(thValue / 1000000).toFixed(2)} EH`;
+    } else if (thValue >= 1000) {
+        return `${(thValue / 1000).toFixed(2)} PH`;
+    } else if (thValue >= 1) {
+        return `${thValue.toFixed(4)} TH`;
+    } else if (thValue >= 0.001) {
+        return `${(thValue * 1000).toFixed(2)} GH`;
+    } else {
+        return `${(thValue * 1000000).toFixed(2)} MH`;
+    }
+}
+
+// Capture OAS (On Active Snapshot) values with timed captures:
+// - Rigs (OAS): Captured at 10 minute mark
+// - HR (OAS): Average of hashrate samples from 15-20 minute window
+// Both values shown together after 20 minutes when ready
 // ONLY captures for auto-bought packages (manual shares won't trigger auto-clear on drop)
-// Waits 5 minutes into package to allow initial hashrate/rigs to stabilize
 // Values are persisted to localStorage to survive page refreshes
 function captureInitialPackageValues(packages) {
     const now = Date.now();
-    const FIVE_MINUTES_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
+    const TEN_MINUTES_MS = 10 * 60 * 1000;
+    const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+    const TWENTY_MINUTES_MS = 20 * 60 * 1000;
+    const GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minute grace period
 
     // Load stored values from localStorage on first run (if not already loaded)
     if (Object.keys(packageInitialValues).length === 0 && loggedInUser) {
@@ -20853,55 +20873,104 @@ function captureInitialPackageValues(packages) {
                 return; // Skip non-auto-bought packages
             }
 
-            // If values already exist (from this session or loaded from localStorage), use them
-            if (packageInitialValues[pkg.id]) {
-                return; // Already have values for this package
-            }
-
             // If this package was already marked as missed, skip it
             if (packagesMissedCaptureWindow[pkg.id]) {
                 return; // Already skipped this package
             }
 
-            // Check if package has been active for at least 5 minutes
-            const packageStartTime = pkg.startTs || pkg.startTime;
-            if (packageStartTime) {
-                const startTimestamp = new Date(packageStartTime).getTime();
-                const timeSinceStart = now - startTimestamp;
-
-                if (timeSinceStart < FIVE_MINUTES_MS) {
-                    // Package hasn't been active for 5 minutes yet, wait
-                    const minutesRemaining = ((FIVE_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
-                    console.log(`⏳ Waiting to capture values for ${pkg.name}: ${minutesRemaining} mins until 5-min mark`);
-                    return;
-                }
-
-                // Package has passed 5-min mark - check if we were present at the 5-min mark
-                // If we're just opening the app now and package already passed 5 mins, skip it
-                const GRACE_PERIOD_MS = 60 * 1000; // 1 minute grace period after 5-min mark
-                if (timeSinceStart > FIVE_MINUTES_MS + GRACE_PERIOD_MS) {
-                    // Package has been active for more than 6 minutes and we don't have values
-                    // This means the app wasn't open at the 5-min mark - skip this package
-                    packagesMissedCaptureWindow[pkg.id] = {
-                        packageName: pkg.name,
-                        skippedAt: now,
-                        reason: 'App was not open at 5-min capture window'
-                    };
-                    skippedChanged = true;
-                    console.log(`⏭️ SKIPPING ${pkg.name} for auto-clear drop - app wasn't open at 5-min capture window (${(timeSinceStart / 60000).toFixed(1)} mins since start)`);
-                    return;
-                }
+            // Initialize tracking object if not exists
+            if (!packageInitialValues[pkg.id]) {
+                packageInitialValues[pkg.id] = {
+                    hashrateSamples: [], // Collected from 15-20 min
+                    rigsAt10Min: null,   // Captured at 10 min
+                    hashrate: null,      // Final average (set after 20 min)
+                    hashrateNumeric: null,
+                    rigs: null,          // Final value (set after 20 min)
+                    ready: false         // True when both values ready
+                };
+                valuesChanged = true;
             }
 
-            // Capture hashrate and rigs (not participants)
-            packageInitialValues[pkg.id] = {
-                hashrate: pkg.hashrate,
-                hashrateNumeric: parseHashrateToNumeric(pkg.hashrate),
-                rigs: pkg.rigsCount || 0,
-                capturedAt: now
-            };
-            valuesChanged = true;
-            console.log(`📊 Captured initial values for AUTO-BOUGHT ${pkg.name} (after 5-min mark): HR=${pkg.hashrate}, Rigs=${pkg.rigsCount || 0}`);
+            // If already ready, nothing more to do
+            if (packageInitialValues[pkg.id].ready) {
+                return;
+            }
+
+            const packageStartTime = pkg.startTs || pkg.startTime;
+            if (!packageStartTime) return;
+
+            const startTimestamp = new Date(packageStartTime).getTime();
+            const timeSinceStart = now - startTimestamp;
+            const minutesSinceStart = (timeSinceStart / 60000).toFixed(1);
+
+            // Check if we missed the capture window (app opened too late)
+            if (timeSinceStart > TWENTY_MINUTES_MS + GRACE_PERIOD_MS && !packageInitialValues[pkg.id].ready) {
+                // Package has been active for more than 22 minutes and we don't have complete values
+                packagesMissedCaptureWindow[pkg.id] = {
+                    packageName: pkg.name,
+                    skippedAt: now,
+                    reason: 'App was not open during OAS capture window (10-20 min)'
+                };
+                skippedChanged = true;
+                delete packageInitialValues[pkg.id];
+                valuesChanged = true;
+                console.log(`⏭️ SKIPPING ${pkg.name} for OAS - app wasn't open during capture window (${minutesSinceStart} mins since start)`);
+                return;
+            }
+
+            // STEP 1: Capture Rigs at 10 minute mark
+            if (timeSinceStart >= TEN_MINUTES_MS && packageInitialValues[pkg.id].rigsAt10Min === null) {
+                packageInitialValues[pkg.id].rigsAt10Min = pkg.rigsCount || 0;
+                valuesChanged = true;
+                console.log(`📊 [${pkg.name}] Captured Rigs at 10-min mark: ${pkg.rigsCount || 0}`);
+            } else if (timeSinceStart < TEN_MINUTES_MS) {
+                const minsUntil10 = ((TEN_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
+                console.log(`⏳ [${pkg.name}] Waiting for 10-min mark (Rigs capture): ${minsUntil10} mins remaining`);
+            }
+
+            // STEP 2: Collect hashrate samples between 15-20 minutes
+            if (timeSinceStart >= FIFTEEN_MINUTES_MS && timeSinceStart < TWENTY_MINUTES_MS) {
+                const currentHR = parseHashrateToNumeric(pkg.hashrate);
+                if (currentHR > 0) {
+                    packageInitialValues[pkg.id].hashrateSamples.push({
+                        value: currentHR,
+                        timestamp: now
+                    });
+                    valuesChanged = true;
+                    const sampleCount = packageInitialValues[pkg.id].hashrateSamples.length;
+                    console.log(`📊 [${pkg.name}] HR sample #${sampleCount} at ${minutesSinceStart}min: ${pkg.hashrate}`);
+                }
+            } else if (timeSinceStart < FIFTEEN_MINUTES_MS && timeSinceStart >= TEN_MINUTES_MS) {
+                const minsUntil15 = ((FIFTEEN_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
+                console.log(`⏳ [${pkg.name}] Waiting for 15-min mark (HR sampling): ${minsUntil15} mins remaining`);
+            }
+
+            // STEP 3: After 20 minutes, calculate average HR and finalize
+            if (timeSinceStart >= TWENTY_MINUTES_MS && !packageInitialValues[pkg.id].ready) {
+                const samples = packageInitialValues[pkg.id].hashrateSamples;
+
+                if (samples.length > 0) {
+                    // Calculate average hashrate from samples
+                    const avgHR = samples.reduce((sum, s) => sum + s.value, 0) / samples.length;
+                    packageInitialValues[pkg.id].hashrateNumeric = avgHR;
+                    packageInitialValues[pkg.id].hashrate = formatHashrateFromTH(avgHR);
+                    packageInitialValues[pkg.id].rigs = packageInitialValues[pkg.id].rigsAt10Min;
+                    packageInitialValues[pkg.id].ready = true;
+                    packageInitialValues[pkg.id].capturedAt = now;
+                    valuesChanged = true;
+                    console.log(`✅ [${pkg.name}] OAS READY: HR (OAS)=${packageInitialValues[pkg.id].hashrate} (avg of ${samples.length} samples), Rigs (OAS)=${packageInitialValues[pkg.id].rigs}`);
+                } else {
+                    // No samples collected - take current value as fallback
+                    const currentHR = parseHashrateToNumeric(pkg.hashrate);
+                    packageInitialValues[pkg.id].hashrateNumeric = currentHR;
+                    packageInitialValues[pkg.id].hashrate = pkg.hashrate;
+                    packageInitialValues[pkg.id].rigs = packageInitialValues[pkg.id].rigsAt10Min ?? pkg.rigsCount ?? 0;
+                    packageInitialValues[pkg.id].ready = true;
+                    packageInitialValues[pkg.id].capturedAt = now;
+                    valuesChanged = true;
+                    console.log(`⚠️ [${pkg.name}] OAS READY (fallback - no samples): HR=${pkg.hashrate}, Rigs=${packageInitialValues[pkg.id].rigs}`);
+                }
+            }
         }
     });
 
