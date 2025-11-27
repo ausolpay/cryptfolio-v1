@@ -4807,6 +4807,37 @@ body.light-mode .package-card.block-confirmed {
     width: 100%;
 }
 
+/* Chart waiting message - centered in chart area */
+.chart-waiting-message {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 14px;
+    z-index: 5;
+}
+
+.chart-waiting-message .loading-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #333;
+    border-top-color: #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Network difficulty reference line */
 .mining-chart-bars::before {
     content: '';

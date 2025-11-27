@@ -17616,15 +17616,13 @@ function updateMiningProgressChart(pkg) {
         const hasRealData = dataPoints.length > 0;
 
         if (!hasRealData) {
-            // Show "waiting for data" message
+            // Show "waiting for data" message - centered in chart
             const waitingMsg = document.createElement('div');
             waitingMsg.className = 'chart-waiting-message';
             waitingMsg.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100px; color: #888; font-size: 14px;">
-                    <div class="loading-spinner" style="width: 30px; height: 30px; border: 3px solid #333; border-top-color: #4CAF50; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px;"></div>
-                    <span>Waiting for mining data...</span>
-                    <span style="font-size: 11px; margin-top: 5px; color: #666;">Data will appear as it's collected</span>
-                </div>
+                <div class="loading-spinner"></div>
+                <span>Waiting for mining data...</span>
+                <span style="font-size: 11px; margin-top: 5px; color: #666;">Data will appear as it's collected</span>
             `;
             barsContainer.appendChild(waitingMsg);
 
