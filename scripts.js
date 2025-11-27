@@ -7016,7 +7016,7 @@ function clearSpecificCrypto() {
 
     const cryptoName = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
 
-    if (!confirm(`Are you sure you want to clear all data for ${cryptoName}?\n\nThis will reset:\n- Holdings amount\n- History\n- Total cost\n- Deposit history\n\nThe crypto will remain in your portfolio.\n\nThis action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to clear all data for ${cryptoName}?\n\nThis will reset:\n- Holdings amount & entries\n- History\n- Total cost\n- Deposit history\n- EasyMining tracked blocks\n- EasyMining reward records\n\nThe crypto will remain in your portfolio.\n\nThis action cannot be undone.`)) {
         return;
     }
 
@@ -7027,6 +7027,36 @@ function clearSpecificCrypto() {
     removeStorageItem(`${loggedInUser}_${cryptoId}History`);
     removeStorageItem(`${loggedInUser}_${cryptoId}TotalCost`);
     removeStorageItem(`${loggedInUser}_${cryptoId}_depositHistory`);
+
+    // Clear holdings entries array (new entry-based system)
+    removeStorageItem(`${loggedInUser}_${cryptoId}_holdingsEntries`);
+    console.log(`   ✓ Cleared holdings entries for ${cryptoId}`);
+
+    // Clear tracked blocks for this specific crypto
+    const trackedBlocksKey = `${loggedInUser}_easyMiningTrackedBlocks`;
+    const trackedBlocks = JSON.parse(localStorage.getItem(trackedBlocksKey) || '{}');
+    let blocksRemoved = 0;
+    for (const blockHash in trackedBlocks) {
+        if (trackedBlocks[blockHash].cryptoId === cryptoId) {
+            delete trackedBlocks[blockHash];
+            blocksRemoved++;
+        }
+    }
+    localStorage.setItem(trackedBlocksKey, JSON.stringify(trackedBlocks));
+    console.log(`   ✓ Cleared ${blocksRemoved} tracked blocks for ${cryptoId}`);
+
+    // Clear EasyMining added rewards for this crypto
+    const addedRewardsKey = `${loggedInUser}_easyMiningAddedRewards`;
+    const addedRewards = JSON.parse(localStorage.getItem(addedRewardsKey) || '{}');
+    let rewardsRemoved = 0;
+    for (const rewardKey in addedRewards) {
+        if (addedRewards[rewardKey].crypto === crypto.symbol || addedRewards[rewardKey].crypto === cryptoId) {
+            delete addedRewards[rewardKey];
+            rewardsRemoved++;
+        }
+    }
+    localStorage.setItem(addedRewardsKey, JSON.stringify(addedRewards));
+    console.log(`   ✓ Cleared ${rewardsRemoved} EasyMining reward records for ${cryptoId}`);
 
     // Reset the holdings display in the crypto box
     const holdingsEl = document.getElementById(`${cryptoId}-holdings`);
@@ -7720,6 +7750,10 @@ function confirmClearAllHoldings() {
     // Clear tracked EasyMining rewards (so they can be re-added)
     localStorage.removeItem(`${loggedInUser}_easyMiningAddedRewards`);
     console.log('   ✓ Cleared EasyMining tracked rewards');
+
+    // Clear block-level tracking (individual blocks with prices)
+    localStorage.removeItem(`${loggedInUser}_easyMiningTrackedBlocks`);
+    console.log('   ✓ Cleared EasyMining tracked blocks');
 
     // Update all displays to show 0
     cryptos.forEach(crypto => {
