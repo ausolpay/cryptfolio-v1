@@ -14461,38 +14461,6 @@ function displayActivePackages() {
                 <span style="color: #4CAF50;">${pkg.probability}${pkg.mergeProbability ? `<br>${pkg.mergeProbability}` : ''}</span>
             </div>
             ` : ''}
-            ${pkg.active && pkg.probability ? `
-            <div class="package-card-stat">
-                <span>Attempts:</span>
-                <span style="color: ${pkg.blockFound ? '#00ff00' : '#ffa500'};">${(() => {
-                    // Calculate attempt number from elapsed time (30 sec intervals)
-                    const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
-                    const elapsedMs = Date.now() - startTime;
-                    const attemptNumber = Math.max(1, Math.floor(elapsedMs / 30000) + 1);
-
-                    // Extract odds from "1:X" probability format
-                    const match = pkg.probability.match(/1:(\d+)/);
-                    if (!match) return attemptNumber + ' / N/A';
-
-                    const odds = parseInt(match[1]);
-
-                    // Progress percentage: (attempts / odds) * 100
-                    // Shows how many "expected blocks" worth of attempts made
-                    // 100% = statistically should have found 1 block
-                    // >100% = "overdue" for a block (bad luck, but still possible)
-                    // Capped at 110% max
-                    const expectedBlocks = attemptNumber / odds;
-                    const progressPercent = Math.min(110, expectedBlocks * 100).toFixed(1);
-
-                    // Show percentage with FOUND! if block was found
-                    if (pkg.blockFound) {
-                        return attemptNumber + ' / ' + progressPercent + '% FOUND!';
-                    }
-
-                    return attemptNumber + ' / ' + progressPercent + '%';
-                })()}</span>
-            </div>
-            ` : ''}
             ${pkg.active && pkg.hashrate ? `
             <div class="package-card-stat">
                 <span>Hashrate:</span>
