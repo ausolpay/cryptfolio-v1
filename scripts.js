@@ -12223,6 +12223,14 @@ async function fetchEasyMiningData() {
         // Update UI
         updateEasyMiningUI();
 
+        // Update mining chart on package detail page if viewing one
+        if (currentDetailPackage && easyMiningData.activePackages) {
+            const updatedPkg = easyMiningData.activePackages.find(p => p.id === currentDetailPackage.id);
+            if (updatedPkg) {
+                updateMiningChartLive(updatedPkg);
+            }
+        }
+
         // Check for new blocks found
         checkForNewBlocks();
 
@@ -17097,36 +17105,32 @@ function showPackageDetailPage(pkg) {
     updateMiningProgressChart(pkg);
 }
 
+// Store current package for live updates
+let currentDetailPackage = null;
+
 // Update the mining progress chart on package detail page
 function updateMiningProgressChart(pkg) {
-    // Calculate "close to reward" percentage
-    let closeToRewardPercent = 0;
+    // Store for live updates
+    currentDetailPackage = pkg;
+    const pkgId = (pkg.id || 'default').replace(/[^a-zA-Z0-9]/g, '');
 
-    if (pkg.active && pkg.probability) {
-        // Extract odds from "1:X" probability format
-        const match = pkg.probability.match(/1:(\d+)/);
-        if (match) {
-            const odds = parseInt(match[1]);
+    // Calculate time-based progress (not probability-based)
+    const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
+    const endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
+    const totalDuration = endTime - startTime;
+    const elapsedMs = Math.max(0, Date.now() - startTime);
+    const timeProgress = Math.min(100, (elapsedMs / totalDuration) * 100);
 
-            // Calculate elapsed time and attempts
-            const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
-            const elapsedMs = Date.now() - startTime;
-            const attemptNumber = Math.max(1, Math.floor(elapsedMs / 30000) + 1);
-
-            // Progress percentage: (attempts / odds) * 100, capped at 110%
-            closeToRewardPercent = Math.min(110, (attemptNumber / odds) * 100);
-        }
-    }
-
-    // If block was found, show 100%
+    // Close to reward should only show 100%+ if block actually found
+    let closeToRewardPercent = timeProgress;
     if (pkg.blockFound) {
         closeToRewardPercent = 100;
     }
 
     // Update close to reward progress bar
-    const fillElement = document.getElementById('close-to-reward-fill');
-    const percentElement = document.getElementById('close-to-reward-percentage');
-    const iconElement = document.getElementById('close-to-reward-icon');
+    const fillElement = document.getElementById(`close-to-reward-fill-${pkgId}`) || document.getElementById('close-to-reward-fill');
+    const percentElement = document.getElementById(`close-to-reward-percentage-${pkgId}`) || document.getElementById('close-to-reward-percentage');
+    const iconElement = document.getElementById(`close-to-reward-icon-${pkgId}`) || document.getElementById('close-to-reward-icon');
 
     if (fillElement && percentElement && iconElement) {
         fillElement.style.width = `${Math.min(closeToRewardPercent, 100)}%`;
@@ -17138,27 +17142,21 @@ function updateMiningProgressChart(pkg) {
             iconElement.style.backgroundColor = '#4CAF50';
         } else {
             iconElement.classList.remove('found');
-            iconElement.style.backgroundColor = closeToRewardPercent >= 80 ? '#ffa500' : '#4CAF50';
+            iconElement.style.backgroundColor = '#4CAF50';
         }
     }
 
     // Generate mining activity bars
-    const barsContainer = document.getElementById('package-detail-page-blocks');
-    const timelineContainer = document.getElementById('mining-chart-timeline');
+    const barsContainer = document.getElementById(`mining-chart-bars-${pkgId}`) || document.getElementById('package-detail-page-blocks');
+    const timelineContainer = document.getElementById(`mining-chart-timeline-${pkgId}`) || document.getElementById('mining-chart-timeline');
 
     if (barsContainer) {
         barsContainer.innerHTML = '';
 
-        // Calculate package duration and elapsed time
-        const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
-        const endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
-        const totalDuration = endTime - startTime;
-        const elapsedMs = Date.now() - startTime;
-
-        // Generate bars for each 5-minute interval
-        const intervalMs = 5 * 60 * 1000; // 5 minutes
-        const totalIntervals = Math.min(60, Math.ceil(totalDuration / intervalMs)); // Max 60 bars (5 hours)
-        const elapsedIntervals = Math.floor(elapsedMs / intervalMs);
+        // Use 30-second intervals to match polling
+        const intervalMs = 30 * 1000; // 30 seconds
+        const totalIntervals = Math.ceil(totalDuration / intervalMs);
+        const currentInterval = Math.floor(elapsedMs / intervalMs);
 
         // Get reward timestamps if any
         const rewardTimestamps = [];
@@ -17181,89 +17179,160 @@ function updateMiningProgressChart(pkg) {
             return Math.abs(hash);
         };
 
-        for (let i = 0; i < totalIntervals; i++) {
+        // Limit display to reasonable number of bars (max 120 for 1hr at 30sec intervals)
+        const maxBars = Math.min(totalIntervals, 120);
+        const skipFactor = totalIntervals > 120 ? Math.ceil(totalIntervals / 120) : 1;
+
+        for (let i = 0; i < maxBars; i++) {
+            const actualInterval = i * skipFactor;
             const bar = document.createElement('div');
             bar.className = 'mining-bar';
+            bar.id = `mining-bar-${pkgId}-${i}`;
 
-            const intervalStart = startTime + (i * intervalMs);
+            const intervalStart = startTime + (actualInterval * intervalMs);
             const intervalEnd = intervalStart + intervalMs;
-            const isElapsed = Date.now() > intervalStart;
+            const isElapsed = Date.now() > intervalEnd;
             const isCurrent = Date.now() >= intervalStart && Date.now() < intervalEnd;
+            const isLatestPoll = (actualInterval === currentInterval) || (actualInterval === currentInterval - 1);
 
             // Check if a reward was found in this interval
             const rewardInInterval = rewardTimestamps.some(ts => ts >= intervalStart && ts < intervalEnd);
 
             // Generate deterministic height based on package ID and interval
-            const seed = seedHash((pkg.id || 'default') + i.toString());
-            const baseHeight = 20 + (seed % 80); // 20-100% height variation
+            const seed = seedHash((pkg.id || 'default') + actualInterval.toString());
+            // Heights are 20-85% of max, leaving room above the "difficulty line"
+            const baseHeight = 20 + (seed % 65);
 
-            // Only show bars for elapsed time (active bars are grey, future is hidden)
             if (isElapsed || isCurrent) {
                 let height = baseHeight;
-
-                // Simulate "close to reward" moments (using seed to make it deterministic)
-                const isCloseToReward = (seed % 10 === 0) && !rewardInInterval; // ~10% chance per interval
+                let barClass = 'mining-bar';
 
                 if (rewardInInterval) {
-                    bar.classList.add('reward-found');
-                    height = 100; // Full height for reward
-                } else if (isCloseToReward && i < elapsedIntervals) {
-                    bar.classList.add('close-to-reward');
-                    height = 70 + (seed % 30); // 70-100% for close calls
+                    // Block found - bar goes ABOVE the difficulty line (100%+)
+                    barClass += ' reward-found';
+                    height = 120; // Above the line!
+                } else if (isLatestPoll && pkg.active) {
+                    // Current/latest poll interval - highlighted yellow
+                    barClass += ' current-poll';
+                    height = baseHeight + 10; // Slightly taller
                 }
 
+                bar.className = barClass;
                 bar.style.height = `${height}px`;
+
+                // Add animation delay for staggered effect
+                bar.style.animationDelay = `${i * 10}ms`;
             } else {
-                bar.style.height = '0px';
-                bar.style.opacity = '0.3';
+                // Future intervals - not yet mined
+                bar.style.height = '5px';
+                bar.style.opacity = '0.2';
             }
 
             barsContainer.appendChild(bar);
         }
     }
 
-    // Update timeline
+    // Update timeline with more time markers
     if (timelineContainer) {
         timelineContainer.innerHTML = '';
-        const startTime = pkg.startTime ? new Date(pkg.startTime) : new Date();
-        const endTime = pkg.endTime ? new Date(pkg.endTime) : new Date(startTime.getTime() + 86400000);
+        const startDate = pkg.startTime ? new Date(pkg.startTime) : new Date();
+        const endDate = pkg.endTime ? new Date(pkg.endTime) : new Date(startDate.getTime() + 86400000);
 
-        // Show start, middle, and end times
         const formatTime = (date) => {
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         };
 
-        const midTime = new Date((startTime.getTime() + endTime.getTime()) / 2);
-
-        timelineContainer.innerHTML = `
-            <span>${formatTime(startTime)}</span>
-            <span>${formatTime(midTime)}</span>
-            <span>${formatTime(endTime)}</span>
-        `;
+        // Show 5 time markers
+        const timeMarkers = 5;
+        for (let i = 0; i < timeMarkers; i++) {
+            const markerTime = new Date(startDate.getTime() + (totalDuration * i / (timeMarkers - 1)));
+            const span = document.createElement('span');
+            span.textContent = formatTime(markerTime);
+            timelineContainer.appendChild(span);
+        }
     }
 
-    // Update mining stats
-    const statsContainer = document.getElementById('mining-stats-display');
+    // Update mining stats with unique IDs
+    const statsContainer = document.getElementById(`mining-stats-display-${pkgId}`) || document.getElementById('mining-stats-display');
     if (statsContainer) {
         statsContainer.innerHTML = `
             <div class="mining-stat-item">
-                <div class="mining-stat-label">Current Hashrate</div>
-                <div class="mining-stat-value">${pkg.hashrate || 'N/A'}</div>
+                <div class="mining-stat-label">Hashrate</div>
+                <div class="mining-stat-value" id="stat-hashrate-${pkgId}">${pkg.hashrate || 'N/A'}</div>
             </div>
             <div class="mining-stat-item">
-                <div class="mining-stat-label">Active Rigs</div>
-                <div class="mining-stat-value">${pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A'}</div>
+                <div class="mining-stat-label">Rigs</div>
+                <div class="mining-stat-value" id="stat-rigs-${pkgId}">${pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A'}</div>
             </div>
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Probability</div>
-                <div class="mining-stat-value">${pkg.probability || 'N/A'}</div>
+                <div class="mining-stat-value" id="stat-probability-${pkgId}">${pkg.probability || 'N/A'}</div>
             </div>
             <div class="mining-stat-item">
-                <div class="mining-stat-label">Blocks Found</div>
-                <div class="mining-stat-value" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${pkg.totalBlocks || 0}</div>
+                <div class="mining-stat-label">Blocks</div>
+                <div class="mining-stat-value" id="stat-blocks-${pkgId}" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${pkg.totalBlocks || 0}</div>
             </div>
         `;
     }
+}
+
+// Live update function for mining chart (called during polling)
+function updateMiningChartLive(pkg) {
+    if (!currentDetailPackage || currentDetailPackage.id !== pkg.id) return;
+
+    const pkgId = (pkg.id || 'default').replace(/[^a-zA-Z0-9]/g, '');
+
+    // Update stats
+    const hashrateEl = document.getElementById(`stat-hashrate-${pkgId}`);
+    const rigsEl = document.getElementById(`stat-rigs-${pkgId}`);
+    const probabilityEl = document.getElementById(`stat-probability-${pkgId}`);
+    const blocksEl = document.getElementById(`stat-blocks-${pkgId}`);
+
+    if (hashrateEl) hashrateEl.textContent = pkg.hashrate || 'N/A';
+    if (rigsEl) rigsEl.textContent = pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A';
+    if (probabilityEl) probabilityEl.textContent = pkg.probability || 'N/A';
+    if (blocksEl) {
+        blocksEl.textContent = pkg.totalBlocks || 0;
+        blocksEl.style.color = pkg.blockFound ? '#00ff00' : '#888';
+    }
+
+    // Update progress bar
+    const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
+    const endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
+    const totalDuration = endTime - startTime;
+    const elapsedMs = Math.max(0, Date.now() - startTime);
+    const timeProgress = Math.min(100, (elapsedMs / totalDuration) * 100);
+
+    const fillElement = document.getElementById(`close-to-reward-fill-${pkgId}`) || document.getElementById('close-to-reward-fill');
+    const percentElement = document.getElementById(`close-to-reward-percentage-${pkgId}`) || document.getElementById('close-to-reward-percentage');
+
+    if (fillElement && percentElement) {
+        const displayPercent = pkg.blockFound ? 100 : timeProgress;
+        fillElement.style.width = `${Math.min(displayPercent, 100)}%`;
+        percentElement.textContent = `${displayPercent.toFixed(0)}%`;
+    }
+
+    // Highlight the current poll bar
+    const intervalMs = 30 * 1000;
+    const currentInterval = Math.floor(elapsedMs / intervalMs);
+    const totalIntervals = Math.ceil(totalDuration / intervalMs);
+    const maxBars = Math.min(totalIntervals, 120);
+    const skipFactor = totalIntervals > 120 ? Math.ceil(totalIntervals / 120) : 1;
+    const currentBarIndex = Math.floor(currentInterval / skipFactor);
+
+    // Remove current-poll class from all bars
+    document.querySelectorAll(`[id^="mining-bar-${pkgId}-"]`).forEach(bar => {
+        bar.classList.remove('current-poll');
+    });
+
+    // Add current-poll class to current bar
+    const currentBar = document.getElementById(`mining-bar-${pkgId}-${currentBarIndex}`);
+    if (currentBar && !currentBar.classList.contains('reward-found')) {
+        currentBar.classList.add('current-poll');
+    }
+
+    // Update current package reference
+    currentDetailPackage = pkg;
 }
 
 // Legacy modal functions (kept for compatibility)
