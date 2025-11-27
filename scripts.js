@@ -18419,8 +18419,14 @@ function updateMiningProgressChart(pkg) {
                 bar.style.height = `${height}px`;
                 barsContainer.appendChild(bar);
 
-                // Add percentage circle for reward-found bars only
+                // Add line + percentage circle for reward-found bars (with rocket above)
                 if (bar._rewardPercent) {
+                    // Add vertical line
+                    const line = document.createElement('div');
+                    line.className = 'bar-reward-line';
+                    bar.appendChild(line);
+
+                    // Add percentage circle
                     const circle = document.createElement('div');
                     circle.className = 'bar-percentage-circle reward-circle';
                     circle.textContent = `${bar._rewardPercent.toFixed(0)}%`;
@@ -18428,11 +18434,41 @@ function updateMiningProgressChart(pkg) {
                 }
             }
 
-            // Track highest bar for progress display (but no visual highlighting)
-            if (highestBar.percentage >= 60) {
+            // Add line + circle to the highest non-reward bar (closest to reward)
+            if (highestBar.percentage >= 60 && highestBar.element) {
+                // Mark as closest-to-reward
+                highestBar.element.classList.add('closest-to-reward');
+
+                // Add vertical line
+                const progressLine = document.createElement('div');
+                progressLine.className = 'bar-progress-line';
+                highestBar.element.appendChild(progressLine);
+
+                // Add percentage circle
+                const progressCircle = document.createElement('div');
+                progressCircle.className = 'bar-percentage-circle progress-circle';
+                progressCircle.textContent = `${highestBar.percentage.toFixed(0)}%`;
+                highestBar.element.appendChild(progressCircle);
+
                 chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
                 updateProgressBarDisplay(highestBar.percentage);
-            } else if (storedHighest.percentage >= 60) {
+            } else if (storedHighest.percentage >= 60 && storedHighest.index >= 0) {
+                // Use stored highest - find the bar element
+                const storedBar = document.getElementById(`mining-bar-${pkgId}-${storedHighest.index}`);
+                if (storedBar && !storedBar.classList.contains('reward-found')) {
+                    storedBar.classList.add('closest-to-reward');
+
+                    // Add vertical line
+                    const progressLine = document.createElement('div');
+                    progressLine.className = 'bar-progress-line';
+                    storedBar.appendChild(progressLine);
+
+                    // Add percentage circle
+                    const progressCircle = document.createElement('div');
+                    progressCircle.className = 'bar-percentage-circle progress-circle';
+                    progressCircle.textContent = `${storedHighest.percentage.toFixed(0)}%`;
+                    storedBar.appendChild(progressCircle);
+                }
                 updateProgressBarDisplay(storedHighest.percentage);
             } else {
                 // Use time progress for the progress bar

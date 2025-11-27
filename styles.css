@@ -5095,6 +5095,69 @@ body.light-mode .live-metric-range {
     z-index: 10;
 }
 
+/* Closest to reward bar - shows current progress with line and circle */
+.mining-bar.closest-to-reward {
+    position: relative;
+    z-index: 5;
+}
+
+/* Progress circle for closest-to-reward bar (orange/cyan style) */
+.bar-percentage-circle.progress-circle {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #00bcd4;
+    color: #fff;
+    font-size: 9px;
+    font-weight: bold;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.5);
+    z-index: 11;
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(0, 188, 212, 0.5);
+        transform: translateX(-50%) scale(1);
+    }
+    50% {
+        box-shadow: 0 2px 15px rgba(0, 188, 212, 0.8);
+        transform: translateX(-50%) scale(1.05);
+    }
+}
+
+/* Vertical line connecting circle to bar */
+.bar-progress-line {
+    position: absolute;
+    width: 2px;
+    background: linear-gradient(to bottom, #00bcd4, transparent);
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 100%;
+    height: 25px;
+    z-index: 10;
+}
+
+/* Vertical line for reward bars (green) */
+.bar-reward-line {
+    position: absolute;
+    width: 2px;
+    background: linear-gradient(to bottom, #4CAF50, transparent);
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 100%;
+    height: 25px;
+    z-index: 10;
+}
+
 /* Countdown timer container */
 .countdown-timer-container {
     display: flex;
