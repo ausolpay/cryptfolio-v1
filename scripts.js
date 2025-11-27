@@ -243,6 +243,11 @@ let buyPackagesPauseTimer = null;
 // Structure: { packageId: { shares: number, timestamp: number } }
 const pendingSharePurchases = {};
 
+// Authenticated team package shares from API
+// Structure: { packageId: smallShares, ... }
+// Populated by fetchAuthenticatedTeamShares() from /main/api/v2/hashpower/solo/shared/order
+let authenticatedTeamShares = {};
+
 let socket;
 let lastWebSocketUpdate = Date.now();
 const twoMinutes = 2 * 60 * 1000;
@@ -17240,7 +17245,7 @@ function getMyTeamSharesFromStorage(packageId) {
 }
 
 // Main function to get user's bought shares for a team package
-// Priority: 1. Pending (recent purchase) 2. API data 3. localStorage fallback
+// Priority: 1. Pending (recent purchase) 2. Active packages API 3. Authenticated team shares 4. localStorage fallback
 function getMyTeamShares(packageId) {
     // 1. Check for pending shares (recent purchase, within 10s)
     const pendingShares = getPendingShares(packageId);
@@ -17265,8 +17270,13 @@ function getMyTeamShares(packageId) {
         return pendingShares;
     }
 
-    // 5. Fallback to localStorage for packages not in activePackages
-    // (e.g., countdown packages user hasn't joined yet)
+    // 5. Check authenticated team shares (from /main/api/v2/hashpower/solo/shared/order)
+    // This includes countdown packages that aren't in activePackages yet
+    if (authenticatedTeamShares && authenticatedTeamShares[packageId] !== undefined) {
+        return authenticatedTeamShares[packageId];
+    }
+
+    // 6. Fallback to localStorage for packages not in any API data
     return getMyTeamSharesFromStorage(packageId);
 }
 
@@ -18560,6 +18570,85 @@ async function fetchNiceHashTeamPackages() {
     }
 }
 
+// Fetch user's team package shares from authenticated API endpoint
+// This populates authenticatedTeamShares with user's shares from members array
+async function fetchAuthenticatedTeamShares() {
+    console.log('🔄 Fetching authenticated team package shares...');
+
+    // Check if we have API credentials
+    if (!easyMiningSettings?.apiKey || !easyMiningSettings?.apiSecret || !easyMiningSettings?.orgId) {
+        console.log('⚠️ No API credentials, skipping authenticated team shares fetch');
+        return;
+    }
+
+    try {
+        const endpoint = '/main/api/v2/hashpower/solo/shared/order?onlyGold=false';
+        const headers = generateNiceHashAuthHeaders('GET', endpoint);
+
+        let response;
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: endpoint, method: 'GET', headers: headers })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'GET',
+                headers: headers
+            });
+        }
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const packages = data.list || [];
+        const userOrgId = easyMiningSettings.orgId;
+
+        console.log(`✅ Fetched ${packages.length} team packages from authenticated endpoint`);
+
+        // Clear existing data
+        authenticatedTeamShares = {};
+
+        // Extract user's shares from each package's members array
+        packages.forEach(pkg => {
+            const packageId = pkg.id;
+            const ticketId = pkg.currencyAlgoTicket?.id;
+
+            // Find user in members array
+            const userMember = pkg.members?.find(m => m.organizationId === userOrgId);
+
+            if (userMember) {
+                // Extract shares.small (primary share count)
+                const smallShares = userMember.shares?.small || 0;
+                const mediumShares = userMember.shares?.medium || 0;
+                const largeShares = userMember.shares?.large || 0;
+
+                // Total shares = small + (medium * 10) + (large * 100)
+                const totalShares = smallShares + (mediumShares * 10) + (largeShares * 100);
+
+                // Store by both package ID and ticket ID for flexible lookup
+                if (packageId) {
+                    authenticatedTeamShares[packageId] = totalShares;
+                }
+                if (ticketId) {
+                    authenticatedTeamShares[ticketId] = totalShares;
+                }
+
+                const pkgName = pkg.currencyAlgoTicket?.name || 'Unknown';
+                console.log(`   📦 ${pkgName}: ${totalShares} shares (small=${smallShares}, med=${mediumShares}, lg=${largeShares})`);
+            }
+        });
+
+        console.log(`✅ Populated authenticatedTeamShares with ${Object.keys(authenticatedTeamShares).length} entries`);
+
+    } catch (error) {
+        console.error('❌ Error fetching authenticated team shares:', error);
+    }
+}
+
 // =============================================================================
 // BUY PACKAGES PRICE HELPERS (Portfolio Cache + Fallbacks)
 // =============================================================================
@@ -18876,6 +18965,10 @@ async function loadBuyPackagesDataOnPage() {
     // Fetch team packages from API
     let teamPackages = await fetchNiceHashTeamPackages();
     console.log(`✅ Fetched ${teamPackages.length} team packages from API`);
+
+    // Fetch authenticated team shares (user's shares from members array)
+    // This populates authenticatedTeamShares for share distribution display
+    await fetchAuthenticatedTeamShares();
 
     // Fetch prices for all package cryptocurrencies before displaying
     const allPackages = [...singlePackages, ...teamPackages];
