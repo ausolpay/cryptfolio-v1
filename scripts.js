@@ -1168,6 +1168,8 @@ function showAppPage() {
     window.scrollTo(0, 0);
     // Stop buy packages polling when leaving the page
     stopBuyPackagesPolling();
+    // Stop package detail live timer when leaving the page
+    stopPackageDetailTimer();
 
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
@@ -1205,6 +1207,7 @@ function showEasyMiningSettingsPage() {
     // Stop buy packages and alerts polling when leaving the page
     stopBuyPackagesPolling();
     stopEasyMiningAlertsPolling();
+    stopPackageDetailTimer();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -4429,6 +4432,8 @@ function showBuyPackagesPage() {
 
     // Stop EasyMining alerts polling when leaving main app page
     stopEasyMiningAlertsPolling();
+    // Stop package detail live timer when leaving
+    stopPackageDetailTimer();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -17116,8 +17121,18 @@ function showPackageDetailPage(pkg) {
         </div>
     `;
 
+    // Initialize local remaining time for smooth countdown (decrements every second)
+    pkg.localRemainingMs = pkg.estimateDurationInSeconds > 0
+        ? pkg.estimateDurationInSeconds * 1000
+        : Math.max(0, new Date(pkg.endTime).getTime() - Date.now());
+
+    console.log(`⏱️ Initialized localRemainingMs: ${pkg.localRemainingMs}ms (${Math.floor(pkg.localRemainingMs/1000)}s)`);
+
     // Update mining progress chart
     updateMiningProgressChart(pkg);
+
+    // Start the 1-second live update timer for smooth countdown
+    startPackageDetailTimer();
 }
 
 // Store current package for live updates
@@ -17128,6 +17143,87 @@ let lastDisplayedBlockCount = 0;
 let miningChartDataStore = {};
 // Track hashrate history for dynamic bar calculations
 let hashrateHistory = {};
+// Separate 1-second timer for smooth countdown/progress updates (independent of API polling)
+let packageDetailUpdateInterval = null;
+
+// Live update function that runs every second (independent of API polling)
+function updatePackageDetailLive() {
+    if (!currentDetailPackage) return;
+
+    // Decrement local remaining time
+    if (currentDetailPackage.localRemainingMs > 0) {
+        currentDetailPackage.localRemainingMs -= 1000;
+    }
+
+    const remainingMs = Math.max(0, currentDetailPackage.localRemainingMs || 0);
+    const pkg = currentDetailPackage;
+
+    // Calculate total duration and progress
+    const totalDurationMs = pkg.packageDuration ? pkg.packageDuration * 1000 : 3600000; // Default 1hr
+    const elapsedMs = Math.max(0, totalDurationMs - remainingMs);
+    const timeProgress = totalDurationMs > 0 ? Math.min(100, (elapsedMs / totalDurationMs) * 100) : 0;
+
+    // Update countdown display
+    const countdownEl = document.getElementById('mining-countdown');
+    if (countdownEl) {
+        if (remainingMs > 0 && pkg.active) {
+            const hours = Math.floor(remainingMs / 3600000);
+            const minutes = Math.floor((remainingMs % 3600000) / 60000);
+            const seconds = Math.floor((remainingMs % 60000) / 1000);
+            countdownEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else if (!pkg.active) {
+            countdownEl.textContent = 'Completed';
+        } else {
+            countdownEl.textContent = '00:00:00';
+        }
+    }
+
+    // Get chart data for progress calculations
+    const chartData = miningChartDataStore[pkg.id] || { highestBar: { percentage: 0 } };
+    const highestPercent = chartData.highestBar?.percentage || Math.min(99, timeProgress);
+
+    // Update progress bar fill and sliding percentage
+    const fillElement = document.getElementById('close-to-reward-fill');
+    const percentElement = document.getElementById('close-to-reward-percentage');
+    const iconElement = document.getElementById('close-to-reward-icon');
+
+    if (fillElement && percentElement) {
+        let displayPercent = pkg.blockFound ? 100 : highestPercent;
+
+        fillElement.style.width = `${Math.min(displayPercent, 100)}%`;
+        percentElement.textContent = `${displayPercent.toFixed(0)}%`;
+
+        // Dynamically position the percentage box along the bar
+        const positionPercent = Math.max(10, Math.min(95, displayPercent));
+        percentElement.style.left = `${positionPercent}%`;
+
+        if (iconElement && pkg.blockFound) {
+            iconElement.classList.add('found');
+            iconElement.style.backgroundColor = '#FFD700';
+            percentElement.style.left = '95%';
+        }
+    }
+}
+
+// Start the package detail live update timer
+function startPackageDetailTimer() {
+    // Clear any existing interval
+    if (packageDetailUpdateInterval) {
+        clearInterval(packageDetailUpdateInterval);
+    }
+    // Start 1-second update timer
+    packageDetailUpdateInterval = setInterval(updatePackageDetailLive, 1000);
+    console.log('⏱️ Package detail live timer started (1-second updates)');
+}
+
+// Stop the package detail live update timer
+function stopPackageDetailTimer() {
+    if (packageDetailUpdateInterval) {
+        clearInterval(packageDetailUpdateInterval);
+        packageDetailUpdateInterval = null;
+        console.log('⏱️ Package detail live timer stopped');
+    }
+}
 
 // Add dynamic probability line SVG overlay to the chart
 function addProbabilityLine(container, numBars, currentDifficulty, history) {
@@ -17722,6 +17818,14 @@ function updateMiningChartLive(pkg) {
 
     // Save chart data
     miningChartDataStore[pkg.id] = chartData;
+
+    // Sync local remaining time with fresh API data (for smooth countdown between polls)
+    if (pkg.estimateDurationInSeconds > 0) {
+        pkg.localRemainingMs = pkg.estimateDurationInSeconds * 1000;
+    } else if (pkg.endTime) {
+        pkg.localRemainingMs = Math.max(0, new Date(pkg.endTime).getTime() - Date.now());
+    }
+
     currentDetailPackage = pkg;
 }
 
