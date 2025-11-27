@@ -18299,22 +18299,36 @@ function updateMiningProgressChart(pkg) {
 
             if (!containerWidth || containerWidth < 100) {
                 // Fallback: use viewport width minus padding for mobile
-                containerWidth = isMobileView ? Math.max(280, window.innerWidth - 60) : 600;
+                // Use more aggressive padding reduction on mobile to prevent cutoff
+                if (isSmallMobile) {
+                    containerWidth = Math.max(240, window.innerWidth - 80);
+                } else if (isMobileView) {
+                    containerWidth = Math.max(260, window.innerWidth - 70);
+                } else {
+                    containerWidth = 600;
+                }
+            } else {
+                // Apply safety margin to actual container width on mobile
+                if (isSmallMobile) {
+                    containerWidth = Math.max(240, containerWidth - 20);
+                } else if (isMobileView) {
+                    containerWidth = Math.max(260, containerWidth - 10);
+                }
             }
 
-            // Total duration in seconds
+            // Total duration in seconds - use precise countdown value
             const totalDurationSeconds = totalDuration / 1000;
 
             // Dynamically calculate interval to fit all bars on screen
             // Target: minBarWidth + gap per bar, ensure all fit within container
             const gapWidth = 1;
-            const minBarWidth = isMobileView ? 3 : 2;
-            const maxBarWidth = isMobileView ? 6 : 8;
+            const minBarWidth = isMobileView ? 2 : 2; // Smaller bars on mobile
+            const maxBarWidth = isMobileView ? 5 : 8;
             const targetBarSpace = minBarWidth + gapWidth; // Space each bar needs
             const maxBarsForContainer = Math.floor(containerWidth / targetBarSpace);
 
             // Calculate interval to fit within maxBarsForContainer
-            // Use larger intervals on mobile to reduce bar count
+            // Use larger intervals on mobile to reduce bar count and fit everything
             let INTERVAL_SECONDS;
             const barsNeededAt30s = Math.ceil(totalDurationSeconds / 30);
 
@@ -18326,9 +18340,11 @@ function updateMiningProgressChart(pkg) {
                 INTERVAL_SECONDS = 120; // 2 minute intervals
             } else if (totalDurationSeconds / 300 <= maxBarsForContainer) {
                 INTERVAL_SECONDS = 300; // 5 minute intervals
+            } else if (totalDurationSeconds / 600 <= maxBarsForContainer) {
+                INTERVAL_SECONDS = 600; // 10 minute intervals
             } else {
-                // Calculate interval to fit exactly
-                INTERVAL_SECONDS = Math.ceil(totalDurationSeconds / maxBarsForContainer);
+                // Calculate interval to fit exactly with some headroom
+                INTERVAL_SECONDS = Math.ceil(totalDurationSeconds / (maxBarsForContainer - 2));
             }
 
             // Calculate total expected bars for the entire remaining duration
