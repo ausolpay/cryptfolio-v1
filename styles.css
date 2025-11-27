@@ -4664,7 +4664,7 @@ body.light-mode .package-card.block-confirmed {
 
 .close-to-reward-percentage {
     position: absolute;
-    left: 50%;
+    left: calc(50% - 15px);
     top: 50%;
     transform: translate(-50%, -50%);
     color: #fff;
@@ -4860,6 +4860,91 @@ body.light-mode .package-card.block-confirmed {
     to {
         opacity: 1;
     }
+}
+
+/* Current mining bar - flashing grey */
+.mining-bar.current-mining {
+    background-color: #888;
+    animation: currentMiningFlash 0.8s ease-in-out infinite;
+    z-index: 2;
+}
+
+@keyframes currentMiningFlash {
+    0%, 100% {
+        background-color: #666;
+        opacity: 0.7;
+    }
+    50% {
+        background-color: #999;
+        opacity: 1;
+    }
+}
+
+/* Closest to reward bar - highlighted with glow */
+.mining-bar.closest-to-reward {
+    background-color: #ffa500;
+    animation: closestToRewardPulse 1.5s ease-in-out infinite;
+    z-index: 3;
+    position: relative;
+}
+
+@keyframes closestToRewardPulse {
+    0%, 100% {
+        background-color: #ffa500;
+        box-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
+    }
+    50% {
+        background-color: #ffcc00;
+        box-shadow: 0 0 20px rgba(255, 200, 0, 0.9);
+    }
+}
+
+/* Percentage circle indicator on closest-to-reward bar */
+.bar-percentage-circle {
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ffa500;
+    color: #000;
+    font-size: 9px;
+    font-weight: bold;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+}
+
+/* Countdown timer container */
+.countdown-timer-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.countdown-label {
+    color: #888;
+}
+
+.countdown-value {
+    color: #ffa500;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 16px;
+}
+
+/* Legend color for closest-to-reward */
+.legend-color.closest-reward {
+    background-color: #ffa500;
+    box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
 }
 
 .mining-chart-timeline {

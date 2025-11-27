@@ -1778,16 +1778,20 @@
                             </div>
                             <div id="close-to-reward-icon" class="close-to-reward-icon">₿</div>
                         </div>
+                        <div class="countdown-timer-container">
+                            <span class="countdown-label">Time Remaining:</span>
+                            <span id="mining-countdown" class="countdown-value">--:--:--</span>
+                        </div>
                     </div>
 
                     <!-- Mining Activity Chart -->
                     <div class="mining-chart-container">
                         <div class="mining-chart-legend">
-                            <span class="legend-item"><span class="legend-color difficulty-reached"></span> Difficulty Reached</span>
-                            <span class="legend-item"><span class="legend-color block-rewards"></span> Block Rewards</span>
+                            <span class="legend-item"><span class="legend-color difficulty-reached"></span> Mining</span>
+                            <span class="legend-item"><span class="legend-color closest-reward"></span> Closest to Reward</span>
+                            <span class="legend-item"><span class="legend-color block-rewards"></span> Block Found</span>
                             <span class="legend-item"><span class="legend-icon">🚀</span> Reward</span>
-                            <span class="legend-item"><span class="legend-color orphan-block"></span> Orphan Block</span>
-                            <span class="legend-item"><span class="legend-line"></span> Network Difficulty</span>
+                            <span class="legend-item"><span class="legend-line"></span> Difficulty Threshold</span>
                         </div>
                         <div id="package-detail-page-blocks" class="mining-chart-bars"></div>
                         <div id="mining-chart-timeline" class="mining-chart-timeline"></div>
