@@ -1766,8 +1766,35 @@
                 <div id="package-detail-page-info" class="package-info-grid"></div>
 
                 <div class="block-animation-section">
-                    <h3 style="color: #ffa500;">Block Mining Progress</h3>
-                    <div id="package-detail-page-blocks" class="block-bars-container"></div>
+                    <h3 style="color: #ffa500;">Mining Progress</h3>
+
+                    <!-- Close to Reward Progress Bar -->
+                    <div id="close-to-reward-section" class="close-to-reward-section">
+                        <div class="close-to-reward-label">close to reward</div>
+                        <div class="close-to-reward-container">
+                            <div class="close-to-reward-bar">
+                                <div id="close-to-reward-fill" class="close-to-reward-fill"></div>
+                                <div id="close-to-reward-percentage" class="close-to-reward-percentage">0%</div>
+                            </div>
+                            <div id="close-to-reward-icon" class="close-to-reward-icon">₿</div>
+                        </div>
+                    </div>
+
+                    <!-- Mining Activity Chart -->
+                    <div class="mining-chart-container">
+                        <div class="mining-chart-legend">
+                            <span class="legend-item"><span class="legend-color difficulty-reached"></span> Difficulty Reached</span>
+                            <span class="legend-item"><span class="legend-color close-to-reward"></span> Close To Reward</span>
+                            <span class="legend-item"><span class="legend-icon">₿</span> Reward</span>
+                            <span class="legend-item"><span class="legend-color orphan-block"></span> Orphan Block</span>
+                            <span class="legend-item"><span class="legend-line"></span> Network Difficulty</span>
+                        </div>
+                        <div id="package-detail-page-blocks" class="mining-chart-bars"></div>
+                        <div id="mining-chart-timeline" class="mining-chart-timeline"></div>
+                    </div>
+
+                    <!-- Mining Stats -->
+                    <div id="mining-stats-display" class="mining-stats-display"></div>
                 </div>
             </div>
         </div>

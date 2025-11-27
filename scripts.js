@@ -17093,35 +17093,177 @@ function showPackageDetailPage(pkg) {
         </div>
     `;
 
-    // Animate block bars
-    const barsContainer = document.getElementById('package-detail-page-blocks');
-    barsContainer.innerHTML = '';
+    // Update mining progress chart
+    updateMiningProgressChart(pkg);
+}
 
-    // Generate mock blocks if not present (for testing)
-    if (!pkg.blocks || pkg.blocks.length === 0) {
-        pkg.blocks = [];
-        for (let i = 0; i < 10; i++) {
-            pkg.blocks.push({
-                percentage: Math.floor(Math.random() * 100),
-                timestamp: Date.now() - (i * 60000)
-            });
+// Update the mining progress chart on package detail page
+function updateMiningProgressChart(pkg) {
+    // Calculate "close to reward" percentage
+    let closeToRewardPercent = 0;
+
+    if (pkg.active && pkg.probability) {
+        // Extract odds from "1:X" probability format
+        const match = pkg.probability.match(/1:(\d+)/);
+        if (match) {
+            const odds = parseInt(match[1]);
+
+            // Calculate elapsed time and attempts
+            const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
+            const elapsedMs = Date.now() - startTime;
+            const attemptNumber = Math.max(1, Math.floor(elapsedMs / 30000) + 1);
+
+            // Progress percentage: (attempts / odds) * 100, capped at 110%
+            closeToRewardPercent = Math.min(110, (attemptNumber / odds) * 100);
         }
     }
 
-    pkg.blocks.forEach((block, index) => {
-        setTimeout(() => {
-            const bar = document.createElement('div');
-            bar.className = 'block-bar';
-            bar.style.height = `${Math.min(block.percentage, 100) * 1.5}px`;
+    // If block was found, show 100%
+    if (pkg.blockFound) {
+        closeToRewardPercent = 100;
+    }
 
-            if (block.percentage >= 100) {
-                bar.innerHTML = `<div class="block-bar-rocket">🚀</div>`;
+    // Update close to reward progress bar
+    const fillElement = document.getElementById('close-to-reward-fill');
+    const percentElement = document.getElementById('close-to-reward-percentage');
+    const iconElement = document.getElementById('close-to-reward-icon');
+
+    if (fillElement && percentElement && iconElement) {
+        fillElement.style.width = `${Math.min(closeToRewardPercent, 100)}%`;
+        percentElement.textContent = `${closeToRewardPercent.toFixed(0)}%`;
+
+        // Highlight icon if block found
+        if (pkg.blockFound) {
+            iconElement.classList.add('found');
+            iconElement.style.backgroundColor = '#4CAF50';
+        } else {
+            iconElement.classList.remove('found');
+            iconElement.style.backgroundColor = closeToRewardPercent >= 80 ? '#ffa500' : '#4CAF50';
+        }
+    }
+
+    // Generate mining activity bars
+    const barsContainer = document.getElementById('package-detail-page-blocks');
+    const timelineContainer = document.getElementById('mining-chart-timeline');
+
+    if (barsContainer) {
+        barsContainer.innerHTML = '';
+
+        // Calculate package duration and elapsed time
+        const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
+        const endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
+        const totalDuration = endTime - startTime;
+        const elapsedMs = Date.now() - startTime;
+
+        // Generate bars for each 5-minute interval
+        const intervalMs = 5 * 60 * 1000; // 5 minutes
+        const totalIntervals = Math.min(60, Math.ceil(totalDuration / intervalMs)); // Max 60 bars (5 hours)
+        const elapsedIntervals = Math.floor(elapsedMs / intervalMs);
+
+        // Get reward timestamps if any
+        const rewardTimestamps = [];
+        if (pkg.fullOrderData?.soloReward) {
+            pkg.fullOrderData.soloReward.forEach(reward => {
+                if (reward.timestamp || reward.createdTs) {
+                    rewardTimestamps.push(new Date(reward.timestamp || reward.createdTs).getTime());
+                }
+            });
+        }
+
+        // Generate deterministic "luck" values for each interval using package ID as seed
+        const seedHash = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash);
+        };
+
+        for (let i = 0; i < totalIntervals; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'mining-bar';
+
+            const intervalStart = startTime + (i * intervalMs);
+            const intervalEnd = intervalStart + intervalMs;
+            const isElapsed = Date.now() > intervalStart;
+            const isCurrent = Date.now() >= intervalStart && Date.now() < intervalEnd;
+
+            // Check if a reward was found in this interval
+            const rewardInInterval = rewardTimestamps.some(ts => ts >= intervalStart && ts < intervalEnd);
+
+            // Generate deterministic height based on package ID and interval
+            const seed = seedHash((pkg.id || 'default') + i.toString());
+            const baseHeight = 20 + (seed % 80); // 20-100% height variation
+
+            // Only show bars for elapsed time (active bars are grey, future is hidden)
+            if (isElapsed || isCurrent) {
+                let height = baseHeight;
+
+                // Simulate "close to reward" moments (using seed to make it deterministic)
+                const isCloseToReward = (seed % 10 === 0) && !rewardInInterval; // ~10% chance per interval
+
+                if (rewardInInterval) {
+                    bar.classList.add('reward-found');
+                    height = 100; // Full height for reward
+                } else if (isCloseToReward && i < elapsedIntervals) {
+                    bar.classList.add('close-to-reward');
+                    height = 70 + (seed % 30); // 70-100% for close calls
+                }
+
+                bar.style.height = `${height}px`;
+            } else {
+                bar.style.height = '0px';
+                bar.style.opacity = '0.3';
             }
 
-            bar.innerHTML += `<div class="block-bar-percentage">${block.percentage}%</div>`;
             barsContainer.appendChild(bar);
-        }, index * 100);
-    });
+        }
+    }
+
+    // Update timeline
+    if (timelineContainer) {
+        timelineContainer.innerHTML = '';
+        const startTime = pkg.startTime ? new Date(pkg.startTime) : new Date();
+        const endTime = pkg.endTime ? new Date(pkg.endTime) : new Date(startTime.getTime() + 86400000);
+
+        // Show start, middle, and end times
+        const formatTime = (date) => {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        };
+
+        const midTime = new Date((startTime.getTime() + endTime.getTime()) / 2);
+
+        timelineContainer.innerHTML = `
+            <span>${formatTime(startTime)}</span>
+            <span>${formatTime(midTime)}</span>
+            <span>${formatTime(endTime)}</span>
+        `;
+    }
+
+    // Update mining stats
+    const statsContainer = document.getElementById('mining-stats-display');
+    if (statsContainer) {
+        statsContainer.innerHTML = `
+            <div class="mining-stat-item">
+                <div class="mining-stat-label">Current Hashrate</div>
+                <div class="mining-stat-value">${pkg.hashrate || 'N/A'}</div>
+            </div>
+            <div class="mining-stat-item">
+                <div class="mining-stat-label">Active Rigs</div>
+                <div class="mining-stat-value">${pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A'}</div>
+            </div>
+            <div class="mining-stat-item">
+                <div class="mining-stat-label">Probability</div>
+                <div class="mining-stat-value">${pkg.probability || 'N/A'}</div>
+            </div>
+            <div class="mining-stat-item">
+                <div class="mining-stat-label">Blocks Found</div>
+                <div class="mining-stat-value" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${pkg.totalBlocks || 0}</div>
+            </div>
+        `;
+    }
 }
 
 // Legacy modal functions (kept for compatibility)
