@@ -19067,12 +19067,25 @@ async function loadBuyPackagesDataOnPage() {
     const existingTeamIds = Array.from(teamContainer.querySelectorAll('[data-package-id]'))
         .map(el => el.dataset.packageId);
     const newTeamIds = teamPackages.map(pkg => pkg.id);
+    const newTeamIdSet = new Set(newTeamIds);
 
     // Check if same packages exist (same IDs in same order)
     const samePackages = existingTeamIds.length === newTeamIds.length &&
         existingTeamIds.every((id, index) => id === newTeamIds[index]);
 
-    if (samePackages && teamContainer.children.length > 0) {
+    // Check if any existing package was removed (not in new set)
+    const packageRemoved = existingTeamIds.some(id => !newTeamIdSet.has(id));
+
+    // Check if any new package was added (not in existing set)
+    const existingTeamIdSet = new Set(existingTeamIds);
+    const packageAdded = newTeamIds.some(id => !existingTeamIdSet.has(id));
+
+    if (packageRemoved || packageAdded) {
+        console.log(`🔄 Package change detected - removed: ${packageRemoved}, added: ${packageAdded}`);
+        console.log('   existing:', existingTeamIds, 'new:', newTeamIds);
+    }
+
+    if (samePackages && teamContainer.children.length > 0 && !packageRemoved && !packageAdded) {
         // Smart update: update data fields without destroying countdown elements
         console.log('🔄 Same packages detected - using smart update (preserving countdowns)');
         updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames);
