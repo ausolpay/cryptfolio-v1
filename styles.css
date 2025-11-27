@@ -4848,6 +4848,20 @@ body.light-mode .package-card.block-confirmed {
     50% { transform: translateX(-50%) translateY(-5px); }
 }
 
+/* Newly elapsed bar animation - grows from small to full height */
+.mining-bar.newly-elapsed {
+    animation: barElapsed 0.5s ease-out forwards;
+}
+
+@keyframes barElapsed {
+    from {
+        opacity: 0.2;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 .mining-chart-timeline {
     display: flex;
     justify-content: space-between;

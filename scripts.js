@@ -17107,6 +17107,8 @@ function showPackageDetailPage(pkg) {
 
 // Store current package for live updates
 let currentDetailPackage = null;
+// Track last displayed block count for detecting new blocks during polling
+let lastDisplayedBlockCount = 0;
 
 // Update the mining progress chart on package detail page
 function updateMiningProgressChart(pkg) {
@@ -17114,12 +17116,23 @@ function updateMiningProgressChart(pkg) {
     currentDetailPackage = pkg;
     const pkgId = (pkg.id || 'default').replace(/[^a-zA-Z0-9]/g, '');
 
+    // Initialize the block counter for new package detection
+    lastDisplayedBlockCount = pkg.totalBlocks || 0;
+
+    console.log(`📊 [MINING CHART] Rendering chart for ${pkg.name || pkgId}`);
+    console.log(`   - Package ID: ${pkg.id}`);
+    console.log(`   - blockFound: ${pkg.blockFound}, totalBlocks: ${pkg.totalBlocks}`);
+    console.log(`   - startTime: ${pkg.startTime}, endTime: ${pkg.endTime}`);
+    console.log(`   - fullOrderData.soloReward:`, pkg.fullOrderData?.soloReward);
+
     // Calculate time-based progress (not probability-based)
     const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
     const endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
     const totalDuration = endTime - startTime;
     const elapsedMs = Math.max(0, Date.now() - startTime);
     const timeProgress = Math.min(100, (elapsedMs / totalDuration) * 100);
+
+    console.log(`   - Time progress: ${timeProgress.toFixed(1)}% (${Math.floor(elapsedMs/1000)}s / ${Math.floor(totalDuration/1000)}s)`);
 
     // Close to reward should only show 100%+ if block actually found
     let closeToRewardPercent = timeProgress;
@@ -17139,7 +17152,7 @@ function updateMiningProgressChart(pkg) {
         // Highlight icon if block found
         if (pkg.blockFound) {
             iconElement.classList.add('found');
-            iconElement.style.backgroundColor = '#4CAF50';
+            iconElement.style.backgroundColor = '#FFD700';
         } else {
             iconElement.classList.remove('found');
             iconElement.style.backgroundColor = '#4CAF50';
@@ -17158,15 +17171,30 @@ function updateMiningProgressChart(pkg) {
         const totalIntervals = Math.ceil(totalDuration / intervalMs);
         const currentInterval = Math.floor(elapsedMs / intervalMs);
 
-        // Get reward timestamps if any
+        // Get reward timestamps from soloReward array
         const rewardTimestamps = [];
-        if (pkg.fullOrderData?.soloReward) {
-            pkg.fullOrderData.soloReward.forEach(reward => {
-                if (reward.timestamp || reward.createdTs) {
-                    rewardTimestamps.push(new Date(reward.timestamp || reward.createdTs).getTime());
+        if (pkg.fullOrderData?.soloReward && Array.isArray(pkg.fullOrderData.soloReward)) {
+            pkg.fullOrderData.soloReward.forEach((reward, idx) => {
+                // Try multiple timestamp field names
+                const ts = reward.createdTs || reward.timestamp || reward.time || reward.ts;
+                if (ts) {
+                    const rewardTime = typeof ts === 'number' ? ts : new Date(ts).getTime();
+                    rewardTimestamps.push(rewardTime);
+                    console.log(`   📍 Reward #${idx + 1} timestamp: ${new Date(rewardTime).toLocaleString()} (raw: ${ts})`);
+                } else {
+                    console.log(`   ⚠️ Reward #${idx + 1} has no timestamp! Fields:`, Object.keys(reward));
                 }
             });
         }
+
+        // FALLBACK: If blockFound is true but no timestamps found, use current time
+        if (pkg.blockFound && rewardTimestamps.length === 0) {
+            const fallbackTime = Date.now();
+            console.log(`   🔄 FALLBACK: blockFound=true but no timestamps. Using current time: ${new Date(fallbackTime).toLocaleString()}`);
+            rewardTimestamps.push(fallbackTime);
+        }
+
+        console.log(`   📊 Total reward timestamps found: ${rewardTimestamps.length}`);
 
         // Generate deterministic "luck" values for each interval using package ID as seed
         const seedHash = (str) => {
@@ -17183,6 +17211,11 @@ function updateMiningProgressChart(pkg) {
         const maxBars = Math.min(totalIntervals, 120);
         const skipFactor = totalIntervals > 120 ? Math.ceil(totalIntervals / 120) : 1;
 
+        console.log(`   📊 Bar generation: ${maxBars} bars, skipFactor=${skipFactor}, currentInterval=${currentInterval}`);
+
+        // Track if we've shown any reward bars
+        let rewardBarsShown = 0;
+
         for (let i = 0; i < maxBars; i++) {
             const actualInterval = i * skipFactor;
             const bar = document.createElement('div');
@@ -17190,12 +17223,12 @@ function updateMiningProgressChart(pkg) {
             bar.id = `mining-bar-${pkgId}-${i}`;
 
             const intervalStart = startTime + (actualInterval * intervalMs);
-            const intervalEnd = intervalStart + intervalMs;
+            const intervalEnd = intervalStart + (intervalMs * skipFactor); // Account for skip factor in interval width
             const isElapsed = Date.now() > intervalEnd;
             const isCurrent = Date.now() >= intervalStart && Date.now() < intervalEnd;
             const isLatestPoll = (actualInterval === currentInterval) || (actualInterval === currentInterval - 1);
 
-            // Check if a reward was found in this interval
+            // Check if a reward was found in this interval (with skip factor)
             const rewardInInterval = rewardTimestamps.some(ts => ts >= intervalStart && ts < intervalEnd);
 
             // Generate deterministic height based on package ID and interval
@@ -17211,6 +17244,8 @@ function updateMiningProgressChart(pkg) {
                     // Block found - bar goes ABOVE the difficulty line (100%+)
                     barClass += ' reward-found';
                     height = 120; // Above the line!
+                    rewardBarsShown++;
+                    console.log(`   🎯 Reward bar at interval ${i} (actualInterval=${actualInterval})`);
                 } else if (isLatestPoll && pkg.active) {
                     // Current/latest poll interval - highlighted yellow
                     barClass += ' current-poll';
@@ -17230,6 +17265,20 @@ function updateMiningProgressChart(pkg) {
 
             barsContainer.appendChild(bar);
         }
+
+        // FALLBACK: If blockFound but no reward bars were shown, add one at current position
+        if (pkg.blockFound && rewardBarsShown === 0 && rewardTimestamps.length > 0) {
+            console.log(`   ⚠️ FALLBACK ACTIVATED: blockFound=true but no reward bars shown. Adding at current interval.`);
+            const currentBarIdx = Math.min(Math.floor(currentInterval / skipFactor), maxBars - 1);
+            const currentBar = document.getElementById(`mining-bar-${pkgId}-${currentBarIdx}`);
+            if (currentBar) {
+                currentBar.className = 'mining-bar reward-found';
+                currentBar.style.height = '120px';
+                console.log(`   🎯 FALLBACK: Reward bar added at bar ${currentBarIdx}`);
+            }
+        }
+
+        console.log(`   ✅ Chart rendered: ${rewardBarsShown} reward bars shown`);
     }
 
     // Update timeline with more time markers
@@ -17282,18 +17331,56 @@ function updateMiningChartLive(pkg) {
 
     const pkgId = (pkg.id || 'default').replace(/[^a-zA-Z0-9]/g, '');
 
-    // Update stats
+    console.log(`📊 [MINING CHART LIVE] Updating chart for ${pkg.name || pkgId}`);
+    console.log(`   - blockFound: ${pkg.blockFound}, totalBlocks: ${pkg.totalBlocks}, lastDisplayed: ${lastDisplayedBlockCount}`);
+    console.log(`   - fullOrderData.soloReward:`, pkg.fullOrderData?.soloReward);
+
+    // CHECK FOR NEW BLOCKS - If block count increased, regenerate entire chart
+    const currentBlockCount = pkg.totalBlocks || 0;
+    const hasNewBlock = currentBlockCount > lastDisplayedBlockCount;
+
+    if (hasNewBlock) {
+        console.log(`🎉 [MINING CHART] NEW BLOCK DETECTED! ${lastDisplayedBlockCount} -> ${currentBlockCount}`);
+        lastDisplayedBlockCount = currentBlockCount;
+        // Regenerate entire chart to show the new reward bar
+        updateMiningProgressChart(pkg);
+        return; // Chart fully regenerated, no need for incremental updates
+    }
+
+    // Also regenerate if blockFound flag changed but we didn't detect via count
+    if (pkg.blockFound && !currentDetailPackage.blockFound) {
+        console.log(`🎉 [MINING CHART] BLOCK FOUND FLAG CHANGED - Regenerating chart`);
+        lastDisplayedBlockCount = currentBlockCount;
+        updateMiningProgressChart(pkg);
+        return;
+    }
+
+    // Update stats with debug logging
+    console.log(`   📈 Live data - hashrate: ${pkg.hashrate}, rigs: ${pkg.rigsCount}, probability: ${pkg.probability}, blocks: ${pkg.totalBlocks}`);
+
     const hashrateEl = document.getElementById(`stat-hashrate-${pkgId}`);
     const rigsEl = document.getElementById(`stat-rigs-${pkgId}`);
     const probabilityEl = document.getElementById(`stat-probability-${pkgId}`);
     const blocksEl = document.getElementById(`stat-blocks-${pkgId}`);
 
-    if (hashrateEl) hashrateEl.textContent = pkg.hashrate || 'N/A';
-    if (rigsEl) rigsEl.textContent = pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A';
-    if (probabilityEl) probabilityEl.textContent = pkg.probability || 'N/A';
+    console.log(`   🔍 Element lookup - hashrate: ${!!hashrateEl}, rigs: ${!!rigsEl}, probability: ${!!probabilityEl}, blocks: ${!!blocksEl}`);
+
+    if (hashrateEl) {
+        hashrateEl.textContent = pkg.hashrate || 'N/A';
+        console.log(`   ✅ Updated hashrate to: ${pkg.hashrate || 'N/A'}`);
+    }
+    if (rigsEl) {
+        rigsEl.textContent = pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A';
+        console.log(`   ✅ Updated rigs to: ${pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A'}`);
+    }
+    if (probabilityEl) {
+        probabilityEl.textContent = pkg.probability || 'N/A';
+        console.log(`   ✅ Updated probability to: ${pkg.probability || 'N/A'}`);
+    }
     if (blocksEl) {
         blocksEl.textContent = pkg.totalBlocks || 0;
         blocksEl.style.color = pkg.blockFound ? '#00ff00' : '#888';
+        console.log(`   ✅ Updated blocks to: ${pkg.totalBlocks || 0}`);
     }
 
     // Update progress bar
@@ -17305,14 +17392,21 @@ function updateMiningChartLive(pkg) {
 
     const fillElement = document.getElementById(`close-to-reward-fill-${pkgId}`) || document.getElementById('close-to-reward-fill');
     const percentElement = document.getElementById(`close-to-reward-percentage-${pkgId}`) || document.getElementById('close-to-reward-percentage');
+    const iconElement = document.getElementById(`close-to-reward-icon-${pkgId}`) || document.getElementById('close-to-reward-icon');
 
     if (fillElement && percentElement) {
         const displayPercent = pkg.blockFound ? 100 : timeProgress;
         fillElement.style.width = `${Math.min(displayPercent, 100)}%`;
         percentElement.textContent = `${displayPercent.toFixed(0)}%`;
+
+        // Update icon if block found
+        if (iconElement && pkg.blockFound) {
+            iconElement.classList.add('found');
+            iconElement.style.backgroundColor = '#FFD700';
+        }
     }
 
-    // Highlight the current poll bar
+    // Highlight the current poll bar and update elapsed bars
     const intervalMs = 30 * 1000;
     const currentInterval = Math.floor(elapsedMs / intervalMs);
     const totalIntervals = Math.ceil(totalDuration / intervalMs);
@@ -17320,15 +17414,50 @@ function updateMiningChartLive(pkg) {
     const skipFactor = totalIntervals > 120 ? Math.ceil(totalIntervals / 120) : 1;
     const currentBarIndex = Math.floor(currentInterval / skipFactor);
 
-    // Remove current-poll class from all bars
+    // Seed hash function for deterministic bar heights
+    const seedHash = (str) => {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash);
+    };
+
+    // Update all bars - animate newly elapsed bars and move current-poll highlight
     document.querySelectorAll(`[id^="mining-bar-${pkgId}-"]`).forEach(bar => {
         bar.classList.remove('current-poll');
+
+        // Get bar index from ID
+        const barIdMatch = bar.id.match(/mining-bar-[^-]+-(\d+)/);
+        if (!barIdMatch) return;
+
+        const barIndex = parseInt(barIdMatch[1], 10);
+        const actualInterval = barIndex * skipFactor;
+        const intervalEnd = startTime + ((actualInterval + skipFactor) * intervalMs);
+        const isNowElapsed = Date.now() > intervalEnd;
+        const isRewardBar = bar.classList.contains('reward-found');
+
+        // If bar was future but is now elapsed, animate it
+        if (isNowElapsed && !isRewardBar && parseFloat(bar.style.height) < 20) {
+            const seed = seedHash((pkg.id || 'default') + actualInterval.toString());
+            const baseHeight = 20 + (seed % 65);
+            bar.style.height = `${baseHeight}px`;
+            bar.style.opacity = '1';
+            bar.classList.add('newly-elapsed');
+        }
     });
 
     // Add current-poll class to current bar
     const currentBar = document.getElementById(`mining-bar-${pkgId}-${currentBarIndex}`);
     if (currentBar && !currentBar.classList.contains('reward-found')) {
         currentBar.classList.add('current-poll');
+        // Make sure current bar has proper height
+        const seed = seedHash((pkg.id || 'default') + (currentBarIndex * skipFactor).toString());
+        const baseHeight = 20 + (seed % 65) + 10; // Slightly taller for current
+        currentBar.style.height = `${baseHeight}px`;
+        currentBar.style.opacity = '1';
     }
 
     // Update current package reference
