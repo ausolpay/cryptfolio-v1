@@ -18101,6 +18101,9 @@ function updateMiningProgressChart(pkg) {
     const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
     let endTime, totalDuration, remainingMs;
 
+    // Calculate expected package duration (with 10 min buffer for chart display)
+    const expectedDurationMs = pkg.packageDuration ? (pkg.packageDuration * 1000) + (10 * 60 * 1000) : null;
+
     if (pkg.active && pkg.estimateDurationInSeconds > 0) {
         // For active packages, use estimateDurationInSeconds for accurate countdown
         remainingMs = pkg.estimateDurationInSeconds * 1000;
@@ -18109,7 +18112,16 @@ function updateMiningProgressChart(pkg) {
     } else {
         // For completed packages, use endTs
         endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
-        totalDuration = endTime - startTime;
+        const actualDuration = endTime - startTime;
+
+        // Use the smaller of actual duration or expected duration + 10 min buffer
+        // This prevents chart from trying to display extremely long time periods on mobile/tablet
+        if (expectedDurationMs && actualDuration > expectedDurationMs) {
+            totalDuration = expectedDurationMs;
+            console.log(`📊 [MINING CHART] Capping duration to ${Math.round(expectedDurationMs/1000/60)} min (pkg duration + 10min buffer)`);
+        } else {
+            totalDuration = actualDuration;
+        }
         remainingMs = Math.max(0, endTime - Date.now());
     }
 
