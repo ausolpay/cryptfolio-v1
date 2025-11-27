@@ -7788,6 +7788,39 @@ function clearTrackedRewards() {
     alert('Tracked rewards have been cleared.\n\nIf auto-add is enabled, rewards will be re-added on the next EasyMining poll (within 30 seconds).');
 }
 
+// Clear Chart Data (Package Detail page bar chart)
+function clearChartData() {
+    if (!loggedInUser) {
+        alert('No user logged in.');
+        return;
+    }
+
+    const warningMessage = `⚠️ Clear Chart Data?\n\nThis will reset all cached mining chart data for package details.\n\nThe chart will rebuild from scratch when you view a package.\n\nAre you sure you want to continue?`;
+
+    if (!confirm(warningMessage)) {
+        return;
+    }
+
+    console.log('🗑️ Clearing chart data...');
+
+    // Clear in-memory chart data store
+    miningChartDataStore = {};
+    console.log('   ✓ Cleared in-memory chart data');
+
+    // Clear localStorage chart data
+    localStorage.removeItem(`${loggedInUser}_chartDataStore`);
+    console.log('   ✓ Cleared localStorage chart data');
+
+    // Clear hashrate history
+    if (typeof hashrateHistory !== 'undefined') {
+        hashrateHistory = {};
+        console.log('   ✓ Cleared hashrate history');
+    }
+
+    console.log('✅ Chart data cleared successfully');
+    alert('Chart data has been cleared.\n\nThe chart will rebuild when you view a package details page.');
+}
+
 // Clear Portfolio 24H Stats (Added Today tracking)
 function clearPortfolio24HStats() {
     if (!loggedInUser) {
