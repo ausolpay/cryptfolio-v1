@@ -7016,7 +7016,7 @@ function clearSpecificCrypto() {
 
     const cryptoName = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
 
-    if (!confirm(`Are you sure you want to clear all data for ${cryptoName}?\n\nThis will reset:\n- Holdings amount & entries\n- History\n- Total cost\n- Deposit history\n- EasyMining tracked blocks\n- EasyMining reward records\n\nThe crypto will remain in your portfolio.\n\nThis action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to clear all data for ${cryptoName}?\n\nThis will reset:\n- Holdings amount & entries\n- History\n- Total cost\n- Deposit history\n\nThe crypto will remain in your portfolio.\n\nThis action cannot be undone.`)) {
         return;
     }
 
@@ -7032,31 +7032,9 @@ function clearSpecificCrypto() {
     removeStorageItem(`${loggedInUser}_${cryptoId}_holdingsEntries`);
     console.log(`   ✓ Cleared holdings entries for ${cryptoId}`);
 
-    // Clear tracked blocks for this specific crypto
-    const trackedBlocksKey = `${loggedInUser}_easyMiningTrackedBlocks`;
-    const trackedBlocks = JSON.parse(localStorage.getItem(trackedBlocksKey) || '{}');
-    let blocksRemoved = 0;
-    for (const blockHash in trackedBlocks) {
-        if (trackedBlocks[blockHash].cryptoId === cryptoId) {
-            delete trackedBlocks[blockHash];
-            blocksRemoved++;
-        }
-    }
-    localStorage.setItem(trackedBlocksKey, JSON.stringify(trackedBlocks));
-    console.log(`   ✓ Cleared ${blocksRemoved} tracked blocks for ${cryptoId}`);
-
-    // Clear EasyMining added rewards for this crypto
-    const addedRewardsKey = `${loggedInUser}_easyMiningAddedRewards`;
-    const addedRewards = JSON.parse(localStorage.getItem(addedRewardsKey) || '{}');
-    let rewardsRemoved = 0;
-    for (const rewardKey in addedRewards) {
-        if (addedRewards[rewardKey].crypto === crypto.symbol || addedRewards[rewardKey].crypto === cryptoId) {
-            delete addedRewards[rewardKey];
-            rewardsRemoved++;
-        }
-    }
-    localStorage.setItem(addedRewardsKey, JSON.stringify(addedRewards));
-    console.log(`   ✓ Cleared ${rewardsRemoved} EasyMining reward records for ${cryptoId}`);
+    // Note: We intentionally do NOT clear tracked blocks or EasyMining reward records here
+    // Those track which rewards have been added to prevent duplicates
+    // Use the separate "Clear Tracked Rewards" button if you need to reset that
 
     // Reset the holdings display in the crypto box
     const holdingsEl = document.getElementById(`${cryptoId}-holdings`);
@@ -7747,13 +7725,9 @@ function confirmClearAllHoldings() {
     localStorage.removeItem(`${loggedInUser}_holdingsHistory`);
     console.log('   ✓ Cleared holdings history');
 
-    // Clear tracked EasyMining rewards (so they can be re-added)
-    localStorage.removeItem(`${loggedInUser}_easyMiningAddedRewards`);
-    console.log('   ✓ Cleared EasyMining tracked rewards');
-
-    // Clear block-level tracking (individual blocks with prices)
-    localStorage.removeItem(`${loggedInUser}_easyMiningTrackedBlocks`);
-    console.log('   ✓ Cleared EasyMining tracked blocks');
+    // Note: We intentionally do NOT clear easyMiningAddedRewards or easyMiningTrackedBlocks here
+    // Those track which rewards have been added to prevent duplicates
+    // Use the separate "Clear Tracked Rewards" button if you need to reset that
 
     // Update all displays to show 0
     cryptos.forEach(crypto => {
@@ -7775,6 +7749,34 @@ function confirmClearAllHoldings() {
 
     console.log('✅ All holdings and history cleared successfully');
     alert('All holdings and history have been cleared.');
+}
+
+// Clear tracked EasyMining rewards (separate from holdings clearing)
+// This resets which rewards have been marked as "added" so they can be re-added
+function clearTrackedRewards() {
+    if (!loggedInUser) {
+        alert('No user logged in.');
+        return;
+    }
+
+    const warningMessage = `⚠️ Clear Tracked Rewards?\n\nThis will reset the tracking of which EasyMining rewards have been added to your holdings.\n\nWARNING: If "Auto-Add Rewards to Holdings" is enabled in EasyMining settings, all rewards will be automatically re-added to your holdings!\n\nThis is useful if:\n- You want to re-sync rewards from scratch\n- Rewards were tracked with incorrect amounts\n\nAre you sure you want to continue?`;
+
+    if (!confirm(warningMessage)) {
+        return;
+    }
+
+    console.log('🗑️ Clearing tracked EasyMining rewards...');
+
+    // Clear block-level tracking (individual blocks with prices)
+    localStorage.removeItem(`${loggedInUser}_easyMiningTrackedBlocks`);
+    console.log('   ✓ Cleared EasyMining tracked blocks');
+
+    // Clear package-level reward tracking
+    localStorage.removeItem(`${loggedInUser}_easyMiningAddedRewards`);
+    console.log('   ✓ Cleared EasyMining added rewards');
+
+    console.log('✅ Tracked rewards cleared successfully');
+    alert('Tracked rewards have been cleared.\n\nIf auto-add is enabled, rewards will be re-added on the next EasyMining poll (within 30 seconds).');
 }
 
 window.onclick = function(event) {
