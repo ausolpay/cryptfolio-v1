@@ -4633,6 +4633,110 @@ body.light-mode .package-card.block-confirmed {
     border-radius: 8px;
 }
 
+/* =============================================================================
+   LIVE METRICS LINE GRAPHS STRIP
+   ============================================================================= */
+
+.live-metrics-strip {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    width: 100%;
+}
+
+.live-metric-card {
+    flex: 1;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid #2a2a4a;
+    border-radius: 12px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.live-metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.live-metric-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.live-metric-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #4CAF50;
+}
+
+.live-metric-graph {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.live-metric-graph canvas {
+    width: 100% !important;
+    height: 80px !important;
+    display: block;
+}
+
+.live-metric-range {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #666;
+}
+
+.metric-min {
+    color: #ff6b6b;
+}
+
+.metric-max {
+    color: #4CAF50;
+}
+
+/* Light mode support */
+body.light-mode .live-metric-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-color: #dee2e6;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .live-metric-title {
+    color: #666;
+}
+
+body.light-mode .live-metric-graph {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+body.light-mode .live-metric-range {
+    color: #888;
+}
+
+/* Responsive - stack on mobile */
+@media (max-width: 768px) {
+    .live-metrics-strip {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .live-metric-card {
+        padding: 12px 15px;
+    }
+
+    .live-metric-value {
+        font-size: 16px;
+    }
+}
+
 .block-bars-container {
     display: flex;
     gap: 10px;

@@ -17250,6 +17250,10 @@ function collectChartDataPoint(pkg) {
     const probability = parseFloat(pkg.probabilityPrecision) || 100;
     const remainingSeconds = pkg.estimateDurationInSeconds || 0;
 
+    // Get current crypto price for the package
+    const cryptoId = pkg.crypto ? pkg.crypto.toLowerCase() : 'btc';
+    const cryptoPrice = getCryptoPriceAUD(cryptoId) || 0;
+
     // Create data point
     const dataPoint = {
         timestamp: now,
@@ -17257,7 +17261,8 @@ function collectChartDataPoint(pkg) {
         speedLimit: speedLimit,
         probability: probability,
         remainingSeconds: remainingSeconds,
-        hashrateRatio: speedLimit > 0 ? hashrate / speedLimit : 0
+        hashrateRatio: speedLimit > 0 ? hashrate / speedLimit : 0,
+        price: cryptoPrice
     };
 
     // Only add if we don't have a point within the last 4 seconds (avoid duplicates)
@@ -17276,7 +17281,14 @@ function collectChartDataPoint(pkg) {
             chartData.hashrateHistory.shift();
         }
 
-        console.log(`📊 [${pkg.name}] Collected data point: hashrate=${hashrate.toFixed(4)}, probability=1:${probability.toFixed(1)}, points=${chartData.dataPoints.length}`);
+        // Update price history
+        if (!chartData.priceHistory) chartData.priceHistory = [];
+        chartData.priceHistory.push(cryptoPrice);
+        if (chartData.priceHistory.length > 100) {
+            chartData.priceHistory.shift();
+        }
+
+        console.log(`📊 [${pkg.name}] Collected data point: hashrate=${hashrate.toFixed(4)}, price=$${cryptoPrice.toFixed(2)}, points=${chartData.dataPoints.length}`);
     }
 
     // Update metadata
@@ -17307,6 +17319,204 @@ function collectChartDataForAllPackages() {
 function hasChartData(pkgId) {
     const chartData = miningChartDataStore[pkgId];
     return chartData && chartData.dataPoints && chartData.dataPoints.length > 0;
+}
+
+// =============================================================================
+// LIVE METRICS LINE GRAPHS
+// Renders hashrate and price line graphs for package detail page
+// =============================================================================
+
+// Get crypto price in AUD (helper function)
+function getCryptoPriceAUD(cryptoSymbol) {
+    const symbol = (cryptoSymbol || 'btc').toUpperCase();
+    // Try to get from globalPriceData or use BTC price as fallback
+    if (typeof globalPriceData !== 'undefined' && globalPriceData[symbol]) {
+        return globalPriceData[symbol].aud || globalPriceData[symbol].usd || 0;
+    }
+    // Fallback to BTC price if available
+    if (typeof currentBTCPrice !== 'undefined' && symbol === 'BTC') {
+        return currentBTCPrice;
+    }
+    return 0;
+}
+
+// Render a line graph on canvas
+function renderLineGraph(canvasId, dataPoints, options = {}) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    if (!dataPoints || dataPoints.length < 2) {
+        // Draw placeholder line
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        return { min: 0, max: 0, current: 0 };
+    }
+
+    // Calculate min/max for scaling
+    const values = dataPoints.filter(v => v !== null && v !== undefined && !isNaN(v));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const padding = range * 0.1; // 10% padding
+
+    const scaledMin = min - padding;
+    const scaledMax = max + padding;
+    const scaledRange = scaledMax - scaledMin;
+
+    // Line color
+    const lineColor = options.color || '#4CAF50';
+    const fillColor = options.fillColor || 'rgba(76, 175, 80, 0.2)';
+
+    // Draw filled area under line
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+
+    for (let i = 0; i < dataPoints.length; i++) {
+        const x = (i / (dataPoints.length - 1)) * width;
+        const normalizedY = (dataPoints[i] - scaledMin) / scaledRange;
+        const y = height - (normalizedY * height);
+        if (i === 0) {
+            ctx.lineTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+
+    ctx.lineTo(width, height);
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    for (let i = 0; i < dataPoints.length; i++) {
+        const x = (i / (dataPoints.length - 1)) * width;
+        const normalizedY = (dataPoints[i] - scaledMin) / scaledRange;
+        const y = height - (normalizedY * height);
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.stroke();
+
+    // Draw current value dot
+    const lastX = width;
+    const lastValue = dataPoints[dataPoints.length - 1];
+    const lastNormalizedY = (lastValue - scaledMin) / scaledRange;
+    const lastY = height - (lastNormalizedY * height);
+
+    ctx.beginPath();
+    ctx.arc(lastX - 3, lastY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = lineColor;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    return { min, max, current: lastValue };
+}
+
+// Update live metrics display (called from updateMiningProgressChart)
+function updateLiveMetricsGraphs(pkg, chartData) {
+    if (!pkg || !chartData) return;
+
+    const dataPoints = chartData.dataPoints || [];
+    if (dataPoints.length === 0) return;
+
+    // Extract hashrate and price arrays from data points
+    const hashrateData = dataPoints.map(p => p.hashrate || 0);
+    const priceData = dataPoints.map(p => p.price || 0);
+
+    // Get current values
+    const currentHashrate = hashrateData[hashrateData.length - 1] || 0;
+    const currentPrice = priceData[priceData.length - 1] || 0;
+
+    // Format hashrate for display
+    let hashrateDisplay = '--';
+    let hashrateUnit = 'TH/s';
+    if (currentHashrate > 0) {
+        if (currentHashrate >= 1000) {
+            hashrateDisplay = (currentHashrate / 1000).toFixed(2);
+            hashrateUnit = 'PH/s';
+        } else if (currentHashrate >= 1) {
+            hashrateDisplay = currentHashrate.toFixed(2);
+            hashrateUnit = 'TH/s';
+        } else if (currentHashrate >= 0.001) {
+            hashrateDisplay = (currentHashrate * 1000).toFixed(2);
+            hashrateUnit = 'GH/s';
+        } else {
+            hashrateDisplay = (currentHashrate * 1000000).toFixed(2);
+            hashrateUnit = 'MH/s';
+        }
+    }
+
+    // Update hashrate display
+    const hashrateValueEl = document.getElementById('live-hashrate-value');
+    if (hashrateValueEl) {
+        hashrateValueEl.textContent = `${hashrateDisplay} ${hashrateUnit}`;
+    }
+
+    // Update price display
+    const priceValueEl = document.getElementById('live-price-value');
+    const priceCryptoEl = document.getElementById('live-price-crypto');
+    if (priceValueEl) {
+        priceValueEl.textContent = currentPrice > 0 ? `$${formatNumber(currentPrice.toFixed(2))}` : '$--';
+    }
+    if (priceCryptoEl) {
+        priceCryptoEl.textContent = pkg.crypto || 'BTC';
+    }
+
+    // Render hashrate line graph
+    const hashrateStats = renderLineGraph('hashrate-line-graph', hashrateData, {
+        color: '#4CAF50',
+        fillColor: 'rgba(76, 175, 80, 0.15)'
+    });
+
+    // Render price line graph
+    const priceStats = renderLineGraph('price-line-graph', priceData, {
+        color: '#ffa500',
+        fillColor: 'rgba(255, 165, 0, 0.15)'
+    });
+
+    // Update min/max displays for hashrate
+    const hashrateMinEl = document.getElementById('hashrate-min');
+    const hashrateMaxEl = document.getElementById('hashrate-max');
+    if (hashrateMinEl && hashrateStats.min > 0) {
+        hashrateMinEl.textContent = `Min: ${hashrateStats.min.toFixed(2)} TH/s`;
+    }
+    if (hashrateMaxEl && hashrateStats.max > 0) {
+        hashrateMaxEl.textContent = `Max: ${hashrateStats.max.toFixed(2)} TH/s`;
+    }
+
+    // Update min/max displays for price
+    const priceMinEl = document.getElementById('price-min');
+    const priceMaxEl = document.getElementById('price-max');
+    if (priceMinEl && priceStats.min > 0) {
+        priceMinEl.textContent = `Min: $${formatNumber(priceStats.min.toFixed(2))}`;
+    }
+    if (priceMaxEl && priceStats.max > 0) {
+        priceMaxEl.textContent = `Max: $${formatNumber(priceStats.max.toFixed(2))}`;
+    }
 }
 
 // Live update function that runs every second (independent of API polling)
@@ -17829,6 +18039,9 @@ function updateMiningProgressChart(pkg) {
             </div>
         `;
     }
+
+    // Update live metrics line graphs (hashrate and price)
+    updateLiveMetricsGraphs(pkg, chartData);
 }
 
 // Live update function for mining chart (called during polling)

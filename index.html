@@ -1791,6 +1791,36 @@
                         </div>
                     </div>
 
+                    <!-- Live Metrics Line Graphs -->
+                    <div class="live-metrics-strip">
+                        <div class="live-metric-card">
+                            <div class="live-metric-header">
+                                <span class="live-metric-title">⚡ Hashrate</span>
+                                <span id="live-hashrate-value" class="live-metric-value">-- TH/s</span>
+                            </div>
+                            <div class="live-metric-graph">
+                                <canvas id="hashrate-line-graph" width="400" height="80"></canvas>
+                            </div>
+                            <div class="live-metric-range">
+                                <span id="hashrate-min" class="metric-min">Min: --</span>
+                                <span id="hashrate-max" class="metric-max">Max: --</span>
+                            </div>
+                        </div>
+                        <div class="live-metric-card">
+                            <div class="live-metric-header">
+                                <span class="live-metric-title">💰 <span id="live-price-crypto">BTC</span> Price</span>
+                                <span id="live-price-value" class="live-metric-value">$--</span>
+                            </div>
+                            <div class="live-metric-graph">
+                                <canvas id="price-line-graph" width="400" height="80"></canvas>
+                            </div>
+                            <div class="live-metric-range">
+                                <span id="price-min" class="metric-min">Min: --</span>
+                                <span id="price-max" class="metric-max">Max: --</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Mining Activity Chart -->
                     <div class="mining-chart-container">
                         <div class="mining-chart-legend">
