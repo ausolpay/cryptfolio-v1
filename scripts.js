@@ -13209,6 +13209,11 @@ async function fetchNiceHashOrders() {
             console.log(`      order.mergeProbabilityPrecision: ${order.mergeProbabilityPrecision}`);
             console.log(`      sharedTicket.currencyAlgoTicket.probabilityPrecision: ${order.sharedTicket?.currencyAlgoTicket?.probabilityPrecision}`);
             console.log(`      sharedTicket.currencyAlgoTicket.probability: ${order.sharedTicket?.currencyAlgoTicket?.probability}`);
+            // Additional solo package probability fields
+            console.log(`      currencyAlgoTicket.probabilityPrecision: ${order.currencyAlgoTicket?.probabilityPrecision}`);
+            console.log(`      currencyAlgoTicket.probability: ${order.currencyAlgoTicket?.probability}`);
+            console.log(`      soloTicket.probabilityPrecision: ${order.soloTicket?.probabilityPrecision}`);
+            console.log(`      soloTicket.probability: ${order.soloTicket?.probability}`);
 
             // Check if this is a team package - detect by name starting with "team" (case-insensitive)
             const packageName = order.packageName || '';
@@ -13692,11 +13697,15 @@ async function fetchNiceHashOrders() {
                     : null,
                 totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
                 // Probability from API - format as "1:X" from probabilityPrecision
-                // Team packages: sharedTicket.currencyAlgoTicket, Solo packages: direct on order
+                // Team packages: sharedTicket.currencyAlgoTicket, Solo packages: currencyAlgoTicket or direct on order
                 probability: (() => {
                     const prob = order.sharedTicket?.currencyAlgoTicket?.probabilityPrecision
+                        || order.currencyAlgoTicket?.probabilityPrecision
+                        || order.soloTicket?.probabilityPrecision
                         || order.probabilityPrecision
                         || order.sharedTicket?.currencyAlgoTicket?.probability
+                        || order.currencyAlgoTicket?.probability
+                        || order.soloTicket?.probability
                         || order.probability;
                     if (!prob) return null;
                     // If already formatted as "1:X", return as-is
@@ -13708,8 +13717,12 @@ async function fetchNiceHashOrders() {
                 })(),
                 mergeProbability: (() => {
                     const prob = order.sharedTicket?.currencyAlgoTicket?.mergeProbabilityPrecision
+                        || order.currencyAlgoTicket?.mergeProbabilityPrecision
+                        || order.soloTicket?.mergeProbabilityPrecision
                         || order.mergeProbabilityPrecision
                         || order.sharedTicket?.currencyAlgoTicket?.mergeProbability
+                        || order.currencyAlgoTicket?.mergeProbability
+                        || order.soloTicket?.mergeProbability
                         || order.mergeProbability;
                     if (!prob) return null;
                     // If already formatted as "1:X", return as-is
