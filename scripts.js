@@ -14465,11 +14465,6 @@ function displayActivePackages() {
             <div class="package-card-stat">
                 <span>Attempts:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#ffa500'};">${(() => {
-                    // If block found, show success
-                    if (pkg.blockFound) {
-                        return '100%+ FOUND!';
-                    }
-
                     // Calculate attempt number from elapsed time (30 sec intervals)
                     const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
                     const elapsedMs = Date.now() - startTime;
@@ -14480,14 +14475,21 @@ function displayActivePackages() {
                     if (!match) return attemptNumber + ' / N/A';
 
                     const odds = parseInt(match[1]);
-                    const singleAttemptProb = 1 / odds;
 
-                    // Cumulative probability: 1 - (1 - p)^n
-                    // This is the chance of finding at least one block after n attempts
-                    const cumulativeProb = 1 - Math.pow(1 - singleAttemptProb, attemptNumber);
-                    const cumulativePercent = (cumulativeProb * 100).toFixed(1);
+                    // Progress percentage: (attempts / odds) * 100
+                    // Shows how many "expected blocks" worth of attempts made
+                    // 100% = statistically should have found 1 block
+                    // >100% = "overdue" for a block (bad luck, but still possible)
+                    // Capped at 110% max
+                    const expectedBlocks = attemptNumber / odds;
+                    const progressPercent = Math.min(110, expectedBlocks * 100).toFixed(1);
 
-                    return attemptNumber + ' / ' + cumulativePercent + '%';
+                    // Show percentage with FOUND! if block was found
+                    if (pkg.blockFound) {
+                        return attemptNumber + ' / ' + progressPercent + '% FOUND!';
+                    }
+
+                    return attemptNumber + ' / ' + progressPercent + '%';
                 })()}</span>
             </div>
             ` : ''}
