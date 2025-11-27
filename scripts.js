@@ -17601,63 +17601,123 @@ function updateMiningProgressChart(pkg) {
             // Store chart data
             miningChartDataStore[pkg.id] = chartData;
         } else {
-            // We have real data points - render bars based on collected data
-            const maxBars = Math.min(dataPoints.length, 120);
-            const skipFactor = dataPoints.length > 120 ? Math.ceil(dataPoints.length / 120) : 1;
+            // =============================================================================
+            // 30-SECOND INTERVAL BAR CHART
+            // Calculate total bars based on remaining time / 30 seconds
+            // Dynamically size bars to fit within container width
+            // =============================================================================
+
+            const INTERVAL_SECONDS = 30; // Each bar represents 30 seconds
+            const containerWidth = barsContainer.offsetWidth || 600; // Fallback width
+
+            // Calculate total expected bars for the entire remaining duration
+            const remainingSeconds = remainingMs / 1000;
+            const totalExpectedBars = Math.ceil(remainingSeconds / INTERVAL_SECONDS);
+
+            // Calculate elapsed bars (how many 30-second intervals have passed)
+            const elapsedSeconds = elapsedMs / 1000;
+            const elapsedBars = Math.floor(elapsedSeconds / INTERVAL_SECONDS);
+
+            // Total bars for the full duration
+            const totalDurationSeconds = totalDuration / 1000;
+            const totalBarsForDuration = Math.ceil(totalDurationSeconds / INTERVAL_SECONDS);
+
+            // Calculate dynamic bar width to fit all bars
+            // Account for gap (1px) between bars
+            const gapWidth = 1;
+            const minBarWidth = 1;
+            const maxBarWidth = 8;
+            let barWidth = Math.max(minBarWidth, Math.min(maxBarWidth,
+                (containerWidth - (totalBarsForDuration * gapWidth)) / totalBarsForDuration));
+
+            console.log(`📊 [BAR CHART] Duration: ${totalDurationSeconds}s, Bars: ${totalBarsForDuration}, Width: ${barWidth.toFixed(1)}px`);
+            console.log(`   - Elapsed: ${elapsedBars} bars, Remaining: ${totalExpectedBars} bars`);
 
             // Track highest percentage bar (for closest-to-reward highlight)
             let highestBar = { index: -1, percentage: 0, element: null };
             let rewardBarsShown = 0;
 
-            for (let i = 0; i < maxBars; i++) {
-                const dataIdx = i * skipFactor;
-                const point = dataPoints[dataIdx];
-                if (!point) continue;
+            // Create bars for elapsed intervals (map data points to 30-second slots)
+            const packageStartMs = startTime;
 
+            for (let i = 0; i < totalBarsForDuration; i++) {
                 const bar = document.createElement('div');
                 bar.className = 'mining-bar';
                 bar.id = `mining-bar-${pkgId}-${i}`;
 
-                // Calculate bar percentage from real hashrate ratio
-                // hashrateRatio of 1.0 = 80% bar height, scale accordingly
-                const ratio = point.hashrateRatio || 0;
-                let basePercent = Math.min(95, Math.max(10, ratio * 80 + (Math.random() * 10 - 5)));
+                // Set dynamic width
+                bar.style.flex = 'none';
+                bar.style.width = `${barWidth}px`;
+                bar.style.minWidth = `${barWidth}px`;
+                bar.style.maxWidth = `${barWidth}px`;
 
-                // Check for reward near this data point's timestamp
-                const pointTime = point.timestamp;
-                const rewardInInterval = rewardTimestamps.some(ts => Math.abs(ts - pointTime) < 30000);
+                // Calculate time range for this bar slot (30-second window)
+                const slotStartMs = packageStartMs + (i * INTERVAL_SECONDS * 1000);
+                const slotEndMs = slotStartMs + (INTERVAL_SECONDS * 1000);
 
-                const isLastPoint = i === maxBars - 1;
+                // Find data points within this 30-second slot
+                const slotDataPoints = dataPoints.filter(p =>
+                    p.timestamp >= slotStartMs && p.timestamp < slotEndMs
+                );
+
+                // Check if this slot is in the future (remaining)
+                const isFutureSlot = slotStartMs > Date.now();
+                const isCurrentSlot = Date.now() >= slotStartMs && Date.now() < slotEndMs;
+
+                // Check for reward in this slot
+                const rewardInSlot = rewardTimestamps.some(ts =>
+                    ts >= slotStartMs && ts < slotEndMs
+                );
 
                 let barClass = 'mining-bar';
                 let height;
+                let basePercent = 0;
 
-                if (rewardInInterval) {
-                    // Block found!
+                if (rewardInSlot) {
+                    // Block found in this slot!
                     const rewardPercent = 100 + Math.random() * 10;
                     barClass += ' reward-found';
                     height = 120;
                     rewardBarsShown++;
                     bar.dataset.percentage = rewardPercent.toFixed(0);
-                } else if (isLastPoint && pkg.active) {
-                    // Current bar - flashing
+                } else if (isFutureSlot) {
+                    // Future slot - show as empty/placeholder
+                    barClass += ' future-slot';
+                    height = 5; // Minimal height for future slots
+                    bar.dataset.percentage = '0';
+                } else if (isCurrentSlot && pkg.active) {
+                    // Current active slot - flashing
+                    if (slotDataPoints.length > 0) {
+                        // Use average of data points in slot
+                        const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
+                        basePercent = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 10 - 5)));
+                    } else {
+                        basePercent = Math.min(95, Math.max(10, hashrateRatio * 80));
+                    }
                     barClass += ' current-mining';
                     height = (basePercent / 100) * 100;
                     bar.dataset.percentage = basePercent.toFixed(0);
-                } else {
-                    // Normal bar based on real data
+                } else if (slotDataPoints.length > 0) {
+                    // Past slot with data - render based on collected data
+                    const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
+                    basePercent = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 5 - 2.5)));
                     height = (basePercent / 100) * 100;
                     bar.dataset.percentage = basePercent.toFixed(0);
 
                     // Track highest percentage bar (60%+ threshold)
-                    if (basePercent >= 60 && basePercent > highestBar.percentage && !rewardInInterval) {
+                    if (basePercent >= 60 && basePercent > highestBar.percentage) {
                         highestBar = { index: i, percentage: basePercent, element: bar };
                     }
+                } else {
+                    // Past slot without data - show as gray minimal bar
+                    barClass += ' no-data';
+                    height = 15;
+                    bar.dataset.percentage = '0';
                 }
 
                 bar.className = barClass;
                 bar.style.height = `${height}px`;
-                bar.style.animationDelay = `${i * 10}ms`;
+                bar.style.animationDelay = `${Math.min(i, 50) * 5}ms`; // Cap animation delay
                 barsContainer.appendChild(bar);
             }
 
@@ -17683,16 +17743,16 @@ function updateMiningProgressChart(pkg) {
             miningChartDataStore[pkg.id] = chartData;
 
             // FALLBACK for blockFound when no reward bars shown
-            if (pkg.blockFound && rewardBarsShown === 0 && maxBars > 0) {
-                const lastBar = document.getElementById(`mining-bar-${pkgId}-${maxBars - 1}`);
-                if (lastBar) {
-                    lastBar.className = 'mining-bar reward-found';
-                    lastBar.style.height = '120px';
+            if (pkg.blockFound && rewardBarsShown === 0 && totalBarsForDuration > 0) {
+                const lastElapsedBar = document.getElementById(`mining-bar-${pkgId}-${Math.min(elapsedBars, totalBarsForDuration - 1)}`);
+                if (lastElapsedBar) {
+                    lastElapsedBar.className = 'mining-bar reward-found';
+                    lastElapsedBar.style.height = '120px';
                 }
             }
 
             // Add dynamic probability line (SVG overlay)
-            addProbabilityLine(barsContainer, maxBars, normalizedDifficulty, chartData.probabilityHistory || []);
+            addProbabilityLine(barsContainer, totalBarsForDuration, normalizedDifficulty, chartData.probabilityHistory || []);
         }
     }
 

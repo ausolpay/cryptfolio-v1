@@ -4757,12 +4757,14 @@ body.light-mode .package-card.block-confirmed {
 
 .mining-chart-bars {
     display: flex;
-    gap: 2px;
+    gap: 1px; /* Reduced gap for many bars */
     align-items: flex-end;
     min-height: 150px;
     padding: 10px 0;
     border-bottom: 1px solid #444;
     position: relative;
+    overflow-x: hidden; /* Hide overflow, bars should fit */
+    width: 100%;
 }
 
 /* Network difficulty reference line */
@@ -4778,9 +4780,9 @@ body.light-mode .package-card.block-confirmed {
 }
 
 .mining-bar {
-    flex: 1;
-    min-width: 2px;
-    max-width: 8px;
+    flex: 0 0 auto; /* Allow dynamic width set via JS */
+    min-width: 1px;
+    max-width: 10px;
     background-color: #555;
     border-radius: 1px 1px 0 0;
     transition: height 0.3s ease, background-color 0.3s ease;
@@ -4882,6 +4884,20 @@ body.light-mode .package-card.block-confirmed {
         background-color: #999;
         opacity: 1;
     }
+}
+
+/* Future slot - placeholder for upcoming 30-second intervals */
+.mining-bar.future-slot {
+    background-color: #2a2a2a;
+    opacity: 0.3;
+    border: 1px dashed #444;
+    border-radius: 1px;
+}
+
+/* Past slot without data - minimal gray bar */
+.mining-bar.no-data {
+    background-color: #3a3a3a;
+    opacity: 0.5;
 }
 
 /* Closest to reward bar - highlighted with glow */
