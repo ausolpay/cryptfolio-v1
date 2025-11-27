@@ -17650,7 +17650,7 @@ function addProbabilityLine(container, numBars, currentDifficulty, history) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'probability-line-svg');
     svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '120');
+    svg.setAttribute('height', '240'); // Doubled for taller chart
     svg.style.position = 'absolute';
     svg.style.top = '0';
     svg.style.left = '0';
@@ -17667,8 +17667,8 @@ function addProbabilityLine(container, numBars, currentDifficulty, history) {
 
     for (let i = 0; i < Math.min(history.length, numBars); i++) {
         const x = (i + 0.5) * barWidth;
-        // Invert: higher difficulty = line closer to top (100px height for chart area)
-        const y = 100 - (history[i] || currentDifficulty);
+        // Invert: higher difficulty = line closer to top (200px height for doubled chart)
+        const y = 200 - (history[i] || currentDifficulty) * 2;
         points.push(`${x}%,${y}`);
     }
 
@@ -17676,7 +17676,7 @@ function addProbabilityLine(container, numBars, currentDifficulty, history) {
     if (points.length < numBars) {
         for (let i = points.length; i < numBars; i++) {
             const x = (i + 0.5) * barWidth;
-            const y = 100 - currentDifficulty;
+            const y = 200 - currentDifficulty * 2;
             points.push(`${x}%,${y}`);
         }
     }
@@ -17918,7 +17918,7 @@ function updateMiningProgressChart(pkg) {
                     // Block found in this slot!
                     const rewardPercent = 100 + Math.random() * 10;
                     barClass += ' reward-found';
-                    height = 120;
+                    height = 240; // Doubled for taller chart
                     rewardBarsShown++;
                     bar.dataset.percentage = rewardPercent.toFixed(0);
 
@@ -17939,13 +17939,13 @@ function updateMiningProgressChart(pkg) {
                         basePercent = Math.min(95, Math.max(10, hashrateRatio * 80));
                     }
                     barClass += ' current-mining';
-                    height = (basePercent / 100) * 100;
+                    height = (basePercent / 100) * 200; // Scale to 200px for doubled chart height
                     bar.dataset.percentage = basePercent.toFixed(0);
                 } else if (slotDataPoints.length > 0) {
                     // Past slot with data - render based on collected data
                     const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
                     basePercent = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 5 - 2.5)));
-                    height = (basePercent / 100) * 100;
+                    height = (basePercent / 100) * 200; // Scale to 200px for doubled chart height
                     bar.dataset.percentage = basePercent.toFixed(0);
 
                     // Track highest percentage bar (60%+ threshold)
