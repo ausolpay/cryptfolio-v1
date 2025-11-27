@@ -17682,7 +17682,7 @@ function stopPackageDetailPolling() {
 }
 
 // Add dynamic probability line SVG overlay to the chart
-function addProbabilityLine(container, numBars, currentDifficulty, history) {
+function addProbabilityLine(container, numBars, currentDifficulty, history, pkg = null) {
     // Remove existing line if present
     const existingLine = container.querySelector('.probability-line-svg');
     if (existingLine) existingLine.remove();
@@ -17691,47 +17691,100 @@ function addProbabilityLine(container, numBars, currentDifficulty, history) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'probability-line-svg');
     svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '240'); // Doubled for taller chart
+    svg.setAttribute('height', '240');
     svg.style.position = 'absolute';
     svg.style.top = '0';
     svg.style.left = '0';
     svg.style.pointerEvents = 'none';
     svg.style.zIndex = '10';
 
-    // Add current difficulty to history
-    history.push(currentDifficulty);
-    if (history.length > numBars) history.shift();
+    // Check if this is a merged mining package (Palladium - LTC/DOGE)
+    const isMergedMining = pkg && pkg.mergeProbabilityPrecision && pkg.mergeCurrencyAlgo;
 
-    // Generate path points
-    const points = [];
-    const barWidth = 100 / numBars;
+    // Helper to create a threshold line with label
+    function createThresholdLine(yPosition, color, label, probText) {
+        // Create the line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', '0');
+        line.setAttribute('y1', yPosition);
+        line.setAttribute('x2', '100%');
+        line.setAttribute('y2', yPosition);
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-dasharray', '5,3');
+        line.style.filter = `drop-shadow(0 0 3px ${color}40)`;
+        svg.appendChild(line);
 
-    for (let i = 0; i < Math.min(history.length, numBars); i++) {
-        const x = (i + 0.5) * barWidth;
-        // Invert: higher difficulty = line closer to top (200px height for doubled chart)
-        const y = 200 - (history[i] || currentDifficulty) * 2;
-        points.push(`${x}%,${y}`);
+        // Add label on the right side
+        const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        labelText.setAttribute('x', '98%');
+        labelText.setAttribute('y', yPosition - 5);
+        labelText.setAttribute('text-anchor', 'end');
+        labelText.setAttribute('fill', color);
+        labelText.setAttribute('font-size', '10');
+        labelText.setAttribute('font-weight', 'bold');
+        labelText.textContent = `${label} ${probText}`;
+        svg.appendChild(labelText);
     }
 
-    // Extend line to current position if we don't have full history
-    if (points.length < numBars) {
-        for (let i = points.length; i < numBars; i++) {
+    if (isMergedMining) {
+        // Dual lines for merged mining (LTC harder, DOGE easier)
+        const ltcProb = pkg.probabilityPrecision || 100;
+        const dogeProb = pkg.mergeProbabilityPrecision || 50;
+
+        // Calculate Y positions based on probability (higher prob = harder = line higher up)
+        // Scale: prob 10 = easy (line at y=140), prob 200 = hard (line at y=40)
+        const ltcY = Math.max(30, Math.min(180, 180 - (Math.log10(ltcProb) * 50)));
+        const dogeY = Math.max(30, Math.min(180, 180 - (Math.log10(dogeProb) * 50)));
+
+        // LTC line (blue) - typically harder
+        createThresholdLine(ltcY, '#a8d4ff', '100% LTC', `1:${Math.round(ltcProb)}`);
+
+        // DOGE line (gold) - typically easier
+        createThresholdLine(dogeY, '#f4d03f', '100% DOGE', `1:${Math.round(dogeProb)}`);
+
+        console.log(`   - Dual lines: LTC y=${ltcY.toFixed(0)} (1:${ltcProb}), DOGE y=${dogeY.toFixed(0)} (1:${dogeProb})`);
+    } else {
+        // Single probability line
+        const prob = pkg?.probabilityPrecision || currentDifficulty || 100;
+
+        // Calculate Y position based on probability
+        // Scale: prob 10 = easy (line at y=140), prob 200 = hard (line at y=40)
+        const yPosition = Math.max(30, Math.min(180, 180 - (Math.log10(prob) * 50)));
+
+        // Create single red threshold line
+        createThresholdLine(yPosition, '#ff6b6b', '100%', `1:${Math.round(prob)}`);
+
+        console.log(`   - Single line: y=${yPosition.toFixed(0)} (1:${prob})`);
+    }
+
+    // Also add probability history line if we have history data
+    if (history && history.length > 0) {
+        history.push(currentDifficulty);
+        if (history.length > numBars) history.shift();
+
+        const points = [];
+        const barWidth = 100 / numBars;
+
+        for (let i = 0; i < Math.min(history.length, numBars); i++) {
             const x = (i + 0.5) * barWidth;
-            const y = 200 - currentDifficulty * 2;
+            // Dynamic line based on history
+            const historyProb = history[i] || currentDifficulty;
+            const y = Math.max(30, Math.min(180, 180 - (Math.log10(historyProb) * 50)));
             points.push(`${x}%,${y}`);
+        }
+
+        if (points.length > 1) {
+            const historyLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            historyLine.setAttribute('points', points.join(' '));
+            historyLine.setAttribute('fill', 'none');
+            historyLine.setAttribute('stroke', '#ff6b6b');
+            historyLine.setAttribute('stroke-width', '1');
+            historyLine.setAttribute('stroke-opacity', '0.5');
+            svg.appendChild(historyLine);
         }
     }
 
-    // Create polyline for the probability threshold
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    line.setAttribute('points', points.join(' '));
-    line.setAttribute('fill', 'none');
-    line.setAttribute('stroke', '#ff6b6b');
-    line.setAttribute('stroke-width', '2');
-    line.setAttribute('stroke-dasharray', '5,3');
-    line.style.filter = 'drop-shadow(0 0 3px rgba(255, 107, 107, 0.5))';
-
-    svg.appendChild(line);
     container.style.position = 'relative';
     container.appendChild(svg);
 }
@@ -18252,7 +18305,8 @@ function updateMiningProgressChart(pkg) {
             }
 
             // Add dynamic probability line (SVG overlay)
-            addProbabilityLine(barsContainer, totalBarsForDuration, normalizedDifficulty, chartData.probabilityHistory || []);
+            // Pass pkg for Palladium dual-line support (LTC/DOGE)
+            addProbabilityLine(barsContainer, totalBarsForDuration, normalizedDifficulty, chartData.probabilityHistory || [], pkg);
         }
     }
 
