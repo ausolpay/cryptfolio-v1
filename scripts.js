@@ -17646,11 +17646,13 @@ function addProbabilityLine(container, numBars, currentDifficulty, history) {
     const existingLine = container.querySelector('.probability-line-svg');
     if (existingLine) existingLine.remove();
 
+    const chartHeight = 150; // Match min-height of container
+
     // Create SVG element
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'probability-line-svg');
     svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '120');
+    svg.setAttribute('height', chartHeight.toString());
     svg.style.position = 'absolute';
     svg.style.top = '0';
     svg.style.left = '0';
@@ -17663,34 +17665,47 @@ function addProbabilityLine(container, numBars, currentDifficulty, history) {
 
     // Generate path points
     const points = [];
-    const barWidth = 100 / numBars;
+    const barWidth = 100 / Math.max(numBars, 1);
 
     for (let i = 0; i < Math.min(history.length, numBars); i++) {
         const x = (i + 0.5) * barWidth;
-        // Invert: higher difficulty = line closer to top (100px height for chart area)
-        const y = 100 - (history[i] || currentDifficulty);
+        // Convert difficulty percentage to Y position
+        // difficulty of 85% means line at 85% height from bottom = 15% from top
+        const yPercent = 100 - (history[i] || currentDifficulty);
+        const y = (yPercent / 100) * chartHeight;
         points.push(`${x}%,${y}`);
     }
 
     // Extend line to current position if we don't have full history
     if (points.length < numBars) {
+        const yPercent = 100 - currentDifficulty;
+        const y = (yPercent / 100) * chartHeight;
         for (let i = points.length; i < numBars; i++) {
             const x = (i + 0.5) * barWidth;
-            const y = 100 - currentDifficulty;
             points.push(`${x}%,${y}`);
         }
     }
 
-    // Create polyline for the probability threshold
+    // Create polyline for the probability threshold (grey line)
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     line.setAttribute('points', points.join(' '));
     line.setAttribute('fill', 'none');
-    line.setAttribute('stroke', '#ff6b6b');
-    line.setAttribute('stroke-width', '2');
-    line.setAttribute('stroke-dasharray', '5,3');
-    line.style.filter = 'drop-shadow(0 0 3px rgba(255, 107, 107, 0.5))';
+    line.setAttribute('stroke', 'rgba(255, 255, 255, 0.5)');
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('stroke-dasharray', '4,4');
+
+    // Add a label showing current difficulty
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const labelY = (100 - currentDifficulty) / 100 * chartHeight;
+    label.setAttribute('x', '99%');
+    label.setAttribute('y', (labelY - 5).toString());
+    label.setAttribute('fill', 'rgba(255, 255, 255, 0.6)');
+    label.setAttribute('font-size', '10');
+    label.setAttribute('text-anchor', 'end');
+    label.textContent = `${currentDifficulty.toFixed(0)}%`;
 
     svg.appendChild(line);
+    svg.appendChild(label);
     container.style.position = 'relative';
     container.appendChild(svg);
 }
@@ -17748,13 +17763,15 @@ function updateMiningProgressChart(pkg) {
     // Calculate hashrate ratio
     const hashrateRatio = speedLimit > 0 ? currentHashrate / speedLimit : 1;
 
-    // Calculate dynamic probability-based threshold line position (inverted - lower number = easier)
-    // probabilityPrecision of 33 means 1:33 odds, lower = easier = line should be lower
+    // Calculate dynamic probability-based threshold line position
+    // Higher probability (1:100) = harder = line is higher (further to reach)
+    // Lower probability (1:10) = easier = line is lower (easier to reach)
     const probPrecision = pkg.probabilityPrecision || 100;
-    // Normalize: 1:10 = easy (line at 60%), 1:100 = hard (line at 90%)
-    const normalizedDifficulty = Math.min(95, Math.max(50, 50 + (Math.log10(probPrecision) * 20)));
+    // Normalize to 65-92% range - line is now higher on the chart
+    // log10(10)=1 → 65+13.5=78.5%, log10(100)=2 → 65+27=92%
+    const normalizedDifficulty = Math.min(92, Math.max(65, 65 + (Math.log10(probPrecision) * 13.5)));
 
-    console.log(`   - hashrateRatio: ${hashrateRatio.toFixed(2)}, normalizedDifficulty: ${normalizedDifficulty.toFixed(1)}%`);
+    console.log(`   - hashrateRatio: ${hashrateRatio.toFixed(2)}, normalizedDifficulty: ${normalizedDifficulty.toFixed(1)}% (prob 1:${probPrecision.toFixed(0)})`);
 
     // Get elements for progress bar (will update after bar calculations)
     const fillElement = document.getElementById('close-to-reward-fill');
@@ -17931,22 +17948,23 @@ function updateMiningProgressChart(pkg) {
                     if (slotDataPoints.length > 0) {
                         // Use average of data points in slot
                         const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
-                        basePercent = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 10 - 5)));
+                        basePercent = Math.min(99, Math.max(10, avgRatio * 85 + (Math.random() * 10 - 5)));
                     } else {
-                        basePercent = Math.min(95, Math.max(10, hashrateRatio * 80));
+                        basePercent = Math.min(99, Math.max(10, hashrateRatio * 85));
                     }
                     barClass += ' current-mining';
-                    height = (basePercent / 100) * 100;
+                    height = (basePercent / 100) * 120; // Scale to 120px for more visual movement
                     bar.dataset.percentage = basePercent.toFixed(0);
                 } else if (slotDataPoints.length > 0) {
                     // Past slot with data - render based on collected data
                     const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
-                    basePercent = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 5 - 2.5)));
-                    height = (basePercent / 100) * 100;
+                    basePercent = Math.min(99, Math.max(10, avgRatio * 85 + (Math.random() * 8 - 4)));
+                    height = (basePercent / 100) * 120; // Scale to 120px for more visual movement
                     bar.dataset.percentage = basePercent.toFixed(0);
 
                     // Track highest percentage bar (60%+ threshold)
-                    if (basePercent >= 60 && basePercent > highestBar.percentage) {
+                    // Use >= so newest bar with same percentage becomes closest-to-reward
+                    if (basePercent >= 60 && basePercent >= highestBar.percentage) {
                         highestBar = { index: i, percentage: basePercent, element: bar };
                     }
                 } else {
