@@ -17900,6 +17900,165 @@ function calculateSlotProgress(probabilityPrecision, hashrateRatio = 1) {
     return baseProgress * hashrateRatio;
 }
 
+/**
+ * Calculate the luck factor for mining progress
+ * Compares actual blocks found vs expected blocks based on work done
+ *
+ * @param {number} expectedBlocks - Expected blocks based on mining metrics
+ * @param {number} actualBlocks - Actual blocks found
+ * @returns {Object} { multiplier, status, emoji, color, description }
+ */
+function calculateLuckFactor(expectedBlocks, actualBlocks) {
+    // If no work done yet, neutral luck
+    if (expectedBlocks <= 0.01) {
+        return {
+            multiplier: 1,
+            status: 'waiting',
+            emoji: '⏳',
+            color: '#888888',
+            description: 'Just started...',
+            isHot: false,
+            isCold: false
+        };
+    }
+
+    // Calculate luck multiplier
+    // If expectedBlocks = 0.5 and actualBlocks = 1, luck = 2x (found block early!)
+    // If expectedBlocks = 2 and actualBlocks = 0, luck = 0x (unlucky)
+    const multiplier = actualBlocks / expectedBlocks;
+
+    let status, emoji, color, description, isHot, isCold;
+
+    if (actualBlocks === 0) {
+        // No blocks found yet - check how unlucky
+        if (expectedBlocks < 0.3) {
+            // Less than 30% expected work - still early, neutral
+            status = 'early';
+            emoji = '🎲';
+            color = '#888888';
+            description = 'Rolling the dice...';
+            isHot = false;
+            isCold = false;
+        } else if (expectedBlocks < 0.7) {
+            // 30-70% expected work - slightly cold
+            status = 'cool';
+            emoji = '❄️';
+            color = '#87CEEB';
+            description = 'Running a bit cold';
+            isHot = false;
+            isCold = false;
+        } else if (expectedBlocks < 1.5) {
+            // 70-150% expected work - unlucky
+            status = 'cold';
+            emoji = '🥶';
+            color = '#4169E1';
+            description = 'Unlucky streak...';
+            isHot = false;
+            isCold = true;
+        } else if (expectedBlocks < 3) {
+            // 150-300% expected work - very unlucky
+            status = 'frozen';
+            emoji = '🧊';
+            color = '#1E90FF';
+            description = 'Very unlucky!';
+            isHot = false;
+            isCold = true;
+        } else {
+            // 300%+ expected work - extremely unlucky
+            status = 'ice_age';
+            emoji = '☠️';
+            color = '#0000CD';
+            description = 'Brutal cold streak!';
+            isHot = false;
+            isCold = true;
+        }
+    } else {
+        // Found at least one block - check how lucky
+        if (multiplier >= 5) {
+            status = 'jackpot';
+            emoji = '🔥🎰🔥';
+            color = '#FF0000';
+            description = `JACKPOT! ${multiplier.toFixed(1)}x luck!`;
+            isHot = true;
+            isCold = false;
+        } else if (multiplier >= 3) {
+            status = 'blazing';
+            emoji = '🔥🔥';
+            color = '#FF4500';
+            description = `On fire! ${multiplier.toFixed(1)}x luck!`;
+            isHot = true;
+            isCold = false;
+        } else if (multiplier >= 2) {
+            status = 'hot';
+            emoji = '🔥';
+            color = '#FF6347';
+            description = `Running hot! ${multiplier.toFixed(1)}x`;
+            isHot = true;
+            isCold = false;
+        } else if (multiplier >= 1.2) {
+            status = 'lucky';
+            emoji = '🍀';
+            color = '#32CD32';
+            description = `Lucky! ${multiplier.toFixed(1)}x`;
+            isHot = true;
+            isCold = false;
+        } else if (multiplier >= 0.8) {
+            status = 'average';
+            emoji = '✨';
+            color = '#FFD700';
+            description = `On track ${multiplier.toFixed(1)}x`;
+            isHot = false;
+            isCold = false;
+        } else if (multiplier >= 0.5) {
+            status = 'below';
+            emoji = '📉';
+            color = '#87CEEB';
+            description = `Below average ${multiplier.toFixed(1)}x`;
+            isHot = false;
+            isCold = true;
+        } else {
+            status = 'unlucky';
+            emoji = '❄️';
+            color = '#4169E1';
+            description = `Unlucky ${multiplier.toFixed(1)}x`;
+            isHot = false;
+            isCold = true;
+        }
+    }
+
+    return {
+        multiplier,
+        status,
+        emoji,
+        color,
+        description,
+        isHot,
+        isCold,
+        expectedBlocks,
+        actualBlocks
+    };
+}
+
+/**
+ * Generate a "near miss" excitement indicator
+ * Shows how close a bar was to hitting the jackpot
+ *
+ * @param {number} percentage - Bar percentage (0-100+)
+ * @returns {Object} { isNearMiss, excitement, message }
+ */
+function calculateNearMiss(percentage) {
+    if (percentage >= 95) {
+        return { isNearMiss: true, excitement: 'extreme', message: '🔥 SO CLOSE!', color: '#FF0000' };
+    } else if (percentage >= 85) {
+        return { isNearMiss: true, excitement: 'high', message: '⚡ Almost!', color: '#FF6347' };
+    } else if (percentage >= 75) {
+        return { isNearMiss: true, excitement: 'medium', message: '👀 Getting close...', color: '#FFD700' };
+    } else if (percentage >= 60) {
+        return { isNearMiss: false, excitement: 'low', message: '📈 Building up', color: '#87CEEB' };
+    }
+    return { isNearMiss: false, excitement: 'none', message: '', color: '#888888' };
+}
+
 // =============================================================================
 // END MINING CALCULATION HELPERS
 // =============================================================================
@@ -18256,6 +18415,16 @@ function updateMiningProgressChart(pkg) {
                     bar.dataset.percentage = '0';
                 }
 
+                // Add near-miss excitement class for high percentage bars
+                // This creates visual tension when bars get close to 100%
+                if (basePercent > 0 && !barClass.includes('reward-found')) {
+                    const nearMiss = calculateNearMiss(basePercent);
+                    if (nearMiss.isNearMiss) {
+                        barClass += ` near-miss-${nearMiss.excitement}`;
+                        bar.dataset.nearMiss = nearMiss.message;
+                    }
+                }
+
                 bar.className = barClass;
                 bar.style.height = `${height}px`;
                 barsContainer.appendChild(bar);
@@ -18337,7 +18506,20 @@ function updateMiningProgressChart(pkg) {
 
     // Update mining stats with unique IDs
     const statsContainer = document.getElementById(`mining-stats-display-${pkgId}`) || document.getElementById('mining-stats-display');
+
+    // Calculate luck factor for display
+    const actualBlocks = pkg.totalBlocks || 0;
+    const luckFactor = calculateLuckFactor(miningMetrics.expectedBlocks, actualBlocks);
+
+    // Store luck factor in chart data for use elsewhere
+    chartData.luckFactor = luckFactor;
+
+    console.log(`🎰 [LUCK FACTOR] Expected: ${miningMetrics.expectedBlocks.toFixed(3)}, Actual: ${actualBlocks}, Luck: ${luckFactor.description}`);
+
     if (statsContainer) {
+        // Determine luck meter animation class
+        const luckAnimClass = luckFactor.isHot ? 'luck-hot' : (luckFactor.isCold ? 'luck-cold' : '');
+
         statsContainer.innerHTML = `
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Hashrate</div>
@@ -18353,7 +18535,18 @@ function updateMiningProgressChart(pkg) {
             </div>
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Blocks</div>
-                <div class="mining-stat-value" id="stat-blocks-${pkgId}" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${pkg.totalBlocks || 0}</div>
+                <div class="mining-stat-value" id="stat-blocks-${pkgId}" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${actualBlocks}</div>
+            </div>
+            <div class="mining-stat-item luck-meter-item ${luckAnimClass}">
+                <div class="mining-stat-label">Luck</div>
+                <div class="mining-stat-value luck-meter" id="stat-luck-${pkgId}" style="color: ${luckFactor.color};">
+                    <span class="luck-emoji">${luckFactor.emoji}</span>
+                    <span class="luck-text">${luckFactor.description}</span>
+                </div>
+            </div>
+            <div class="mining-stat-item">
+                <div class="mining-stat-label">Expected</div>
+                <div class="mining-stat-value" id="stat-expected-${pkgId}" style="color: #888;">${miningMetrics.expectedBlocks.toFixed(3)} blocks</div>
             </div>
         `;
     }
@@ -18447,6 +18640,8 @@ function updateMiningChartLive(pkg) {
     const rigsEl = document.getElementById(`stat-rigs-${pkgId}`);
     const probabilityEl = document.getElementById(`stat-probability-${pkgId}`);
     const blocksEl = document.getElementById(`stat-blocks-${pkgId}`);
+    const luckEl = document.getElementById(`stat-luck-${pkgId}`);
+    const expectedEl = document.getElementById(`stat-expected-${pkgId}`);
 
     if (hashrateEl) hashrateEl.textContent = pkg.hashrate || 'N/A';
     if (rigsEl) rigsEl.textContent = pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A';
@@ -18454,6 +18649,25 @@ function updateMiningChartLive(pkg) {
     if (blocksEl) {
         blocksEl.textContent = pkg.totalBlocks || 0;
         blocksEl.style.color = pkg.blockFound ? '#00ff00' : '#888';
+    }
+
+    // Update luck meter and expected blocks if they exist
+    if (luckEl && chartData.miningMetrics) {
+        const actualBlocks = pkg.totalBlocks || 0;
+        const luckFactor = calculateLuckFactor(chartData.miningMetrics.expectedBlocks, actualBlocks);
+        luckEl.style.color = luckFactor.color;
+        luckEl.innerHTML = `<span class="luck-emoji">${luckFactor.emoji}</span><span class="luck-text">${luckFactor.description}</span>`;
+
+        // Update animation class on parent
+        const luckItem = luckEl.closest('.luck-meter-item');
+        if (luckItem) {
+            luckItem.classList.remove('luck-hot', 'luck-cold');
+            if (luckFactor.isHot) luckItem.classList.add('luck-hot');
+            if (luckFactor.isCold) luckItem.classList.add('luck-cold');
+        }
+    }
+    if (expectedEl && chartData.miningMetrics) {
+        expectedEl.textContent = `${chartData.miningMetrics.expectedBlocks.toFixed(3)} blocks`;
     }
 
     // Get elements for progress bar (will update after bar calculations)
