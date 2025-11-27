@@ -18415,21 +18415,11 @@ function updateMiningProgressChart(pkg) {
                     bar.dataset.percentage = '0';
                 }
 
-                // Add near-miss excitement class for high percentage bars
-                // This creates visual tension when bars get close to 100%
-                if (basePercent > 0 && !barClass.includes('reward-found')) {
-                    const nearMiss = calculateNearMiss(basePercent);
-                    if (nearMiss.isNearMiss) {
-                        barClass += ` near-miss-${nearMiss.excitement}`;
-                        bar.dataset.nearMiss = nearMiss.message;
-                    }
-                }
-
                 bar.className = barClass;
                 bar.style.height = `${height}px`;
                 barsContainer.appendChild(bar);
 
-                // Add percentage circle for reward-found bars (rocket above, circle with %)
+                // Add percentage circle for reward-found bars only
                 if (bar._rewardPercent) {
                     const circle = document.createElement('div');
                     circle.className = 'bar-percentage-circle reward-circle';
@@ -18438,31 +18428,14 @@ function updateMiningProgressChart(pkg) {
                 }
             }
 
-            // Highlight closest-to-reward bar (highest percentage 60%+)
-            // IMPORTANT: Keep showing closest-to-reward even when blocks are found
-            // The closest-to-reward only moves when a NEW HIGHER percentage bar appears
-            if (highestBar.element && highestBar.percentage >= 60) {
-                // Don't add closest-to-reward class if this bar already has reward-found
-                if (!highestBar.element.classList.contains('reward-found')) {
-                    highestBar.element.classList.add('closest-to-reward');
-
-                    // Add percentage circle indicator
-                    const circle = document.createElement('div');
-                    circle.className = 'bar-percentage-circle';
-                    circle.textContent = `${highestBar.percentage.toFixed(0)}%`;
-                    highestBar.element.appendChild(circle);
-                }
-
-                // Persist the highest bar state
+            // Track highest bar for progress display (but no visual highlighting)
+            if (highestBar.percentage >= 60) {
                 chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
-
-                // Update progress bar to show highest bar's percentage
                 updateProgressBarDisplay(highestBar.percentage);
             } else if (storedHighest.percentage >= 60) {
-                // Use stored highest even if element wasn't found this render
                 updateProgressBarDisplay(storedHighest.percentage);
             } else {
-                // If no bar above 60%, use time progress
+                // Use time progress for the progress bar
                 updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
             }
 
@@ -18506,20 +18479,9 @@ function updateMiningProgressChart(pkg) {
 
     // Update mining stats with unique IDs
     const statsContainer = document.getElementById(`mining-stats-display-${pkgId}`) || document.getElementById('mining-stats-display');
-
-    // Calculate luck factor for display
     const actualBlocks = pkg.totalBlocks || 0;
-    const luckFactor = calculateLuckFactor(miningMetrics.expectedBlocks, actualBlocks);
-
-    // Store luck factor in chart data for use elsewhere
-    chartData.luckFactor = luckFactor;
-
-    console.log(`🎰 [LUCK FACTOR] Expected: ${miningMetrics.expectedBlocks.toFixed(3)}, Actual: ${actualBlocks}, Luck: ${luckFactor.description}`);
 
     if (statsContainer) {
-        // Determine luck meter animation class
-        const luckAnimClass = luckFactor.isHot ? 'luck-hot' : (luckFactor.isCold ? 'luck-cold' : '');
-
         statsContainer.innerHTML = `
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Hashrate</div>
@@ -18536,13 +18498,6 @@ function updateMiningProgressChart(pkg) {
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Blocks</div>
                 <div class="mining-stat-value" id="stat-blocks-${pkgId}" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${actualBlocks}</div>
-            </div>
-            <div class="mining-stat-item luck-meter-item ${luckAnimClass}">
-                <div class="mining-stat-label">Luck</div>
-                <div class="mining-stat-value luck-meter" id="stat-luck-${pkgId}" style="color: ${luckFactor.color};">
-                    <span class="luck-emoji">${luckFactor.emoji}</span>
-                    <span class="luck-text">${luckFactor.description}</span>
-                </div>
             </div>
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Expected</div>
@@ -18640,7 +18595,6 @@ function updateMiningChartLive(pkg) {
     const rigsEl = document.getElementById(`stat-rigs-${pkgId}`);
     const probabilityEl = document.getElementById(`stat-probability-${pkgId}`);
     const blocksEl = document.getElementById(`stat-blocks-${pkgId}`);
-    const luckEl = document.getElementById(`stat-luck-${pkgId}`);
     const expectedEl = document.getElementById(`stat-expected-${pkgId}`);
 
     if (hashrateEl) hashrateEl.textContent = pkg.hashrate || 'N/A';
@@ -18649,22 +18603,6 @@ function updateMiningChartLive(pkg) {
     if (blocksEl) {
         blocksEl.textContent = pkg.totalBlocks || 0;
         blocksEl.style.color = pkg.blockFound ? '#00ff00' : '#888';
-    }
-
-    // Update luck meter and expected blocks if they exist
-    if (luckEl && chartData.miningMetrics) {
-        const actualBlocks = pkg.totalBlocks || 0;
-        const luckFactor = calculateLuckFactor(chartData.miningMetrics.expectedBlocks, actualBlocks);
-        luckEl.style.color = luckFactor.color;
-        luckEl.innerHTML = `<span class="luck-emoji">${luckFactor.emoji}</span><span class="luck-text">${luckFactor.description}</span>`;
-
-        // Update animation class on parent
-        const luckItem = luckEl.closest('.luck-meter-item');
-        if (luckItem) {
-            luckItem.classList.remove('luck-hot', 'luck-cold');
-            if (luckFactor.isHot) luckItem.classList.add('luck-hot');
-            if (luckFactor.isCold) luckItem.classList.add('luck-cold');
-        }
     }
     if (expectedEl && chartData.miningMetrics) {
         expectedEl.textContent = `${chartData.miningMetrics.expectedBlocks.toFixed(3)} blocks`;

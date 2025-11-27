@@ -5074,32 +5074,13 @@ body.light-mode .live-metric-range {
     opacity: 0.5;
 }
 
-/* Closest to reward bar - highlighted with glow */
-.mining-bar.closest-to-reward {
-    background-color: #ffa500;
-    animation: closestToRewardPulse 1.5s ease-in-out infinite;
-    z-index: 3;
-    position: relative;
-}
-
-@keyframes closestToRewardPulse {
-    0%, 100% {
-        background-color: #ffa500;
-        box-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
-    }
-    50% {
-        background-color: #ffcc00;
-        box-shadow: 0 0 20px rgba(255, 200, 0, 0.9);
-    }
-}
-
-/* Percentage circle indicator on closest-to-reward bar */
+/* Percentage circle indicator for reward-found bars */
 .bar-percentage-circle {
     position: absolute;
     top: -28px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #ffa500;
+    background-color: #FFD700;
     color: #000;
     font-size: 9px;
     font-weight: bold;
@@ -5135,12 +5116,6 @@ body.light-mode .live-metric-range {
     font-size: 16px;
 }
 
-/* Legend color for closest-to-reward */
-.legend-color.closest-reward {
-    background-color: #ffa500;
-    box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
-}
-
 .mining-chart-timeline {
     display: flex;
     justify-content: space-between;
@@ -5152,7 +5127,9 @@ body.light-mode .live-metric-range {
 /* Mining Stats Display */
 .mining-stats-display {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-around;
+    gap: 8px 15px;
     margin-top: 15px;
     padding: 10px;
     background-color: rgba(30, 30, 30, 0.5);
@@ -5162,91 +5139,41 @@ body.light-mode .live-metric-range {
 
 .mining-stat-item {
     text-align: center;
+    min-width: 60px;
+    flex: 0 1 auto;
 }
 
 .mining-stat-label {
     color: #888;
-    margin-bottom: 5px;
+    margin-bottom: 3px;
+    font-size: 10px;
 }
 
 .mining-stat-value {
     color: #ffa500;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 12px;
+    word-break: break-word;
 }
 
-/* Luck Meter Styles */
-.luck-meter-item {
-    min-width: 120px;
-}
-
-.luck-meter {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-}
-
-.luck-emoji {
-    font-size: 18px;
-    line-height: 1;
-}
-
-.luck-text {
-    font-size: 11px;
-    white-space: nowrap;
-}
-
-/* Luck hot animation - pulsing glow */
-.luck-hot .luck-emoji {
-    animation: luck-pulse-hot 1s ease-in-out infinite;
-}
-
-@keyframes luck-pulse-hot {
-    0%, 100% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 3px rgba(255, 99, 71, 0.5));
+/* Mobile styles for mining stats */
+@media (max-width: 480px) {
+    .mining-stats-display {
+        gap: 6px 10px;
+        padding: 8px;
     }
-    50% {
-        transform: scale(1.15);
-        filter: drop-shadow(0 0 8px rgba(255, 99, 71, 0.9));
+
+    .mining-stat-item {
+        min-width: 55px;
     }
-}
 
-/* Luck cold animation - subtle shake */
-.luck-cold .luck-emoji {
-    animation: luck-shake-cold 2s ease-in-out infinite;
-}
+    .mining-stat-label {
+        font-size: 9px;
+    }
 
-@keyframes luck-shake-cold {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-2px); }
-    75% { transform: translateX(2px); }
-}
-
-/* Near miss excitement styles */
-.mining-bar.near-miss-extreme {
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
-    animation: near-miss-pulse 0.5s ease-in-out infinite;
-}
-
-.mining-bar.near-miss-high {
-    box-shadow: 0 0 6px rgba(255, 165, 0, 0.6);
-}
-
-@keyframes near-miss-pulse {
-    0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.8); }
-    50% { box-shadow: 0 0 20px rgba(255, 0, 0, 1); }
-}
-
-/* Dice roll animation for current mining slot */
-.mining-bar.current-mining.rolling {
-    animation: dice-roll 0.3s ease-in-out;
-}
-
-@keyframes dice-roll {
-    0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(1.1); }
+    .mining-stat-value {
+        font-size: 11px;
+    }
 }
 
 /* Buy Packages Modal Styles - REMOVED (using page version only) */
