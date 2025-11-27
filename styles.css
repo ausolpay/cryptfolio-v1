@@ -2414,11 +2414,12 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
 
     .modal-hero {
         padding: 30px 20px;
+        margin: 0 1px 20px 1px;
     }
 
     .modal-stats {
         grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        gap: 5px;
     }
 
     .modal-stat-card {
@@ -2446,8 +2447,8 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
 
     .modal-hero {
         padding: 40px 50px;
-        max-width: 700px;
-        margin: 0 auto 30px auto;
+        max-width: calc(700px - 2px);
+        margin: 0 1px 30px 1px;
     }
 
     .modal-hero .modal-total-holdings {
@@ -2461,7 +2462,7 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     .modal-stats {
         max-width: 700px;
         margin: 0 auto;
-        gap: 20px;
+        gap: 10px;
     }
 
     .modal-stat-card {
@@ -2493,8 +2494,8 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
 
     .modal-hero {
         padding: 35px 30px;
-        max-width: 90%;
-        margin: 0 auto 25px auto;
+        max-width: calc(90% - 2px);
+        margin: 0 1px 25px 1px;
     }
 
     .modal-hero .modal-total-holdings {
@@ -2508,7 +2509,7 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     .modal-stats {
         max-width: 90%;
         margin: 0 auto;
-        gap: 15px;
+        gap: 5px;
     }
 
     .modal-stat-card {
