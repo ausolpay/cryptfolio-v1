@@ -17736,6 +17736,116 @@ function addProbabilityLine(container, numBars, currentDifficulty, history) {
     container.appendChild(svg);
 }
 
+// =============================================================================
+// MINING PROGRESS CALCULATION HELPERS
+// Based on proper mining math from packagedetailspage-chart.md
+// =============================================================================
+
+/**
+ * Calculate mining progress and probability using proper formulas
+ *
+ * Formula (using network metrics):
+ *   expectedBlocks = (H_pkg / H_net) * (t / T_block)
+ *   progressPct = expectedBlocks * 100
+ *   pHit = 1 - exp(-expectedBlocks)
+ *
+ * Formula (using difficulty):
+ *   expectedBlocks = (H_pkg * t) / (D * 2^32)
+ *
+ * @param {Object} params - Calculation parameters
+ * @param {number} params.tSecs - Elapsed time in seconds
+ * @param {number} params.H_pkg - Package hashrate (H/s)
+ * @param {number} [params.D] - Network difficulty (if available)
+ * @param {number} [params.H_net] - Network hashrate (if D not available)
+ * @param {number} [params.T_block] - Target block time in seconds (if D not available)
+ * @returns {Object} { expectedBlocks, progressPct, pHit }
+ */
+function calculateMiningMetrics({ tSecs, H_pkg, D = null, H_net = null, T_block = null }) {
+    let expectedBlocks;
+
+    if (D != null && D > 0) {
+        // Use difficulty formula
+        expectedBlocks = (H_pkg * tSecs) / (D * Math.pow(2, 32));
+    } else if (H_net != null && H_net > 0 && T_block != null && T_block > 0) {
+        // Use network metrics formula
+        expectedBlocks = (H_pkg / H_net) * (tSecs / T_block);
+    } else {
+        // Fallback: can't calculate
+        return { expectedBlocks: 0, progressPct: 0, pHit: 0 };
+    }
+
+    return {
+        expectedBlocks: expectedBlocks,
+        progressPct: expectedBlocks * 100,
+        pHit: 1 - Math.exp(-expectedBlocks)
+    };
+}
+
+/**
+ * Calculate expected blocks per second (mining rate)
+ * Useful for progress per hour, ETA calculations
+ *
+ * @param {Object} params - Same as calculateMiningMetrics
+ * @returns {number} Expected blocks per second
+ */
+function calculateMiningRate({ H_pkg, D = null, H_net = null, T_block = null }) {
+    if (D != null && D > 0) {
+        return H_pkg / (D * Math.pow(2, 32));
+    } else if (H_net != null && H_net > 0 && T_block != null && T_block > 0) {
+        return (H_pkg / H_net) * (1 / T_block);
+    }
+    return 0;
+}
+
+/**
+ * Calculate probability of hitting at least one block in a time window
+ *
+ * @param {number} rate - Expected blocks per second (from calculateMiningRate)
+ * @param {number} deltaSecs - Time window in seconds
+ * @returns {number} Probability (0-1)
+ */
+function calculateProbabilityInWindow(rate, deltaSecs) {
+    return 1 - Math.exp(-rate * deltaSecs);
+}
+
+/**
+ * Get network parameters for a given currency/algorithm
+ * Returns T_block (target block time) based on coin type
+ *
+ * @param {string} currency - Currency code (BTC, LTC, DOGE, etc.)
+ * @returns {Object} { T_block, description }
+ */
+function getNetworkParams(currency) {
+    const params = {
+        'BTC': { T_block: 600, description: '10 minutes' },
+        'BCH': { T_block: 600, description: '10 minutes' },
+        'LTC': { T_block: 150, description: '2.5 minutes' },
+        'DOGE': { T_block: 60, description: '1 minute (uses LTC params for merged mining)' },
+        'RVN': { T_block: 60, description: '1 minute' },
+        'KAS': { T_block: 1, description: '1 second (blockDAG)' }
+    };
+    return params[currency] || { T_block: 600, description: 'default 10 minutes' };
+}
+
+/**
+ * Calculate per-slot progress contribution
+ * Each 30-second slot represents one mining attempt
+ *
+ * @param {number} probabilityPrecision - e.g., 33 for 1:33 odds
+ * @param {number} hashrateRatio - Current hashrate / expected hashrate
+ * @returns {number} Progress percentage per slot
+ */
+function calculateSlotProgress(probabilityPrecision, hashrateRatio = 1) {
+    // Base progress per slot = 100 / probabilityPrecision
+    // e.g., 1:33 odds = ~3% progress per slot
+    const baseProgress = 100 / probabilityPrecision;
+    return baseProgress * hashrateRatio;
+}
+
+// =============================================================================
+// END MINING CALCULATION HELPERS
+// =============================================================================
+
 // Update the mining progress chart on package detail page
 function updateMiningProgressChart(pkg) {
     // Store for live updates
@@ -17789,13 +17899,74 @@ function updateMiningProgressChart(pkg) {
     // Calculate hashrate ratio
     const hashrateRatio = speedLimit > 0 ? currentHashrate / speedLimit : 1;
 
-    // Calculate dynamic probability-based threshold line position (inverted - lower number = easier)
-    // probabilityPrecision of 33 means 1:33 odds, lower = easier = line should be lower
+    // =============================================================================
+    // PROPER MINING PROGRESS CALCULATIONS
+    // Uses network difficulty/hashpower from currencyAlgo API data
+    // =============================================================================
+
+    // Extract network data from package (currencyAlgo contains network stats)
+    const currencyAlgo = pkg.currencyAlgo || {};
+    const networkDifficulty = currencyAlgo.networkDifficulty || null;
+    const networkHashpower = currencyAlgo.networkHashpower || null;
+    const currency = currencyAlgo.currency || pkg.currency || 'BTC';
+    const networkParams = getNetworkParams(currency);
+
+    // Calculate elapsed time in seconds
+    const elapsedSecs = elapsedMs / 1000;
+
+    // Calculate proper mining metrics using helper functions
+    let miningMetrics = { expectedBlocks: 0, progressPct: 0, pHit: 0 };
+    let miningRate = 0;
+
+    if (networkDifficulty && networkDifficulty > 0) {
+        // Use difficulty-based formula
+        miningMetrics = calculateMiningMetrics({
+            tSecs: elapsedSecs,
+            H_pkg: currentHashrate,
+            D: networkDifficulty
+        });
+        miningRate = calculateMiningRate({ H_pkg: currentHashrate, D: networkDifficulty });
+    } else if (networkHashpower && networkHashpower > 0) {
+        // Use network hashpower formula
+        miningMetrics = calculateMiningMetrics({
+            tSecs: elapsedSecs,
+            H_pkg: currentHashrate,
+            H_net: networkHashpower,
+            T_block: networkParams.T_block
+        });
+        miningRate = calculateMiningRate({
+            H_pkg: currentHashrate,
+            H_net: networkHashpower,
+            T_block: networkParams.T_block
+        });
+    }
+
+    // Calculate probabilities for common time windows
+    const prob30m = calculateProbabilityInWindow(miningRate, 1800) * 100;
+    const prob1h = calculateProbabilityInWindow(miningRate, 3600) * 100;
+    const prob6h = calculateProbabilityInWindow(miningRate, 21600) * 100;
+    const prob24h = calculateProbabilityInWindow(miningRate, 86400) * 100;
+
+    // Calculate progress per hour
+    const progressPerHour = miningRate * 3600 * 100;
+
+    // Calculate slot progress (30-second intervals)
     const probPrecision = pkg.probabilityPrecision || 100;
-    // Normalize: 1:10 = easy (line at 60%), 1:100 = hard (line at 90%)
+    const slotProgress = calculateSlotProgress(probPrecision, hashrateRatio);
+
+    // Normalize difficulty for visual threshold line (lower number = easier)
+    // 1:10 = easy (line at 60%), 1:100 = hard (line at 90%)
     const normalizedDifficulty = Math.min(95, Math.max(50, 50 + (Math.log10(probPrecision) * 20)));
 
+    // Store calculated metrics in chart data for use elsewhere
+    chartData.miningMetrics = miningMetrics;
+    chartData.miningRate = miningRate;
+    chartData.slotProgress = slotProgress;
+
     console.log(`   - hashrateRatio: ${hashrateRatio.toFixed(2)}, normalizedDifficulty: ${normalizedDifficulty.toFixed(1)}%`);
+    console.log(`   - Mining Metrics: expectedBlocks=${miningMetrics.expectedBlocks.toFixed(4)}, progressPct=${miningMetrics.progressPct.toFixed(2)}%, pHit=${(miningMetrics.pHit * 100).toFixed(2)}%`);
+    console.log(`   - Progress/hour: ${progressPerHour.toFixed(2)}%, Slot progress: ${slotProgress.toFixed(2)}%`);
+    console.log(`   - P(hit): 30m=${prob30m.toFixed(1)}%, 1h=${prob1h.toFixed(1)}%, 6h=${prob6h.toFixed(1)}%, 24h=${prob24h.toFixed(1)}%`);
 
     // Get elements for progress bar (will update after bar calculations)
     const fillElement = document.getElementById('close-to-reward-fill');
