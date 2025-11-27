@@ -4088,18 +4088,9 @@ async function checkPackageRecommendations() {
                 return;
             }
 
-            // Extract probabilities
-            let mainProbabilityValue = null;
-            let mergeProbabilityValue = null;
-
-            if (pkg.probability) {
-                const match = pkg.probability.match(/1:(\d+)/);
-                if (match) mainProbabilityValue = parseInt(match[1]);
-            }
-            if (pkg.mergeProbability) {
-                const match = pkg.mergeProbability.match(/1:(\d+)/);
-                if (match) mergeProbabilityValue = parseInt(match[1]);
-            }
+            // Extract probabilities using precision values (preferred) or formatted strings
+            const mainProbabilityValue = getProbabilityNumeric(pkg, 'main');
+            const mergeProbabilityValue = getProbabilityNumeric(pkg, 'merge');
 
             // Check if either crypto meets its threshold (OR logic)
             let mainMeetsThreshold = false;
@@ -4107,16 +4098,16 @@ async function checkPackageRecommendations() {
 
             if (mainThreshold && mainProbabilityValue !== null && mainProbabilityValue <= mainThreshold) {
                 mainMeetsThreshold = true;
-                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue} ≤ Threshold 1:${mainThreshold}`);
+                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue.toFixed(1)} ≤ Threshold 1:${mainThreshold}`);
             } else if (mainThreshold) {
-                console.log(`❌ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue} > Threshold 1:${mainThreshold}`);
+                console.log(`❌ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue?.toFixed(1) || 'N/A'} > Threshold 1:${mainThreshold}`);
             }
 
             if (mergeThreshold && mergeProbabilityValue !== null && mergeProbabilityValue <= mergeThreshold) {
                 mergeMeetsThreshold = true;
-                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue} ≤ Threshold 1:${mergeThreshold}`);
+                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue.toFixed(1)} ≤ Threshold 1:${mergeThreshold}`);
             } else if (mergeThreshold) {
-                console.log(`❌ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue} > Threshold 1:${mergeThreshold}`);
+                console.log(`❌ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue?.toFixed(1) || 'N/A'} > Threshold 1:${mergeThreshold}`);
             }
 
             // Recommend if EITHER threshold is met
@@ -4132,21 +4123,15 @@ async function checkPackageRecommendations() {
                 return; // No alert set for this package
             }
 
-            // Extract probability value from ratio (e.g., "1:150" → 150)
-            let probabilityValue = null;
-            if (pkg.probability) {
-                const match = pkg.probability.match(/1:(\d+)/);
-                if (match) {
-                    probabilityValue = parseInt(match[1]);
-                }
-            }
+            // Extract probability value using precision (preferred) or formatted string
+            const probabilityValue = getProbabilityNumeric(pkg, 'main');
 
             // Check if probability meets threshold (lower is better)
             if (probabilityValue !== null && probabilityValue <= threshold) {
-                console.log(`✅ ${pkg.name}: Current 1:${probabilityValue} ≤ Threshold 1:${threshold} - RECOMMENDED`);
+                console.log(`✅ ${pkg.name}: Current 1:${probabilityValue.toFixed(1)} ≤ Threshold 1:${threshold} - RECOMMENDED`);
                 recommendations.push(pkg);
             } else {
-                console.log(`❌ ${pkg.name}: Current 1:${probabilityValue} > Threshold 1:${threshold} - Not recommended`);
+                console.log(`❌ ${pkg.name}: Current 1:${probabilityValue?.toFixed(1) || 'N/A'} > Threshold 1:${threshold} - Not recommended`);
             }
         }
     });
@@ -4206,47 +4191,35 @@ async function checkTeamRecommendations() {
             const mainThreshold = alert[`probability_${mainCrypto}`];
             const mergeThreshold = alert[`probability_${mergeCrypto}`];
 
-            // Extract probabilities
-            let mainProbabilityValue = null;
-            let mergeProbabilityValue = null;
-
-            if (pkg.probability) {
-                const match = pkg.probability.match(/1:(\d+)/);
-                if (match) mainProbabilityValue = parseInt(match[1]);
-            }
-            if (pkg.mergeProbability) {
-                const match = pkg.mergeProbability.match(/1:(\d+)/);
-                if (match) mergeProbabilityValue = parseInt(match[1]);
-            }
+            // Extract probabilities using precision values (preferred) or formatted strings
+            const mainProbabilityValue = getProbabilityNumeric(pkg, 'main');
+            const mergeProbabilityValue = getProbabilityNumeric(pkg, 'merge');
 
             // Check main crypto probability
             if (mainThreshold && mainProbabilityValue !== null && mainProbabilityValue <= mainThreshold) {
                 meetsAnyThreshold = true;
-                reasons.push(`${mainCrypto} probability 1:${mainProbabilityValue} ≤ 1:${mainThreshold}`);
-                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue} ≤ Threshold 1:${mainThreshold}`);
+                reasons.push(`${mainCrypto} probability 1:${mainProbabilityValue.toFixed(1)} ≤ 1:${mainThreshold}`);
+                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue.toFixed(1)} ≤ Threshold 1:${mainThreshold}`);
             }
 
             // Check merge crypto probability
             if (mergeThreshold && mergeProbabilityValue !== null && mergeProbabilityValue <= mergeThreshold) {
                 meetsAnyThreshold = true;
-                reasons.push(`${mergeCrypto} probability 1:${mergeProbabilityValue} ≤ 1:${mergeThreshold}`);
-                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue} ≤ Threshold 1:${mergeThreshold}`);
+                reasons.push(`${mergeCrypto} probability 1:${mergeProbabilityValue.toFixed(1)} ≤ 1:${mergeThreshold}`);
+                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue.toFixed(1)} ≤ Threshold 1:${mergeThreshold}`);
             }
         } else {
             // Single crypto package - check single probability
             const threshold = alert.probability;
 
             if (threshold) {
-                let probabilityValue = null;
-                if (pkg.probability) {
-                    const match = pkg.probability.match(/1:(\d+)/);
-                    if (match) probabilityValue = parseInt(match[1]);
-                }
+                // Extract probability using precision (preferred) or formatted string
+                const probabilityValue = getProbabilityNumeric(pkg, 'main');
 
                 if (probabilityValue !== null && probabilityValue <= threshold) {
                     meetsAnyThreshold = true;
-                    reasons.push(`Probability 1:${probabilityValue} ≤ 1:${threshold}`);
-                    console.log(`✅ ${pkg.name}: Current 1:${probabilityValue} ≤ Threshold 1:${threshold}`);
+                    reasons.push(`Probability 1:${probabilityValue.toFixed(1)} ≤ 1:${threshold}`);
+                    console.log(`✅ ${pkg.name}: Current 1:${probabilityValue.toFixed(1)} ≤ Threshold 1:${threshold}`);
                 }
             }
         }
@@ -4323,45 +4296,37 @@ async function checkTeamRecommendations() {
             let meetsAllSmallPackageThresholds = true;
 
             if (palladiumSmallPackage) {
-                // Check DOGE small package if threshold is set (from mergeProbability)
+                // Check DOGE small package if threshold is set (using precision value)
                 if (alert.smallPackageProbability_DOGE) {
-                    let dogeProb = null;
-                    if (palladiumSmallPackage.mergeProbability) {
-                        const match = palladiumSmallPackage.mergeProbability.match(/1:(\d+)/);
-                        if (match) dogeProb = parseInt(match[1]);
-                    }
+                    const dogeProb = getProbabilityNumeric(palladiumSmallPackage, 'merge');
 
-                    console.log(`📦 ${pkg.name}: Checking DOGE small package probability (mergeProbability) = 1:${dogeProb}, Threshold = 1:${alert.smallPackageProbability_DOGE}`);
+                    console.log(`📦 ${pkg.name}: Checking DOGE small package probability = 1:${dogeProb?.toFixed(1) || 'N/A'}, Threshold = 1:${alert.smallPackageProbability_DOGE}`);
 
                     const meetsDOGEThreshold = dogeProb !== null && dogeProb <= alert.smallPackageProbability_DOGE;
 
                     if (meetsDOGEThreshold) {
-                        reasons.push(`📦 DOGE 1:${dogeProb} (≤ 1:${alert.smallPackageProbability_DOGE})`);
+                        reasons.push(`📦 DOGE 1:${dogeProb.toFixed(1)} (≤ 1:${alert.smallPackageProbability_DOGE})`);
                         console.log(`✅ ${pkg.name}: DOGE small package meets threshold`);
                     } else {
                         meetsAllSmallPackageThresholds = false;
-                        console.log(`❌ ${pkg.name}: DOGE small package does NOT meet threshold (1:${dogeProb} > 1:${alert.smallPackageProbability_DOGE})`);
+                        console.log(`❌ ${pkg.name}: DOGE small package does NOT meet threshold (1:${dogeProb?.toFixed(1) || 'N/A'} > 1:${alert.smallPackageProbability_DOGE})`);
                     }
                 }
 
-                // Check LTC small package if threshold is set (from probability)
+                // Check LTC small package if threshold is set (using precision value)
                 if (alert.smallPackageProbability_LTC) {
-                    let ltcProb = null;
-                    if (palladiumSmallPackage.probability) {
-                        const match = palladiumSmallPackage.probability.match(/1:(\d+)/);
-                        if (match) ltcProb = parseInt(match[1]);
-                    }
+                    const ltcProb = getProbabilityNumeric(palladiumSmallPackage, 'main');
 
-                    console.log(`📦 ${pkg.name}: Checking LTC small package probability (probability) = 1:${ltcProb}, Threshold = 1:${alert.smallPackageProbability_LTC}`);
+                    console.log(`📦 ${pkg.name}: Checking LTC small package probability = 1:${ltcProb?.toFixed(1) || 'N/A'}, Threshold = 1:${alert.smallPackageProbability_LTC}`);
 
                     const meetsLTCThreshold = ltcProb !== null && ltcProb <= alert.smallPackageProbability_LTC;
 
                     if (meetsLTCThreshold) {
-                        reasons.push(`📦 LTC 1:${ltcProb} (≤ 1:${alert.smallPackageProbability_LTC})`);
+                        reasons.push(`📦 LTC 1:${ltcProb.toFixed(1)} (≤ 1:${alert.smallPackageProbability_LTC})`);
                         console.log(`✅ ${pkg.name}: LTC small package meets threshold`);
                     } else {
                         meetsAllSmallPackageThresholds = false;
-                        console.log(`❌ ${pkg.name}: LTC small package does NOT meet threshold (1:${ltcProb} > 1:${alert.smallPackageProbability_LTC})`);
+                        console.log(`❌ ${pkg.name}: LTC small package does NOT meet threshold (1:${ltcProb?.toFixed(1) || 'N/A'} > 1:${alert.smallPackageProbability_LTC})`);
                     }
                 }
             } else {
@@ -4384,25 +4349,21 @@ async function checkTeamRecommendations() {
             const smallPackage = soloPackages.find(sp => sp.name === smallPackageName);
 
             if (smallPackage) {
-                // Extract small package probability value
-                let smallPackageProbability = null;
-                if (smallPackage.probability) {
-                    const match = smallPackage.probability.match(/1:(\d+)/);
-                    if (match) smallPackageProbability = parseInt(match[1]);
-                }
+                // Extract small package probability value using precision (preferred) or formatted string
+                const smallPackageProbability = getProbabilityNumeric(smallPackage, 'main');
 
-                console.log(`📦 ${pkg.name}: Checking small package "${smallPackageName}" probability = 1:${smallPackageProbability}, Threshold = 1:${alert.smallPackageProbability}`);
+                console.log(`📦 ${pkg.name}: Checking small package "${smallPackageName}" probability = 1:${smallPackageProbability?.toFixed(1) || 'N/A'}, Threshold = 1:${alert.smallPackageProbability}`);
 
                 const meetsSmallPackageThreshold = smallPackageProbability !== null && smallPackageProbability <= alert.smallPackageProbability;
 
                 if (meetsSmallPackageThreshold && shouldRecommend) {
                     // Both conditions met: small package meets threshold AND other conditions passed
-                    reasons.push(`📦 ${smallPackageName} 1:${smallPackageProbability} (≤ 1:${alert.smallPackageProbability})`);
+                    reasons.push(`📦 ${smallPackageName} 1:${smallPackageProbability.toFixed(1)} (≤ 1:${alert.smallPackageProbability})`);
                     console.log(`✅ ${pkg.name}: Small package "${smallPackageName}" meets threshold AND other conditions met`);
                 } else if (!meetsSmallPackageThreshold && shouldRecommend) {
                     // Small package threshold not met - override shouldRecommend
                     shouldRecommend = false;
-                    console.log(`❌ ${pkg.name}: Small package "${smallPackageName}" does NOT meet threshold (1:${smallPackageProbability} > 1:${alert.smallPackageProbability})`);
+                    console.log(`❌ ${pkg.name}: Small package "${smallPackageName}" does NOT meet threshold (1:${smallPackageProbability?.toFixed(1) || 'N/A'} > 1:${alert.smallPackageProbability})`);
                 } else if (meetsSmallPackageThreshold && !shouldRecommend) {
                     console.log(`❌ ${pkg.name}: Small package "${smallPackageName}" meets threshold but other conditions NOT met`);
                 } else {
@@ -13986,6 +13947,47 @@ function formatProbability(prob) {
     }
 }
 
+/**
+ * Extract numeric probability value from package data
+ * Prefers probabilityPrecision (number) over probability (string "1:X")
+ * @param {object} pkg - Package object
+ * @param {string} type - 'main' for main crypto, 'merge' for merge crypto
+ * @returns {number|null} Numeric probability value (e.g., 150 from "1:150")
+ */
+function getProbabilityNumeric(pkg, type = 'main') {
+    if (!pkg) return null;
+
+    let precisionValue, formattedValue;
+
+    if (type === 'merge') {
+        // For merge/secondary crypto (DOGE in Palladium)
+        precisionValue = pkg.mergeProbabilityPrecision;
+        formattedValue = pkg.mergeProbability;
+    } else {
+        // For main crypto - check multiple possible field names
+        precisionValue = pkg.probabilityPrecision || pkg.mainProbabilityPrecision;
+        formattedValue = pkg.probability || pkg.mainProbability;
+    }
+
+    // Prefer precision value if available (it's already numeric)
+    if (precisionValue !== null && precisionValue !== undefined) {
+        const num = parseFloat(precisionValue);
+        if (!isNaN(num) && num > 0) {
+            return num;
+        }
+    }
+
+    // Fallback: extract from formatted string "1:X"
+    if (formattedValue && typeof formattedValue === 'string') {
+        const match = formattedValue.match(/1:(\d+\.?\d*)/);
+        if (match) {
+            return parseFloat(match[1]);
+        }
+    }
+
+    return null;
+}
+
 // Helper function to calculate time remaining
 // Can accept either a full order object or just an endTimestamp for backwards compatibility
 function calculateTimeRemaining(orderOrTimestamp) {
@@ -19057,12 +19059,13 @@ function createSoloPackageCard(pkg) {
     card.className = 'buy-package-card';
 
     // Extract package details from API response
-    // Solo package structure: { id, name, price, probability, currencyAlgo: { currency, blockReward }, duration }
+    // Solo package structure: { id, name, price, probabilityPrecision, currencyAlgo: { currency, blockReward }, duration }
     const packageName = pkg.name || 'Unknown Package';
     const crypto = pkg.currencyAlgo?.currency || 'Unknown';
     const ticketId = pkg.id;
     const packagePrice = pkg.price || 0;
-    const probability = pkg.probability || 'N/A';
+    // Use formatProbability with probabilityPrecision for accurate display
+    const probability = formatProbability(pkg.probabilityPrecision || pkg.probability) || 'N/A';
     const potentialReward = pkg.currencyAlgo?.blockReward || 'N/A';
     const duration = pkg.duration || 0;
 
@@ -19368,7 +19371,8 @@ function createTeamPackageCard(pkg) {
     const totalAvailableShares = Math.round(fullAmount * 10000);
     const totalBoughtShares = Math.round(addedAmount * 10000);
     const availableShares = Math.round(availableAmount * 10000);
-    const probability = ticket.probability || 'N/A';
+    // Use formatProbability with probabilityPrecision for accurate display
+    const probability = formatProbability(ticket.probabilityPrecision || pkg.probabilityPrecision || ticket.probability) || 'N/A';
     const blockReward = ticket.currencyAlgo?.blockRewardWithNhFee || ticket.currencyAlgo?.blockReward || 0;
     const participants = pkg.numberOfParticipants || 0;
 
@@ -20232,10 +20236,8 @@ async function fetchNiceHashSoloPackages() {
         const transformedPackages = packages
             .filter(pkg => pkg.available && pkg.status === 'A') // Only available packages
             .map(pkg => {
-                // Calculate probability display (e.g., "1:150" from probability: 150)
-                const probabilityRatio = pkg.probabilityPrecision >= 1
-                    ? `1:${Math.round(pkg.probabilityPrecision)}`
-                    : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+                // Format probability using formatProbability() for accurate display
+                const probabilityRatio = formatProbability(pkg.probabilityPrecision) || 'N/A';
 
                 // Convert duration from seconds to hours for display
                 // e.g., 7200 seconds = 2 hours
@@ -20268,20 +20270,16 @@ async function fetchNiceHashSoloPackages() {
                     });
                 }
 
-                // Get probabilities for dual-crypto packages
+                // Get probabilities for dual-crypto packages using formatProbability()
                 let mainProbability = probabilityRatio;
                 let mergeProbability = null;
 
                 if (hasMergeCurrency) {
-                    // Main crypto probability (LTC) from probabilityPrecision
-                    mainProbability = pkg.probabilityPrecision >= 1
-                        ? `1:${Math.round(pkg.probabilityPrecision)}`
-                        : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+                    // Main crypto probability (LTC) using formatProbability
+                    mainProbability = formatProbability(pkg.probabilityPrecision) || 'N/A';
 
-                    // Merge crypto probability (DOGE) from mergeProbabilityPrecision
-                    mergeProbability = pkg.mergeProbabilityPrecision >= 1
-                        ? `1:${Math.round(pkg.mergeProbabilityPrecision)}`
-                        : `${Math.round(1/pkg.mergeProbabilityPrecision)}:1`;
+                    // Merge crypto probability (DOGE) using formatProbability
+                    mergeProbability = formatProbability(pkg.mergeProbabilityPrecision) || 'N/A';
                 }
 
                 console.log(`📦 Mapping package ${pkg.name}:`, {
@@ -20313,6 +20311,10 @@ async function fetchNiceHashSoloPackages() {
                     probability: hasMergeCurrency ? mainProbability : probabilityRatio,
                     mainProbability: mainProbability,
                     mergeProbability: mergeProbability,
+                    // Store raw precision values for alerts and calculations
+                    probabilityPrecision: pkg.probabilityPrecision,
+                    mergeProbabilityPrecision: pkg.mergeProbabilityPrecision,
+                    mainProbabilityPrecision: pkg.probabilityPrecision,
                     price: pkg.price, // Required for auto-buy (in BTC)
                     priceBTC: pkg.price,
                     priceAUD: calculatedPriceAUD.toFixed(2), // Calculated from BTC price
@@ -20414,10 +20416,8 @@ async function fetchNiceHashTeamPackages() {
             .map(pkg => {
                 const ticket = pkg.currencyAlgoTicket;
 
-                // Calculate probability display from the outer probability (user's current share probability)
-                const probabilityRatio = pkg.probabilityPrecision >= 1
-                    ? `1:${Math.round(pkg.probabilityPrecision)}`
-                    : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+                // Format probability using formatProbability() for accurate display
+                const probabilityRatio = formatProbability(pkg.probabilityPrecision) || 'N/A';
 
                 // Convert duration from seconds to hours
                 const durationHours = pkg.duration ? (pkg.duration / 3600).toFixed(0) : '0';
@@ -20434,20 +20434,16 @@ async function fetchNiceHashTeamPackages() {
                     ? ticket.mergeCurrencyAlgo.blockReward
                     : null;
 
-                // Get probabilities for dual-crypto packages
+                // Get probabilities for dual-crypto packages using formatProbability()
                 let mainProbability = probabilityRatio;
                 let mergeProbability = null;
 
                 if (hasMergeCurrency) {
-                    // Main crypto probability (LTC) from probabilityPrecision
-                    mainProbability = pkg.probabilityPrecision >= 1
-                        ? `1:${Math.round(pkg.probabilityPrecision)}`
-                        : `${Math.round(1/pkg.probabilityPrecision)}:1`;
+                    // Main crypto probability (LTC) using formatProbability
+                    mainProbability = formatProbability(pkg.probabilityPrecision) || 'N/A';
 
-                    // Merge crypto probability (DOGE) from mergeProbabilityPrecision
-                    mergeProbability = pkg.mergeProbabilityPrecision >= 1
-                        ? `1:${Math.round(pkg.mergeProbabilityPrecision)}`
-                        : `${Math.round(1/pkg.mergeProbabilityPrecision)}:1`;
+                    // Merge crypto probability (DOGE) using formatProbability
+                    mergeProbability = formatProbability(pkg.mergeProbabilityPrecision) || 'N/A';
                 }
 
                 // Calculate AUD price from BTC price
@@ -20491,6 +20487,10 @@ async function fetchNiceHashTeamPackages() {
                     probability: hasMergeCurrency ? mainProbability : probabilityRatio,
                     mainProbability: mainProbability,
                     mergeProbability: mergeProbability,
+                    // Store raw precision values for alerts and calculations
+                    probabilityPrecision: pkg.probabilityPrecision,
+                    mergeProbabilityPrecision: pkg.mergeProbabilityPrecision,
+                    mainProbabilityPrecision: pkg.probabilityPrecision,
                     priceBTC: ticket.price,
                     priceAUD: calculatedPriceAUD.toFixed(2), // Calculated from BTC price
                     duration: `${durationHours}h`,
