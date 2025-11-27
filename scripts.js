@@ -14824,9 +14824,28 @@ async function executeAutoBuyTeam(recommendations) {
 
         // Calculate new total (current + configured shares to buy)
         const currentShares = getMyTeamShares(packageId) || 0;
-        const newTotalShares = currentShares + sharesToBuy;
+        let actualSharesToBuy = sharesToBuy;
+        let actualTotalAmount = totalAmount;
+        let newTotalShares = currentShares + actualSharesToBuy;
 
-        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (buying ${sharesToBuy} shares, total will be ${newTotalShares}, cost ${totalAmount} BTC)`);
+        // 💰 Balance check: Can we afford the configured shares?
+        const availableBalance = window.niceHashBalance?.available || 0;
+        const maxAffordableShares = Math.floor(availableBalance / sharePrice);
+
+        if (maxAffordableShares <= 0) {
+            console.log(`⏸️ ${pkg.name}: Cannot afford any shares. Balance: ${availableBalance.toFixed(8)} BTC, need ${sharePrice} BTC per share`);
+            continue; // Skip this package, try next one
+        }
+
+        if (maxAffordableShares < sharesToBuy) {
+            // Partial purchase: buy what we can afford
+            actualSharesToBuy = maxAffordableShares;
+            actualTotalAmount = actualSharesToBuy * sharePrice;
+            newTotalShares = currentShares + actualSharesToBuy;
+            console.log(`💰 ${pkg.name}: Partial purchase - can afford ${actualSharesToBuy} of ${sharesToBuy} shares (balance: ${availableBalance.toFixed(8)} BTC)`);
+        }
+
+        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (buying ${actualSharesToBuy} shares, total will be ${newTotalShares}, cost ${actualTotalAmount} BTC)`);
 
         try {
             // Auto-buy: skip confirmation, call the purchase API directly
@@ -14885,7 +14904,7 @@ async function executeAutoBuyTeam(recommendations) {
 
             // Create order payload: amount is for NEW shares, but shares.small is TOTAL desired
             const bodyData = {
-                amount: totalAmount,  // BTC cost for NEW shares only
+                amount: actualTotalAmount,  // BTC cost for NEW shares only
                 shares: {
                     small: newTotalShares,  // Send TOTAL shares, API sets your shares to this value
                     medium: 0,
@@ -14906,14 +14925,14 @@ async function executeAutoBuyTeam(recommendations) {
             const body = JSON.stringify(bodyData);
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-            console.log(`📡 Auto-buy request: buying ${sharesToBuy} shares, setting total to ${newTotalShares} (${totalAmount} BTC)`, {
+            console.log(`📡 Auto-buy request: buying ${actualSharesToBuy} shares, setting total to ${newTotalShares} (${actualTotalAmount} BTC)`, {
                 isDualCrypto: isDualCrypto,
                 mainCrypto: mainCrypto,
                 mainWallet: mainWalletAddress.substring(0, 10) + '...',
                 mergeCrypto: mergeCrypto || 'N/A',
                 mergeWallet: mergeWalletAddress ? mergeWalletAddress.substring(0, 10) + '...' : 'N/A',
                 currentShares: currentShares,
-                sharesToBuy: sharesToBuy,
+                actualSharesToBuy: actualSharesToBuy,
                 newTotalShares: newTotalShares,
                 bodyData: bodyData
             });
@@ -14951,15 +14970,11 @@ async function executeAutoBuyTeam(recommendations) {
                 throw new Error(`Purchase failed: Invalid response from NiceHash (no order ID returned)`);
             }
 
-            console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} - bought ${sharesToBuy} share(s), now has ${newTotalShares} total. Order ID: ${result.id || result.orderId || 'N/A'}`);
+            console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} - bought ${actualSharesToBuy} share(s), now has ${newTotalShares} total. Order ID: ${result.id || result.orderId || 'N/A'}`);
 
-            // ✅ ONLY save data after confirming purchase was successful
-            // Save the new total shares (already calculated before API call)
-            saveMyTeamShares(packageId, newTotalShares);
-            console.log(`💾 Saved team shares: ${newTotalShares} (was ${currentShares}, added ${sharesToBuy})`);
-
-            // ✅ SYNC: Update share inputs on both UIs (Alert cards & Buy Packages page)
-            syncTeamShareInputs(packageId, pkg.name, newTotalShares);
+            // ✅ API is now source of truth - no need to save to localStorage or sync inputs
+            // Next API poll will update easyMiningData.activePackages with ownedShares
+            // getMyTeamShares() will return the API value automatically
 
             // Mark this package as auto-bought (use order ID from API response, not ticket ID)
             const orderIdReturned = result.id || result.orderId;
@@ -14968,9 +14983,9 @@ async function executeAutoBuyTeam(recommendations) {
                 type: 'team',
                 packageName: pkg.name,  // Store package name for fallback matching when countdown → active
                 timestamp: Date.now(),
-                sharesBought: sharesToBuy,
+                sharesBought: actualSharesToBuy,
                 totalShares: newTotalShares,
-                amount: totalAmount,
+                amount: actualTotalAmount,
                 orderId: orderIdReturned,
                 ticketId: packageId  // Store ticket ID for reference but use order ID as key
             };
@@ -14981,7 +14996,7 @@ async function executeAutoBuyTeam(recommendations) {
                 key: orderIdReturned,
                 packageName: pkg.name,
                 ticketId: packageId,
-                sharesBought: sharesToBuy,
+                sharesBought: actualSharesToBuy,
                 totalShares: newTotalShares,
                 timestamp: new Date().toISOString()
             });
@@ -14996,7 +15011,7 @@ async function executeAutoBuyTeam(recommendations) {
                 boughtPackageIds[packageId] = {
                     name: pkg.name,
                     timestamp: Date.now(),
-                    sharesBought: sharesToBuy,
+                    sharesBought: actualSharesToBuy,
                     totalShares: newTotalShares
                 };
                 localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
@@ -15005,7 +15020,7 @@ async function executeAutoBuyTeam(recommendations) {
 
             // Update stats
             const btcPrice = getPriceFromObject(window.packageCryptoPrices?.['btc']) || 140000;
-            const totalPriceAUD = totalAmount * btcPrice;
+            const totalPriceAUD = actualTotalAmount * btcPrice;
             easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
             easyMiningData.todayStats.totalSpent += totalPriceAUD;
             localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
