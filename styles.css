@@ -4994,6 +4994,10 @@ body.light-mode .live-metric-range {
 }
 
 .legend-color.close-to-reward,
+.legend-color.closest-reward {
+    background-color: #4CAF50; /* Green to match progress/reward circles */
+}
+
 .legend-color.block-rewards {
     background-color: #ffa500;
 }
@@ -5210,44 +5214,44 @@ body.light-mode .live-metric-range {
     z-index: 5;
 }
 
-/* Progress circle for closest-to-reward bar (orange/cyan style) */
+/* Progress circle for closest-to-reward bar (matches reward circle style with percentage) */
 .bar-percentage-circle.progress-circle {
     position: absolute;
-    top: -30px;
+    top: -32px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #00bcd4;
+    background-color: #4CAF50;
     color: #fff;
     font-size: 9px;
     font-weight: bold;
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 8px rgba(0, 188, 212, 0.5);
+    border: 2px solid #FFD700; /* Gold border like reward */
+    box-shadow: 0 2px 10px rgba(76, 175, 80, 0.6), 0 0 15px rgba(255, 215, 0, 0.4);
     z-index: 11;
-    animation: progressPulse 1.5s ease-in-out infinite;
+    animation: progressPulse 2s ease-in-out infinite;
 }
 
 @keyframes progressPulse {
     0%, 100% {
-        box-shadow: 0 2px 8px rgba(0, 188, 212, 0.5);
+        box-shadow: 0 2px 10px rgba(76, 175, 80, 0.6), 0 0 15px rgba(255, 215, 0, 0.4);
         transform: translateX(-50%) scale(1);
     }
     50% {
-        box-shadow: 0 2px 15px rgba(0, 188, 212, 0.8);
-        transform: translateX(-50%) scale(1.05);
+        box-shadow: 0 2px 15px rgba(76, 175, 80, 0.9), 0 0 25px rgba(255, 215, 0, 0.7);
+        transform: translateX(-50%) scale(1.1);
     }
 }
 
-/* Vertical line connecting circle to bar */
+/* Vertical line connecting circle to bar (green to match reward line) */
 .bar-progress-line {
     position: absolute;
     width: 2px;
-    background: linear-gradient(to bottom, #00bcd4, transparent);
+    background: linear-gradient(to bottom, #4CAF50, transparent);
     left: 50%;
     transform: translateX(-50%);
     bottom: 100%;
