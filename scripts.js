@@ -18438,6 +18438,11 @@ function updateMiningProgressChart(pkg) {
                     barClass += ' current-mining';
                     height = (basePercent / 100) * maxBarHeight; // Scale for mobile
                     bar.dataset.percentage = basePercent.toFixed(0);
+
+                    // Track current slot as potential highest bar
+                    if (basePercent > highestBar.percentage) {
+                        highestBar = { index: i, percentage: basePercent, element: bar };
+                    }
                 } else if (slotDataPoints.length > 0) {
                     // Past slot with data - render based on collected data
                     const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
@@ -18451,14 +18456,14 @@ function updateMiningProgressChart(pkg) {
                     height = (basePercent / 100) * maxBarHeight; // Scale for mobile
                     bar.dataset.percentage = basePercent.toFixed(0);
 
-                    // Track highest percentage bar (10%+ threshold)
-                    // ONLY update if this bar's percentage is STRICTLY HIGHER than stored
-                    if (basePercent >= 10 && basePercent > storedHighest.percentage) {
+                    // Track highest percentage bar - update if higher than current highest
+                    if (basePercent > highestBar.percentage) {
                         highestBar = { index: i, percentage: basePercent, element: bar };
                     }
                     // If this is the stored highest bar, keep the element reference
-                    else if (i === storedHighest.index) {
+                    else if (i === storedHighest.index && !highestBar.element) {
                         highestBar.element = bar;
+                        highestBar.percentage = basePercent;
                     }
                 } else {
                     // Past slot without data - show as gray minimal bar
@@ -18492,7 +18497,19 @@ function updateMiningProgressChart(pkg) {
             // Once a reward is found, the rocket indicators on reward bars take over
             const hasRewards = rewardBarsShown > 0 || (chartData.rewardSlots && chartData.rewardSlots.length > 0);
 
-            if (!hasRewards && highestBar.percentage >= 10 && highestBar.element) {
+            // Find a fallback bar if no highest bar found (use first non-future, non-reward bar)
+            if (!hasRewards && highestBar.percentage <= 0 && elapsedBars > 0) {
+                // Find the most recent elapsed bar as fallback
+                const fallbackIndex = Math.max(0, Math.min(elapsedBars - 1, totalBarsForDuration - 1));
+                const fallbackBar = document.getElementById(`mining-bar-${pkgId}-${fallbackIndex}`);
+                if (fallbackBar && !fallbackBar.classList.contains('reward-found') && !fallbackBar.classList.contains('future-slot')) {
+                    // Generate a starting percentage for this bar
+                    const fallbackPercent = Math.max(10, Math.min(50, hashrateRatio * 80));
+                    highestBar = { index: fallbackIndex, percentage: fallbackPercent, element: fallbackBar };
+                }
+            }
+
+            if (!hasRewards && highestBar.percentage > 0 && highestBar.element) {
                 // Mark as closest-to-reward (only when no rewards found)
                 highestBar.element.classList.add('closest-to-reward');
 
@@ -18510,7 +18527,7 @@ function updateMiningProgressChart(pkg) {
 
                 chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
                 updateProgressBarDisplay(highestBar.percentage);
-            } else if (!hasRewards && storedHighest.percentage >= 10 && storedHighest.index >= 0) {
+            } else if (!hasRewards && storedHighest.percentage > 0 && storedHighest.index >= 0) {
                 // Use stored highest - find the bar element (only when no rewards found)
                 const storedBar = document.getElementById(`mining-bar-${pkgId}-${storedHighest.index}`);
                 if (storedBar && !storedBar.classList.contains('reward-found')) {
@@ -18533,8 +18550,9 @@ function updateMiningProgressChart(pkg) {
                 // Rewards found - update progress bar to show 100%+ (success!)
                 updateProgressBarDisplay(100);
             } else {
-                // No rewards and no high bar - use time progress for the progress bar
-                updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
+                // No rewards and no high bar yet - use time progress for the progress bar
+                // This handles the very first render before any data
+                updateProgressBarDisplay(Math.min(99, Math.max(5, timeProgress * hashrateRatio)));
             }
 
             // Store chart data
