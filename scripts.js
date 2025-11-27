@@ -15065,9 +15065,6 @@ async function executeAutoBuyTeam(recommendations) {
 }
 
 async function updateRecommendations() {
-    const bestPackagesContainer = document.getElementById('best-packages-container');
-    const teamAlertsContainer = document.getElementById('team-alerts-container');
-
     console.log('🔄 Checking for recommendation updates...');
 
     // Fetch balance for buy button validation in EasyMining section
@@ -15111,7 +15108,14 @@ async function updateRecommendations() {
     const soloChanged = recommendationNames !== currentNames;
     const teamChanged = teamRecommendationNames !== currentTeamNames;
 
-    if (!soloChanged && !teamChanged) {
+    // Check if containers are empty (need to show messages on first load)
+    const bestPackagesContainer = document.getElementById('best-packages-container');
+    const teamAlertsContainer = document.getElementById('team-alerts-container');
+    const isSoloContainerEmpty = bestPackagesContainer && bestPackagesContainer.innerHTML.trim() === '';
+    const isTeamContainerEmpty = teamAlertsContainer && teamAlertsContainer.innerHTML.trim() === '';
+
+    // Only skip re-render if nothing changed AND containers already have content
+    if (!soloChanged && !teamChanged && !isSoloContainerEmpty && !isTeamContainerEmpty) {
         console.log('✅ Recommendations list unchanged, updating values only...');
 
         // Update probability and hashrate values without re-rendering cards
@@ -15184,7 +15188,6 @@ async function updateRecommendations() {
     }
 
     // Update solo recommendations if changed OR if container is empty (first load)
-    const isSoloContainerEmpty = bestPackagesContainer && bestPackagesContainer.innerHTML.trim() === '';
     console.log(`🔍 Solo update check: soloChanged=${soloChanged}, isSoloContainerEmpty=${isSoloContainerEmpty}, recommendations.length=${recommendations.length}`);
 
     if (soloChanged || isSoloContainerEmpty) {
@@ -15217,7 +15220,6 @@ async function updateRecommendations() {
     }
 
     // Update team recommendations if changed OR if container is empty (first load)
-    const isTeamContainerEmpty = teamAlertsContainer && teamAlertsContainer.innerHTML.trim() === '';
     console.log(`🔍 Team update check: teamChanged=${teamChanged}, isTeamContainerEmpty=${isTeamContainerEmpty}, teamRecommendations.length=${teamRecommendations.length}`);
 
     if (teamChanged || isTeamContainerEmpty) {
