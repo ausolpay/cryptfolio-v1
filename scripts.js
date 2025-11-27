@@ -4598,7 +4598,7 @@ function updateHoldings(crypto) {
             id: uuidv4(),
             cryptoId: crypto,
             amount: amountToAdd,
-            localValueAtAdd: localValue,
+            audValueAtAdd: localValue,  // Use audValueAtAdd for consistency across all entry types
             boughtPrice: livePrice,
             soldPrice: null,
             dateAdded: Date.now(),
@@ -5879,7 +5879,7 @@ function addToHoldingsHistory(action, entry, details = {}) {
         amount: entry.amount,
         boughtPrice: entry.boughtPrice,
         soldPrice: entry.soldPrice,
-        audValue: entry.audValueAtAdd || (entry.amount * (cryptoPrices[entry.cryptoId]?.aud || 0)),
+        audValue: entry.audValueAtAdd || entry.localValueAtAdd || (entry.amount * (cryptoPrices[entry.cryptoId]?.aud || 0)),
         timestamp: Date.now(),
         details: details
     };
@@ -6089,7 +6089,7 @@ function renderHoldingsEntryCard(entry, symbol) {
                 <span class="entry-source ${sourceClass}">${sourceLabel}</span>
             </div>
             <div class="entry-date">Added: ${dateAdded}</div>
-            <div class="entry-aud-value">Value at Add: $${formatNumber(entry.audValueAtAdd.toFixed(2))}</div>
+            <div class="entry-aud-value">Value at Add: $${formatNumber((entry.audValueAtAdd || entry.localValueAtAdd || 0).toFixed(2))}</div>
 
             <div class="entry-prices">
                 <div class="price-input-group">
@@ -16235,13 +16235,8 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 continue;
             }
 
-            // Update holdings for this crypto
-            const currentHoldings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
-            const newHoldings = currentHoldings + amountToAdd;
-
-            // Save to localStorage
-            setStorageItem(`${loggedInUser}_${cryptoId}Holdings`, newHoldings);
-            console.log(`💰 Added ${amountToAdd} ${crypto} reward (${pkg.name})`);
+            // Create holdings entry and let the entry system manage the totals
+            console.log(`💰 Adding ${amountToAdd} ${crypto} reward (${pkg.name})`);
 
             // Create holdings entry for tracking
             const livePrice = getPriceFromObject(cryptoPrices[cryptoId]);
@@ -16267,28 +16262,8 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
             console.log(`📝 Created holdings entry for ${amountToAdd} ${crypto} from ${pkg.name}`);
 
-            // For Bitcoin, use updateBTCHoldings() to include NiceHash balance
-            if (cryptoId === 'bitcoin' && typeof updateBTCHoldings === 'function') {
-                updateBTCHoldings();
-                sortContainersByValue();
-            } else {
-                // Update holdings display
-                const holdingsElement = document.getElementById(`${cryptoId}-holdings`);
-                if (holdingsElement) {
-                    holdingsElement.textContent = formatNumber(newHoldings.toFixed(8));
-                }
-
-                // Update the AUD value
-                const priceElement = document.getElementById(`${cryptoId}-price-aud`);
-                const valueElement = document.getElementById(`${cryptoId}-value-aud`);
-                if (priceElement && valueElement) {
-                    const priceInAud = parseFloat(priceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-                    const valueInAud = newHoldings * priceInAud;
-                    valueElement.textContent = formatNumber(valueInAud.toFixed(2));
-
-                    sortContainersByValue();
-                }
-            }
+            // Update holdings display using the entry-based system
+            updateHoldingsDisplayFromEntries(cryptoId);
     
             // Process secondary rewards (for dual mining packages like Palladium DOGE/LTC)
             if (pkg.cryptoSecondary && pkg.rewardSecondary > 0) {
@@ -16343,13 +16318,7 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
                     // Final check to ensure secondaryAmountToAdd is valid and positive
                     if (secondaryAmountToAdd > 0 && !isNaN(secondaryAmountToAdd)) {
-                        // Update holdings for secondary crypto
-                        const currentSecondaryHoldings = parseFloat(getStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`)) || 0;
-                        const newSecondaryHoldings = currentSecondaryHoldings + secondaryAmountToAdd;
-
-                        // Save to localStorage
-                        setStorageItem(`${loggedInUser}_${secondaryCryptoId}Holdings`, newSecondaryHoldings);
-                        console.log(`💰 Added ${secondaryAmountToAdd} ${secondaryCrypto} reward (${pkg.name})`);
+                        console.log(`💰 Adding ${secondaryAmountToAdd} ${secondaryCrypto} reward (${pkg.name})`);
 
                         // Create holdings entry for tracking (secondary reward)
                         const secondaryLivePrice = getPriceFromObject(cryptoPrices[secondaryCryptoId]);
@@ -16375,23 +16344,9 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
                         console.log(`📝 Created holdings entry for ${secondaryAmountToAdd} ${secondaryCrypto} from ${pkg.name}`);
 
-                        // Update holdings display
-                        const secondaryHoldingsElement = document.getElementById(`${secondaryCryptoId}-holdings`);
-                        if (secondaryHoldingsElement) {
-                            secondaryHoldingsElement.textContent = formatNumber(newSecondaryHoldings.toFixed(8));
-                        }
+                        // Update holdings display using the entry-based system
+                        updateHoldingsDisplayFromEntries(secondaryCryptoId);
 
-                        // Update the AUD value
-                        const secondaryPriceElement = document.getElementById(`${secondaryCryptoId}-price-aud`);
-                        const secondaryValueElement = document.getElementById(`${secondaryCryptoId}-value-aud`);
-                        if (secondaryPriceElement && secondaryValueElement) {
-                            const secondaryPriceInAud = parseFloat(secondaryPriceElement.textContent.replace(/,/g, '').replace('$', '')) || 0;
-                            const secondaryValueInAud = newSecondaryHoldings * secondaryPriceInAud;
-                            secondaryValueElement.textContent = formatNumber(secondaryValueInAud.toFixed(2));
-
-                            sortContainersByValue();
-                        }
-    
                         // Mark secondary reward as processed (use dual-key approach)
                         const secondaryRewardRecord = {
                             orderId: pkg.id,
