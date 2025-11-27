@@ -629,6 +629,20 @@
                 <div class="settings-card danger">
                     <div class="settings-row">
                         <div class="settings-row-info">
+                            <span class="settings-row-label">Clear EasyMining 24H Stats</span>
+                            <span class="settings-row-desc">Reset today's stats and rocket icons</span>
+                        </div>
+                        <button class="settings-danger-btn" onclick="clearEasyMining24HStats()" style="background-color: #ff9800;">Clear</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Clear Tracked Rewards</span>
+                            <span class="settings-row-desc">Reset reward tracking (allows re-add)</span>
+                        </div>
+                        <button class="settings-danger-btn" onclick="clearTrackedRewards()" style="background-color: #ff9800;">Clear</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
                             <span class="settings-row-label">Clear API Credentials</span>
                             <span class="settings-row-desc">Remove all NiceHash API credentials</span>
                         </div>
@@ -1949,10 +1963,10 @@
                     </div>
                     <div class="settings-row">
                         <div class="settings-row-info">
-                            <span class="settings-row-label">Clear Tracked Rewards</span>
-                            <span class="settings-row-desc">Reset EasyMining reward tracking (allows re-add)</span>
+                            <span class="settings-row-label">Clear Portfolio 24H Stats</span>
+                            <span class="settings-row-desc">Reset "Added Today" and daily tracking</span>
                         </div>
-                        <button class="settings-danger-btn" onclick="clearTrackedRewards()" style="background-color: #ff9800;">Clear</button>
+                        <button class="settings-danger-btn" onclick="clearPortfolio24HStats()" style="background-color: #ff9800;">Clear</button>
                     </div>
                 </div>
             </div>

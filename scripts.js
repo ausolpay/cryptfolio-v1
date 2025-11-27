@@ -7779,6 +7779,78 @@ function clearTrackedRewards() {
     alert('Tracked rewards have been cleared.\n\nIf auto-add is enabled, rewards will be re-added on the next EasyMining poll (within 30 seconds).');
 }
 
+// Clear Portfolio 24H Stats (Added Today tracking)
+function clearPortfolio24HStats() {
+    if (!loggedInUser) {
+        alert('No user logged in.');
+        return;
+    }
+
+    if (!confirm('Clear Portfolio 24H Stats?\n\nThis will reset:\n- "Added Today" value\n- Daily tracking data\n\nAre you sure?')) {
+        return;
+    }
+
+    console.log('🗑️ Clearing Portfolio 24H stats...');
+
+    // Reset daily added value
+    dailyAddedValue = 0;
+    setStorageItem(`${loggedInUser}_dailyAddedValue`, '0');
+    console.log('   ✓ Cleared daily added value');
+
+    // Reset midnight tracking
+    lastMidnightReset = new Date().toDateString();
+    setStorageItem(`${loggedInUser}_lastMidnightReset`, lastMidnightReset);
+    console.log('   ✓ Reset midnight tracking');
+
+    // Update display
+    updateAddedTodayDisplay();
+
+    console.log('✅ Portfolio 24H stats cleared successfully');
+    alert('Portfolio 24H stats have been cleared.');
+}
+
+// Clear EasyMining 24H Stats (Today's stats and rocket icons)
+function clearEasyMining24HStats() {
+    if (!loggedInUser) {
+        alert('No user logged in.');
+        return;
+    }
+
+    if (!confirm('Clear EasyMining 24H Stats?\n\nThis will reset:\n- Today\'s blocks count\n- Today\'s spent amount\n- Today\'s P&L\n- Rocket icons (🚀)\n\nAre you sure?')) {
+        return;
+    }
+
+    console.log('🗑️ Clearing EasyMining 24H stats...');
+
+    // Reset today's stats
+    easyMiningData.todayStats = {
+        totalBlocks: 0,
+        totalSpent: 0,
+        pnl: 0
+    };
+    console.log('   ✓ Cleared today stats');
+
+    // Clear rockets
+    easyMiningData.blocksFoundSession = 0;
+    const rocketsElement = document.getElementById('blocks-found-rockets');
+    if (rocketsElement) {
+        rocketsElement.textContent = '';
+    }
+    console.log('   ✓ Cleared rocket icons');
+
+    // Save to localStorage
+    localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+    console.log('   ✓ Saved to localStorage');
+
+    // Update UI if EasyMining section is visible
+    if (typeof updateStats === 'function') {
+        updateStats();
+    }
+
+    console.log('✅ EasyMining 24H stats cleared successfully');
+    alert('EasyMining 24H stats and rockets have been cleared.');
+}
+
 window.onclick = function(event) {
     const popupModal = document.getElementById('popup-modal');
     const totalHoldingsModal = document.getElementById('total-holdings-modal');
