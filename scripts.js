@@ -14173,6 +14173,21 @@ function generateMockPackages() {
             calculatedReward = typeData.reward;
         }
 
+        // Determine algorithm based on crypto
+        const algorithmMap = {
+            'BTC': 'SHA256',
+            'BCH': 'SHA256',
+            'RVN': 'KAWPOW',
+            'DOGE': 'SCRYPT',
+            'LTC': 'SCRYPT',
+            'KAS': 'KHEAVYHASH'
+        };
+        const algorithm = algorithmMap[typeData.crypto] || 'SHA256';
+
+        // Get the correct unit for this algorithm/currency
+        const unitInfo = getUnitForCurrency(typeData.crypto);
+        const displayUnit = unitInfo?.unit || 'TH';
+
         packages.push({
             id: `pkg_${i}`,
             name: typeData.name,
@@ -14189,8 +14204,9 @@ function generateMockPackages() {
             userSharePercentage: userSharePercentage,
             price: priceSpent, // User's actual cost
             blocks: generateMockBlocks(),
-            algorithm: 'SHA256', // Example algorithm
-            hashrate: `${(Math.random() * 100).toFixed(2)} TH/s`
+            algorithm: algorithm,
+            displayUnit: displayUnit,
+            hashrate: `${(Math.random() * 100).toFixed(2)} ${displayUnit}/s`
         });
     }
 
@@ -15743,7 +15759,9 @@ function updateTeamAlertCardValues(pkg) {
         const fillPercentage = (pkg.addedAmount && pkg.fullAmount) ? (pkg.addedAmount / pkg.fullAmount) : 0;
         const currentSpeed = (fillPercentage * pkg.projectedSpeed).toFixed(4);
         const maxSpeed = pkg.projectedSpeed.toFixed(4);
-        hashrateEl.textContent = `${currentSpeed} / ${maxSpeed} TH/s`;
+        // Use stored displayUnit or get it dynamically
+        const unit = pkg.displayUnit || getPackageDisplayUnit(pkg);
+        hashrateEl.textContent = `${currentSpeed} / ${maxSpeed} ${unit}/s`;
     } else if (hashrateEl && pkg.hashrate) {
         hashrateEl.textContent = pkg.hashrate;
     }
@@ -17492,29 +17510,15 @@ function updateLiveMetricsGraphs(pkg, chartData) {
     const currentHashrate = hashrateData[hashrateData.length - 1] || 0;
     const currentPrice = priceData[priceData.length - 1] || 0;
 
-    // Format hashrate for display
-    let hashrateDisplay = '--';
-    let hashrateUnit = 'TH/s';
-    if (currentHashrate > 0) {
-        if (currentHashrate >= 1000) {
-            hashrateDisplay = (currentHashrate / 1000).toFixed(2);
-            hashrateUnit = 'PH/s';
-        } else if (currentHashrate >= 1) {
-            hashrateDisplay = currentHashrate.toFixed(2);
-            hashrateUnit = 'TH/s';
-        } else if (currentHashrate >= 0.001) {
-            hashrateDisplay = (currentHashrate * 1000).toFixed(2);
-            hashrateUnit = 'GH/s';
-        } else {
-            hashrateDisplay = (currentHashrate * 1000000).toFixed(2);
-            hashrateUnit = 'MH/s';
-        }
-    }
+    // Format hashrate for display using dynamic unit system
+    const hashrateFormatted = currentHashrate > 0
+        ? formatHashrate(currentHashrate, { currency: pkg.mainCrypto || pkg.crypto, autoScale: true })
+        : '--';
 
     // Update hashrate display
     const hashrateValueEl = document.getElementById('live-hashrate-value');
     if (hashrateValueEl) {
-        hashrateValueEl.textContent = `${hashrateDisplay} ${hashrateUnit}`;
+        hashrateValueEl.textContent = hashrateFormatted;
     }
 
     // Update price display
@@ -17539,14 +17543,15 @@ function updateLiveMetricsGraphs(pkg, chartData) {
         fillColor: 'rgba(255, 165, 0, 0.15)'
     });
 
-    // Update min/max displays for hashrate
+    // Update min/max displays for hashrate using dynamic unit system
     const hashrateMinEl = document.getElementById('hashrate-min');
     const hashrateMaxEl = document.getElementById('hashrate-max');
+    const currency = pkg.mainCrypto || pkg.crypto;
     if (hashrateMinEl && hashrateStats.min > 0) {
-        hashrateMinEl.textContent = `Min: ${hashrateStats.min.toFixed(2)} TH/s`;
+        hashrateMinEl.textContent = `Min: ${formatHashrate(hashrateStats.min, { currency, autoScale: true })}`;
     }
     if (hashrateMaxEl && hashrateStats.max > 0) {
-        hashrateMaxEl.textContent = `Max: ${hashrateStats.max.toFixed(2)} TH/s`;
+        hashrateMaxEl.textContent = `Max: ${formatHashrate(hashrateStats.max, { currency, autoScale: true })}`;
     }
 
     // Update min/max displays for price
@@ -19981,6 +19986,13 @@ async function fetchNiceHashSoloPackages() {
                     mergeProbability: mergeProbability
                 });
 
+                // Get proper display unit for this algorithm/currency
+                const displayUnit = getPackageDisplayUnit({
+                    algorithm: pkg.currencyAlgo.miningAlgorithm,
+                    currency: mainCrypto,
+                    currencyAlgo: pkg.currencyAlgo
+                });
+
                 return {
                     name: pkg.name,
                     id: pkg.id, // Required for auto-buy
@@ -19997,7 +20009,8 @@ async function fetchNiceHashSoloPackages() {
                     duration: `${durationHours}h`,
                     packageDuration: pkg.duration, // Required for auto-buy (in seconds)
                     algorithm: pkg.currencyAlgo.miningAlgorithm,
-                    hashrate: `${pkg.projectedSpeed.toFixed(4)} TH/s`, // From projectedSpeed
+                    displayUnit: displayUnit, // Store for consistent display
+                    hashrate: `${pkg.projectedSpeed.toFixed(4)} ${displayUnit}/s`, // From projectedSpeed
                     blockReward: mainBlockReward, // From currencyAlgo.blockReward
                     mergeBlockReward: mergeBlockReward,
                     isDualCrypto: hasMergeCurrency,
@@ -20152,6 +20165,13 @@ async function fetchNiceHashTeamPackages() {
                 const currentSpeed = (fillPercentage * pkg.projectedSpeed).toFixed(4);
                 const maxSpeed = pkg.projectedSpeed.toFixed(4);
 
+                // Get proper display unit for this algorithm/currency
+                const displayUnit = getPackageDisplayUnit({
+                    algorithm: ticket.currencyAlgo.miningAlgorithm,
+                    currency: mainCrypto,
+                    currencyAlgo: ticket.currencyAlgo
+                });
+
                 return {
                     id: ticket.id, // Use currencyAlgoTicket.id for the POST endpoint
                     name: ticket.name,
@@ -20165,7 +20185,8 @@ async function fetchNiceHashTeamPackages() {
                     priceAUD: calculatedPriceAUD.toFixed(2), // Calculated from BTC price
                     duration: `${durationHours}h`,
                     algorithm: ticket.currencyAlgo.miningAlgorithm,
-                    hashrate: `${currentSpeed} / ${maxSpeed} TH/s`, // Live current / max pool hashrate
+                    displayUnit: displayUnit, // Store for consistent display
+                    hashrate: `${currentSpeed} / ${maxSpeed} ${displayUnit}/s`, // Live current / max pool hashrate
                     currentSpeed: currentSpeed, // Store separately for updates
                     maxSpeed: maxSpeed, // Store separately for updates
                     projectedSpeed: pkg.projectedSpeed, // Store raw value for recalculation
