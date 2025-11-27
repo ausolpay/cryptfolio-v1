@@ -4942,8 +4942,17 @@ body.light-mode .live-metric-range {
     100% { transform: rotate(360deg); }
 }
 
-/* Network difficulty reference line - now rendered dynamically via JS */
-/* Static line removed - using dynamic probability-based line instead */
+/* Network difficulty reference line */
+.mining-chart-bars::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 40%;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.3);
+    z-index: 0;
+}
 
 .mining-bar {
     flex: 0 0 auto; /* Allow dynamic width set via JS */
