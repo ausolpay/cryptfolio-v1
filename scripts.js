@@ -12228,6 +12228,9 @@ async function fetchEasyMiningData() {
         // Fetch public package data from NiceHash
         await fetchPublicPackageData();
 
+        // Collect chart data for ALL active packages (background data collection)
+        collectChartDataForAllPackages();
+
         // Update UI
         updateEasyMiningUI();
 
@@ -17154,6 +17157,124 @@ let packageDetailUpdateInterval = null;
 // Separate 5-second polling for package detail page API data
 let packageDetailPollingInterval = null;
 
+// =============================================================================
+// BACKGROUND CHART DATA COLLECTION
+// Collects real data points for all active packages during polling
+// =============================================================================
+
+// Load chart data store from localStorage on init
+function loadChartDataFromStorage() {
+    if (!loggedInUser) return;
+    try {
+        const stored = getStorageItem(`${loggedInUser}_chartDataStore`);
+        if (stored) {
+            miningChartDataStore = JSON.parse(stored);
+            console.log(`📊 Loaded chart data from storage for ${Object.keys(miningChartDataStore).length} packages`);
+        }
+    } catch (e) {
+        console.error('Failed to load chart data from storage:', e);
+        miningChartDataStore = {};
+    }
+}
+
+// Save chart data store to localStorage
+function saveChartDataToStorage() {
+    if (!loggedInUser) return;
+    try {
+        setStorageItem(`${loggedInUser}_chartDataStore`, JSON.stringify(miningChartDataStore));
+    } catch (e) {
+        console.error('Failed to save chart data to storage:', e);
+    }
+}
+
+// Collect chart data point for a single package
+function collectChartDataPoint(pkg) {
+    if (!pkg || !pkg.id || !pkg.active) return;
+
+    const pkgId = pkg.id;
+    const now = Date.now();
+
+    // Initialize chart data structure if needed
+    if (!miningChartDataStore[pkgId]) {
+        miningChartDataStore[pkgId] = {
+            dataPoints: [],           // Array of {timestamp, hashrate, probability, speedLimit, remainingSeconds}
+            barPercentages: [],       // Calculated bar heights
+            probabilityHistory: [],
+            hashrateHistory: [],
+            highestBar: { index: -1, percentage: 0 },
+            lastHashrate: 0,
+            packageStartTime: pkg.startTime ? new Date(pkg.startTime).getTime() : now,
+            packageDuration: pkg.packageDuration || 3600
+        };
+    }
+
+    const chartData = miningChartDataStore[pkgId];
+
+    // Extract real values from package
+    const hashrate = parseFloat(pkg.acceptedCurrentSpeed) || parseFloat(pkg.projectedSpeed) || 0;
+    const speedLimit = parseFloat(pkg.speedLimit) || parseFloat(pkg.projectedSpeed) || hashrate || 1;
+    const probability = parseFloat(pkg.probabilityPrecision) || 100;
+    const remainingSeconds = pkg.estimateDurationInSeconds || 0;
+
+    // Create data point
+    const dataPoint = {
+        timestamp: now,
+        hashrate: hashrate,
+        speedLimit: speedLimit,
+        probability: probability,
+        remainingSeconds: remainingSeconds,
+        hashrateRatio: speedLimit > 0 ? hashrate / speedLimit : 0
+    };
+
+    // Only add if we don't have a point within the last 4 seconds (avoid duplicates)
+    const lastPoint = chartData.dataPoints[chartData.dataPoints.length - 1];
+    if (!lastPoint || (now - lastPoint.timestamp) >= 4000) {
+        chartData.dataPoints.push(dataPoint);
+
+        // Keep max 1000 data points per package (about 1.4 hours at 5-second intervals)
+        if (chartData.dataPoints.length > 1000) {
+            chartData.dataPoints.shift();
+        }
+
+        // Update hashrate history
+        chartData.hashrateHistory.push(hashrate);
+        if (chartData.hashrateHistory.length > 100) {
+            chartData.hashrateHistory.shift();
+        }
+
+        console.log(`📊 [${pkg.name}] Collected data point: hashrate=${hashrate.toFixed(4)}, probability=1:${probability.toFixed(1)}, points=${chartData.dataPoints.length}`);
+    }
+
+    // Update metadata
+    chartData.lastHashrate = hashrate;
+
+    return chartData;
+}
+
+// Collect data for ALL active packages (called during polling)
+function collectChartDataForAllPackages() {
+    if (!easyMiningData.activePackages || easyMiningData.activePackages.length === 0) return;
+
+    let collected = 0;
+    easyMiningData.activePackages.forEach(pkg => {
+        if (pkg.active) {
+            collectChartDataPoint(pkg);
+            collected++;
+        }
+    });
+
+    // Save to storage after collecting
+    if (collected > 0) {
+        saveChartDataToStorage();
+    }
+}
+
+// Check if we have enough data points to render the chart
+function hasChartData(pkgId) {
+    const chartData = miningChartDataStore[pkgId];
+    return chartData && chartData.dataPoints && chartData.dataPoints.length > 0;
+}
+
 // Live update function that runs every second (independent of API polling)
 function updatePackageDetailLive() {
     if (!currentDetailPackage) return;
@@ -17442,11 +17563,6 @@ function updateMiningProgressChart(pkg) {
     if (barsContainer) {
         barsContainer.innerHTML = '';
 
-        // Use 30-second intervals to match polling
-        const intervalMs = 30 * 1000;
-        const totalIntervals = Math.ceil(totalDuration / intervalMs);
-        const currentInterval = Math.floor(elapsedMs / intervalMs);
-
         // Get reward timestamps
         const rewardTimestamps = [];
         if (pkg.fullOrderData?.soloReward && Array.isArray(pkg.fullOrderData.soloReward)) {
@@ -17461,84 +17577,74 @@ function updateMiningProgressChart(pkg) {
             rewardTimestamps.push(Date.now());
         }
 
-        // Seed hash for deterministic randomness
-        const seedHash = (str) => {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                hash = hash & hash;
-            }
-            return Math.abs(hash);
-        };
+        // Check if we have real data points collected
+        const dataPoints = chartData.dataPoints || [];
+        const hasRealData = dataPoints.length > 0;
 
-        // Limit bars display
-        const maxBars = Math.min(totalIntervals, 120);
-        const skipFactor = totalIntervals > 120 ? Math.ceil(totalIntervals / 120) : 1;
+        if (!hasRealData) {
+            // Show "waiting for data" message
+            const waitingMsg = document.createElement('div');
+            waitingMsg.className = 'chart-waiting-message';
+            waitingMsg.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100px; color: #888; font-size: 14px;">
+                    <div class="loading-spinner" style="width: 30px; height: 30px; border: 3px solid #333; border-top-color: #4CAF50; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px;"></div>
+                    <span>Waiting for mining data...</span>
+                    <span style="font-size: 11px; margin-top: 5px; color: #666;">Data will appear as it's collected</span>
+                </div>
+            `;
+            barsContainer.appendChild(waitingMsg);
 
-        // Track highest percentage bar (for closest-to-reward highlight)
-        let highestBar = { index: -1, percentage: 0, element: null };
-        let rewardBarsShown = 0;
+            // Still update progress bar with current values
+            updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
 
-        // Calculate hashrate change for bar adjustments
-        const hashrateChange = currentHashrate - (chartData.lastHashrate || currentHashrate);
-        const hashrateBoost = hashrateChange > 0 ? Math.min(15, hashrateChange * 0.5) : Math.max(-10, hashrateChange * 0.3);
-        chartData.lastHashrate = currentHashrate;
+            // Store chart data
+            miningChartDataStore[pkg.id] = chartData;
+        } else {
+            // We have real data points - render bars based on collected data
+            const maxBars = Math.min(dataPoints.length, 120);
+            const skipFactor = dataPoints.length > 120 ? Math.ceil(dataPoints.length / 120) : 1;
 
-        for (let i = 0; i < maxBars; i++) {
-            const actualInterval = i * skipFactor;
-            const bar = document.createElement('div');
-            bar.className = 'mining-bar';
-            bar.id = `mining-bar-${pkgId}-${i}`;
+            // Track highest percentage bar (for closest-to-reward highlight)
+            let highestBar = { index: -1, percentage: 0, element: null };
+            let rewardBarsShown = 0;
 
-            const intervalStart = startTime + (actualInterval * intervalMs);
-            const intervalEnd = intervalStart + (intervalMs * skipFactor);
-            const isElapsed = Date.now() > intervalEnd;
-            const isCurrent = Date.now() >= intervalStart && Date.now() < intervalEnd;
+            for (let i = 0; i < maxBars; i++) {
+                const dataIdx = i * skipFactor;
+                const point = dataPoints[dataIdx];
+                if (!point) continue;
 
-            // Check for reward in this interval
-            const rewardInInterval = rewardTimestamps.some(ts => ts >= intervalStart && ts < intervalEnd);
+                const bar = document.createElement('div');
+                bar.className = 'mining-bar';
+                bar.id = `mining-bar-${pkgId}-${i}`;
 
-            // Calculate bar percentage based on hashrate and seed
-            const seed = seedHash((pkg.id || 'default') + actualInterval.toString());
-            let basePercent = 15 + (seed % 50); // 15-65% base range
+                // Calculate bar percentage from real hashrate ratio
+                // hashrateRatio of 1.0 = 80% bar height, scale accordingly
+                const ratio = point.hashrateRatio || 0;
+                let basePercent = Math.min(95, Math.max(10, ratio * 80 + (Math.random() * 10 - 5)));
 
-            // Apply hashrate boost to recent/current bars
-            if (isElapsed || isCurrent) {
-                // More recent bars get more hashrate influence
-                const recencyFactor = Math.max(0, 1 - (currentInterval - actualInterval) / 10);
-                basePercent += hashrateBoost * recencyFactor * hashrateRatio;
+                // Check for reward near this data point's timestamp
+                const pointTime = point.timestamp;
+                const rewardInInterval = rewardTimestamps.some(ts => Math.abs(ts - pointTime) < 30000);
 
-                // Store percentage for this bar
-                if (!chartData.barPercentages[i]) {
-                    chartData.barPercentages[i] = basePercent;
-                } else {
-                    // Smooth transition for existing bars
-                    chartData.barPercentages[i] = chartData.barPercentages[i] * 0.7 + basePercent * 0.3;
-                }
-                basePercent = chartData.barPercentages[i];
-            }
+                const isLastPoint = i === maxBars - 1;
 
-            // Clamp percentage
-            basePercent = Math.max(10, Math.min(95, basePercent));
-
-            if (isElapsed || isCurrent) {
                 let barClass = 'mining-bar';
                 let height;
 
                 if (rewardInInterval) {
-                    // Block found! Random 100-110%
+                    // Block found!
                     const rewardPercent = 100 + Math.random() * 10;
                     barClass += ' reward-found';
                     height = 120;
                     rewardBarsShown++;
                     bar.dataset.percentage = rewardPercent.toFixed(0);
-                } else if (isCurrent && pkg.active) {
-                    // Current bar - flashing grey
+                } else if (isLastPoint && pkg.active) {
+                    // Current bar - flashing
                     barClass += ' current-mining';
                     height = (basePercent / 100) * 100;
                     bar.dataset.percentage = basePercent.toFixed(0);
                 } else {
-                    // Normal elapsed bar
+                    // Normal bar based on real data
                     height = (basePercent / 100) * 100;
                     bar.dataset.percentage = basePercent.toFixed(0);
 
@@ -17551,49 +17657,42 @@ function updateMiningProgressChart(pkg) {
                 bar.className = barClass;
                 bar.style.height = `${height}px`;
                 bar.style.animationDelay = `${i * 10}ms`;
+                barsContainer.appendChild(bar);
+            }
+
+            // Highlight closest-to-reward bar (highest percentage 60%+)
+            if (highestBar.element && !pkg.blockFound) {
+                highestBar.element.classList.add('closest-to-reward');
+                chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
+
+                // Add percentage circle indicator
+                const circle = document.createElement('div');
+                circle.className = 'bar-percentage-circle';
+                circle.textContent = `${highestBar.percentage.toFixed(0)}%`;
+                highestBar.element.appendChild(circle);
+
+                // Update progress bar to show highest bar's percentage
+                updateProgressBarDisplay(highestBar.percentage);
             } else {
-                // Future intervals
-                bar.style.height = '5px';
-                bar.style.opacity = '0.2';
-                bar.dataset.percentage = '0';
+                // If no bar above 60%, use time progress
+                updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
             }
 
-            barsContainer.appendChild(bar);
-        }
+            // Store chart data
+            miningChartDataStore[pkg.id] = chartData;
 
-        // Highlight closest-to-reward bar (highest percentage 60%+)
-        if (highestBar.element && !pkg.blockFound) {
-            highestBar.element.classList.add('closest-to-reward');
-            chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
-
-            // Add percentage circle indicator
-            const circle = document.createElement('div');
-            circle.className = 'bar-percentage-circle';
-            circle.textContent = `${highestBar.percentage.toFixed(0)}%`;
-            highestBar.element.appendChild(circle);
-
-            // Update progress bar to show highest bar's percentage (smooth slide animation)
-            updateProgressBarDisplay(highestBar.percentage);
-        } else {
-            // If no bar above 60%, use time progress
-            updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
-        }
-
-        // Store chart data for completed packages
-        miningChartDataStore[pkg.id] = chartData;
-
-        // FALLBACK for blockFound
-        if (pkg.blockFound && rewardBarsShown === 0) {
-            const currentBarIdx = Math.min(Math.floor(currentInterval / skipFactor), maxBars - 1);
-            const fallbackBar = document.getElementById(`mining-bar-${pkgId}-${currentBarIdx}`);
-            if (fallbackBar) {
-                fallbackBar.className = 'mining-bar reward-found';
-                fallbackBar.style.height = '120px';
+            // FALLBACK for blockFound when no reward bars shown
+            if (pkg.blockFound && rewardBarsShown === 0 && maxBars > 0) {
+                const lastBar = document.getElementById(`mining-bar-${pkgId}-${maxBars - 1}`);
+                if (lastBar) {
+                    lastBar.className = 'mining-bar reward-found';
+                    lastBar.style.height = '120px';
+                }
             }
-        }
 
-        // Add dynamic probability line (SVG overlay)
-        addProbabilityLine(barsContainer, maxBars, normalizedDifficulty, chartData.probabilityHistory || []);
+            // Add dynamic probability line (SVG overlay)
+            addProbabilityLine(barsContainer, maxBars, normalizedDifficulty, chartData.probabilityHistory || []);
+        }
     }
 
     // Update timeline with more time markers
@@ -17761,113 +17860,22 @@ function updateMiningChartLive(pkg) {
         }
     }
 
-    // Bar update calculations
-    const intervalMs = 30 * 1000;
-    const currentInterval = Math.floor(elapsedMs / intervalMs);
-    const totalIntervals = Math.ceil(totalDuration / intervalMs);
-    const maxBars = Math.min(totalIntervals, 120);
-    const skipFactor = totalIntervals > 120 ? Math.ceil(totalIntervals / 120) : 1;
-    const currentBarIndex = Math.floor(currentInterval / skipFactor);
+    // Collect this data point (adds to chartData.dataPoints)
+    collectChartDataPoint(pkg);
 
-    // Seed hash function
-    const seedHash = (str) => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-            hash = hash & hash;
-        }
-        return Math.abs(hash);
-    };
-
-    // Calculate hashrate boost for bars
-    const hashrateBoost = hashrateChange > 0 ? Math.min(15, hashrateChange * 0.5) : Math.max(-10, hashrateChange * 0.3);
-
-    // Track highest bar for closest-to-reward
-    let highestBar = { index: -1, percentage: 0, element: null };
-
-    // Update all bars
-    document.querySelectorAll(`[id^="mining-bar-${pkgId}-"]`).forEach(bar => {
-        // Remove all dynamic classes
-        bar.classList.remove('current-mining', 'closest-to-reward');
-        // Remove existing percentage circle
-        const existingCircle = bar.querySelector('.bar-percentage-circle');
-        if (existingCircle) existingCircle.remove();
-
-        const barIdMatch = bar.id.match(/mining-bar-[^-]+-(\d+)/);
-        if (!barIdMatch) return;
-
-        const barIndex = parseInt(barIdMatch[1], 10);
-        const actualInterval = barIndex * skipFactor;
-        const intervalEnd = startTime + ((actualInterval + skipFactor) * intervalMs);
-        const isNowElapsed = Date.now() > intervalEnd;
-        const isCurrent = barIndex === currentBarIndex;
-        const isRewardBar = bar.classList.contains('reward-found');
-
-        if (isRewardBar) return; // Don't modify reward bars
-
-        // Calculate new percentage based on hashrate
-        const seed = seedHash((pkg.id || 'default') + actualInterval.toString());
-        let basePercent = 15 + (seed % 50);
-
-        if (isNowElapsed || isCurrent) {
-            // Apply hashrate boost to recent bars
-            const recencyFactor = Math.max(0, 1 - (currentInterval - actualInterval) / 10);
-            basePercent += hashrateBoost * recencyFactor * hashrateRatio;
-
-            // Update stored percentage
-            chartData.barPercentages[barIndex] = chartData.barPercentages[barIndex]
-                ? chartData.barPercentages[barIndex] * 0.7 + basePercent * 0.3
-                : basePercent;
-            basePercent = Math.max(10, Math.min(95, chartData.barPercentages[barIndex]));
-
-            // Update bar height
-            const height = (basePercent / 100) * 100;
-            bar.style.height = `${height}px`;
-            bar.style.opacity = '1';
-            bar.dataset.percentage = basePercent.toFixed(0);
-
-            // Track highest percentage (60%+ threshold)
-            if (basePercent >= 60 && basePercent > highestBar.percentage) {
-                highestBar = { index: barIndex, percentage: basePercent, element: bar };
-            }
-        }
-
-        // Mark current mining bar (flashing grey)
-        if (isCurrent && pkg.active) {
-            bar.classList.add('current-mining');
-        }
-    });
-
-    // Highlight closest-to-reward bar (highest percentage 60%+)
-    if (highestBar.element && !pkg.blockFound) {
-        highestBar.element.classList.add('closest-to-reward');
-
-        // Add percentage circle
-        const circle = document.createElement('div');
-        circle.className = 'bar-percentage-circle';
-        circle.textContent = `${highestBar.percentage.toFixed(0)}%`;
-        highestBar.element.appendChild(circle);
-
-        chartData.highestBar = { index: highestBar.index, percentage: highestBar.percentage };
-
-        // Update progress bar to show highest bar's percentage (smooth slide animation)
-        updateProgressBarDisplay(highestBar.percentage);
+    // Check if we have data to display
+    const dataPoints = chartData.dataPoints || [];
+    if (dataPoints.length === 0) {
+        // No data yet - update progress bar only
+        updateProgressBarDisplay(Math.min(99, timeProgress * hashrateRatio));
     } else {
-        // If no bar above 60%, use time progress or stored highest bar
-        const fallbackPercent = chartData.highestBar?.percentage || Math.min(99, timeProgress * hashrateRatio);
-        updateProgressBarDisplay(fallbackPercent);
-    }
-
-    // Update probability line
-    const probPrecision = pkg.probabilityPrecision || 100;
-    const normalizedDifficulty = Math.min(95, Math.max(50, 50 + (Math.log10(probPrecision) * 20)));
-    const barsContainer = document.getElementById('package-detail-page-blocks');
-    if (barsContainer) {
-        addProbabilityLine(barsContainer, maxBars, normalizedDifficulty, chartData.probabilityHistory || []);
+        // We have data - regenerate chart with all data points
+        // This ensures bars are based on real collected data, not seed-based randomness
+        updateMiningProgressChart(pkg);
     }
 
     // Save chart data
-    miningChartDataStore[pkg.id] = chartData;
+    saveChartDataToStorage();
 
     // Sync local remaining time with fresh API data (for smooth countdown between polls)
     if (pkg.estimateDurationInSeconds > 0) {
@@ -22807,6 +22815,9 @@ let visibilityChangeListenerAdded = false;
 function startEasyMiningPolling() {
     // Stop any existing polling
     stopEasyMiningPolling();
+
+    // Load chart data from storage (for background collection persistence)
+    loadChartDataFromStorage();
 
     // Initial fetch
     fetchEasyMiningData();
