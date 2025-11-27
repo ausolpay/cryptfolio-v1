@@ -13747,12 +13747,19 @@ async function fetchNiceHashOrders() {
                     || order.probabilityPrecision
                     || null,
                 acceptedCurrentSpeed: order.acceptedCurrentSpeed || 0,
+                // For team packages, use projectedSpeed from sharedTicket
+                projectedSpeed: order.sharedTicket?.projectedSpeed
+                    || order.sharedTicket?.currencyAlgoTicket?.projectedSpeed
+                    || order.projectedSpeed
+                    || 0,
                 speedLimit: order.limit || 0,
                 // Package metadata
                 active: isActive,
                 status: isActive ? 'active' : 'completed',
                 startTime: order.startTs,
                 endTime: order.endTs,
+                // For countdown timer - use estimateDurationInSeconds for active packages
+                estimateDurationInSeconds: order.estimateDurationInSeconds || 0,
                 marketFactor: order.displayMarketFactor,
                 poolName: order.pool?.name || 'Solo Mining',
                 packageSort: order.packageSort || 0, // For ordering packages
@@ -17186,18 +17193,34 @@ function updateMiningProgressChart(pkg) {
     // Initialize the block counter for new package detection
     lastDisplayedBlockCount = pkg.totalBlocks || 0;
 
+    // Get current hashrate - use projectedSpeed for team packages if acceptedCurrentSpeed is 0
+    const currentHashrate = pkg.acceptedCurrentSpeed || pkg.projectedSpeed || 0;
+    const speedLimit = pkg.speedLimit || pkg.projectedSpeed || currentHashrate || 1;
+
     console.log(`📊 [MINING CHART] Rendering chart for ${pkg.name || pkgId}`);
     console.log(`   - Package ID: ${pkg.id}`);
     console.log(`   - blockFound: ${pkg.blockFound}, totalBlocks: ${pkg.totalBlocks}`);
-    console.log(`   - probabilityPrecision: ${pkg.probabilityPrecision}, acceptedCurrentSpeed: ${pkg.acceptedCurrentSpeed}`);
+    console.log(`   - probabilityPrecision: ${pkg.probabilityPrecision}, hashrate: ${currentHashrate}, projectedSpeed: ${pkg.projectedSpeed}`);
+    console.log(`   - estimateDurationInSeconds: ${pkg.estimateDurationInSeconds}`);
 
-    // Calculate time-based values
+    // Calculate time-based values - use estimateDurationInSeconds for active packages
     const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
-    const endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
-    const totalDuration = endTime - startTime;
-    const elapsedMs = Math.max(0, Date.now() - startTime);
-    const timeProgress = Math.min(100, (elapsedMs / totalDuration) * 100);
-    const remainingMs = Math.max(0, endTime - Date.now());
+    let endTime, totalDuration, remainingMs;
+
+    if (pkg.active && pkg.estimateDurationInSeconds > 0) {
+        // For active packages, use estimateDurationInSeconds for accurate countdown
+        remainingMs = pkg.estimateDurationInSeconds * 1000;
+        endTime = Date.now() + remainingMs;
+        totalDuration = pkg.packageDuration ? pkg.packageDuration * 1000 : (endTime - startTime);
+    } else {
+        // For completed packages, use endTs
+        endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
+        totalDuration = endTime - startTime;
+        remainingMs = Math.max(0, endTime - Date.now());
+    }
+
+    const elapsedMs = Math.max(0, totalDuration - remainingMs);
+    const timeProgress = totalDuration > 0 ? Math.min(100, (elapsedMs / totalDuration) * 100) : 0;
 
     // Initialize or load chart data for this package
     if (!miningChartDataStore[pkg.id]) {
@@ -17206,14 +17229,12 @@ function updateMiningProgressChart(pkg) {
             probabilityHistory: [],
             hashrateHistory: [],
             highestBar: { index: -1, percentage: 0 },
-            lastHashrate: pkg.acceptedCurrentSpeed || 0
+            lastHashrate: currentHashrate
         };
     }
     const chartData = miningChartDataStore[pkg.id];
 
-    // Get current hashrate and probability
-    const currentHashrate = pkg.acceptedCurrentSpeed || 0;
-    const speedLimit = pkg.speedLimit || currentHashrate || 1;
+    // Calculate hashrate ratio
     const hashrateRatio = speedLimit > 0 ? currentHashrate / speedLimit : 1;
 
     // Calculate dynamic probability-based threshold line position (inverted - lower number = easier)
@@ -17467,6 +17488,8 @@ function updateMiningChartLive(pkg) {
 
     console.log(`📊 [MINING CHART LIVE] Updating chart for ${pkg.name || pkgId}`);
     console.log(`   - blockFound: ${pkg.blockFound}, totalBlocks: ${pkg.totalBlocks}, lastDisplayed: ${lastDisplayedBlockCount}`);
+    console.log(`   - acceptedCurrentSpeed: ${pkg.acceptedCurrentSpeed}, projectedSpeed: ${pkg.projectedSpeed}`);
+    console.log(`   - probabilityPrecision: ${pkg.probabilityPrecision}, estimateDurationInSeconds: ${pkg.estimateDurationInSeconds}`);
 
     // CHECK FOR NEW BLOCKS - If block count increased, regenerate entire chart
     const currentBlockCount = pkg.totalBlocks || 0;
@@ -17487,27 +17510,40 @@ function updateMiningChartLive(pkg) {
         return;
     }
 
+    // Get hashrate values - use projectedSpeed for team packages if acceptedCurrentSpeed is 0
+    const currentHashrate = pkg.acceptedCurrentSpeed || pkg.projectedSpeed || 0;
+    const speedLimit = pkg.speedLimit || pkg.projectedSpeed || currentHashrate || 1;
+    const hashrateRatio = speedLimit > 0 ? currentHashrate / speedLimit : 1;
+
     // Get or initialize chart data
     const chartData = miningChartDataStore[pkg.id] || {
         barPercentages: [],
         probabilityHistory: [],
         hashrateHistory: [],
         highestBar: { index: -1, percentage: 0 },
-        lastHashrate: 0
+        lastHashrate: currentHashrate
     };
 
-    // Calculate time values
+    // Calculate time values - use estimateDurationInSeconds for active packages
     const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
-    const endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
-    const totalDuration = endTime - startTime;
-    const elapsedMs = Math.max(0, Date.now() - startTime);
-    const remainingMs = Math.max(0, endTime - Date.now());
-    const timeProgress = Math.min(100, (elapsedMs / totalDuration) * 100);
+    let endTime, totalDuration, remainingMs;
 
-    // Get hashrate values
-    const currentHashrate = pkg.acceptedCurrentSpeed || 0;
-    const speedLimit = pkg.speedLimit || currentHashrate || 1;
-    const hashrateRatio = speedLimit > 0 ? currentHashrate / speedLimit : 1;
+    if (pkg.active && pkg.estimateDurationInSeconds > 0) {
+        // For active packages, use estimateDurationInSeconds for accurate countdown
+        remainingMs = pkg.estimateDurationInSeconds * 1000;
+        endTime = Date.now() + remainingMs;
+        totalDuration = pkg.packageDuration ? pkg.packageDuration * 1000 : (endTime - startTime);
+    } else {
+        // For completed packages, use endTs
+        endTime = pkg.endTime ? new Date(pkg.endTime).getTime() : (startTime + (pkg.packageDuration * 1000) || startTime + 86400000);
+        totalDuration = endTime - startTime;
+        remainingMs = Math.max(0, endTime - Date.now());
+    }
+
+    const elapsedMs = Math.max(0, totalDuration - remainingMs);
+    const timeProgress = totalDuration > 0 ? Math.min(100, (elapsedMs / totalDuration) * 100) : 0;
+
+    console.log(`   - LIVE DATA: hashrate=${currentHashrate.toFixed(4)}, remaining=${Math.floor(remainingMs/1000)}s, progress=${timeProgress.toFixed(1)}%`);
 
     // Calculate hashrate change for bar adjustments
     const hashrateChange = currentHashrate - (chartData.lastHashrate || currentHashrate);
