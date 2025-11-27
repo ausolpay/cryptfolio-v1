@@ -3264,18 +3264,9 @@ async function loadSoloAlerts() {
             const mainCrypto = pkg.mainCrypto || pkg.currencyAlgo?.title || 'LTC';
             const mergeCrypto = pkg.mergeCrypto || pkg.mergeCurrencyAlgo?.title || 'DOGE';
 
-            // Extract both probabilities
-            let mainProbability = '';
-            let mergeProbability = '';
-
-            if (pkg.probability) {
-                const match = pkg.probability.match(/1:(\d+)/);
-                if (match) mainProbability = match[1];
-            }
-            if (pkg.mergeProbability) {
-                const match = pkg.mergeProbability.match(/1:(\d+)/);
-                if (match) mergeProbability = match[1];
-            }
+            // Format probabilities using formatProbability
+            const mainProbFormatted = formatProbability(pkg.probabilityPrecision || pkg.probability) || 'N/A';
+            const mergeProbFormatted = formatProbability(pkg.mergeProbabilityPrecision || pkg.mergeProbability) || 'N/A';
 
             const savedMainThreshold = savedAlerts[`${pkg.name}_${mainCrypto}`] || '';
             const savedMergeThreshold = savedAlerts[`${pkg.name}_${mergeCrypto}`] || '';
@@ -3293,7 +3284,7 @@ async function loadSoloAlerts() {
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #F7931A; font-weight: bold;">${mainCrypto}</span>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mainProbability}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mainProbFormatted}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <label style="color: #aaa; font-size: 14px;">Alert when ≤ 1:</label>
@@ -3302,6 +3293,7 @@ async function loadSoloAlerts() {
                                value="${savedMainThreshold}"
                                placeholder="e.g., 130"
                                min="1"
+                               step="0.1"
                                style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                         ${isMainActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
                     </div>
@@ -3311,7 +3303,7 @@ async function loadSoloAlerts() {
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #C3A634; font-weight: bold;">${mergeCrypto}</span>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mergeProbability}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mergeProbFormatted}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <label style="color: #aaa; font-size: 14px;">Alert when ≤ 1:</label>
@@ -3320,6 +3312,7 @@ async function loadSoloAlerts() {
                                value="${savedMergeThreshold}"
                                placeholder="e.g., 150"
                                min="1"
+                               step="0.1"
                                style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                         ${isMergeActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
                     </div>
@@ -3341,14 +3334,8 @@ async function loadSoloAlerts() {
                 </div>
             `;
         } else {
-            // Single crypto package - original logic
-            let currentProbability = '';
-            if (pkg.probability) {
-                const match = pkg.probability.match(/1:(\d+)/);
-                if (match) {
-                    currentProbability = match[1];
-                }
-            }
+            // Single crypto package - format probability using formatProbability
+            const currentProbFormatted = formatProbability(pkg.probabilityPrecision || pkg.probability) || 'N/A';
 
             const savedThreshold = savedAlerts[pkg.name] || '';
             const isActive = savedThreshold !== '';
@@ -3357,7 +3344,7 @@ async function loadSoloAlerts() {
             alertDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <strong style="color: #ffa500; font-size: 16px;">${pkg.name}</strong>
-                    <span style="color: #4CAF50; font-size: 13px;">Current: 1:${currentProbability}</span>
+                    <span style="color: #4CAF50; font-size: 13px;">Current: ${currentProbFormatted}</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                     <label style="color: #aaa; font-size: 14px;">Alert when probability ≤ 1:</label>
@@ -3366,6 +3353,7 @@ async function loadSoloAlerts() {
                            value="${savedThreshold}"
                            placeholder="e.g., 130"
                            min="1"
+                           step="0.1"
                            style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                     ${isActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
                 </div>
@@ -3535,24 +3523,21 @@ async function loadTeamAlerts() {
             const palladiumSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium S' || sp.name === 'Palladium DOGE S' || sp.name === 'Palladium LTC S');
 
             if (palladiumSmallPkg) {
-                // LTC probability comes from "probability" field
-                if (palladiumSmallPkg.probability) {
-                    const match = palladiumSmallPkg.probability.match(/1:(\d+)/);
-                    if (match) smallPackageLTCProb = match[1];
-                }
-                // DOGE probability comes from "mergeProbability" field
-                if (palladiumSmallPkg.mergeProbability) {
-                    const match = palladiumSmallPkg.mergeProbability.match(/1:(\d+)/);
-                    if (match) smallPackageDOGEProb = match[1];
-                }
+                // LTC probability - use probabilityPrecision or formatted probability
+                smallPackageLTCProb = palladiumSmallPkg.probabilityPrecision
+                    || palladiumSmallPkg.probability;
+                // DOGE probability - use mergeProbabilityPrecision or formatted mergeProbability
+                smallPackageDOGEProb = palladiumSmallPkg.mergeProbabilityPrecision
+                    || palladiumSmallPkg.mergeProbability;
             }
         } else {
             // Single crypto package
             const smallPackageName = pkg.name.replace('Team ', '') + ' S';
             const smallPackage = soloPackages?.find(sp => sp.name === smallPackageName);
-            if (smallPackage && smallPackage.probability) {
-                const match = smallPackage.probability.match(/1:(\d+)/);
-                if (match) smallPackageCurrentProb = match[1];
+            if (smallPackage) {
+                // Use probabilityPrecision or formatted probability
+                smallPackageCurrentProb = smallPackage.probabilityPrecision
+                    || smallPackage.probability;
             }
         }
 
@@ -3567,54 +3552,55 @@ async function loadTeamAlerts() {
 
         if (isDualCrypto) {
             // Show both probability inputs for dual-crypto packages
-            const mainProbMatch = pkg.mainProbability?.match(/1:(\d+)/);
-            const mergeProbMatch = pkg.mergeProbability?.match(/1:(\d+)/);
-            const mainProbValue = mainProbMatch ? mainProbMatch[1] : '';
-            const mergeProbValue = mergeProbMatch ? mergeProbMatch[1] : '';
+            // Use probabilityPrecision directly, formatted with formatProbability
+            const mainProbFormatted = formatProbability(pkg.mainProbabilityPrecision || pkg.mainProbability) || 'N/A';
+            const mergeProbFormatted = formatProbability(pkg.mergeProbabilityPrecision || pkg.mergeProbability) || 'N/A';
 
             probabilityInputs = `
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #F7931A; font-weight: bold;">${pkg.mainCrypto} Probability</span>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mainProbValue}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mainProbFormatted}</span>
                     </div>
                     <input type="number"
                            id="team-alert-${pkg.name.replace(/\s+/g, '-')}-prob-${pkg.mainCrypto}"
                            value="${savedMainProb}"
                            placeholder="e.g., 130"
                            min="1"
+                           step="0.1"
                            style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                 </div>
 
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #C3A634; font-weight: bold;">${pkg.mergeCrypto} Probability</span>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${mergeProbValue}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mergeProbFormatted}</span>
                     </div>
                     <input type="number"
                            id="team-alert-${pkg.name.replace(/\s+/g, '-')}-prob-${pkg.mergeCrypto}"
                            value="${savedMergeProb}"
                            placeholder="e.g., 150"
                            min="1"
+                           step="0.1"
                            style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                 </div>
             `;
         } else {
-            // Single crypto package
-            const probMatch = pkg.probability?.match(/1:(\d+)/);
-            const probValue = probMatch ? probMatch[1] : '';
+            // Single crypto package - use probabilityPrecision, formatted with formatProbability
+            const probFormatted = formatProbability(pkg.probabilityPrecision || pkg.probability) || 'N/A';
 
             probabilityInputs = `
                 <div style="margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #aaa;">Probability Threshold</span>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${probValue}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${probFormatted}</span>
                     </div>
                     <input type="number"
                            id="team-alert-${pkg.name.replace(/\s+/g, '-')}-probability"
                            value="${savedProbability}"
                            placeholder="e.g., 130"
                            min="1"
+                           step="0.1"
                            style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                 </div>
             `;
@@ -3625,30 +3611,36 @@ async function loadTeamAlerts() {
 
         if (isDualCrypto) {
             // Show both small package probability inputs for Palladium (DOGE S + LTC S)
+            // Format using formatProbability
+            const dogeSmallProbFormatted = formatProbability(smallPackageDOGEProb) || 'N/A';
+            const ltcSmallProbFormatted = formatProbability(smallPackageLTCProb) || 'N/A';
+
             smallPackageProbabilityInputs = `
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <label style="color: #aaa; font-size: 14px;">📦 DOGE Small Package Probability (Palladium DOGE S)</label>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageDOGEProb || 'N/A'}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${dogeSmallProbFormatted}</span>
                     </div>
                     <input type="number"
                            id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability-DOGE"
                            value="${savedSmallPackageDOGEProbability}"
                            placeholder="e.g., 130 (means 1:≤130)"
                            min="1"
+                           step="0.1"
                            style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                 </div>
 
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <label style="color: #aaa; font-size: 14px;">📦 LTC Small Package Probability (Palladium LTC S)</label>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageLTCProb || 'N/A'}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${ltcSmallProbFormatted}</span>
                     </div>
                     <input type="number"
                            id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability-LTC"
                            value="${savedSmallPackageLTCProbability}"
                            placeholder="e.g., 150 (means 1:≤150)"
                            min="1"
+                           step="0.1"
                            style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                     <div style="color: #888; font-size: 12px; margin-top: 5px;">
                         ⚠️ If set, both small packages must meet their probability thresholds AND one of the other thresholds
@@ -3657,17 +3649,20 @@ async function loadTeamAlerts() {
             `;
         } else {
             // Single crypto package - single small package probability input
+            const smallProbFormatted = formatProbability(smallPackageCurrentProb) || 'N/A';
+
             smallPackageProbabilityInputs = `
                 <div style="margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <label style="color: #aaa; font-size: 14px;">📦 Small Package Probability Threshold (${pkg.name.replace('Team ', '')} S)</label>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: 1:${smallPackageCurrentProb || 'N/A'}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${smallProbFormatted}</span>
                     </div>
                     <input type="number"
                            id="team-alert-${pkg.name.replace(/\s+/g, '-')}-smallPackageProbability"
                            value="${savedSmallPackageProbability}"
                            placeholder="e.g., 130 (means 1:≤130)"
                            min="1"
+                           step="0.1"
                            style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                     <div style="color: #888; font-size: 12px; margin-top: 5px;">
                         ⚠️ If set, corresponding small package must meet this probability AND one of the other thresholds
@@ -13787,42 +13782,29 @@ async function fetchNiceHashOrders() {
                     ? (order.sharedTicket?.numberOfParticipants || order.numberOfParticipants || 0)
                     : null,
                 totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
-                // Probability from API - format as "1:X" from probabilityPrecision
+                // Probability from API - use probabilityPrecision field, formatted with formatProbability()
                 // Team packages: sharedTicket.currencyAlgoTicket, Solo packages: currencyAlgoTicket or direct on order
-                probability: (() => {
-                    const prob = order.sharedTicket?.currencyAlgoTicket?.probabilityPrecision
-                        || order.currencyAlgoTicket?.probabilityPrecision
-                        || order.soloTicket?.probabilityPrecision
-                        || order.probabilityPrecision
-                        || order.sharedTicket?.currencyAlgoTicket?.probability
-                        || order.currencyAlgoTicket?.probability
-                        || order.soloTicket?.probability
-                        || order.probability;
-                    if (!prob) return null;
-                    // If already formatted as "1:X", return as-is
-                    if (typeof prob === 'string' && prob.includes(':')) return prob;
-                    // Format numeric probability as "1:X"
-                    const numProb = parseFloat(prob);
-                    if (isNaN(numProb) || numProb <= 0) return null;
-                    return numProb >= 1 ? `1:${Math.round(numProb)}` : `${Math.round(1/numProb)}:1`;
-                })(),
-                mergeProbability: (() => {
-                    const prob = order.sharedTicket?.currencyAlgoTicket?.mergeProbabilityPrecision
-                        || order.currencyAlgoTicket?.mergeProbabilityPrecision
-                        || order.soloTicket?.mergeProbabilityPrecision
-                        || order.mergeProbabilityPrecision
-                        || order.sharedTicket?.currencyAlgoTicket?.mergeProbability
-                        || order.currencyAlgoTicket?.mergeProbability
-                        || order.soloTicket?.mergeProbability
-                        || order.mergeProbability;
-                    if (!prob) return null;
-                    // If already formatted as "1:X", return as-is
-                    if (typeof prob === 'string' && prob.includes(':')) return prob;
-                    // Format numeric probability as "1:X"
-                    const numProb = parseFloat(prob);
-                    if (isNaN(numProb) || numProb <= 0) return null;
-                    return numProb >= 1 ? `1:${Math.round(numProb)}` : `${Math.round(1/numProb)}:1`;
-                })(),
+                probability: formatProbability(
+                    order.sharedTicket?.currencyAlgoTicket?.probabilityPrecision
+                    || order.currencyAlgoTicket?.probabilityPrecision
+                    || order.soloTicket?.probabilityPrecision
+                    || order.probabilityPrecision
+                    || order.sharedTicket?.currencyAlgoTicket?.probability
+                    || order.currencyAlgoTicket?.probability
+                    || order.soloTicket?.probability
+                    || order.probability
+                ),
+                // Merge probability (for DOGE in Palladium) - use mergeProbabilityPrecision field
+                mergeProbability: formatProbability(
+                    order.sharedTicket?.currencyAlgoTicket?.mergeProbabilityPrecision
+                    || order.currencyAlgoTicket?.mergeProbabilityPrecision
+                    || order.soloTicket?.mergeProbabilityPrecision
+                    || order.mergeProbabilityPrecision
+                    || order.sharedTicket?.currencyAlgoTicket?.mergeProbability
+                    || order.currencyAlgoTicket?.mergeProbability
+                    || order.soloTicket?.mergeProbability
+                    || order.mergeProbability
+                ),
                 // Raw numeric values for dynamic chart calculations
                 probabilityPrecision: order.sharedTicket?.currencyAlgoTicket?.probabilityPrecision
                     || order.currencyAlgoTicket?.probabilityPrecision
@@ -13969,6 +13951,39 @@ function formatDateTime(timestamp) {
     };
 
     return date.toLocaleString('en-US', options);
+}
+
+/**
+ * Format probability precision value for display
+ * - Values >= 10: round to whole number (1:10, 1:100)
+ * - Values < 10: show with 1 decimal place (1:3.8, 1:5.2)
+ * @param {number|string} prob - The probability precision value
+ * @returns {string|null} Formatted probability string like "1:3.8" or "1:100"
+ */
+function formatProbability(prob) {
+    if (prob === null || prob === undefined) return null;
+
+    // If already formatted as "1:X", extract the number and reformat
+    if (typeof prob === 'string' && prob.includes(':')) {
+        const match = prob.match(/1:(\d+\.?\d*)/);
+        if (match) {
+            prob = parseFloat(match[1]);
+        } else {
+            return prob; // Return as-is if can't parse
+        }
+    }
+
+    const numProb = parseFloat(prob);
+    if (isNaN(numProb) || numProb <= 0) return null;
+
+    // Format based on value size
+    if (numProb >= 10) {
+        // Large values: round to whole number
+        return `1:${Math.round(numProb)}`;
+    } else {
+        // Small values: show 1 decimal place
+        return `1:${numProb.toFixed(1)}`;
+    }
 }
 
 // Helper function to calculate time remaining
@@ -18532,6 +18547,27 @@ function updateMiningProgressChart(pkg) {
     const actualBlocks = pkg.totalBlocks || 0;
 
     if (statsContainer) {
+        // Format probability using formatProbability for accurate display
+        const probDisplay = formatProbability(pkg.probabilityPrecision || pkg.probability) || 'N/A';
+        const isDualCrypto = pkg.cryptoSecondary || pkg.mergeProbability;
+
+        // Build probability display - show both for dual-crypto (Palladium)
+        let probabilityHTML = `
+            <div class="mining-stat-item">
+                <div class="mining-stat-label">Probability${isDualCrypto ? ` (${pkg.crypto})` : ''}</div>
+                <div class="mining-stat-value" id="stat-probability-${pkgId}">${probDisplay}</div>
+            </div>`;
+
+        // Add merge probability for dual-crypto packages (Palladium DOGE)
+        if (isDualCrypto) {
+            const mergeProbDisplay = formatProbability(pkg.mergeProbabilityPrecision || pkg.mergeProbability) || 'N/A';
+            probabilityHTML += `
+            <div class="mining-stat-item">
+                <div class="mining-stat-label">Probability (${pkg.cryptoSecondary})</div>
+                <div class="mining-stat-value" id="stat-merge-probability-${pkgId}">${mergeProbDisplay}</div>
+            </div>`;
+        }
+
         statsContainer.innerHTML = `
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Hashrate</div>
@@ -18541,10 +18577,7 @@ function updateMiningProgressChart(pkg) {
                 <div class="mining-stat-label">Rigs</div>
                 <div class="mining-stat-value" id="stat-rigs-${pkgId}">${pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A'}</div>
             </div>
-            <div class="mining-stat-item">
-                <div class="mining-stat-label">Probability</div>
-                <div class="mining-stat-value" id="stat-probability-${pkgId}">${pkg.probability || 'N/A'}</div>
-            </div>
+            ${probabilityHTML}
             <div class="mining-stat-item">
                 <div class="mining-stat-label">Blocks</div>
                 <div class="mining-stat-value" id="stat-blocks-${pkgId}" style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${actualBlocks}</div>
