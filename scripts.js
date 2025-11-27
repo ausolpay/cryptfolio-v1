@@ -1,5 +1,6 @@
 // CryptFolio v2 - Main Application Script - Stable 15 (Fix Auto-Clear to Only Work on Auto-Bought Packages) - STABLE BUILD
 // clean stable version - PayPal donate buttons update
+// stable
 // Note: CoinGecko API base URLs are now dynamically determined by getApiBaseUrl() based on paid/free tier
 let apiKeys = []; // User must configure their own API keys
 let currentApiKeyIndex = 0;
