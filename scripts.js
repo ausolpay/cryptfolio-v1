@@ -7809,48 +7809,6 @@ function clearPortfolio24HStats() {
     alert('Portfolio 24H stats have been cleared.');
 }
 
-// Clear EasyMining 24H Stats (Today's stats and rocket icons)
-function clearEasyMining24HStats() {
-    if (!loggedInUser) {
-        alert('No user logged in.');
-        return;
-    }
-
-    if (!confirm('Clear EasyMining 24H Stats?\n\nThis will reset:\n- Today\'s blocks count\n- Today\'s spent amount\n- Today\'s P&L\n- Rocket icons (🚀)\n\nAre you sure?')) {
-        return;
-    }
-
-    console.log('🗑️ Clearing EasyMining 24H stats...');
-
-    // Reset today's stats
-    easyMiningData.todayStats = {
-        totalBlocks: 0,
-        totalSpent: 0,
-        pnl: 0
-    };
-    console.log('   ✓ Cleared today stats');
-
-    // Clear rockets
-    easyMiningData.blocksFoundSession = 0;
-    const rocketsElement = document.getElementById('blocks-found-rockets');
-    if (rocketsElement) {
-        rocketsElement.textContent = '';
-    }
-    console.log('   ✓ Cleared rocket icons');
-
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
-    console.log('   ✓ Saved to localStorage');
-
-    // Update UI if EasyMining section is visible
-    if (typeof updateStats === 'function') {
-        updateStats();
-    }
-
-    console.log('✅ EasyMining 24H stats cleared successfully');
-    alert('EasyMining 24H stats and rockets have been cleared.');
-}
-
 window.onclick = function(event) {
     const popupModal = document.getElementById('popup-modal');
     const totalHoldingsModal = document.getElementById('total-holdings-modal');
@@ -14416,7 +14374,7 @@ function displayActivePackages() {
                 <span>Reward:</span>
                 <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
             </div>
-            ${!pkg.active && pkg.blockFound && (pkg.reward > 0 || (pkg.rewardSecondary > 0 && pkg.cryptoSecondary)) ? `
+            ${pkg.blockFound && (pkg.reward > 0 || (pkg.rewardSecondary > 0 && pkg.cryptoSecondary)) ? `
             <div class="package-card-stat">
                 <span>Reward AUD:</span>
                 <span style="color: #00ff00;">${(() => {
