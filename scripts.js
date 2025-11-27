@@ -15541,6 +15541,13 @@ async function updateRecommendations() {
                     if (card) {
                         teamAlertsContainer.appendChild(card);
                         console.log(`✅ Team alert card ${index + 1} added to container`);
+
+                        // ✅ IMMEDIATE DATA REFRESH: Update card values right after rendering
+                        // This ensures live data like shares, participants, and rewards are current
+                        setTimeout(() => {
+                            updateTeamAlertCardValues(pkg);
+                            console.log(`🔄 Immediate data refresh for team alert card: ${pkg.name}`);
+                        }, 100);
                     } else {
                         console.error(`❌ Failed to create team alert card ${index + 1} for:`, pkg.name);
                     }
@@ -15714,6 +15721,69 @@ function updateTeamAlertCardValues(pkg) {
     }
 
     console.log(`✅ Updated team alert values for ${pkg.name}: participants=${pkg.numberOfParticipants}, shares=${myBoughtShares}`);
+
+    // ✅ Dynamically update Clear Shares button visibility
+    updateClearSharesButtonVisibility(pkg.name, alertPackageId, myBoughtShares);
+}
+
+/**
+ * Dynamically show/hide Clear Shares button based on current shares
+ * Works for both alert cards and buy packages cards
+ */
+function updateClearSharesButtonVisibility(packageName, packageId, myBoughtShares) {
+    const packageNameId = packageName.replace(/\s+/g, '-');
+
+    // Check alert card clear button container
+    const alertClearBtnContainer = document.getElementById(`alert-clear-shares-container-${packageNameId}`);
+    if (alertClearBtnContainer) {
+        if (myBoughtShares > 0) {
+            alertClearBtnContainer.style.display = 'block';
+            alertClearBtnContainer.innerHTML = `
+                <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">Clear Shares</button>
+            `;
+        } else {
+            alertClearBtnContainer.style.display = 'none';
+            alertClearBtnContainer.innerHTML = '';
+        }
+    }
+
+    // Check buy packages card clear button container
+    const buyCardClearBtnContainer = document.getElementById(`buy-clear-shares-container-${packageNameId}`);
+    if (buyCardClearBtnContainer) {
+        if (myBoughtShares > 0) {
+            buyCardClearBtnContainer.style.display = 'block';
+            buyCardClearBtnContainer.innerHTML = `
+                <button class="buy-package-button" style="background-color: #d32f2f; margin-top: 10px;" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">Clear Shares</button>
+            `;
+        } else {
+            buyCardClearBtnContainer.style.display = 'none';
+            buyCardClearBtnContainer.innerHTML = '';
+        }
+    }
+
+    // Also check for non-wrapped clear buttons (old format) and wrap them
+    // This handles cards that were rendered before this fix
+    const card = document.querySelector(`[data-package-id="${packageId}"]`);
+    if (card) {
+        const existingClearBtn = card.querySelector('button[onclick*="clearTeamSharesManual"]');
+        if (existingClearBtn && !existingClearBtn.parentElement.id?.includes('clear-shares-container')) {
+            // Button exists but not in a container - wrap it or remove based on shares
+            if (myBoughtShares <= 0) {
+                existingClearBtn.remove();
+            }
+        } else if (!existingClearBtn && myBoughtShares > 0) {
+            // No button but shares > 0 - add one
+            const buyBtn = card.querySelector('.buy-package-button, .buy-now-btn');
+            if (buyBtn) {
+                const container = document.createElement('div');
+                container.id = `buy-clear-shares-container-${packageNameId}`;
+                container.innerHTML = `
+                    <button class="buy-package-button" style="background-color: #d32f2f; margin-top: 10px;" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">Clear Shares</button>
+                `;
+                buyBtn.parentElement.appendChild(container);
+            }
+        }
+    }
 }
 
 function createTeamPackageRecommendationCard(pkg) {
@@ -16021,9 +16091,11 @@ function createTeamPackageRecommendationCard(pkg) {
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn">+</button>
             <button class="buy-now-btn" style="margin-left: 10px;" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
-        ${myCurrentShares > 0 ? `
-        <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${alertPackageId}', '${pkg.name}')">Clear Shares</button>
-        ` : ''}
+        <div id="alert-clear-shares-container-${pkg.name.replace(/\s+/g, '-')}" style="${myCurrentShares > 0 ? 'display: block;' : 'display: none;'}">
+            ${myCurrentShares > 0 ? `
+            <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${alertPackageId}', '${pkg.name}')">Clear Shares</button>
+            ` : ''}
+        </div>
     `;
 
     // Auto-buy robot icon logic
@@ -17677,11 +17749,13 @@ function createTeamPackageCard(pkg) {
         <button class="buy-package-button" onclick="buyTeamPackageUpdated('${packageId}', '${crypto}', '${cardId}')">
             Buy Shares
         </button>
-        ${myBoughtShares > 0 ? `
-        <button class="buy-package-button" style="background-color: #d32f2f; margin-top: 10px;" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">
-            Clear Shares
-        </button>
-        ` : ''}
+        <div id="buy-clear-shares-container-${packageName.replace(/\s+/g, '-')}" style="${myBoughtShares > 0 ? 'display: block;' : 'display: none;'}">
+            ${myBoughtShares > 0 ? `
+            <button class="buy-package-button" style="background-color: #d32f2f; margin-top: 10px;" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">
+                Clear Shares
+            </button>
+            ` : ''}
+        </div>
     `;
 
     // Trigger initial cost/reward update
@@ -19060,6 +19134,28 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         const hashrateEl = card.querySelector(`#hashrate-${packageIdForElements}`);
         if (hashrateEl && pkg.hashrate) {
             hashrateEl.textContent = pkg.hashrate;
+        }
+
+        // ✅ Update Clear Shares button visibility based on current shares
+        const myBoughtShares = getMyTeamShares(packageId) || 0;
+        updateClearSharesButtonVisibility(pkg.name, packageId, myBoughtShares);
+
+        // ✅ Sync share input values and data attributes
+        const shareInput = card.querySelector(`#team-${packageId}-shares, #shares-${packageIdForElements}`);
+        if (shareInput) {
+            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+            const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
+
+            // Update data attributes with latest API values
+            shareInput.dataset.totalBought = totalBoughtShares;
+            shareInput.dataset.totalAvailable = totalAvailableShares;
+            shareInput.dataset.myBought = myBoughtShares;
+
+            // If user hasn't modified the input, sync with API shares
+            if (myBoughtShares > 0 && parseInt(shareInput.value) < myBoughtShares) {
+                shareInput.value = myBoughtShares;
+                shareInput.min = 1;
+            }
         }
 
         // DO NOT touch countdown element - updateTeamPackageCountdowns() handles it every second
