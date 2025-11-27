@@ -13685,6 +13685,9 @@ async function fetchNiceHashOrders() {
                     ? (order.sharedTicket?.numberOfParticipants || order.numberOfParticipants || 0)
                     : null,
                 totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
+                // Probability from API (team packages use sharedTicket.currencyAlgoTicket.probability)
+                probability: order.sharedTicket?.currencyAlgoTicket?.probability || order.probability || null,
+                mergeProbability: order.sharedTicket?.currencyAlgoTicket?.mergeProbability || order.mergeProbability || null,
                 // Package metadata
                 active: isActive,
                 status: isActive ? 'active' : 'completed',
@@ -13707,6 +13710,9 @@ async function fetchNiceHashOrders() {
                 console.log(`      ownedShares: ${pkg.ownedShares}`);
                 console.log(`      totalShares: ${pkg.totalShares}`);
                 console.log(`      userSharePercentage: ${pkg.userSharePercentage}`);
+            }
+            if (pkg.probability) {
+                console.log(`   🎲 Probability: ${pkg.probability}${pkg.mergeProbability ? ` / ${pkg.mergeProbability}` : ''}`);
             }
 
             // ✅ BLOCK-LEVEL TRACKING: Track each individual block with its discovery price
@@ -14204,8 +14210,8 @@ function displayActivePackages() {
         card.className = pkg.blockFound ? 'package-card block-confirmed' : 'package-card';
         card.onclick = () => showPackageDetailModal(pkg);
 
-        const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : 8;
-        const secondaryRewardDecimals = (pkg.cryptoSecondary === 'RVN' || pkg.cryptoSecondary === 'DOGE') ? 0 : 8;
+        const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : 2;
+        const secondaryRewardDecimals = (pkg.cryptoSecondary === 'RVN' || pkg.cryptoSecondary === 'DOGE') ? 0 : 2;
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
         // Calculate remaining price based on progress (decreases from start to 0 as package runs)
@@ -14405,6 +14411,12 @@ function displayActivePackages() {
                 <span>Time:</span>
                 <span>${pkg.timeRemaining}</span>
             </div>
+            ${pkg.active && pkg.probability ? `
+            <div class="package-card-stat">
+                <span>Probability:</span>
+                <span style="color: #4CAF50;">${pkg.probability}${pkg.mergeProbability ? `<br>${pkg.mergeProbability}` : ''}</span>
+            </div>
+            ` : ''}
             ${pkg.active && pkg.hashrate ? `
             <div class="package-card-stat">
                 <span>Hashrate:</span>
