@@ -4495,11 +4495,51 @@ body.light-mode .package-card.block-confirmed {
     max-width: 1000px;
 }
 
+/* Package Detail Page - Desktop Styles (match settings page width) */
+.package-detail-page-content {
+    width: 1390px;
+    max-width: 1390px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: left;
+    box-sizing: border-box;
+}
+
 .package-info-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
     margin: 20px 0;
+}
+
+.block-animation-section,
+.mining-stats-display {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Package Detail Page Responsive - matches settings page breakpoints */
+@media (max-width: 1390px) {
+    .package-detail-page-content {
+        width: 1040px;
+        max-width: 1040px;
+    }
+}
+
+@media (max-width: 1040px) {
+    .package-detail-page-content {
+        width: 690px;
+        max-width: 690px;
+    }
+}
+
+@media (max-width: 690px) {
+    .package-detail-page-content {
+        width: 100%;
+        max-width: 100%;
+        padding: 15px;
+    }
 }
 
 /* Package Detail Page Mobile Styles */
