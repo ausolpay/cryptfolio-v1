@@ -17596,6 +17596,42 @@ window.getMyTeamShares = getMyTeamShares;
 window.saveMyTeamShares = saveMyTeamShares;
 window.calculateTeamReward = calculateTeamReward;
 
+// ==================== PURCHASE ERROR HANDLING ====================
+// Shows specific popup messages for common purchase errors (manual buys only)
+
+function showPurchaseError(error, packageType = 'package') {
+    const errorMsg = (error.message || error.toString()).toLowerCase();
+
+    // Check for insufficient balance
+    if (errorMsg.includes('insufficient') ||
+        errorMsg.includes('not enough') ||
+        errorMsg.includes('balance') && (errorMsg.includes('low') || errorMsg.includes('less'))) {
+        showModal(
+            `❌ Purchase Failed: Insufficient Balance\n\n` +
+            `You do not have enough BTC balance to complete this purchase.\n\n` +
+            `Please add funds to your NiceHash account and try again.`
+        );
+        return true;
+    }
+
+    // Check for package full (team packages)
+    if (errorMsg.includes('full') ||
+        errorMsg.includes('sold out') ||
+        errorMsg.includes('no more shares') ||
+        errorMsg.includes('no shares available') ||
+        errorMsg.includes('maximum') && errorMsg.includes('reached')) {
+        showModal(
+            `❌ Purchase Failed: ${packageType === 'team' ? 'Team Package' : 'Package'} is Full\n\n` +
+            `This package has reached maximum capacity and no more shares are available.\n\n` +
+            `Please try another package.`
+        );
+        return true;
+    }
+
+    // Return false if not a specific error we handle
+    return false;
+}
+
 // Buy solo package using POST /main/api/v2/hashpower/solo/order
 async function buySoloPackage(ticketId, crypto, packagePrice) {
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
@@ -17688,7 +17724,11 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
 
     } catch (error) {
         console.error('❌ Error purchasing solo package:', error);
-        showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
+        // Show specific error popup for common errors (manual buy only)
+        if (!showPurchaseError(error, 'solo')) {
+            // Fallback generic error
+            showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
+        }
     }
 }
 
@@ -17925,7 +17965,11 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
 
     } catch (error) {
         console.error('❌ Error purchasing team package:', error);
-        showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
+        // Show specific error popup for common errors (manual buy only)
+        if (!showPurchaseError(error, 'team')) {
+            // Fallback generic error
+            showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance.`);
+        }
     }
 }
 
@@ -18044,7 +18088,11 @@ async function buyPackage(pkg) {
 
     } catch (error) {
         console.error('Error purchasing package:', error);
-        showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance. You may need to configure your mining pool in NiceHash first.`);
+        // Show specific error popup for common errors (manual buy only)
+        if (!showPurchaseError(error, 'package')) {
+            // Fallback generic error
+            showModal(`Failed to purchase package: ${error.message}\n\nPlease check your API credentials and balance. You may need to configure your mining pool in NiceHash first.`);
+        }
     }
 }
 
@@ -20580,7 +20628,11 @@ Do you want to continue?
 
     } catch (error) {
         console.error('❌ Error purchasing team package:', error);
-        alert(`Failed to purchase team package: ${error.message}\n\nPlease check:\n- Your API credentials are correct\n- You have sufficient BTC balance\n- The wallet addresses are valid`);
+        // Show specific error popup for common errors (manual buy only)
+        if (!showPurchaseError(error, 'team')) {
+            // Fallback generic error
+            showModal(`Failed to purchase team package: ${error.message}\n\nPlease check:\n- Your API credentials are correct\n- You have sufficient BTC balance\n- The wallet addresses are valid`);
+        }
     }
 }
 
