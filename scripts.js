@@ -5895,6 +5895,86 @@ function clearHoldingsHistory() {
 }
 
 // =============================================================================
+// BLOCK-LEVEL REWARD TRACKING (Individual Block Storage)
+// =============================================================================
+
+// Get all tracked blocks for EasyMining
+function getTrackedBlocks() {
+    const key = `${loggedInUser}_easyMiningTrackedBlocks`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : {};
+}
+
+// Save all tracked blocks
+function saveTrackedBlocks(blocks) {
+    const key = `${loggedInUser}_easyMiningTrackedBlocks`;
+    localStorage.setItem(key, JSON.stringify(blocks));
+}
+
+// Check if a block has been tracked
+function isBlockTracked(blockHash) {
+    const blocks = getTrackedBlocks();
+    return !!blocks[blockHash];
+}
+
+// Track a new block with its discovery price
+function trackNewBlock(blockData, livePrice) {
+    const blocks = getTrackedBlocks();
+    const blockKey = blockData.blockHash || `${blockData.packageId}_${blockData.timestamp}_${blockData.coin}`;
+
+    // If already tracked, don't overwrite (preserve original price)
+    if (blocks[blockKey]) {
+        console.log(`   ⏭️ Block already tracked: ${blockKey}`);
+        return blocks[blockKey];
+    }
+
+    const trackedBlock = {
+        blockHash: blockKey,
+        packageId: blockData.packageId,
+        packageName: blockData.packageName,
+        crypto: blockData.crypto,
+        cryptoId: blockData.cryptoId,
+        amount: blockData.amount,
+        btcReward: blockData.btcReward,
+        priceAtDiscovery: livePrice, // AUD price when block was discovered
+        discoveredAt: Date.now(),
+        addedToHoldings: false,
+        holdingsEntryId: null,
+        isConfirmed: blockData.isConfirmed,
+        isTeamPackage: blockData.isTeamPackage
+    };
+
+    blocks[blockKey] = trackedBlock;
+    saveTrackedBlocks(blocks);
+    console.log(`   ✅ NEW BLOCK TRACKED: ${blockKey} - ${blockData.amount} ${blockData.crypto} @ $${livePrice.toFixed(2)}`);
+    return trackedBlock;
+}
+
+// Mark a block as added to holdings
+function markBlockAddedToHoldings(blockHash, holdingsEntryId) {
+    const blocks = getTrackedBlocks();
+    if (blocks[blockHash]) {
+        blocks[blockHash].addedToHoldings = true;
+        blocks[blockHash].holdingsEntryId = holdingsEntryId;
+        blocks[blockHash].addedAt = Date.now();
+        saveTrackedBlocks(blocks);
+        console.log(`   ✅ Block marked as added: ${blockHash} -> Entry ${holdingsEntryId}`);
+    }
+}
+
+// Get all unprocessed blocks (not yet added to holdings)
+function getUnprocessedBlocks() {
+    const blocks = getTrackedBlocks();
+    return Object.values(blocks).filter(b => !b.addedToHoldings);
+}
+
+// Get unprocessed blocks for a specific crypto
+function getUnprocessedBlocksByCrypto(cryptoId) {
+    const unprocessed = getUnprocessedBlocks();
+    return unprocessed.filter(b => b.cryptoId === cryptoId);
+}
+
+// =============================================================================
 // HOLDINGS DISPLAY UPDATE
 // =============================================================================
 
@@ -13546,6 +13626,67 @@ async function fetchNiceHashOrders() {
                 console.log(`      userSharePercentage: ${pkg.userSharePercentage}`);
             }
 
+            // ✅ BLOCK-LEVEL TRACKING: Track each individual block with its discovery price
+            // This captures the live price when blocks are first discovered
+            if (soloRewards.length > 0 && typeof trackNewBlock === 'function') {
+                console.log(`   🔍 BLOCK TRACKING: Processing ${soloRewards.length} blocks for ${pkg.name}`);
+
+                // Map crypto symbol to CoinGecko ID for price lookup
+                const cryptoMappingForTracking = {
+                    'BTC': 'bitcoin',
+                    'BCH': 'bitcoin-cash',
+                    'RVN': 'ravencoin',
+                    'DOGE': 'dogecoin',
+                    'LTC': 'litecoin',
+                    'KAS': 'kaspa'
+                };
+
+                soloRewards.forEach((reward, idx) => {
+                    const rewardCoin = reward.coin;
+                    const cryptoId = cryptoMappingForTracking[rewardCoin] || rewardCoin.toLowerCase();
+                    const isConfirmed = reward.depositComplete === true;
+
+                    // Get the full block reward amount
+                    let fullBlockReward = 0;
+                    if (rewardCoin === 'BTC' && reward.payoutRewardBtc) {
+                        fullBlockReward = parseFloat(reward.payoutRewardBtc);
+                    } else if (reward.payoutReward) {
+                        fullBlockReward = parseFloat(reward.payoutReward) / 100000000;
+                    }
+
+                    // Calculate user's share of this block's reward
+                    // For team packages: apply userSharePercentage
+                    // For solo packages: 100% of the reward
+                    let userBlockReward = fullBlockReward;
+                    if (pkg.isTeam && pkg.userSharePercentage) {
+                        userBlockReward = fullBlockReward * pkg.userSharePercentage;
+                    }
+
+                    // Skip if no reward
+                    if (userBlockReward <= 0) return;
+
+                    // Get live price for this crypto
+                    const livePrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
+
+                    // Create unique block identifier
+                    const blockHash = reward.blockHash || `${order.id}_${reward.createdTs || idx}_${rewardCoin}`;
+
+                    // Track the block (won't overwrite if already tracked)
+                    trackNewBlock({
+                        blockHash: blockHash,
+                        packageId: order.id,
+                        packageName: pkg.name,
+                        crypto: rewardCoin,
+                        cryptoId: cryptoId,
+                        amount: userBlockReward,
+                        btcReward: parseFloat(reward.payoutRewardBtc || 0) * (pkg.isTeam && pkg.userSharePercentage ? pkg.userSharePercentage : 1),
+                        timestamp: reward.createdTs || Date.now(),
+                        isConfirmed: isConfirmed,
+                        isTeamPackage: pkg.isTeam
+                    }, livePrice);
+                });
+            }
+
             packages.push(pkg);
         }
 
@@ -16155,80 +16296,32 @@ async function autoUpdateCryptoHoldings(newBlocks) {
     // Lock the function
     isProcessingRewards = true;
     console.log(`\n${'💰'.repeat(40)}`);
-    console.log('💰 AUTO-UPDATE CRYPTO HOLDINGS STARTED');
+    console.log('💰 AUTO-UPDATE CRYPTO HOLDINGS - BLOCK-LEVEL PROCESSING');
     console.log(`${'💰'.repeat(40)}`);
 
     try {
-        // Load tracked rewards to prevent double-adding
-        const trackedKey = `${loggedInUser}_easyMiningAddedRewards`;
-        let addedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
+        // ✅ NEW: Process individual blocks from block-level tracking
+        const unprocessedBlocks = getUnprocessedBlocks();
+        console.log(`📋 Unprocessed blocks to add: ${unprocessedBlocks.length}`);
 
-        console.log(`📋 Previously tracked rewards: ${Object.keys(addedRewards).length} entries`);
+        if (unprocessedBlocks.length === 0) {
+            console.log('   ℹ️ No new blocks to process');
+        }
 
-        // Get ALL packages that found blocks (both active AND completed)
-        const allPackages = easyMiningData.activePackages || [];
-        const packagesWithBlocks = allPackages.filter(pkg => pkg.blockFound);
-
-        console.log(`📦 Packages with blocks: ${packagesWithBlocks.length} of ${allPackages.length} total`);
-
-        for (const pkg of packagesWithBlocks) {
-
-            // Check if this package has already been processed
-            // Use multiple keys to prevent duplicates across different ID formats
-            const packageKey = `${pkg.id}_total`;
-            const packageNameKey = `${pkg.name}_${pkg.crypto}_total`; // Fallback key by name+crypto
-
-            // Use the ALREADY CALCULATED reward from package data
-            const crypto = pkg.crypto;
-            const rewardAmount = parseFloat(pkg.reward) || 0;
-
-            if (rewardAmount === 0 || isNaN(rewardAmount)) {
-                console.log(`   ⏭️ Skipping ${pkg.name}: No reward amount`);
-                continue;
+        // Group blocks by cryptoId for efficient processing
+        const blocksByCrypto = {};
+        for (const block of unprocessedBlocks) {
+            const cryptoId = block.cryptoId;
+            if (!blocksByCrypto[cryptoId]) {
+                blocksByCrypto[cryptoId] = [];
             }
+            blocksByCrypto[cryptoId].push(block);
+        }
 
-            // Map crypto symbol to CoinGecko ID (need this early for entry verification)
-            const cryptoMapping = {
-                'BTC': 'bitcoin',
-                'BCH': 'bitcoin-cash',
-                'RVN': 'ravencoin',
-                'DOGE': 'dogecoin',
-                'LTC': 'litecoin',
-                'KAS': 'kaspa'
-            };
-            const cryptoId = cryptoMapping[crypto] || crypto.toLowerCase();
+        // Process each crypto's blocks
+        for (const [cryptoId, blocks] of Object.entries(blocksByCrypto)) {
+            console.log(`\n📦 Processing ${blocks.length} block(s) for ${cryptoId}:`);
 
-            // Check both keys for existing tracked rewards
-            const existingByKey = addedRewards[packageKey];
-            const existingByName = addedRewards[packageNameKey];
-            const existingReward = existingByKey || existingByName;
-
-            if (existingReward) {
-                // Compare as numbers to avoid string/number mismatch
-                const trackedAmount = parseFloat(existingReward.amount) || 0;
-                const currentAmount = parseFloat(pkg.reward) || 0;
-
-                if (Math.abs(trackedAmount - currentAmount) < 0.00000001) {
-                    // VERIFY: Check that a holdings entry actually exists for this package
-                    // This catches the case where tracking succeeded but entry save failed
-                    const existingEntries = getHoldingsEntries(cryptoId);
-                    const entryExists = existingEntries.some(e =>
-                        e.packageId === pkg.id ||
-                        (e.source === 'easymining-reward' && e.packageName === pkg.name)
-                    );
-
-                    if (entryExists) {
-                        console.log(`   ⏭️ Skipping ${pkg.name}: Already tracked ${trackedAmount} ${crypto} (entry verified)`);
-                        continue;
-                    } else {
-                        console.log(`   ⚠️ ${pkg.name}: Tracked but NO ENTRY FOUND - will re-add ${trackedAmount} ${crypto}`);
-                        // Don't continue - we need to add the entry
-                    }
-                } else {
-                    console.log(`   🔄 ${pkg.name}: Reward changed from ${trackedAmount} to ${currentAmount} ${crypto}`);
-                }
-            }
-    
             // Check if crypto already exists in portfolio
             let cryptoExists = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
 
@@ -16237,200 +16330,119 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 try {
                     await addCryptoById(cryptoId);
                     await fetchPrices();
-                    console.log(`✅ Auto-added ${cryptoId} to portfolio`);
+                    console.log(`   ✅ Auto-added ${cryptoId} to portfolio`);
                 } catch (error) {
-                    console.error(`❌ Failed to auto-add ${cryptoId}:`, error);
+                    console.error(`   ❌ Failed to auto-add ${cryptoId}:`, error);
                     continue;
                 }
             }
 
-            // Calculate amount to add (use existingReward which checks both keys)
-            let amountToAdd = rewardAmount;
-            if (existingReward) {
-                // Only add the difference if package was previously processed
-                const previousAmount = parseFloat(existingReward.amount) || 0;
-                amountToAdd = rewardAmount - previousAmount;
-
-                console.log(`   📊 ${pkg.name}: Current ${rewardAmount} - Previous ${previousAmount} = Add ${amountToAdd} ${crypto}`);
-
-                // Prevent negative amounts (API data inconsistency)
-                if (amountToAdd < 0) {
-                    console.log(`   ⚠️ Skipping ${pkg.name}: Negative amount to add (${amountToAdd})`);
+            // Process each block individually
+            for (const block of blocks) {
+                const amount = parseFloat(block.amount) || 0;
+                if (amount <= 0) {
+                    console.log(`   ⏭️ Skipping block ${block.blockHash}: Invalid amount (${amount})`);
                     continue;
                 }
-            } else {
-                console.log(`   🆕 ${pkg.name}: First time processing - adding full ${amountToAdd} ${crypto}`);
+
+                // Use stored price at discovery, fall back to current live price
+                let boughtPrice = block.priceAtDiscovery;
+                if (!boughtPrice || boughtPrice <= 0) {
+                    boughtPrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
+                    console.log(`   ⚠️ Block ${block.blockHash}: Using fallback live price $${boughtPrice.toFixed(2)}`);
+                }
+
+                // Create holdings entry for this individual block
+                const entryId = uuidv4();
+                const entry = {
+                    id: entryId,
+                    cryptoId: cryptoId,
+                    amount: amount,
+                    audValueAtAdd: amount * boughtPrice,
+                    boughtPrice: boughtPrice,
+                    soldPrice: null,
+                    dateAdded: block.discoveredAt || Date.now(),
+                    dateSold: null,
+                    source: 'easymining-reward',
+                    status: 'active',
+                    packageName: block.packageName,
+                    packageId: block.packageId,
+                    blockHash: block.blockHash
+                };
+
+                addHoldingsEntry(cryptoId, entry);
+                addToHoldingsHistory('add', entry, {
+                    packageName: block.packageName,
+                    blockHash: block.blockHash,
+                    priceAtDiscovery: boughtPrice
+                });
+
+                // Track for "Added Today" metric
+                trackHoldingsChange(cryptoId, 0, amount, boughtPrice);
+
+                // Mark block as added to holdings
+                markBlockAddedToHoldings(block.blockHash, entryId);
+
+                console.log(`   💰 Added block ${block.blockHash.substring(0, 12)}...`);
+                console.log(`      Amount: ${amount} ${block.crypto}`);
+                console.log(`      Price @ discovery: $${boughtPrice.toFixed(2)} AUD`);
+                console.log(`      Package: ${block.packageName}`);
             }
 
-            // Final check to ensure amountToAdd is valid and positive
-            if (isNaN(amountToAdd) || amountToAdd <= 0) {
-                console.log(`   ⏭️ Skipping ${pkg.name}: Invalid or zero amount (${amountToAdd})`);
-                continue;
-            }
-
-            // Create holdings entry and let the entry system manage the totals
-            console.log(`💰 Adding ${amountToAdd} ${crypto} reward (${pkg.name})`);
-
-            // Create holdings entry for tracking
-            const livePrice = getPriceFromObject(cryptoPrices[cryptoId]);
-            const entry = {
-                id: uuidv4(),
-                cryptoId: cryptoId,
-                amount: amountToAdd,
-                audValueAtAdd: amountToAdd * livePrice,
-                boughtPrice: livePrice,
-                soldPrice: null,
-                dateAdded: Date.now(),
-                dateSold: null,
-                source: 'easymining-reward',
-                status: 'active',
-                packageName: pkg.name,
-                packageId: pkg.id
-            };
-            addHoldingsEntry(cryptoId, entry);
-            addToHoldingsHistory('add', entry, { packageName: pkg.name });
-
-            // Track for "Added Today" metric (EasyMining reward)
-            trackHoldingsChange(cryptoId, 0, amountToAdd, livePrice);
-
-            console.log(`📝 Created holdings entry for ${amountToAdd} ${crypto} from ${pkg.name}`);
-
-            // Update holdings display using the entry-based system
+            // Update holdings display for this crypto
             updateHoldingsDisplayFromEntries(cryptoId);
-    
-            // Process secondary rewards (for dual mining packages like Palladium DOGE/LTC)
-            if (pkg.cryptoSecondary && pkg.rewardSecondary > 0) {
-                const secondaryCrypto = pkg.cryptoSecondary;
-                const secondaryRewardAmount = parseFloat(pkg.rewardSecondary) || 0;
-
-                if (secondaryRewardAmount > 0 && !isNaN(secondaryRewardAmount)) {
-                    // Map secondary crypto symbol to CoinGecko ID
-                    const secondaryCryptoId = cryptoMapping[secondaryCrypto] || secondaryCrypto.toLowerCase();
-
-                    // Check if this secondary reward was already added (use dual-key approach)
-                    const secondaryPackageKey = `${pkg.id}_secondary`;
-                    const secondaryNameKey = `${pkg.name}_${secondaryCrypto}_secondary`; // Fallback by name
-                    const existingSecondary = addedRewards[secondaryPackageKey] || addedRewards[secondaryNameKey];
-
-                    let secondaryAmountToAdd = secondaryRewardAmount;
-
-                    if (existingSecondary) {
-                        // Compare as numbers to avoid string/number mismatch
-                        const trackedSecondary = parseFloat(existingSecondary.amount) || 0;
-
-                        if (Math.abs(trackedSecondary - secondaryRewardAmount) < 0.00000001) {
-                            // VERIFY: Check that a holdings entry actually exists for this secondary reward
-                            const existingSecondaryEntries = getHoldingsEntries(secondaryCryptoId);
-                            const secondaryEntryExists = existingSecondaryEntries.some(e =>
-                                e.packageId === pkg.id ||
-                                (e.source === 'easymining-reward' && e.packageName === pkg.name)
-                            );
-
-                            if (secondaryEntryExists) {
-                                console.log(`   ⏭️ Skipping ${pkg.name} secondary: Already tracked ${trackedSecondary} ${secondaryCrypto} (entry verified)`);
-                                secondaryAmountToAdd = 0;
-                            } else {
-                                console.log(`   ⚠️ ${pkg.name} secondary: Tracked but NO ENTRY FOUND - will re-add ${trackedSecondary} ${secondaryCrypto}`);
-                                // Keep secondaryAmountToAdd as the full amount since entry doesn't exist
-                            }
-                        } else {
-                            secondaryAmountToAdd = secondaryRewardAmount - trackedSecondary;
-                            console.log(`   🔄 ${pkg.name} secondary: Reward changed from ${trackedSecondary} to ${secondaryRewardAmount} ${secondaryCrypto}`);
-
-                            // Prevent negative amounts (API data inconsistency)
-                            if (secondaryAmountToAdd < 0) {
-                                console.log(`   ⚠️ Skipping ${pkg.name} secondary: Negative amount (${secondaryAmountToAdd})`);
-                                secondaryAmountToAdd = 0;
-                            }
-                        }
-                    } else {
-                        console.log(`   🆕 ${pkg.name} secondary: First time - adding ${secondaryAmountToAdd} ${secondaryCrypto}`);
-                    }
-
-                    // Check if secondary crypto already exists in portfolio
-                    let secondaryCryptoExists = users[loggedInUser].cryptos.find(c => c.id === secondaryCryptoId);
-
-                    if (!secondaryCryptoExists) {
-                        // Auto-add secondary crypto to portfolio
-                        try {
-                            await addCryptoById(secondaryCryptoId);
-                            await fetchPrices();
-                            console.log(`✅ Auto-added ${secondaryCryptoId} to portfolio`);
-                        } catch (error) {
-                            console.error(`❌ Failed to auto-add ${secondaryCryptoId}:`, error);
-                        }
-                    }
-
-                    // Final check to ensure secondaryAmountToAdd is valid and positive
-                    if (secondaryAmountToAdd > 0 && !isNaN(secondaryAmountToAdd)) {
-                        console.log(`💰 Adding ${secondaryAmountToAdd} ${secondaryCrypto} reward (${pkg.name})`);
-
-                        // Create holdings entry for tracking (secondary reward)
-                        const secondaryLivePrice = getPriceFromObject(cryptoPrices[secondaryCryptoId]);
-                        const secondaryEntry = {
-                            id: uuidv4(),
-                            cryptoId: secondaryCryptoId,
-                            amount: secondaryAmountToAdd,
-                            audValueAtAdd: secondaryAmountToAdd * secondaryLivePrice,
-                            boughtPrice: secondaryLivePrice,
-                            soldPrice: null,
-                            dateAdded: Date.now(),
-                            dateSold: null,
-                            source: 'easymining-reward',
-                            status: 'active',
-                            packageName: pkg.name,
-                            packageId: pkg.id
-                        };
-                        addHoldingsEntry(secondaryCryptoId, secondaryEntry);
-                        addToHoldingsHistory('add', secondaryEntry, { packageName: pkg.name });
-
-                        // Track for "Added Today" metric (EasyMining secondary reward)
-                        trackHoldingsChange(secondaryCryptoId, 0, secondaryAmountToAdd, secondaryLivePrice);
-
-                        console.log(`📝 Created holdings entry for ${secondaryAmountToAdd} ${secondaryCrypto} from ${pkg.name}`);
-
-                        // Update holdings display using the entry-based system
-                        updateHoldingsDisplayFromEntries(secondaryCryptoId);
-
-                        // Mark secondary reward as processed (use dual-key approach)
-                        const secondaryRewardRecord = {
-                            orderId: pkg.id,
-                            packageName: pkg.name,
-                            crypto: secondaryCrypto,
-                            amount: secondaryRewardAmount,
-                            timestamp: Date.now(),
-                            totalBlocks: pkg.totalBlocks
-                        };
-                        addedRewards[secondaryPackageKey] = secondaryRewardRecord;
-                        addedRewards[secondaryNameKey] = secondaryRewardRecord; // Also store by name for backup
-                        setStorageItem(trackedKey, JSON.stringify(addedRewards));
-                        console.log(`   ✓ Marked secondary reward as processed (total: ${secondaryRewardAmount} ${secondaryCrypto}, keys: ${secondaryPackageKey}, ${secondaryNameKey})`);
-    
-                        console.log(`   ✅ Successfully added ${secondaryAmountToAdd} ${secondaryCrypto} to holdings`);
-                    }
-                }
-            }
-    
-            // Mark this package as processed with current reward amount
-            // Store under BOTH keys (ID-based and name-based) to prevent duplicates
-            const rewardRecord = {
-                orderId: pkg.id,
-                packageName: pkg.name,
-                crypto: crypto,
-                amount: rewardAmount, // Store total reward amount
-                timestamp: Date.now(),
-                totalBlocks: pkg.totalBlocks
-            };
-            addedRewards[packageKey] = rewardRecord;
-            addedRewards[packageNameKey] = rewardRecord; // Also store by name+crypto for backup
-            setStorageItem(trackedKey, JSON.stringify(addedRewards));
-            console.log(`   ✓ Marked package as processed (total reward: ${rewardAmount} ${crypto}, keys: ${packageKey}, ${packageNameKey})`);
-    
-            console.log(`   ✅ Successfully added ${amountToAdd} ${crypto} to holdings`);
+            console.log(`   ✅ Updated ${cryptoId} holdings display`);
         }
 
+        // Also maintain backward compatibility with package-level tracking
+        // This ensures old tracking still works and prevents double-adding
+        const trackedKey = `${loggedInUser}_easyMiningAddedRewards`;
+        let addedRewards = JSON.parse(getStorageItem(trackedKey)) || {};
+
+        const allPackages = easyMiningData.activePackages || [];
+        const packagesWithBlocks = allPackages.filter(pkg => pkg.blockFound);
+
+        for (const pkg of packagesWithBlocks) {
+            const packageKey = `${pkg.id}_total`;
+            const packageNameKey = `${pkg.name}_${pkg.crypto}_total`;
+            const crypto = pkg.crypto;
+            const rewardAmount = parseFloat(pkg.reward) || 0;
+
+            if (rewardAmount > 0) {
+                // Update the package-level tracking record
+                const rewardRecord = {
+                    orderId: pkg.id,
+                    packageName: pkg.name,
+                    crypto: crypto,
+                    amount: rewardAmount,
+                    timestamp: Date.now(),
+                    totalBlocks: pkg.totalBlocks
+                };
+                addedRewards[packageKey] = rewardRecord;
+                addedRewards[packageNameKey] = rewardRecord;
+            }
+
+            // Also track secondary rewards at package level
+            if (pkg.cryptoSecondary && pkg.rewardSecondary > 0) {
+                const secondaryPackageKey = `${pkg.id}_secondary`;
+                const secondaryNameKey = `${pkg.name}_${pkg.cryptoSecondary}_secondary`;
+                const secondaryRewardRecord = {
+                    orderId: pkg.id,
+                    packageName: pkg.name,
+                    crypto: pkg.cryptoSecondary,
+                    amount: pkg.rewardSecondary,
+                    timestamp: Date.now(),
+                    totalBlocks: pkg.totalBlocks
+                };
+                addedRewards[secondaryPackageKey] = secondaryRewardRecord;
+                addedRewards[secondaryNameKey] = secondaryRewardRecord;
+            }
+        }
+        setStorageItem(trackedKey, JSON.stringify(addedRewards));
+
         console.log(`\n${'='.repeat(80)}`);
-        console.log('✅ AUTO-UPDATE COMPLETE');
+        console.log('✅ AUTO-UPDATE COMPLETE - BLOCK-LEVEL PROCESSING');
+        console.log(`   Blocks processed: ${unprocessedBlocks.length}`);
         console.log(`${'='.repeat(80)}\n`);
 
         // Update total portfolio value
@@ -16444,22 +16456,34 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 // ✅ Check for missed rewards (runs on load and every 30 seconds)
 // This ensures that rewards found while the app was closed get added to holdings
 async function checkMissedRewards() {
+    console.log('🔍 checkMissedRewards: Starting check...');
+
     // First, sync all holdings displays from entries
     // This ensures any entries that exist but weren't reflected in UI get displayed
     syncAllHoldingsFromEntries();
 
     // Only check for new rewards if EasyMining is enabled and auto-update is on
     if (!easyMiningSettings.enabled || !easyMiningSettings.autoUpdateHoldings) {
+        console.log('   ℹ️ EasyMining or auto-update disabled, skipping');
         return;
     }
 
     // Only check if we have active packages loaded
     if (!easyMiningData.activePackages || easyMiningData.activePackages.length === 0) {
+        console.log('   ℹ️ No active packages loaded yet, skipping');
         return;
     }
 
-    // Call the existing auto-update function which already has duplicate prevention
-    // It will check all packages with blocks and only add rewards that haven't been added yet
+    // Check for unprocessed blocks
+    const unprocessedBlocks = getUnprocessedBlocks();
+    console.log(`   📋 Found ${unprocessedBlocks.length} unprocessed block(s) to add`);
+
+    if (unprocessedBlocks.length > 0) {
+        console.log('   💰 Processing missed rewards with stored prices...');
+    }
+
+    // Call the auto-update function which handles block-level processing
+    // It will process all unprocessed blocks and use their stored priceAtDiscovery
     await autoUpdateCryptoHoldings();
 }
 
