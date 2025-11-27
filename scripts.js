@@ -5928,6 +5928,25 @@ function updateHoldingsDisplayFromEntries(cryptoId) {
     sortContainersByValue();
 }
 
+// Sync all crypto holdings displays from entries (call on page load)
+// This ensures any entries that were saved but not reflected in UI get displayed
+function syncAllHoldingsFromEntries() {
+    if (!loggedInUser || !users[loggedInUser]?.cryptos) return;
+
+    console.log('🔄 Syncing all crypto holdings from entries...');
+
+    for (const crypto of users[loggedInUser].cryptos) {
+        const entries = getHoldingsEntries(crypto.id);
+        if (entries.length > 0) {
+            // Update display from entries
+            updateHoldingsDisplayFromEntries(crypto.id);
+            console.log(`   ✅ Synced ${crypto.id}: ${getTotalActiveHoldings(crypto.id)} from ${entries.length} entries`);
+        }
+    }
+
+    console.log('🔄 Holdings sync complete');
+}
+
 // Migrate existing holdings to new entry format (one-time migration)
 function migrateExistingHoldings(cryptoId) {
     const entries = getHoldingsEntries(cryptoId);
@@ -16168,6 +16187,17 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 continue;
             }
 
+            // Map crypto symbol to CoinGecko ID (need this early for entry verification)
+            const cryptoMapping = {
+                'BTC': 'bitcoin',
+                'BCH': 'bitcoin-cash',
+                'RVN': 'ravencoin',
+                'DOGE': 'dogecoin',
+                'LTC': 'litecoin',
+                'KAS': 'kaspa'
+            };
+            const cryptoId = cryptoMapping[crypto] || crypto.toLowerCase();
+
             // Check both keys for existing tracked rewards
             const existingByKey = addedRewards[packageKey];
             const existingByName = addedRewards[packageNameKey];
@@ -16179,22 +16209,25 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 const currentAmount = parseFloat(pkg.reward) || 0;
 
                 if (Math.abs(trackedAmount - currentAmount) < 0.00000001) {
-                    console.log(`   ⏭️ Skipping ${pkg.name}: Already tracked ${trackedAmount} ${crypto} (current: ${currentAmount})`);
-                    continue;
-                }
-                console.log(`   🔄 ${pkg.name}: Reward changed from ${trackedAmount} to ${currentAmount} ${crypto}`);
-            }
+                    // VERIFY: Check that a holdings entry actually exists for this package
+                    // This catches the case where tracking succeeded but entry save failed
+                    const existingEntries = getHoldingsEntries(cryptoId);
+                    const entryExists = existingEntries.some(e =>
+                        e.packageId === pkg.id ||
+                        (e.source === 'easymining-reward' && e.packageName === pkg.name)
+                    );
 
-            // Map crypto symbol to CoinGecko ID
-            const cryptoMapping = {
-                'BTC': 'bitcoin',
-                'BCH': 'bitcoin-cash',
-                'RVN': 'ravencoin',
-                'DOGE': 'dogecoin',
-                'LTC': 'litecoin',
-                'KAS': 'kaspa'
-            };
-            const cryptoId = cryptoMapping[crypto] || crypto.toLowerCase();
+                    if (entryExists) {
+                        console.log(`   ⏭️ Skipping ${pkg.name}: Already tracked ${trackedAmount} ${crypto} (entry verified)`);
+                        continue;
+                    } else {
+                        console.log(`   ⚠️ ${pkg.name}: Tracked but NO ENTRY FOUND - will re-add ${trackedAmount} ${crypto}`);
+                        // Don't continue - we need to add the entry
+                    }
+                } else {
+                    console.log(`   🔄 ${pkg.name}: Reward changed from ${trackedAmount} to ${currentAmount} ${crypto}`);
+                }
+            }
     
             // Check if crypto already exists in portfolio
             let cryptoExists = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
@@ -16286,8 +16319,20 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                         const trackedSecondary = parseFloat(existingSecondary.amount) || 0;
 
                         if (Math.abs(trackedSecondary - secondaryRewardAmount) < 0.00000001) {
-                            console.log(`   ⏭️ Skipping ${pkg.name} secondary: Already tracked ${trackedSecondary} ${secondaryCrypto}`);
-                            secondaryAmountToAdd = 0;
+                            // VERIFY: Check that a holdings entry actually exists for this secondary reward
+                            const existingSecondaryEntries = getHoldingsEntries(secondaryCryptoId);
+                            const secondaryEntryExists = existingSecondaryEntries.some(e =>
+                                e.packageId === pkg.id ||
+                                (e.source === 'easymining-reward' && e.packageName === pkg.name)
+                            );
+
+                            if (secondaryEntryExists) {
+                                console.log(`   ⏭️ Skipping ${pkg.name} secondary: Already tracked ${trackedSecondary} ${secondaryCrypto} (entry verified)`);
+                                secondaryAmountToAdd = 0;
+                            } else {
+                                console.log(`   ⚠️ ${pkg.name} secondary: Tracked but NO ENTRY FOUND - will re-add ${trackedSecondary} ${secondaryCrypto}`);
+                                // Keep secondaryAmountToAdd as the full amount since entry doesn't exist
+                            }
                         } else {
                             secondaryAmountToAdd = secondaryRewardAmount - trackedSecondary;
                             console.log(`   🔄 ${pkg.name} secondary: Reward changed from ${trackedSecondary} to ${secondaryRewardAmount} ${secondaryCrypto}`);
@@ -16399,7 +16444,11 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 // ✅ Check for missed rewards (runs on load and every 30 seconds)
 // This ensures that rewards found while the app was closed get added to holdings
 async function checkMissedRewards() {
-    // Only check if EasyMining is enabled and auto-update is on
+    // First, sync all holdings displays from entries
+    // This ensures any entries that exist but weren't reflected in UI get displayed
+    syncAllHoldingsFromEntries();
+
+    // Only check for new rewards if EasyMining is enabled and auto-update is on
     if (!easyMiningSettings.enabled || !easyMiningSettings.autoUpdateHoldings) {
         return;
     }
