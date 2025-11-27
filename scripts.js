@@ -13203,6 +13203,12 @@ async function fetchNiceHashOrders() {
             console.log(`      sharedTicket.members.length: ${order.sharedTicket?.members?.length}`);
             console.log(`      sharedTicket.numberOfParticipants: ${order.sharedTicket?.numberOfParticipants}`);
             console.log(`      pool.rigsCount: ${order.pool?.rigsCount}`);
+            console.log(`   🎲 Probability Data:`);
+            console.log(`      order.probabilityPrecision: ${order.probabilityPrecision}`);
+            console.log(`      order.probability: ${order.probability}`);
+            console.log(`      order.mergeProbabilityPrecision: ${order.mergeProbabilityPrecision}`);
+            console.log(`      sharedTicket.currencyAlgoTicket.probabilityPrecision: ${order.sharedTicket?.currencyAlgoTicket?.probabilityPrecision}`);
+            console.log(`      sharedTicket.currencyAlgoTicket.probability: ${order.sharedTicket?.currencyAlgoTicket?.probability}`);
 
             // Check if this is a team package - detect by name starting with "team" (case-insensitive)
             const packageName = order.packageName || '';
@@ -13685,9 +13691,34 @@ async function fetchNiceHashOrders() {
                     ? (order.sharedTicket?.numberOfParticipants || order.numberOfParticipants || 0)
                     : null,
                 totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
-                // Probability from API (team packages use sharedTicket.currencyAlgoTicket.probability)
-                probability: order.sharedTicket?.currencyAlgoTicket?.probability || order.probability || null,
-                mergeProbability: order.sharedTicket?.currencyAlgoTicket?.mergeProbability || order.mergeProbability || null,
+                // Probability from API - format as "1:X" from probabilityPrecision
+                // Team packages: sharedTicket.currencyAlgoTicket, Solo packages: direct on order
+                probability: (() => {
+                    const prob = order.sharedTicket?.currencyAlgoTicket?.probabilityPrecision
+                        || order.probabilityPrecision
+                        || order.sharedTicket?.currencyAlgoTicket?.probability
+                        || order.probability;
+                    if (!prob) return null;
+                    // If already formatted as "1:X", return as-is
+                    if (typeof prob === 'string' && prob.includes(':')) return prob;
+                    // Format numeric probability as "1:X"
+                    const numProb = parseFloat(prob);
+                    if (isNaN(numProb) || numProb <= 0) return null;
+                    return numProb >= 1 ? `1:${Math.round(numProb)}` : `${Math.round(1/numProb)}:1`;
+                })(),
+                mergeProbability: (() => {
+                    const prob = order.sharedTicket?.currencyAlgoTicket?.mergeProbabilityPrecision
+                        || order.mergeProbabilityPrecision
+                        || order.sharedTicket?.currencyAlgoTicket?.mergeProbability
+                        || order.mergeProbability;
+                    if (!prob) return null;
+                    // If already formatted as "1:X", return as-is
+                    if (typeof prob === 'string' && prob.includes(':')) return prob;
+                    // Format numeric probability as "1:X"
+                    const numProb = parseFloat(prob);
+                    if (isNaN(numProb) || numProb <= 0) return null;
+                    return numProb >= 1 ? `1:${Math.round(numProb)}` : `${Math.round(1/numProb)}:1`;
+                })(),
                 // Package metadata
                 active: isActive,
                 status: isActive ? 'active' : 'completed',
