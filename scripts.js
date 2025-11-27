@@ -1168,8 +1168,9 @@ function showAppPage() {
     window.scrollTo(0, 0);
     // Stop buy packages polling when leaving the page
     stopBuyPackagesPolling();
-    // Stop package detail live timer when leaving the page
+    // Stop package detail live timer and polling when leaving the page
     stopPackageDetailTimer();
+    stopPackageDetailPolling();
 
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
@@ -1208,6 +1209,7 @@ function showEasyMiningSettingsPage() {
     stopBuyPackagesPolling();
     stopEasyMiningAlertsPolling();
     stopPackageDetailTimer();
+    stopPackageDetailPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -4432,8 +4434,9 @@ function showBuyPackagesPage() {
 
     // Stop EasyMining alerts polling when leaving main app page
     stopEasyMiningAlertsPolling();
-    // Stop package detail live timer when leaving
+    // Stop package detail live timer and polling when leaving
     stopPackageDetailTimer();
+    stopPackageDetailPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -15764,7 +15767,7 @@ function updateTeamAlertCardValues(pkg) {
     console.log(`✅ Updated team alert values for ${pkg.name}: participants=${pkg.numberOfParticipants}, shares=${myBoughtShares}`);
 
     // ✅ Dynamically update Clear Shares button visibility
-    updateClearSharesButtonVisibility(pkg.name, alertPackageId, myBoughtShares);
+    updateClearSharesButtonVisibility(pkg.name, apiPackageId, myBoughtShares);
 }
 
 /**
@@ -17133,6 +17136,9 @@ function showPackageDetailPage(pkg) {
 
     // Start the 1-second live update timer for smooth countdown
     startPackageDetailTimer();
+
+    // Start 5-second API polling for fresh data
+    startPackageDetailPolling();
 }
 
 // Store current package for live updates
@@ -17145,6 +17151,8 @@ let miningChartDataStore = {};
 let hashrateHistory = {};
 // Separate 1-second timer for smooth countdown/progress updates (independent of API polling)
 let packageDetailUpdateInterval = null;
+// Separate 5-second polling for package detail page API data
+let packageDetailPollingInterval = null;
 
 // Live update function that runs every second (independent of API polling)
 function updatePackageDetailLive() {
@@ -17222,6 +17230,48 @@ function stopPackageDetailTimer() {
         clearInterval(packageDetailUpdateInterval);
         packageDetailUpdateInterval = null;
         console.log('⏱️ Package detail live timer stopped');
+    }
+}
+
+// Start the package detail API polling (5-second interval)
+function startPackageDetailPolling() {
+    // Clear any existing polling
+    if (packageDetailPollingInterval) {
+        clearInterval(packageDetailPollingInterval);
+    }
+
+    // Poll every 5 seconds for fresh API data
+    packageDetailPollingInterval = setInterval(async () => {
+        if (!currentDetailPackage) return;
+
+        console.log('🔄 Package detail polling - fetching fresh data...');
+
+        try {
+            // Fetch fresh EasyMining data
+            await fetchEasyMiningData();
+
+            // Find the updated package from the fresh data
+            if (easyMiningData.activePackages) {
+                const updatedPkg = easyMiningData.activePackages.find(p => p.id === currentDetailPackage.id);
+                if (updatedPkg) {
+                    console.log('✅ Package detail poll - updating chart with fresh data');
+                    updateMiningChartLive(updatedPkg);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Package detail polling error:', error);
+        }
+    }, 5000);
+
+    console.log('🔄 Package detail API polling started (5-second interval)');
+}
+
+// Stop the package detail API polling
+function stopPackageDetailPolling() {
+    if (packageDetailPollingInterval) {
+        clearInterval(packageDetailPollingInterval);
+        packageDetailPollingInterval = null;
+        console.log('🔄 Package detail API polling stopped');
     }
 }
 
@@ -17621,7 +17671,7 @@ function updateMiningChartLive(pkg) {
     }
 
     // Get hashrate values - use projectedSpeed for team packages if acceptedCurrentSpeed is 0
-    const currentHashrate = pkg.acceptedCurrentSpeed || pkg.projectedSpeed || 0;
+    const currentHashrate = parseFloat(pkg.acceptedCurrentSpeed) || parseFloat(pkg.projectedSpeed) || 0;
     const speedLimit = pkg.speedLimit || pkg.projectedSpeed || currentHashrate || 1;
     const hashrateRatio = speedLimit > 0 ? currentHashrate / speedLimit : 1;
 
