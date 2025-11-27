@@ -18287,50 +18287,73 @@ function updateMiningProgressChart(pkg) {
             miningChartDataStore[pkg.id] = chartData;
         } else {
             // =============================================================================
-            // 30-SECOND INTERVAL BAR CHART
-            // Calculate total bars based on remaining time / 30 seconds
-            // Dynamically size bars to fit within container width
+            // DYNAMIC INTERVAL BAR CHART
+            // Automatically adjusts interval (30s, 60s, 120s, 300s, or custom)
+            // to fit all bars within container width on any screen size
             // =============================================================================
-
-            const INTERVAL_SECONDS = 30; // Each bar represents 30 seconds
 
             // Get container width with better fallback for mobile
             let containerWidth = barsContainer.offsetWidth;
+            const isMobileView = window.innerWidth <= 768;
+            const isSmallMobile = window.innerWidth <= 480;
+
             if (!containerWidth || containerWidth < 100) {
                 // Fallback: use viewport width minus padding for mobile
-                const isMobile = window.innerWidth <= 768;
-                containerWidth = isMobile ? Math.max(280, window.innerWidth - 60) : 600;
+                containerWidth = isMobileView ? Math.max(280, window.innerWidth - 60) : 600;
+            }
+
+            // Total duration in seconds
+            const totalDurationSeconds = totalDuration / 1000;
+
+            // Dynamically calculate interval to fit all bars on screen
+            // Target: minBarWidth + gap per bar, ensure all fit within container
+            const gapWidth = 1;
+            const minBarWidth = isMobileView ? 3 : 2;
+            const maxBarWidth = isMobileView ? 6 : 8;
+            const targetBarSpace = minBarWidth + gapWidth; // Space each bar needs
+            const maxBarsForContainer = Math.floor(containerWidth / targetBarSpace);
+
+            // Calculate interval to fit within maxBarsForContainer
+            // Use larger intervals on mobile to reduce bar count
+            let INTERVAL_SECONDS;
+            const barsNeededAt30s = Math.ceil(totalDurationSeconds / 30);
+
+            if (barsNeededAt30s <= maxBarsForContainer) {
+                INTERVAL_SECONDS = 30; // 30 seconds fits
+            } else if (totalDurationSeconds / 60 <= maxBarsForContainer) {
+                INTERVAL_SECONDS = 60; // 1 minute intervals
+            } else if (totalDurationSeconds / 120 <= maxBarsForContainer) {
+                INTERVAL_SECONDS = 120; // 2 minute intervals
+            } else if (totalDurationSeconds / 300 <= maxBarsForContainer) {
+                INTERVAL_SECONDS = 300; // 5 minute intervals
+            } else {
+                // Calculate interval to fit exactly
+                INTERVAL_SECONDS = Math.ceil(totalDurationSeconds / maxBarsForContainer);
             }
 
             // Calculate total expected bars for the entire remaining duration
             const remainingSeconds = remainingMs / 1000;
             const totalExpectedBars = Math.ceil(remainingSeconds / INTERVAL_SECONDS);
 
-            // Calculate elapsed bars (how many 30-second intervals have passed)
+            // Calculate elapsed bars (how many intervals have passed)
             const elapsedSeconds = elapsedMs / 1000;
             const elapsedBars = Math.floor(elapsedSeconds / INTERVAL_SECONDS);
 
             // Total bars for the full duration
-            const totalDurationSeconds = totalDuration / 1000;
             const totalBarsForDuration = Math.ceil(totalDurationSeconds / INTERVAL_SECONDS);
 
-            // Calculate dynamic bar width to fit all bars
-            // Account for gap (1px) between bars - use larger min on mobile for visibility
-            const gapWidth = 1;
-            const isMobileView = window.innerWidth <= 768;
-            const isSmallMobile = window.innerWidth <= 480;
-            const minBarWidth = isMobileView ? 2 : 1;
-            const maxBarWidth = isMobileView ? 6 : 8;
+            // Calculate dynamic bar width to fit all bars with some padding
+            const totalGapSpace = (totalBarsForDuration - 1) * gapWidth;
             let barWidth = Math.max(minBarWidth, Math.min(maxBarWidth,
-                (containerWidth - (totalBarsForDuration * gapWidth)) / totalBarsForDuration));
+                (containerWidth - totalGapSpace) / totalBarsForDuration));
 
             // Scale bar heights for mobile
             const heightScale = isSmallMobile ? 0.6 : (isMobileView ? 0.75 : 1);
             const maxBarHeight = 200 * heightScale;
             const rewardBarHeight = 240 * heightScale;
 
-            console.log(`📊 [BAR CHART] Duration: ${totalDurationSeconds}s, Bars: ${totalBarsForDuration}, Width: ${barWidth.toFixed(1)}px, Mobile: ${isMobileView}`);
-            console.log(`   - Elapsed: ${elapsedBars} bars, Remaining: ${totalExpectedBars} bars, Container: ${containerWidth}px`);
+            console.log(`📊 [BAR CHART] Duration: ${totalDurationSeconds}s, Interval: ${INTERVAL_SECONDS}s, Bars: ${totalBarsForDuration}, Width: ${barWidth.toFixed(1)}px, Mobile: ${isMobileView}`);
+            console.log(`   - Elapsed: ${elapsedBars} bars, Remaining: ${totalExpectedBars} bars, Container: ${containerWidth}px, MaxBars: ${maxBarsForContainer}`);
 
             // Track highest percentage bar (for closest-to-reward highlight)
             // PERSIST: Only update if NEW bar has HIGHER percentage than stored value
@@ -18341,7 +18364,7 @@ function updateMiningProgressChart(pkg) {
             // Initialize reward slots tracking (persists reward positions)
             if (!chartData.rewardSlots) chartData.rewardSlots = [];
 
-            // Create bars for elapsed intervals (map data points to 30-second slots)
+            // Create bars for elapsed intervals (map data points to dynamic interval slots)
             const packageStartMs = startTime;
 
             for (let i = 0; i < totalBarsForDuration; i++) {
@@ -18355,11 +18378,11 @@ function updateMiningProgressChart(pkg) {
                 bar.style.minWidth = `${barWidth}px`;
                 bar.style.maxWidth = `${barWidth}px`;
 
-                // Calculate time range for this bar slot (30-second window)
+                // Calculate time range for this bar slot (dynamic interval window)
                 const slotStartMs = packageStartMs + (i * INTERVAL_SECONDS * 1000);
                 const slotEndMs = slotStartMs + (INTERVAL_SECONDS * 1000);
 
-                // Find data points within this 30-second slot
+                // Find data points within this interval slot
                 const slotDataPoints = dataPoints.filter(p =>
                     p.timestamp >= slotStartMs && p.timestamp < slotEndMs
                 );
