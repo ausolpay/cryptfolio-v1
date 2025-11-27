@@ -231,6 +231,7 @@ let dailyAddedValue = 0;
 let lastMidnightReset = null;
 let cryptoPriceChanges = {}; // Store 24h changes for each crypto
 let cryptoPriceDirections = {}; // Store last price direction for each crypto ('up' or 'down')
+let cryptoPrices = {}; // Store current prices for each crypto (e.g., { bitcoin: { aud: 140000 }, ... })
 
 // EasyMining polling intervals (declared early for showAppPage access)
 let easyMiningPollingInterval = null;
@@ -4696,6 +4697,12 @@ async function fetchPrices() {
         const data = await fetchWithFallback(apiUrl); // Primary fetch from CoinGecko
         console.log('Prices fetched:', data);
 
+        // Store prices in global cryptoPrices object for use by other functions
+        if (data && typeof data === 'object') {
+            Object.assign(cryptoPrices, data);
+            console.log('💰 cryptoPrices updated:', cryptoPrices);
+        }
+
         let pricesChanged = false;
 
         for (let crypto of users[loggedInUser].cryptos) {
@@ -8483,6 +8490,16 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
 
     // Store the new price as the last known price
     lastPriceForCrypto[symbol] = priceInAud;
+
+    // Update cryptoPrices global for this crypto (find the coingecko ID)
+    const cryptoEntry = users[loggedInUser]?.cryptos?.find(c => c.symbol.toLowerCase() === symbol);
+    if (cryptoEntry) {
+        const currencyKey = getCoinGeckoCurrency();
+        if (!cryptoPrices[cryptoEntry.id]) {
+            cryptoPrices[cryptoEntry.id] = {};
+        }
+        cryptoPrices[cryptoEntry.id][currencyKey] = priceInAud;
+    }
 
     // Save current focus state
     saveFocusDetails();
