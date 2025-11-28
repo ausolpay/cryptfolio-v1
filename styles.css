@@ -1201,6 +1201,7 @@ a {
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
+    background-color: #fff;
 }
 
 @keyframes floatIconStrip {
@@ -1549,6 +1550,7 @@ body.light-mode .best-performer-item {
     width: 24px;
     height: 24px;
     border-radius: 50%;
+    background-color: #fff;
 }
 
 .performer-name {
@@ -1957,6 +1959,9 @@ body.light-mode input[type="number"], body.light-mode .add-crypto input[type="te
 .logo-container img {
     width: 100%;
     height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #fff;
 }
 
 .flash-green {
@@ -2250,6 +2255,7 @@ body.light-mode .terms-conditions-content {
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
+    background-color: #fff;
 }
 
 @keyframes floatIcon {
@@ -3210,6 +3216,8 @@ body:not(.dark-mode) .holdings-info {
     width: 40px;
     height: 40px;
     margin-right: 10px;
+    border-radius: 50%;
+    background-color: #fff;
 }
 
 .crypto-name {
@@ -5897,6 +5905,7 @@ body.light-mode .stat-value-medium {
     height: 1.2em;
     border-radius: 50%;
     object-fit: cover;
+    background-color: #fff;
 }
 
 .dual-crypto-icons {
