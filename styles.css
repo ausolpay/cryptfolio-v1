@@ -5769,15 +5769,22 @@ body.light-mode .package-section {
     text-transform: uppercase;
     letter-spacing: 1px;
     color: #888;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-weight: 500;
+    text-align: center;
+}
+
+/* Mining section without label */
+.mining-info {
+    padding: 12px !important;
 }
 
 /* Stat Grid (Mining Info) */
 .package-stat-grid {
     display: flex;
-    justify-content: space-around;
-    gap: 8px;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
 }
 
 .stat-block {
@@ -5785,7 +5792,8 @@ body.light-mode .package-section {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    flex: 1;
+    flex: 0 1 auto;
+    min-width: 60px;
 }
 
 .stat-block.probability {
@@ -5827,53 +5835,52 @@ body.light-mode .stat-value-medium {
 
 .reward-display {
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 4px;
 }
 
-.reward-crypto {
+.reward-line {
     display: flex;
     align-items: baseline;
     gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .reward-amount {
-    font-size: 1.6em;
+    font-size: 1.4em;
     font-weight: 700;
     color: #4CAF50;
 }
 
 .reward-symbol {
-    font-size: 1em;
+    font-size: 0.95em;
     font-weight: 600;
     color: #4CAF50;
     opacity: 0.8;
 }
 
 .reward-fiat {
-    font-size: 0.9em;
+    font-size: 0.85em;
     color: #888;
 }
 
-.reward-fiat span {
-    color: #aaa;
-}
-
-body.light-mode .reward-fiat span {
+body.light-mode .reward-fiat {
     color: #666;
 }
 
 /* Price Section */
 .price-info {
-    background-color: transparent !important;
-    padding: 8px 12px !important;
+    background-color: rgba(50, 50, 50, 0.3) !important;
+    padding: 10px 12px !important;
+    margin-top: auto;
 }
 
 .price-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 10px;
 }
 
 .price-label {
@@ -5892,22 +5899,21 @@ body.light-mode .price-value {
     color: #333;
 }
 
-/* Package Footer */
-.package-footer {
-    margin-top: auto;
-    padding-top: 10px;
+/* Buy Button Row */
+.buy-button-row {
+    width: 100%;
 }
 
-.package-footer .buy-now-btn {
+.buy-button-row .buy-now-btn {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
     font-size: 14px;
     font-weight: 600;
     border-radius: 6px;
     transition: all 0.2s ease;
 }
 
-.package-footer .buy-now-btn:hover {
+.buy-button-row .buy-now-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
 }

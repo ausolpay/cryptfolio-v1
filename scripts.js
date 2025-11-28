@@ -22281,7 +22281,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
             <div class="package-body">
                 <div class="package-section mining-info">
-                    <div class="section-label">Mining</div>
                     <div class="package-stat-grid">
                         <div class="stat-block probability">
                             <span class="stat-value-large" id="probability-display-${packageIdForElements}">${pkg.probability || (pkg.isDualCrypto ? pkg.mergeProbability : 'N/A')}</span>
@@ -22302,12 +22301,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 <div class="package-section rewards-info">
                     <div class="section-label">Potential Reward</div>
                     <div class="reward-display">
-                        <div class="reward-crypto">
+                        <div class="reward-line">
                             <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0'}</span>
                             <span class="reward-symbol">${pkg.crypto || ''}</span>
-                        </div>
-                        <div class="reward-fiat">
-                            <span id="reward-value-display-${packageId}">≈ $${formatNumber(rewardAUD)} AUD</span>
+                            <span class="reward-fiat" id="reward-value-display-${packageId}">≈ $${formatNumber(rewardAUD)}</span>
                         </div>
                     </div>
                 </div>
@@ -22316,10 +22313,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         <span class="price-label">Price</span>
                         <span class="price-value" id="price-${packageId}">$${priceAUD} AUD</span>
                     </div>
+                    <div class="buy-button-row">
+                        ${soloBuyButton}
+                    </div>
                 </div>
-            </div>
-            <div class="package-footer">
-                ${soloBuyButton}
             </div>
         `;
     } else {
