@@ -22356,7 +22356,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     </div>
                 </div>
                 <div class="package-section rewards-info">
-                    <div class="section-label">Potential Reward</div>
                     ${(() => {
                         /*
                          * FLOATING TOKEN ICONS IN REWARD SECTION
