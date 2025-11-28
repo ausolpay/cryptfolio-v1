@@ -4261,12 +4261,14 @@ body.light-mode .package-tab.active {
     }
 
     /* Center "No packages" messages properly on mobile */
+    /* Offset the parent section's -5px margin-left by adding 5px to left padding */
     .active-packages-container p,
     .no-packages-message {
         text-align: center;
         width: 100%;
         margin: 20px 0;
         padding: 20px;
+        padding-left: 25px; /* Extra padding to offset section's -5px margin */
     }
 
     /* When container only has a message, use flexbox for centering */
@@ -4278,10 +4280,10 @@ body.light-mode .package-tab.active {
 
     .active-packages-section {
         padding: 4px; /* Reduce padding on mobile */
-        width: 100%;
+        width: auto;
         height: auto;
         max-width: 100%; /* Full width on mobile */
-        margin-left: 0; /* Remove left offset for proper centering */
+        margin-left: -5px; /* Move 5px to the left on mobile to fit packages */
     }
 
 
