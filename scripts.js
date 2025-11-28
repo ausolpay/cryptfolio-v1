@@ -5010,8 +5010,9 @@ function updateBestPerformer() {
     const changeEl = document.getElementById('best-performer-change');
 
     if (bestCrypto && iconEl && nameEl && changeEl) {
-        iconEl.src = bestCrypto.image || '';
-        iconEl.style.display = bestCrypto.image ? 'inline-block' : 'none';
+        const iconUrl = bestCrypto.thumb ? bestCrypto.thumb.replace('/thumb/', '/small/') : '';
+        iconEl.src = iconUrl;
+        iconEl.style.display = iconUrl ? 'inline-block' : 'none';
         nameEl.textContent = bestCrypto.symbol?.toUpperCase() || bestCrypto.id.toUpperCase();
 
         const sign = bestChange >= 0 ? '+' : '';
@@ -7885,7 +7886,7 @@ function addCryptoContainer(id, symbol, name, thumb) {
         <span id="${id}-bear-icon" class="sentiment-icon bear-icon">🐻</span>
         <span id="${id}-bull-icon" class="sentiment-icon bull-icon">🐂</span>
         <div class="logo-container" id="${id}-logo" onclick="openCandlestickModal('${id}')">
-            <img src="${thumb}" alt="${name} Logo">
+            <img src="${thumb.replace('/thumb/', '/small/')}" alt="${name} Logo">
         </div>
         <h2>${name} (${symbol.toUpperCase()})</h2>
         <p><span id="${id}-triangle" class="triangle"></span><span id="${id}-price-aud">$0.00000000</span></p>
