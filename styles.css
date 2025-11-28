@@ -2414,6 +2414,10 @@ body.light-mode .terms-conditions-content {
     font-size: clamp(24px, 6vw, 56px);
     font-weight: 600;
     margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .modal-stat-card .stat-label {
