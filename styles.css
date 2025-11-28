@@ -2521,12 +2521,12 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     }
 
     .modal-stats {
-        grid-template-columns: 1fr 1fr;
-        gap: 5px;
+        grid-template-columns: 1fr;
+        gap: 10px;
     }
 
     .modal-stat-card {
-        padding: 15px;
+        padding: 15px 30px;
     }
 
     .holdings-modal-content .close {
