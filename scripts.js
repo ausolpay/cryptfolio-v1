@@ -21230,6 +21230,10 @@ async function loadBuyPackagesDataOnPage() {
         window.packageCryptoPrices = {};
     }
 
+    // Capture package metrics for historical tracking and averaging
+    // This stores hashrate, probability, and price data with timestamps
+    capturePackageMetrics(allPackages);
+
     // Load solo recommendations to highlight packages
     console.log('🔔 Loading solo recommendations for package highlighting...');
     const soloRecommendations = await checkPackageRecommendations();
@@ -22369,6 +22373,9 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         // For dual-crypto (Palladium), double the icons: S=2, M=4, L=6
                         const totalIcons = pkg.isDualCrypto ? iconCount * 2 : iconCount;
 
+                        // Get dynamic speed from package metrics averages if available
+                        const metricsSpeed = getPackageMetricsSpeed(pkg.name);
+
                         let floatingHtml = '<div class="reward-floating-icons">';
                         for (let i = 0; i < totalIcons; i++) {
                             // Stagger delays more for less synchronized movement
@@ -22376,8 +22383,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             // Spread icons across the section
                             const startX = 5 + (i * (80 / totalIcons)) + Math.random() * 10;
                             const startY = 10 + Math.random() * 70;
-                            // Vary speed significantly per icon (8-18s range)
-                            const speed = baseSpeed + (Math.random() * 6 - 3);
+                            // Use metrics-based speed if available, otherwise use probability-based speed
+                            const speed = metricsSpeed || (baseSpeed + (Math.random() * 6 - 3));
+                            // Different speed for Y axis creates orbital motion
+                            const speedY = speed * (0.7 + Math.random() * 0.6);
+                            // Pulse speed varies independently
+                            const pulseSpeed = 6 + Math.random() * 6;
                             // Random movement range
                             const rangeX = 25 + Math.random() * 35;
                             const rangeY = 30 + Math.random() * 25;
@@ -22393,7 +22404,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             }
 
                             if (url) {
-                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
+                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
                             }
                         }
                         floatingHtml += '</div>';
@@ -24561,6 +24572,9 @@ function startBuyPackagesPolling() {
     // Initial load
     loadBuyPackagesDataOnPage();
 
+    // Start package metrics averaging (calculates averages every 5 seconds)
+    startPackageMetricsAveraging();
+
     // Poll every 5 seconds
     buyPackagesPollingInterval = setInterval(() => {
         if (!buyPackagesPollingPaused) {
@@ -24580,6 +24594,9 @@ function stopBuyPackagesPolling() {
         buyPackagesPollingInterval = null;
         console.log('⏹️ Buy packages polling stopped');
     }
+
+    // Also stop package metrics averaging when leaving the page
+    stopPackageMetricsAveraging();
 }
 
 function pauseBuyPackagesPolling() {
@@ -24598,6 +24615,309 @@ function pauseBuyPackagesPolling() {
         buyPackagesPauseTimer = null;
         console.log('▶️ Resuming buy packages polling');
     }, 10000);
+}
+
+// =============================================================================
+// PACKAGE METRICS TRACKING SYSTEM
+// Captures hashrate, probability, and price data for all packages on each page load
+// Calculates running averages for analysis and determining best time to buy
+// =============================================================================
+
+// Storage key for package metrics
+const PACKAGE_METRICS_STORAGE_KEY = 'packageMetricsHistory';
+
+// Interval for updating averages (5 seconds)
+let packageMetricsAverageInterval = null;
+
+/**
+ * Get the package metrics history from localStorage
+ * Structure: {
+ *   [packageName]: {
+ *     snapshots: [{ timestamp, hashrate, hashrateRaw, probability, probabilityRaw, priceBTC, priceAUD }],
+ *     averages: { hashrate, probability, priceBTC, priceAUD, lastUpdated }
+ *   }
+ * }
+ */
+function getPackageMetricsHistory() {
+    try {
+        const data = localStorage.getItem(PACKAGE_METRICS_STORAGE_KEY);
+        return data ? JSON.parse(data) : {};
+    } catch (error) {
+        console.error('❌ Error reading package metrics history:', error);
+        return {};
+    }
+}
+
+/**
+ * Save package metrics history to localStorage
+ */
+function savePackageMetricsHistory(history) {
+    try {
+        localStorage.setItem(PACKAGE_METRICS_STORAGE_KEY, JSON.stringify(history));
+    } catch (error) {
+        console.error('❌ Error saving package metrics history:', error);
+    }
+}
+
+/**
+ * Parse hashrate string to numeric value (in TH/s for comparison)
+ * Examples: "1 TH/s" -> 1, "100 MH/s" -> 0.0001, "1 PH/s" -> 1000
+ */
+function parseHashrate(hashrateStr) {
+    if (!hashrateStr) return 0;
+    const match = hashrateStr.match(/([\d.]+)\s*(PH|TH|GH|MH|KH|H)\/s/i);
+    if (!match) return 0;
+
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+
+    // Convert to TH/s
+    const multipliers = {
+        'PH': 1000,
+        'TH': 1,
+        'GH': 0.001,
+        'MH': 0.000001,
+        'KH': 0.000000001,
+        'H': 0.000000000001
+    };
+
+    return value * (multipliers[unit] || 0);
+}
+
+/**
+ * Parse probability string to numeric value
+ * Example: "1:150" -> 150
+ */
+function parseProbability(probabilityStr) {
+    if (!probabilityStr) return 0;
+    const match = probabilityStr.match(/1:(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+}
+
+/**
+ * Capture current metrics for all packages
+ * Called each time user lands on Buy Packages page
+ */
+function capturePackageMetrics(packages) {
+    if (!packages || packages.length === 0) {
+        console.log('📊 No packages to capture metrics for');
+        return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const history = getPackageMetricsHistory();
+    let capturedCount = 0;
+
+    packages.forEach(pkg => {
+        const name = pkg.name;
+        if (!name) return;
+
+        // Initialize package entry if not exists
+        if (!history[name]) {
+            history[name] = {
+                snapshots: [],
+                averages: null,
+                crypto: pkg.crypto,
+                algorithm: pkg.algorithm,
+                isTeam: pkg.isTeam || false
+            };
+        }
+
+        // Parse numeric values
+        const hashrateRaw = parseHashrate(pkg.hashrate);
+        const probabilityRaw = parseProbability(pkg.probability);
+
+        // Create snapshot
+        const snapshot = {
+            timestamp,
+            hashrate: pkg.hashrate,
+            hashrateRaw,
+            probability: pkg.probability,
+            probabilityRaw,
+            priceBTC: parseFloat(pkg.priceBTC) || 0,
+            priceAUD: parseFloat(pkg.priceAUD) || 0,
+            duration: pkg.duration,
+            blockReward: pkg.blockReward
+        };
+
+        // Add to snapshots array
+        history[name].snapshots.push(snapshot);
+
+        // Keep only last 1000 snapshots per package to prevent storage bloat
+        if (history[name].snapshots.length > 1000) {
+            history[name].snapshots = history[name].snapshots.slice(-1000);
+        }
+
+        capturedCount++;
+    });
+
+    savePackageMetricsHistory(history);
+    console.log(`📊 Captured metrics for ${capturedCount} packages at ${timestamp}`);
+}
+
+/**
+ * Calculate running averages for all packages
+ * Called every 5 seconds while on Buy Packages page
+ */
+function updatePackageMetricsAverages() {
+    const history = getPackageMetricsHistory();
+    const timestamp = new Date().toISOString();
+    let updatedCount = 0;
+
+    Object.keys(history).forEach(packageName => {
+        const pkg = history[packageName];
+        const snapshots = pkg.snapshots || [];
+
+        if (snapshots.length === 0) return;
+
+        // Calculate averages
+        let totalHashrate = 0;
+        let totalProbability = 0;
+        let totalPriceBTC = 0;
+        let totalPriceAUD = 0;
+        let validCount = 0;
+
+        snapshots.forEach(s => {
+            if (s.hashrateRaw > 0) totalHashrate += s.hashrateRaw;
+            if (s.probabilityRaw > 0) totalProbability += s.probabilityRaw;
+            if (s.priceBTC > 0) totalPriceBTC += s.priceBTC;
+            if (s.priceAUD > 0) totalPriceAUD += s.priceAUD;
+            validCount++;
+        });
+
+        if (validCount > 0) {
+            // Store averages
+            pkg.averages = {
+                hashrate: totalHashrate / validCount,
+                probability: totalProbability / validCount,
+                priceBTC: totalPriceBTC / validCount,
+                priceAUD: totalPriceAUD / validCount,
+                snapshotCount: validCount,
+                lastUpdated: timestamp
+            };
+
+            // Also calculate current vs average (for trend detection)
+            const latestSnapshot = snapshots[snapshots.length - 1];
+            if (latestSnapshot) {
+                pkg.currentVsAverage = {
+                    hashrateRatio: latestSnapshot.hashrateRaw / pkg.averages.hashrate,
+                    probabilityRatio: latestSnapshot.probabilityRaw / pkg.averages.probability,
+                    priceBTCRatio: latestSnapshot.priceBTC / pkg.averages.priceBTC,
+                    priceAUDRatio: latestSnapshot.priceAUD / pkg.averages.priceAUD
+                };
+            }
+
+            updatedCount++;
+        }
+    });
+
+    savePackageMetricsHistory(history);
+    console.log(`📈 Updated averages for ${updatedCount} packages at ${timestamp}`);
+}
+
+/**
+ * Get the animation speed for floating icons based on package metrics
+ * Higher hashrate = faster animation, Lower probability = faster animation
+ * Returns null if no metrics available (falls back to default calculation)
+ */
+function getPackageMetricsSpeed(packageName) {
+    const history = getPackageMetricsHistory();
+    const pkg = history[packageName];
+
+    if (!pkg || !pkg.averages || !pkg.currentVsAverage) return null;
+
+    // Base speed is 12 seconds
+    let speed = 12;
+
+    // If hashrate is above average, speed up (ratio > 1 = faster)
+    // If probability is below average (better odds), speed up (ratio < 1 = faster)
+    const hashrateEffect = pkg.currentVsAverage.hashrateRatio || 1;
+    const probabilityEffect = pkg.currentVsAverage.probabilityRatio || 1;
+
+    // Hashrate above average -> faster (multiply speed reduction)
+    // Higher hashrate ratio = faster, so we divide speed
+    if (hashrateEffect > 1) {
+        speed = speed / Math.min(hashrateEffect, 1.5); // Cap at 1.5x speed increase
+    }
+
+    // Probability below average (better odds) -> faster
+    // Lower probability ratio = faster, so multiply speed reduction
+    if (probabilityEffect < 1) {
+        speed = speed * probabilityEffect;
+    }
+
+    // Clamp speed between 5-20 seconds
+    speed = Math.max(5, Math.min(20, speed));
+
+    // Add some randomness
+    speed += (Math.random() * 4 - 2);
+
+    return speed;
+}
+
+/**
+ * Start the average calculation interval
+ */
+function startPackageMetricsAveraging() {
+    // Stop any existing interval
+    stopPackageMetricsAveraging();
+
+    // Update averages every 5 seconds
+    packageMetricsAverageInterval = setInterval(() => {
+        updatePackageMetricsAverages();
+    }, 5000);
+
+    console.log('📊 Started package metrics averaging (5s interval)');
+}
+
+/**
+ * Stop the average calculation interval
+ */
+function stopPackageMetricsAveraging() {
+    if (packageMetricsAverageInterval) {
+        clearInterval(packageMetricsAverageInterval);
+        packageMetricsAverageInterval = null;
+        console.log('⏹️ Stopped package metrics averaging');
+    }
+}
+
+/**
+ * Get all metrics data for a specific package (for analysis/display)
+ */
+function getPackageMetricsData(packageName) {
+    const history = getPackageMetricsHistory();
+    return history[packageName] || null;
+}
+
+/**
+ * Get summary of all packages with their current metrics and averages
+ */
+function getAllPackageMetricsSummary() {
+    const history = getPackageMetricsHistory();
+    const summary = {};
+
+    Object.keys(history).forEach(name => {
+        const pkg = history[name];
+        summary[name] = {
+            crypto: pkg.crypto,
+            algorithm: pkg.algorithm,
+            isTeam: pkg.isTeam,
+            snapshotCount: pkg.snapshots?.length || 0,
+            averages: pkg.averages,
+            currentVsAverage: pkg.currentVsAverage,
+            latestSnapshot: pkg.snapshots?.[pkg.snapshots.length - 1] || null
+        };
+    });
+
+    return summary;
+}
+
+/**
+ * Clear all package metrics history (for testing/reset)
+ */
+function clearPackageMetricsHistory() {
+    localStorage.removeItem(PACKAGE_METRICS_STORAGE_KEY);
+    console.log('🗑️ Cleared package metrics history');
 }
 
 // =============================================================================

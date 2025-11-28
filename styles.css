@@ -5911,43 +5911,35 @@ body.light-mode .stat-value-medium {
     border-radius: 50%;
     background-color: #fff;
     opacity: 0.3;
-    animation: rewardFloat var(--float-speed, 5s) ease-in-out infinite;
+    /* Continuous smooth orbital motion using linear timing */
+    animation: rewardFloatX var(--float-speed, 10s) linear infinite,
+               rewardFloatY var(--float-speed-y, 12s) linear infinite,
+               rewardPulse var(--pulse-speed, 8s) ease-in-out infinite;
     animation-delay: var(--float-delay, 0s);
 }
 
-@keyframes rewardFloat {
-    0% {
-        transform: translate(0, 0) rotate(0deg) scale(1);
-        opacity: 0.2;
-    }
-    15% {
-        transform: translate(calc(var(--range-x, 30px) * 0.7), calc(var(--range-y, 40px) * -0.5)) rotate(45deg) scale(1.1);
-        opacity: 0.35;
-    }
-    30% {
-        transform: translate(calc(var(--range-x, 30px) * -0.3), calc(var(--range-y, 40px) * 0.3)) rotate(-30deg) scale(0.95);
-        opacity: 0.25;
-    }
-    45% {
-        transform: translate(calc(var(--range-x, 30px) * 0.5), calc(var(--range-y, 40px) * 0.6)) rotate(60deg) scale(1.05);
-        opacity: 0.4;
-    }
-    60% {
-        transform: translate(calc(var(--range-x, 30px) * -0.6), calc(var(--range-y, 40px) * -0.4)) rotate(-45deg) scale(0.9);
-        opacity: 0.3;
-    }
-    75% {
-        transform: translate(calc(var(--range-x, 30px) * 0.4), calc(var(--range-y, 40px) * -0.7)) rotate(30deg) scale(1.15);
-        opacity: 0.35;
-    }
-    90% {
-        transform: translate(calc(var(--range-x, 30px) * -0.2), calc(var(--range-y, 40px) * 0.2)) rotate(-15deg) scale(1);
-        opacity: 0.25;
-    }
-    100% {
-        transform: translate(0, 0) rotate(0deg) scale(1);
-        opacity: 0.2;
-    }
+/* Smooth continuous horizontal oscillation */
+@keyframes rewardFloatX {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(var(--range-x, 25px)); }
+    50% { transform: translateX(0); }
+    75% { transform: translateX(calc(var(--range-x, 25px) * -1)); }
+    100% { transform: translateX(0); }
+}
+
+/* Smooth continuous vertical oscillation (different speed creates orbital effect) */
+@keyframes rewardFloatY {
+    0% { transform: translateY(0); }
+    25% { transform: translateY(calc(var(--range-y, 20px) * -1)); }
+    50% { transform: translateY(0); }
+    75% { transform: translateY(var(--range-y, 20px)); }
+    100% { transform: translateY(0); }
+}
+
+/* Subtle opacity pulse */
+@keyframes rewardPulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.4; }
 }
 
 .reward-display {
