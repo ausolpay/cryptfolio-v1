@@ -22363,23 +22363,37 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         // Extract number from probability string like "1:150" -> 150
                         const probMatch = (pkg.probability || '1:100').match(/1:(\d+)/);
                         const probValue = probMatch ? parseInt(probMatch[1]) : 100;
-                        // Lower probability = faster animation (3-8s range)
-                        const baseSpeed = Math.max(3, Math.min(8, probValue / 30));
+                        // Slower base speed (8-15s range)
+                        const baseSpeed = Math.max(8, Math.min(15, probValue / 15));
+
+                        // For dual-crypto (Palladium), double the icons: S=2, M=4, L=6
+                        const totalIcons = pkg.isDualCrypto ? iconCount * 2 : iconCount;
 
                         let floatingHtml = '<div class="reward-floating-icons">';
-                        for (let i = 0; i < iconCount; i++) {
-                            const delay = i * 1.2 + Math.random() * 0.5;
-                            const startX = 10 + (i * 25) + Math.random() * 15;
-                            const startY = 20 + Math.random() * 60;
-                            // Vary speed per icon with randomness
-                            const speed = baseSpeed + (Math.random() * 2 - 1);
+                        for (let i = 0; i < totalIcons; i++) {
+                            // Stagger delays more for less synchronized movement
+                            const delay = i * 2.5 + Math.random() * 3;
+                            // Spread icons across the section
+                            const startX = 5 + (i * (80 / totalIcons)) + Math.random() * 10;
+                            const startY = 10 + Math.random() * 70;
+                            // Vary speed significantly per icon (8-18s range)
+                            const speed = baseSpeed + (Math.random() * 6 - 3);
                             // Random movement range
-                            const rangeX = 30 + Math.random() * 40;
-                            const rangeY = 40 + Math.random() * 30;
-                            // Alternate between main and merge crypto for dual packages
-                            const url = pkg.isDualCrypto && i % 2 === 0 ? (dualIconUrl || iconUrl) : iconUrl;
+                            const rangeX = 25 + Math.random() * 35;
+                            const rangeY = 30 + Math.random() * 25;
+                            // Random animation direction (some go clockwise, some counter)
+                            const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+
+                            // For dual-crypto: alternate between DOGE and LTC icons
+                            let url;
+                            if (pkg.isDualCrypto) {
+                                url = i % 2 === 0 ? (dualIconUrl || iconUrl) : iconUrl;
+                            } else {
+                                url = iconUrl;
+                            }
+
                             if (url) {
-                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%;" alt="">`;
+                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
                             }
                         }
                         floatingHtml += '</div>';
