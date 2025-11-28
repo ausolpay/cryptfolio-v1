@@ -4252,8 +4252,16 @@ body.light-mode .package-tab.active {
     .active-packages-container {
         grid-template-columns: 1fr; /* One package per row on mobile */
         gap: 10px; /* Reduce gap on mobile */
-        width: auto;
+        width: 100%;
         max-width: 100%;
+        padding: 0;
+    }
+
+    /* Center "No packages" messages properly on mobile */
+    .active-packages-container p {
+        margin-left: 5px; /* Offset the parent's -5px margin */
+        text-align: center;
+        width: calc(100% - 5px);
     }
 
     .active-packages-section {
