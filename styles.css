@@ -5881,6 +5881,19 @@ body.light-mode .stat-value-medium {
     margin-top: 3px;
 }
 
+/* Dual stats for Palladium packages (DOGE + LTC) */
+.probability-block,
+.hashrate-block {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value-medium.dual-stat {
+    margin-top: 2px;
+    font-size: 1em;
+    opacity: 0.85;
+}
+
 /* Rewards Section */
 .rewards-info {
     background-color: rgba(76, 175, 80, 0.1) !important;

@@ -22296,8 +22296,21 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                     <line x1="2" y1="12" x2="6" y2="12"/>
                                     <line x1="18" y1="12" x2="22" y2="12"/>
                                 </svg>
-                                ${pkg.probability || (pkg.isDualCrypto ? pkg.mergeProbability : 'N/A')}
+                                ${pkg.probability || 'N/A'}
                             </span>
+                            ${(pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium')) && pkg.mergeProbability ? `
+                            <span class="stat-value-medium dual-stat">
+                                <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                    <line x1="2" y1="12" x2="6" y2="12"/>
+                                    <line x1="18" y1="12" x2="22" y2="12"/>
+                                </svg>
+                                ${pkg.mergeProbability}
+                            </span>
+                            ` : ''}
                         </div>
                         <div class="stat-block duration-block">
                             <span class="stat-value-medium" id="duration-${packageIdForElements}">
@@ -22322,6 +22335,20 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                     return pkg.hashrate;
                                 })()}
                             </span>
+                            ${(pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium')) && pkg.mergeHashrate ? `
+                            <span class="stat-value-medium dual-stat" id="merge-hashrate-${packageIdForElements}">
+                                <svg class="speed-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2" fill="currentColor"/>
+                                </svg>
+                                ${(() => {
+                                    const match = pkg.mergeHashrate.match(/^([\d.]+)\s*(.+)$/);
+                                    if (match) {
+                                        return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+                                    }
+                                    return pkg.mergeHashrate;
+                                })()}
+                            </span>
+                            ` : ''}
                         </div>
                         ` : ''}
                     </div>
@@ -22430,28 +22457,48 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         if (isPalladium) {
                             // Dual-crypto (Palladium): Add both main and merge crypto icons
                             // S=1 of each, M=2 of each, L=3 of each
+                            // Main crypto icons start from left, merge crypto icons start from right
                             const totalIcons = iconCount * 2;
-                            let iconIndex = 0;
 
                             console.log(`🎨 Palladium floating icons for ${pkg.name}: iconCount=${iconCount}, iconUrl=${iconUrl}, dualIconUrl=${dualIconUrl}`);
 
-                            // Add main crypto icons (e.g., DOGE or LTC depending on package)
+                            // Add main crypto icons (e.g., DOGE) - positioned on left side
                             for (let i = 0; i < iconCount; i++) {
                                 if (iconUrl) {
-                                    floatingHtml += addFloatingIcon(iconUrl, iconIndex, totalIcons);
-                                    iconIndex++;
+                                    // Main icons: left side, lower delay
+                                    const delay = i * 2 + Math.random() * 2;
+                                    const startX = 5 + (i * 25) + Math.random() * 10;
+                                    const startY = 15 + Math.random() * 30;
+                                    const speed = metricsSpeed || (baseSpeed + (Math.random() * 4 - 2));
+                                    const speedY = speed * (0.8 + Math.random() * 0.4);
+                                    const pulseSpeed = 5 + Math.random() * 4;
+                                    const rangeX = 20 + Math.random() * 25;
+                                    const rangeY = 25 + Math.random() * 20;
+                                    const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+
+                                    floatingHtml += `<img class="reward-floating-icon" src="${iconUrl}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
                                 }
                             }
 
-                            // Add merge crypto icons (the other crypto in the pair)
+                            // Add merge crypto icons (e.g., LTC) - positioned on right side, different timing
                             for (let i = 0; i < iconCount; i++) {
                                 if (dualIconUrl) {
-                                    floatingHtml += addFloatingIcon(dualIconUrl, iconIndex, totalIcons);
-                                    iconIndex++;
+                                    // Merge icons: right side, higher delay, different speeds
+                                    const delay = i * 2 + 1.5 + Math.random() * 2;
+                                    const startX = 55 + (i * 20) + Math.random() * 15;
+                                    const startY = 45 + Math.random() * 35;
+                                    const speed = (metricsSpeed || baseSpeed) * 1.2 + (Math.random() * 4 - 2);
+                                    const speedY = speed * (0.6 + Math.random() * 0.5);
+                                    const pulseSpeed = 7 + Math.random() * 5;
+                                    const rangeX = 25 + Math.random() * 30;
+                                    const rangeY = 20 + Math.random() * 25;
+                                    const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+
+                                    floatingHtml += `<img class="reward-floating-icon" src="${dualIconUrl}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
                                 }
                             }
 
-                            console.log(`🎨 Added ${iconIndex} floating icons for ${pkg.name}`);
+                            console.log(`🎨 Added ${iconCount * 2} floating icons for ${pkg.name}`);
                         } else {
                             // Single crypto: S=1, M=2, L=3
                             for (let i = 0; i < iconCount; i++) {
