@@ -22359,14 +22359,27 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             dualIconUrl = mergeCrypto?.thumb ? mergeCrypto.thumb.replace('/thumb/', '/small/') : '';
                         }
 
+                        // Calculate animation speed based on probability (lower = faster)
+                        // Extract number from probability string like "1:150" -> 150
+                        const probMatch = (pkg.probability || '1:100').match(/1:(\d+)/);
+                        const probValue = probMatch ? parseInt(probMatch[1]) : 100;
+                        // Lower probability = faster animation (3-8s range)
+                        const baseSpeed = Math.max(3, Math.min(8, probValue / 30));
+
                         let floatingHtml = '<div class="reward-floating-icons">';
                         for (let i = 0; i < iconCount; i++) {
-                            const delay = i * 0.8;
-                            const startX = 20 + (i * 30);
+                            const delay = i * 1.2 + Math.random() * 0.5;
+                            const startX = 10 + (i * 25) + Math.random() * 15;
+                            const startY = 20 + Math.random() * 60;
+                            // Vary speed per icon with randomness
+                            const speed = baseSpeed + (Math.random() * 2 - 1);
+                            // Random movement range
+                            const rangeX = 30 + Math.random() * 40;
+                            const rangeY = 40 + Math.random() * 30;
                             // Alternate between main and merge crypto for dual packages
                             const url = pkg.isDualCrypto && i % 2 === 0 ? (dualIconUrl || iconUrl) : iconUrl;
                             if (url) {
-                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay}s; left: ${startX}%;" alt="">`;
+                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%;" alt="">`;
                             }
                         }
                         floatingHtml += '</div>';
