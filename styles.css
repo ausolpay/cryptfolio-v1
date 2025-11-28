@@ -1677,10 +1677,13 @@ body.light-mode .performer-name {
 
     .portfolio-stats-grid {
         grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
     }
 
     .portfolio-pnl-grid {
         grid-template-columns: 1fr;
+        gap: 10px;
     }
 
     .pnl-item, .best-performer-item {
