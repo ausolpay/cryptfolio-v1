@@ -22350,17 +22350,32 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         if (pkg.name?.includes(' M') || pkg.name?.endsWith('M')) iconCount = 2;
                         if (pkg.name?.includes(' L') || pkg.name?.endsWith('L')) iconCount = 3;
 
-                        // Get icon URL
+                        // Fallback CoinGecko icon URLs for when user doesn't have crypto in portfolio
+                        const fallbackIcons = {
+                            'bitcoin': 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
+                            'bitcoin-cash': 'https://assets.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+                            'ravencoin': 'https://assets.coingecko.com/coins/images/3412/small/ravencoin.png',
+                            'dogecoin': 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
+                            'litecoin': 'https://assets.coingecko.com/coins/images/2/small/litecoin.png',
+                            'kaspa': 'https://assets.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+                            'ethereum-classic': 'https://assets.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
+                        };
+
+                        // Get icon URL - try user's portfolio first, then fallback
                         const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
                         const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
-                        const iconUrl = userCrypto?.thumb ? userCrypto.thumb.replace('/thumb/', '/small/') : '';
+                        const iconUrl = userCrypto?.thumb
+                            ? userCrypto.thumb.replace('/thumb/', '/small/')
+                            : (fallbackIcons[cryptoId] || '');
 
                         // For dual-crypto, use the merge crypto icon (DOGE)
                         let dualIconUrl = '';
                         if (pkg.isDualCrypto) {
                             const mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
                             const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
-                            dualIconUrl = mergeCrypto?.thumb ? mergeCrypto.thumb.replace('/thumb/', '/small/') : '';
+                            dualIconUrl = mergeCrypto?.thumb
+                                ? mergeCrypto.thumb.replace('/thumb/', '/small/')
+                                : (fallbackIcons[mergeId] || '');
                         }
 
                         // Calculate animation speed based on probability (lower = faster)
