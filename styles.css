@@ -4649,9 +4649,16 @@ body.light-mode .stat-label {
 
 /* Tablet - 2 columns max, centered */
 @media (max-width: 1040px) {
+    /* Add spacing between subheader strips and alert cards on all tablets */
+    .easymining-subheader {
+        margin-bottom: 10px;
+    }
+
     .recommendations-container {
         grid-template-columns: repeat(auto-fit, 300px); /* Auto-fit: max 2 cards on tablet */
         max-width: 650px; /* Max width for 2 cards (300px * 2) + gap */
+        justify-content: center;
+        justify-items: center;
     }
 }
 
@@ -4846,14 +4853,21 @@ body.light-mode .package-card.block-confirmed {
 
 /* ===== TABLET STYLES (768px - 1024px) ===== */
 @media (min-width: 769px) and (max-width: 1024px) {
+    /* Add spacing between subheader strips and alert cards */
+    .easymining-subheader {
+        margin-bottom: 10px;
+    }
+
     /* Recommendations container for alerts - 2 cards per row on tablet */
     .recommendations-container {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 20px;
         justify-content: center;
+        justify-items: center;
         max-width: 750px;
         margin: 0 auto;
+        padding: 0 10px;
     }
 
     /* Ensure cards fit nicely in 2-column layout */
