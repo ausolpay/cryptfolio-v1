@@ -22272,31 +22272,83 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Else: no auto-buy or not purchased = no robot (automatic cleanup)
     }
 
-    card.innerHTML = `
-        ${robotHtml}
-        <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
-        <div class="buy-package-stats">
-            ${probabilityInfo}
-            <div class="buy-package-stat">
-                <span>Duration:</span>
-                <span id="duration-${packageIdForElements}">${pkg.duration}</span>
+    // Solo packages get the new redesigned layout
+    if (!pkg.isTeam) {
+        card.innerHTML = `
+            ${robotHtml}
+            <div class="package-header">
+                <h4>${pkg.name}${isRecommended ? ' <span class="recommended-star">⭐</span>' : ''}</h4>
             </div>
-            ${hashrateInfo}
-            ${sharesInfo}
-            ${rewardInfo}
-            <div class="buy-package-stat">
-                <span>Price:</span>
-                <span id="price-${packageId}">$${priceAUD} AUD</span>
+            <div class="package-body">
+                <div class="package-section mining-info">
+                    <div class="section-label">Mining</div>
+                    <div class="package-stat-grid">
+                        <div class="stat-block probability">
+                            <span class="stat-value-large" id="probability-display-${packageIdForElements}">${pkg.probability || (pkg.isDualCrypto ? pkg.mergeProbability : 'N/A')}</span>
+                            <span class="stat-label-small">Probability</span>
+                        </div>
+                        <div class="stat-block">
+                            <span class="stat-value-medium" id="duration-${packageIdForElements}">${pkg.duration}</span>
+                            <span class="stat-label-small">Duration</span>
+                        </div>
+                        ${pkg.hashrate ? `
+                        <div class="stat-block">
+                            <span class="stat-value-medium" id="hashrate-${packageIdForElements}">${pkg.hashrate}</span>
+                            <span class="stat-label-small">Hashrate</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="package-section rewards-info">
+                    <div class="section-label">Potential Reward</div>
+                    <div class="reward-display">
+                        <div class="reward-crypto">
+                            <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0'}</span>
+                            <span class="reward-symbol">${pkg.crypto || ''}</span>
+                        </div>
+                        <div class="reward-fiat">
+                            <span id="reward-value-display-${packageId}">≈ $${formatNumber(rewardAUD)} AUD</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="package-section price-info">
+                    <div class="price-row">
+                        <span class="price-label">Price</span>
+                        <span class="price-value" id="price-${packageId}">$${priceAUD} AUD</span>
+                    </div>
+                </div>
             </div>
-        </div>
-        ${teamShareSelector}
-        ${soloBuyButton}
-        ${pkg.isTeam && myBoughtShares > 0 ? `
-            <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${pkg.apiData?.id || pkg.id}', '${pkg.name}')">
-                Clear Shares
-            </button>
-        ` : ''}
-    `;
+            <div class="package-footer">
+                ${soloBuyButton}
+            </div>
+        `;
+    } else {
+        // Team packages keep original layout for now
+        card.innerHTML = `
+            ${robotHtml}
+            <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
+            <div class="buy-package-stats">
+                ${probabilityInfo}
+                <div class="buy-package-stat">
+                    <span>Duration:</span>
+                    <span id="duration-${packageIdForElements}">${pkg.duration}</span>
+                </div>
+                ${hashrateInfo}
+                ${sharesInfo}
+                ${rewardInfo}
+                <div class="buy-package-stat">
+                    <span>Price:</span>
+                    <span id="price-${packageId}">$${priceAUD} AUD</span>
+                </div>
+            </div>
+            ${teamShareSelector}
+            ${pkg.isTeam && myBoughtShares > 0 ? `
+                <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${pkg.apiData?.id || pkg.id}', '${pkg.name}')">
+                    Clear Shares
+                </button>
+            ` : ''}
+        `;
+    }
 
     // Store base values for team packages to enable dynamic updates
     if (pkg.isTeam) {
