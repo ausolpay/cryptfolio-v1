@@ -22286,9 +22286,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             <span class="stat-value-large" id="probability-display-${packageIdForElements}">${pkg.probability || (pkg.isDualCrypto ? pkg.mergeProbability : 'N/A')}</span>
                             <span class="stat-label-small">Probability</span>
                         </div>
-                        <div class="stat-block">
-                            <span class="stat-value-medium" id="duration-${packageIdForElements}">${pkg.duration}</span>
-                            <span class="stat-label-small">Duration</span>
+                        <div class="stat-block duration-block">
+                            <span class="stat-value-medium" id="duration-${packageIdForElements}">
+                                <svg class="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12,6 12,12 16,14"/>
+                                </svg>
+                                ${pkg.duration}
+                            </span>
                         </div>
                         ${pkg.hashrate ? `
                         <div class="stat-block">
