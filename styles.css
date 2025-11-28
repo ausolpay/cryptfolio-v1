@@ -5807,6 +5807,7 @@ body.light-mode .package-section {
     display: flex;
     align-items: center;
     gap: 4px;
+    margin-top: 10px;
 }
 
 .clock-icon {
@@ -5821,6 +5822,7 @@ body.light-mode .package-section {
     display: flex;
     align-items: baseline;
     gap: 3px;
+    margin-top: 10px;
 }
 
 .hashrate-unit {
