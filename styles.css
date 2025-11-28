@@ -4087,18 +4087,11 @@ body.light-mode .balance-label {
 
 .easymining-main-content {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns on desktop */
+    grid-template-columns: 1fr; /* Single column - packages above stats */
     gap: 20px;
     margin: 20px 0;
     max-width: 100%; /* Ensure content doesn't overflow container */
     width: 100%;
-}
-
-/* Single column on mobile/tablet (up to 1040px) */
-@media (max-width: 1040px) {
-    .easymining-main-content {
-        grid-template-columns: 1fr; /* Single column on mobile and tablet */
-    }
 }
 
 .active-packages-section {
@@ -4571,10 +4564,20 @@ body.light-mode .clear-shares-btn:hover {
     box-sizing: border-box; /* Ensure padding is included in width */
     max-width: 100%; /* Ensure section doesn't overflow container */
     width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns on desktop: All Time | Today */
+    gap: 20px;
+}
+
+/* Single column stats on mobile/tablet */
+@media (max-width: 1040px) {
+    .stats-section {
+        grid-template-columns: 1fr;
+    }
 }
 
 .stats-group {
-    margin-bottom: 20px;
+    margin-bottom: 0; /* Remove bottom margin since grid handles spacing */
 }
 
 .stats-group h3 {
