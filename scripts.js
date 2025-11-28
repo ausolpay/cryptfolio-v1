@@ -1204,6 +1204,11 @@ function showAppPage() {
         // Buy packages data will load when user opens buy packages page
         // Removed pre-loading to prevent race condition with EasyMining polling
     }
+
+    // Initialize strip floating icons after a short delay to ensure data is loaded
+    setTimeout(() => {
+        initStripFloatingIcons();
+    }, 2000);
 }
 
 function showEasyMiningSettingsPage() {
@@ -8196,6 +8201,113 @@ function destroyFloatingIcons() {
         container.innerHTML = '';
     }
     console.log('🎨 Destroyed floating icons');
+}
+
+/**
+ * Initialize floating crypto icons in the portfolio strip background
+ * Smaller icons with subtler animation than the modal version
+ */
+function initStripFloatingIcons() {
+    const container = document.getElementById('strip-floating-icons-container');
+    if (!container || !loggedInUser || !users[loggedInUser]?.cryptos) return;
+
+    // Clear any existing icons
+    container.innerHTML = '';
+
+    const cryptos = users[loggedInUser].cryptos;
+    if (cryptos.length === 0) return;
+
+    // Calculate total portfolio value and per-crypto values
+    const cryptoData = cryptos.map(crypto => {
+        const price = cryptoPrices[crypto.id]?.aud || 0;
+        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        const value = price * holdings;
+        const change24h = Math.abs(cryptoPriceChanges[crypto.id] || 0);
+        const sentiment = getStoredSentiment(crypto.id) || 50;
+
+        return {
+            id: crypto.id,
+            thumb: crypto.thumb,
+            value,
+            change24h,
+            sentiment
+        };
+    }).filter(c => c.thumb && c.value > 0);
+
+    if (cryptoData.length === 0) return;
+
+    // Calculate totals for normalization
+    const totalValue = cryptoData.reduce((sum, c) => sum + c.value, 0);
+    const maxChange = Math.max(...cryptoData.map(c => c.change24h), 1);
+
+    // Sort by value (largest last so they render on top)
+    cryptoData.sort((a, b) => a.value - b.value);
+
+    // Create icons (smaller sizes for strip: 20-50px)
+    cryptoData.forEach((crypto, index) => {
+        const icon = document.createElement('div');
+        icon.className = 'strip-floating-icon';
+        icon.dataset.cryptoId = crypto.id;
+
+        // Size based on holdings value ratio (20-50px for strip)
+        const valueRatio = totalValue > 0 ? crypto.value / totalValue : 0;
+        const size = 20 + (valueRatio * 30);
+
+        // Speed based on 24h change (slower for strip: 15-30s)
+        const changeRatio = crypto.change24h / maxChange;
+        const speed = 30 - (changeRatio * 15);
+
+        // z-index based on value
+        const zIndex = index + 1;
+
+        // Vertical movement based on sentiment (subtler for strip)
+        let floatY = -10 - Math.random() * 10;
+        if (crypto.sentiment > 55) {
+            floatY = -15 - Math.random() * 15;
+        } else if (crypto.sentiment < 45) {
+            floatY = 5 + Math.random() * 10;
+        }
+
+        // Random starting position within strip bounds
+        const startX = Math.random() * 90 + 5; // 5-95%
+        const startY = Math.random() * 60 + 20; // 20-80%
+
+        // Subtle movement for strip
+        const floatX = 10 + Math.random() * 20;
+        const rotateAmount = -5 + Math.random() * 10;
+        const delay = Math.random() * 8;
+
+        icon.style.cssText = `
+            width: ${size}px;
+            height: ${size}px;
+            left: ${startX}%;
+            top: ${startY}%;
+            z-index: ${zIndex};
+            --float-speed: ${speed}s;
+            --float-delay: ${delay}s;
+            --float-x: ${floatX}px;
+            --float-y: ${floatY}px;
+            --rotate-amount: ${rotateAmount}deg;
+        `;
+
+        // Use small icon for strip (medium quality)
+        const img = document.createElement('img');
+        img.src = crypto.thumb.replace('/thumb/', '/small/');
+        img.alt = crypto.id;
+        img.onerror = () => icon.remove();
+        icon.appendChild(img);
+
+        container.appendChild(icon);
+    });
+
+    console.log(`🎨 Initialized ${cryptoData.length} floating icons in portfolio strip`);
+}
+
+/**
+ * Refresh strip floating icons (call when cryptos change)
+ */
+function refreshStripFloatingIcons() {
+    initStripFloatingIcons();
 }
 
 // =============================================================================
