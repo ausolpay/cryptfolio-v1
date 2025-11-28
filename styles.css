@@ -2448,8 +2448,12 @@ body.light-mode .terms-conditions-content {
     width: 0;
     height: 0;
     border-style: solid;
-    margin-right: clamp(6px, 1vw, 12px);
-    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+/* Triangle in stat cards - no extra margin, flexbox gap handles spacing */
+.modal-stat-card .triangle {
+    margin-right: 0;
 }
 
 .holdings-modal-inner .triangle-up {
