@@ -8149,9 +8149,9 @@ function initFloatingIcons() {
             --rotate-amount: ${rotateAmount}deg;
         `;
 
-        // Add image
+        // Add image (use large CoinGecko icon for better quality)
         const img = document.createElement('img');
-        img.src = crypto.thumb;
+        img.src = crypto.thumb.replace('/thumb/', '/large/');
         img.alt = crypto.id;
         img.onerror = () => icon.remove(); // Remove if image fails to load
         icon.appendChild(img);
