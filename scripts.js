@@ -22282,8 +22282,18 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             <div class="package-body">
                 <div class="package-section mining-info">
                     <div class="package-stat-grid">
-                        <div class="stat-block probability">
-                            <span class="stat-value-large" id="probability-display-${packageIdForElements}">${pkg.probability || (pkg.isDualCrypto ? pkg.mergeProbability : 'N/A')}</span>
+                        <div class="stat-block probability-block">
+                            <span class="stat-value-medium" id="probability-display-${packageIdForElements}">
+                                <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                    <line x1="2" y1="12" x2="6" y2="12"/>
+                                    <line x1="18" y1="12" x2="22" y2="12"/>
+                                </svg>
+                                ${pkg.probability || (pkg.isDualCrypto ? pkg.mergeProbability : 'N/A')}
+                            </span>
                         </div>
                         <div class="stat-block duration-block">
                             <span class="stat-value-medium" id="duration-${packageIdForElements}">
