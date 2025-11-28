@@ -22121,6 +22121,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         buyButtonStyle = canAfford ? '' : 'opacity: 0.5; cursor: not-allowed;';
     }
 
+    // Check if current conditions are optimal (best recorded hashrate or probability)
+    const isOptimal = isOptimalConditions(pkg.name);
+    const optimalClass = isOptimal ? 'optimal-conditions' : '';
+
     // For team packages: get user's current bought shares
     let myBoughtShares = 0;
     let initialShareValue = 1;
@@ -22164,13 +22168,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 data-crypto="${pkg.crypto}"
             >
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn">+</button>
-            <button class="buy-now-btn" style="margin-left: 10px;" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
+            <button class="buy-now-btn ${optimalClass}" style="margin-left: 10px;" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
         </div>
     ` : '';
 
     // For solo packages: separate buy button
     const soloBuyButton = !pkg.isTeam ? `
-        <button class="buy-now-btn" ${buyButtonDisabled} style="${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
+        <button class="buy-now-btn ${optimalClass}" ${buyButtonDisabled} style="${buyButtonStyle}" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>
             Buy
         </button>
     ` : '';
@@ -25050,6 +25054,32 @@ function getPackageMetricsSpeed(packageName) {
     console.log(`🎯 ${packageName}: prob=${probabilityScore.toFixed(2)}, hash=${hashrateScore.toFixed(2)}, combined=${combinedScore.toFixed(2)}, speed=${speed.toFixed(1)}s`);
 
     return speed;
+}
+
+/**
+ * Check if current conditions are optimal for a package
+ * Returns true if EITHER hashrate is at/near recorded max OR probability is at/near recorded min
+ * Used to highlight the buy button with a gold glow when conditions are best
+ * @param {string} packageName - The package name to check
+ * @param {number} threshold - How close to best (0-1), default 0.85 means within top 15%
+ */
+function isOptimalConditions(packageName, threshold = 0.85) {
+    const history = getPackageMetricsHistory();
+    const pkg = history[packageName];
+
+    if (!pkg || !pkg.currentPosition) return false;
+
+    const probabilityScore = pkg.currentPosition.probabilityScore || 0;
+    const hashrateScore = pkg.currentPosition.hashrateScore || 0;
+
+    // Optimal if EITHER metric is at/near its best recorded value
+    const isOptimal = probabilityScore >= threshold || hashrateScore >= threshold;
+
+    if (isOptimal) {
+        console.log(`✨ OPTIMAL CONDITIONS for ${packageName}: prob=${probabilityScore.toFixed(2)}, hash=${hashrateScore.toFixed(2)}`);
+    }
+
+    return isOptimal;
 }
 
 /**

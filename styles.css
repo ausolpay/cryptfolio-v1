@@ -6070,6 +6070,36 @@ body.light-mode .price-value {
     box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
 }
 
+/* Optimal conditions gold/orange glow on buy button */
+.buy-now-btn.optimal-conditions {
+    border: 2px solid #ffa500 !important;
+    box-shadow: 0 0 12px 3px rgba(255, 165, 0, 0.6),
+                0 0 20px 6px rgba(255, 165, 0, 0.3),
+                inset 0 0 8px rgba(255, 165, 0, 0.15);
+    animation: optimalGlow 2s ease-in-out infinite;
+}
+
+.buy-now-btn.optimal-conditions:disabled {
+    border: 2px solid #ffa500 !important;
+    box-shadow: 0 0 12px 3px rgba(255, 165, 0, 0.5),
+                0 0 20px 6px rgba(255, 165, 0, 0.25),
+                inset 0 0 8px rgba(255, 165, 0, 0.1);
+    animation: optimalGlow 2s ease-in-out infinite;
+}
+
+@keyframes optimalGlow {
+    0%, 100% {
+        box-shadow: 0 0 12px 3px rgba(255, 165, 0, 0.6),
+                    0 0 20px 6px rgba(255, 165, 0, 0.3),
+                    inset 0 0 8px rgba(255, 165, 0, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 18px 5px rgba(255, 165, 0, 0.8),
+                    0 0 30px 10px rgba(255, 165, 0, 0.4),
+                    inset 0 0 12px rgba(255, 165, 0, 0.2);
+    }
+}
+
 /* ============================================
    END REDESIGNED SOLO PACKAGE CARD STYLES
    ============================================ */
