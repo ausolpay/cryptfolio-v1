@@ -6894,6 +6894,7 @@ function closeModal(delay = 0) {
     setTimeout(() => {
         document.getElementById('popup-modal').style.display = 'none';
         document.getElementById('total-holdings-modal').style.display = 'none';
+        destroyFloatingIcons(); // Clean up floating icons
     }, delay);
 }
 
@@ -8048,6 +8049,156 @@ function showTradeModal(message) {
     document.getElementById('popup-modal').style.display = 'block';
 }
 
+// =============================================================================
+// FLOATING CRYPTO ICONS - Total Holdings Modal Background Animation
+// =============================================================================
+
+/**
+ * Initialize floating crypto icons in the Total Holdings modal background
+ * Icons are sized by holdings value, speed by 24h change, z-index by value
+ */
+function initFloatingIcons() {
+    const container = document.getElementById('floating-icons-container');
+    if (!container || !loggedInUser || !users[loggedInUser]?.cryptos) return;
+
+    // Clear any existing icons
+    container.innerHTML = '';
+
+    const cryptos = users[loggedInUser].cryptos;
+    if (cryptos.length === 0) return;
+
+    // Calculate total portfolio value and per-crypto values
+    const cryptoData = cryptos.map(crypto => {
+        const price = cryptoPrices[crypto.id]?.aud || 0;
+        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        const value = price * holdings;
+        const change24h = Math.abs(cryptoPriceChanges[crypto.id] || 0);
+        const sentiment = getStoredSentiment(crypto.id) || 50; // 0-100, 50 is neutral
+
+        return {
+            id: crypto.id,
+            thumb: crypto.thumb,
+            value,
+            change24h,
+            sentiment
+        };
+    }).filter(c => c.thumb && c.value > 0); // Only cryptos with icons and value
+
+    if (cryptoData.length === 0) return;
+
+    // Calculate totals for normalization
+    const totalValue = cryptoData.reduce((sum, c) => sum + c.value, 0);
+    const maxChange = Math.max(...cryptoData.map(c => c.change24h), 1); // Min 1 to avoid division by 0
+
+    // Sort by value (largest last so they render on top via z-index)
+    cryptoData.sort((a, b) => a.value - b.value);
+
+    // Create icons
+    cryptoData.forEach((crypto, index) => {
+        const icon = document.createElement('div');
+        icon.className = 'floating-crypto-icon';
+        icon.dataset.cryptoId = crypto.id;
+
+        // Size based on holdings value ratio (40-120px)
+        const valueRatio = totalValue > 0 ? crypto.value / totalValue : 0;
+        const size = 40 + (valueRatio * 80);
+
+        // Speed based on 24h change (top mover fastest: 8s, slowest: 20s)
+        const changeRatio = crypto.change24h / maxChange;
+        const speed = 20 - (changeRatio * 12);
+
+        // z-index based on value (bigger = higher)
+        const zIndex = index + 1;
+
+        // Vertical bias based on sentiment (bullish up, bearish down)
+        // Neutral (45-55) has balanced movement
+        let floatYUp = -40 - Math.random() * 30;
+        let floatYDown = 40 + Math.random() * 30;
+
+        if (crypto.sentiment > 55) {
+            // Bullish: more upward movement
+            floatYUp = -60 - Math.random() * 40;
+            floatYDown = 20 + Math.random() * 20;
+        } else if (crypto.sentiment < 45) {
+            // Bearish: more downward movement
+            floatYUp = -20 - Math.random() * 20;
+            floatYDown = 60 + Math.random() * 40;
+        }
+
+        // Random starting position (spread across viewport)
+        const startX = Math.random() * 80 + 10; // 10-90% of viewport
+        const startY = Math.random() * 80 + 10; // 10-90% of viewport
+
+        // Random float range and rotation
+        const floatX = 20 + Math.random() * 40;
+        const rotateAmount = -10 + Math.random() * 20;
+        const delay = Math.random() * 5;
+
+        // Apply styles
+        icon.style.cssText = `
+            width: ${size}px;
+            height: ${size}px;
+            left: ${startX}%;
+            top: ${startY}%;
+            z-index: ${zIndex};
+            --float-speed: ${speed}s;
+            --float-delay: ${delay}s;
+            --float-x: ${floatX}px;
+            --float-y-up: ${floatYUp}px;
+            --float-y-down: ${floatYDown}px;
+            --rotate-amount: ${rotateAmount}deg;
+        `;
+
+        // Add image
+        const img = document.createElement('img');
+        img.src = crypto.thumb;
+        img.alt = crypto.id;
+        img.onerror = () => icon.remove(); // Remove if image fails to load
+        icon.appendChild(img);
+
+        container.appendChild(icon);
+    });
+
+    console.log(`🎨 Initialized ${cryptoData.length} floating icons in Total Holdings modal`);
+}
+
+/**
+ * Update floating icons with current live data
+ * Called periodically to refresh animation properties
+ */
+function updateFloatingIcons() {
+    const container = document.getElementById('floating-icons-container');
+    if (!container || container.children.length === 0) return;
+
+    const cryptos = users[loggedInUser]?.cryptos || [];
+    const maxChange = Math.max(...cryptos.map(c => Math.abs(cryptoPriceChanges[c.id] || 0)), 1);
+
+    Array.from(container.children).forEach(icon => {
+        const cryptoId = icon.dataset.cryptoId;
+        if (!cryptoId) return;
+
+        const change24h = Math.abs(cryptoPriceChanges[cryptoId] || 0);
+        const changeRatio = change24h / maxChange;
+        const speed = 20 - (changeRatio * 12);
+
+        // Update speed based on current 24h change
+        icon.style.setProperty('--float-speed', `${speed}s`);
+    });
+}
+
+/**
+ * Destroy floating icons when modal closes
+ */
+function destroyFloatingIcons() {
+    const container = document.getElementById('floating-icons-container');
+    if (container) {
+        container.innerHTML = '';
+    }
+    console.log('🎨 Destroyed floating icons');
+}
+
+// =============================================================================
+
 function showTotalHoldingsModal() {
     const totalHoldings = document.getElementById('total-holdings').outerHTML;
     const percentageChange = document.getElementById('percentage-change').outerHTML;
@@ -8071,6 +8222,7 @@ function showTotalHoldingsModal() {
     `;
     updateTotalHoldingsModal(); // Ensure the modal content is updated before showing the modal
     document.getElementById('total-holdings-modal').style.display = 'block';
+    initFloatingIcons(); // Initialize floating crypto icons background
 }
 
 document.getElementById('password-login').addEventListener('keyup', function(event) {
