@@ -24899,8 +24899,9 @@ function capturePackageMetrics(packages) {
 }
 
 /**
- * Calculate running averages for all packages
+ * Calculate running averages AND min/max ranges for all packages
  * Called every 5 seconds while on Buy Packages page
+ * Min/max ranges help determine when conditions are optimal for buying
  */
 function updatePackageMetricsAverages() {
     const history = getPackageMetricsHistory();
@@ -24913,16 +24914,30 @@ function updatePackageMetricsAverages() {
 
         if (snapshots.length === 0) return;
 
-        // Calculate averages
+        // Calculate averages AND min/max ranges
         let totalHashrate = 0;
         let totalProbability = 0;
         let totalPriceBTC = 0;
         let totalPriceAUD = 0;
         let validCount = 0;
 
+        // Track min/max for hashrate and probability
+        let minHashrate = Infinity;
+        let maxHashrate = 0;
+        let minProbability = Infinity;  // Lower is better (1:40 vs 1:200)
+        let maxProbability = 0;
+
         snapshots.forEach(s => {
-            if (s.hashrateRaw > 0) totalHashrate += s.hashrateRaw;
-            if (s.probabilityRaw > 0) totalProbability += s.probabilityRaw;
+            if (s.hashrateRaw > 0) {
+                totalHashrate += s.hashrateRaw;
+                minHashrate = Math.min(minHashrate, s.hashrateRaw);
+                maxHashrate = Math.max(maxHashrate, s.hashrateRaw);
+            }
+            if (s.probabilityRaw > 0) {
+                totalProbability += s.probabilityRaw;
+                minProbability = Math.min(minProbability, s.probabilityRaw);
+                maxProbability = Math.max(maxProbability, s.probabilityRaw);
+            }
             if (s.priceBTC > 0) totalPriceBTC += s.priceBTC;
             if (s.priceAUD > 0) totalPriceAUD += s.priceAUD;
             validCount++;
@@ -24939,6 +24954,18 @@ function updatePackageMetricsAverages() {
                 lastUpdated: timestamp
             };
 
+            // Store min/max ranges (for determining optimal conditions)
+            pkg.ranges = {
+                hashrate: {
+                    min: minHashrate === Infinity ? 0 : minHashrate,
+                    max: maxHashrate
+                },
+                probability: {
+                    min: minProbability === Infinity ? 0 : minProbability,  // Best (lowest odds)
+                    max: maxProbability  // Worst (highest odds like 1:200)
+                }
+            };
+
             // Also calculate current vs average (for trend detection)
             const latestSnapshot = snapshots[snapshots.length - 1];
             if (latestSnapshot) {
@@ -24947,6 +24974,25 @@ function updatePackageMetricsAverages() {
                     probabilityRatio: latestSnapshot.probabilityRaw / pkg.averages.probability,
                     priceBTCRatio: latestSnapshot.priceBTC / pkg.averages.priceBTC,
                     priceAUDRatio: latestSnapshot.priceAUD / pkg.averages.priceAUD
+                };
+
+                // Calculate where current values sit within the min/max range (0-1 scale)
+                // For hashrate: 1 = at max (best), 0 = at min (worst)
+                // For probability: 1 = at min (best - lower odds), 0 = at max (worst - higher odds)
+                const hashrateRange = pkg.ranges.hashrate.max - pkg.ranges.hashrate.min;
+                const probabilityRange = pkg.ranges.probability.max - pkg.ranges.probability.min;
+
+                pkg.currentPosition = {
+                    // How close is current hashrate to its max? (1 = best)
+                    hashrateScore: hashrateRange > 0
+                        ? (latestSnapshot.hashrateRaw - pkg.ranges.hashrate.min) / hashrateRange
+                        : 0.5,
+                    // How close is current probability to its min? (1 = best, lower odds)
+                    probabilityScore: probabilityRange > 0
+                        ? (pkg.ranges.probability.max - latestSnapshot.probabilityRaw) / probabilityRange
+                        : 0.5,
+                    currentHashrate: latestSnapshot.hashrateRaw,
+                    currentProbability: latestSnapshot.probabilityRaw
                 };
             }
 
@@ -24960,40 +25006,48 @@ function updatePackageMetricsAverages() {
 
 /**
  * Get the animation speed for floating icons based on package metrics
- * Higher hashrate = faster animation, Lower probability = faster animation
+ * Uses min/max ranges to determine how "good" current conditions are:
+ * - Lower probability (better odds like 1:40) = FASTER icons
+ * - Higher hashrate = FASTER icons
+ * Either condition being favorable speeds up the icons significantly
  * Returns null if no metrics available (falls back to default calculation)
  */
 function getPackageMetricsSpeed(packageName) {
     const history = getPackageMetricsHistory();
     const pkg = history[packageName];
 
-    if (!pkg || !pkg.averages || !pkg.currentVsAverage) return null;
+    // Need currentPosition data which has the 0-1 scores
+    if (!pkg || !pkg.currentPosition) return null;
 
-    // Base speed is 12 seconds
-    let speed = 12;
+    // Speed range: 15s (slowest/worst conditions) to 4s (fastest/best conditions)
+    const slowestSpeed = 15;
+    const fastestSpeed = 4;
+    const speedRange = slowestSpeed - fastestSpeed;
 
-    // If hashrate is above average, speed up (ratio > 1 = faster)
-    // If probability is below average (better odds), speed up (ratio < 1 = faster)
-    const hashrateEffect = pkg.currentVsAverage.hashrateRatio || 1;
-    const probabilityEffect = pkg.currentVsAverage.probabilityRatio || 1;
+    // Get scores (0-1 where 1 = best conditions)
+    const probabilityScore = pkg.currentPosition.probabilityScore || 0.5;
+    const hashrateScore = pkg.currentPosition.hashrateScore || 0.5;
 
-    // Hashrate above average -> faster (multiply speed reduction)
-    // Higher hashrate ratio = faster, so we divide speed
-    if (hashrateEffect > 1) {
-        speed = speed / Math.min(hashrateEffect, 1.5); // Cap at 1.5x speed increase
-    }
+    // Take the HIGHER of the two scores (either good metric speeds things up)
+    // Also combine them slightly so both being good makes it even faster
+    const bestScore = Math.max(probabilityScore, hashrateScore);
+    const combinedScore = bestScore * 0.7 + ((probabilityScore + hashrateScore) / 2) * 0.3;
 
-    // Probability below average (better odds) -> faster
-    // Lower probability ratio = faster, so multiply speed reduction
-    if (probabilityEffect < 1) {
-        speed = speed * probabilityEffect;
-    }
+    // Apply exponential curve so it gets significantly faster at high scores
+    // This makes the difference more noticeable when conditions are optimal
+    const curvedScore = Math.pow(combinedScore, 0.6);  // Curve makes high values more impactful
 
-    // Clamp speed between 5-20 seconds
-    speed = Math.max(5, Math.min(20, speed));
+    // Calculate speed: higher score = faster (lower seconds)
+    let speed = slowestSpeed - (curvedScore * speedRange);
 
-    // Add some randomness
-    speed += (Math.random() * 4 - 2);
+    // Add small randomness for visual variety
+    speed += (Math.random() * 2 - 1);
+
+    // Clamp to safe range
+    speed = Math.max(3, Math.min(18, speed));
+
+    // Debug log for verification
+    console.log(`🎯 ${packageName}: prob=${probabilityScore.toFixed(2)}, hash=${hashrateScore.toFixed(2)}, combined=${combinedScore.toFixed(2)}, speed=${speed.toFixed(1)}s`);
 
     return speed;
 }
