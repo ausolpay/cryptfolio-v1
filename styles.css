@@ -5881,21 +5881,28 @@ body.light-mode .stat-value-medium {
     margin-top: 3px;
 }
 
-/* Dual probability row for Palladium packages (DOGE + LTC side by side) */
-.dual-probability-row {
+/* Palladium packages: All stats on one compact line */
+.palladium-stats-row {
     display: flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    gap: 15px;
-    grid-column: 1 / -1;
-    margin-bottom: 5px;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.dual-probability-row .stat-value-medium {
+.palladium-stats-row .stat-value-medium {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
+    font-size: 0.95em;
+}
+
+.palladium-stats-row .probability-icon,
+.palladium-stats-row .clock-icon,
+.palladium-stats-row .speed-icon {
+    width: 0.9em;
+    height: 0.9em;
 }
 
 /* Rewards Section */
