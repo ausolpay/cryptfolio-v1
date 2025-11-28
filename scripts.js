@@ -22337,13 +22337,30 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                     'KAS': 'kaspa',
                                     'ETC': 'ethereum-classic'
                                 };
-                                const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
-                                const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
-                                const iconUrl = userCrypto?.thumb ? userCrypto.thumb.replace('/thumb/', '/small/') : '';
-                                return iconUrl ? `<img class="reward-crypto-icon" src="${iconUrl}" alt="${pkg.crypto}">` : '';
+
+                                if (pkg.isDualCrypto) {
+                                    // Dual-crypto package (Palladium) - show both icons
+                                    const mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
+                                    const mainId = cryptoIdMap[pkg.mainCrypto?.toUpperCase()] || pkg.mainCrypto?.toLowerCase();
+                                    const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+                                    const mainCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mainId);
+                                    const mergeIcon = mergeCrypto?.thumb ? mergeCrypto.thumb.replace('/thumb/', '/small/') : '';
+                                    const mainIcon = mainCrypto?.thumb ? mainCrypto.thumb.replace('/thumb/', '/small/') : '';
+                                    let icons = '<span class="dual-crypto-icons">';
+                                    if (mergeIcon) icons += `<img class="reward-crypto-icon" src="${mergeIcon}" alt="${pkg.mergeCrypto}">`;
+                                    if (mainIcon) icons += `<img class="reward-crypto-icon" src="${mainIcon}" alt="${pkg.mainCrypto}">`;
+                                    icons += '</span>';
+                                    return icons;
+                                } else {
+                                    // Single crypto package
+                                    const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+                                    const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+                                    const iconUrl = userCrypto?.thumb ? userCrypto.thumb.replace('/thumb/', '/small/') : '';
+                                    return iconUrl ? `<img class="reward-crypto-icon" src="${iconUrl}" alt="${pkg.crypto}">` : '';
+                                }
                             })()}
-                            <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0'}</span>
-                            <span class="reward-symbol">${pkg.crypto || ''}</span>
+                            <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.isDualCrypto ? `${pkg.mergeBlockReward?.toFixed(0) || '0'} + ${pkg.blockReward?.toFixed(4) || '0'}` : (pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0')}</span>
+                            <span class="reward-symbol">${pkg.isDualCrypto ? `${pkg.mergeCrypto}+${pkg.mainCrypto}` : (pkg.crypto || '')}</span>
                             <span class="reward-fiat" id="reward-value-display-${packageId}">≈ $${formatNumber(rewardAUD)}</span>
                         </div>
                     </div>

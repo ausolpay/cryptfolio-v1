@@ -5899,6 +5899,16 @@ body.light-mode .stat-value-medium {
     object-fit: cover;
 }
 
+.dual-crypto-icons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.dual-crypto-icons .reward-crypto-icon:last-child {
+    margin-left: -4px;
+}
+
 .reward-amount {
     font-size: 1.4em;
     font-weight: 700;
