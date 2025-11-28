@@ -5887,7 +5887,6 @@ body.light-mode .reward-fiat {
 .price-info {
     background-color: rgba(50, 50, 50, 0.3) !important;
     padding: 10px 12px !important;
-    margin-top: auto;
 }
 
 .price-row {
