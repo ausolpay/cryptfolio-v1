@@ -22368,14 +22368,33 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             ? userCrypto.thumb.replace('/thumb/', '/small/')
                             : (fallbackIcons[cryptoId] || '');
 
-                        // For dual-crypto, use the merge crypto icon (DOGE)
+                        // For dual-crypto (Palladium), get the merge crypto icon
+                        // Palladium packages have merged mining: DOGE+LTC mine together
                         let dualIconUrl = '';
-                        if (pkg.isDualCrypto) {
-                            const mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
-                            const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
-                            dualIconUrl = mergeCrypto?.thumb
-                                ? mergeCrypto.thumb.replace('/thumb/', '/small/')
-                                : (fallbackIcons[mergeId] || '');
+                        const isPalladiumPackage = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
+
+                        if (isPalladiumPackage) {
+                            // Determine the merge crypto based on package or mergeCrypto property
+                            let mergeId = '';
+                            if (pkg.mergeCrypto) {
+                                mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
+                            } else {
+                                // Infer merge crypto from package name: if main is DOGE, merge is LTC and vice versa
+                                if (pkg.crypto?.toUpperCase() === 'DOGE' || pkg.name?.includes('DOGE')) {
+                                    mergeId = 'litecoin';
+                                } else if (pkg.crypto?.toUpperCase() === 'LTC' || pkg.name?.includes('LTC')) {
+                                    mergeId = 'dogecoin';
+                                }
+                            }
+
+                            if (mergeId) {
+                                const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+                                dualIconUrl = mergeCrypto?.thumb
+                                    ? mergeCrypto.thumb.replace('/thumb/', '/small/')
+                                    : (fallbackIcons[mergeId] || '');
+                            }
+
+                            console.log(`🔍 Palladium ${pkg.name}: crypto=${pkg.crypto}, cryptoId=${cryptoId}, mergeId=${mergeId}, iconUrl=${iconUrl ? 'YES' : 'NO'}, dualIconUrl=${dualIconUrl ? 'YES' : 'NO'}`);
                         }
 
                         // Calculate animation speed based on probability (lower = faster)
@@ -22388,43 +22407,60 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         // Get dynamic speed from package metrics averages if available
                         const metricsSpeed = getPackageMetricsSpeed(pkg.name);
 
-                        // For dual-crypto (Palladium): S=1 DOGE + 1 LTC, M=2+2, L=3+3
-                        // For single crypto: S=1, M=2, L=3
-                        const totalIcons = pkg.isDualCrypto ? iconCount * 2 : iconCount;
-
                         let floatingHtml = '<div class="reward-floating-icons">';
 
-                        for (let i = 0; i < totalIcons; i++) {
-                            // Stagger delays for less synchronized movement
-                            const delay = i * 2.5 + Math.random() * 3;
-                            // Spread icons across the section
-                            const startX = 5 + (i * (80 / totalIcons)) + Math.random() * 10;
+                        // Helper function to add a floating icon
+                        const addFloatingIcon = (url, index, total) => {
+                            const delay = index * 2.5 + Math.random() * 3;
+                            const startX = 5 + (index * (80 / total)) + Math.random() * 10;
                             const startY = 10 + Math.random() * 70;
-                            // Use metrics-based speed if available, otherwise use probability-based speed
                             const speed = metricsSpeed || (baseSpeed + (Math.random() * 6 - 3));
-                            // Different speed for Y axis creates orbital motion
                             const speedY = speed * (0.7 + Math.random() * 0.6);
-                            // Pulse speed varies independently
                             const pulseSpeed = 6 + Math.random() * 6;
-                            // Random movement range
                             const rangeX = 25 + Math.random() * 35;
                             const rangeY = 30 + Math.random() * 25;
-                            // Random animation direction (some go clockwise, some counter)
                             const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
 
-                            // For dual-crypto (Palladium): first half are DOGE, second half are LTC
-                            // This gives: S=1 DOGE + 1 LTC, M=2 DOGE + 2 LTC, L=3 DOGE + 3 LTC
-                            let url;
-                            if (pkg.isDualCrypto) {
-                                url = i < iconCount ? (dualIconUrl || iconUrl) : iconUrl;
-                            } else {
-                                url = iconUrl;
+                            return `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
+                        };
+
+                        // Check if this is a Palladium package (dual-crypto with merged mining)
+                        const isPalladium = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
+
+                        if (isPalladium) {
+                            // Dual-crypto (Palladium): Add both main and merge crypto icons
+                            // S=1 of each, M=2 of each, L=3 of each
+                            const totalIcons = iconCount * 2;
+                            let iconIndex = 0;
+
+                            console.log(`🎨 Palladium floating icons for ${pkg.name}: iconCount=${iconCount}, iconUrl=${iconUrl}, dualIconUrl=${dualIconUrl}`);
+
+                            // Add main crypto icons (e.g., DOGE or LTC depending on package)
+                            for (let i = 0; i < iconCount; i++) {
+                                if (iconUrl) {
+                                    floatingHtml += addFloatingIcon(iconUrl, iconIndex, totalIcons);
+                                    iconIndex++;
+                                }
                             }
 
-                            if (url) {
-                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
+                            // Add merge crypto icons (the other crypto in the pair)
+                            for (let i = 0; i < iconCount; i++) {
+                                if (dualIconUrl) {
+                                    floatingHtml += addFloatingIcon(dualIconUrl, iconIndex, totalIcons);
+                                    iconIndex++;
+                                }
+                            }
+
+                            console.log(`🎨 Added ${iconIndex} floating icons for ${pkg.name}`);
+                        } else {
+                            // Single crypto: S=1, M=2, L=3
+                            for (let i = 0; i < iconCount; i++) {
+                                if (iconUrl) {
+                                    floatingHtml += addFloatingIcon(iconUrl, i, iconCount);
+                                }
                             }
                         }
+
                         floatingHtml += '</div>';
                         return floatingHtml;
                     })()}
