@@ -22284,7 +22284,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     <div class="package-stat-grid">
                         <div class="stat-block probability">
                             <span class="stat-value-large" id="probability-display-${packageIdForElements}">${pkg.probability || (pkg.isDualCrypto ? pkg.mergeProbability : 'N/A')}</span>
-                            <span class="stat-label-small">Probability</span>
                         </div>
                         <div class="stat-block duration-block">
                             <span class="stat-value-medium" id="duration-${packageIdForElements}">
@@ -22296,9 +22295,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             </span>
                         </div>
                         ${pkg.hashrate ? `
-                        <div class="stat-block">
-                            <span class="stat-value-medium" id="hashrate-${packageIdForElements}">${pkg.hashrate}</span>
-                            <span class="stat-label-small">Hashrate</span>
+                        <div class="stat-block hashrate-block">
+                            <span class="stat-value-medium" id="hashrate-${packageIdForElements}">${(() => {
+                                const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                                if (match) {
+                                    return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+                                }
+                                return pkg.hashrate;
+                            })()}</span>
                         </div>
                         ` : ''}
                     </div>

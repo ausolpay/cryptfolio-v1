@@ -5816,6 +5816,19 @@ body.light-mode .package-section {
     flex-shrink: 0;
 }
 
+/* Hashrate block with unit */
+.hashrate-block .stat-value-medium {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+}
+
+.hashrate-unit {
+    font-size: 0.7em;
+    color: #888;
+    font-weight: 500;
+}
+
 .stat-value-large {
     font-size: 1.4em;
     font-weight: 700;
