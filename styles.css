@@ -5918,6 +5918,33 @@ body.light-mode .stat-value-medium {
     animation-delay: var(--float-delay, 0s);
 }
 
+/* Grouped floating icons for dual-crypto (Palladium) packages */
+.reward-floating-group {
+    position: absolute;
+    width: 28px;
+    height: 20px;
+    pointer-events: none;
+    /* Apply animation to the group container */
+    animation: rewardFloatX var(--float-speed, 10s) linear infinite,
+               rewardFloatY var(--float-speed-y, 12s) linear infinite,
+               rewardPulse var(--pulse-speed, 8s) ease-in-out infinite;
+    animation-delay: var(--float-delay, 0s);
+}
+
+/* Icons inside a group don't animate individually */
+.reward-floating-icon.grouped {
+    position: absolute;
+    animation: none;
+    opacity: 1;
+    top: 0;
+    left: 0;
+}
+
+/* Second icon in group is offset to create overlapping effect */
+.reward-floating-icon.grouped.offset {
+    left: 10px;
+}
+
 /* Smooth continuous horizontal oscillation */
 @keyframes rewardFloatX {
     0% { transform: translateX(0); }
