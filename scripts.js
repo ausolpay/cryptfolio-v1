@@ -22373,17 +22373,18 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         // Get dynamic speed from package metrics averages if available
                         const metricsSpeed = getPackageMetricsSpeed(pkg.name);
 
+                        // For dual-crypto (Palladium): S=1 DOGE + 1 LTC, M=2+2, L=3+3
+                        // For single crypto: S=1, M=2, L=3
+                        const totalIcons = pkg.isDualCrypto ? iconCount * 2 : iconCount;
+
                         let floatingHtml = '<div class="reward-floating-icons">';
 
-                        // For dual-crypto (Palladium): create grouped icon pairs that float together
-                        // S=1 group, M=2 groups, L=3 groups (each group has DOGE + LTC overlapping)
-                        // For single crypto: S=1, M=2, L=3 individual icons
-                        for (let i = 0; i < iconCount; i++) {
-                            // Stagger delays more for less synchronized movement
-                            const delay = i * 3 + Math.random() * 4;
+                        for (let i = 0; i < totalIcons; i++) {
+                            // Stagger delays for less synchronized movement
+                            const delay = i * 2.5 + Math.random() * 3;
                             // Spread icons across the section
-                            const startX = 10 + (i * (70 / iconCount)) + Math.random() * 15;
-                            const startY = 15 + Math.random() * 60;
+                            const startX = 5 + (i * (80 / totalIcons)) + Math.random() * 10;
+                            const startY = 10 + Math.random() * 70;
                             // Use metrics-based speed if available, otherwise use probability-based speed
                             const speed = metricsSpeed || (baseSpeed + (Math.random() * 6 - 3));
                             // Different speed for Y axis creates orbital motion
@@ -22396,15 +22397,17 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             // Random animation direction (some go clockwise, some counter)
                             const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
 
-                            if (pkg.isDualCrypto && iconUrl && dualIconUrl) {
-                                // Dual-crypto: Create a grouped container with both icons overlapping
-                                floatingHtml += `<div class="reward-floating-group" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};">
-                                    <img class="reward-floating-icon grouped" src="${dualIconUrl}" alt="">
-                                    <img class="reward-floating-icon grouped offset" src="${iconUrl}" alt="">
-                                </div>`;
-                            } else if (iconUrl) {
-                                // Single crypto: individual floating icon
-                                floatingHtml += `<img class="reward-floating-icon" src="${iconUrl}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
+                            // For dual-crypto (Palladium): first half are DOGE, second half are LTC
+                            // This gives: S=1 DOGE + 1 LTC, M=2 DOGE + 2 LTC, L=3 DOGE + 3 LTC
+                            let url;
+                            if (pkg.isDualCrypto) {
+                                url = i < iconCount ? (dualIconUrl || iconUrl) : iconUrl;
+                            } else {
+                                url = iconUrl;
+                            }
+
+                            if (url) {
+                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
                             }
                         }
                         floatingHtml += '</div>';
