@@ -5185,8 +5185,8 @@ function clearMentionsCache() {
 
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        // Match keys like: username_cryptoName_mentions30d and username_cryptoName_mentions30dExpiry
-        if (key && key.startsWith(`${loggedInUser}_`) && key.includes('_mentions30d')) {
+        // Match keys like: username_cryptoName_mentionsCache and username_cryptoName_mentionsCacheExpiry
+        if (key && key.startsWith(`${loggedInUser}_`) && key.includes('_mentionsCache')) {
             keysToRemove.push(key);
         }
     }
@@ -8976,9 +8976,9 @@ async function fetchRedditCount30d(cryptoName, cryptoSymbol) {
 
 // Main function: Fetch all sources with fallback logic (24-hour cache)
 async function fetchMentions30d(cryptoName, cryptoSymbol) {
-    // User-namespaced cache keys for multi-user support
-    const cacheKey = `${loggedInUser}_${cryptoName}_mentions30d`;
-    const cacheExpiryKey = `${loggedInUser}_${cryptoName}_mentions30dExpiry`;
+    // User-namespaced cache keys for multi-user support (24-hour cache for 30-day mentions data)
+    const cacheKey = `${loggedInUser}_${cryptoName}_mentionsCache`;
+    const cacheExpiryKey = `${loggedInUser}_${cryptoName}_mentionsCacheExpiry`;
     const cacheExpiryDuration = 24 * 60 * 60 * 1000; // 24 hours
     const MAX_MENTIONS = 5000;
 
