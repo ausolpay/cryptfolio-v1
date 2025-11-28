@@ -14625,7 +14625,7 @@ function displayActivePackages() {
     const packagesToShow = filteredPackages.slice(startIndex, endIndex);
 
     if (packagesToShow.length === 0) {
-        container.innerHTML = `<p style="text-align: center; color: #888; padding: 20px;">No ${currentPackageTab} packages</p>`;
+        container.innerHTML = `<p class="no-packages-message">No ${currentPackageTab} packages</p>`;
 
         // Hide arrow controls when no packages to display
         const carouselControls = document.getElementById('package-carousel-controls');

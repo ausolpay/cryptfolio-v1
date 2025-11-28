@@ -4189,12 +4189,15 @@ body.light-mode .package-tab.active {
 }
 
 /* Center "No packages" messages in My Packages section */
-.active-packages-container p {
+.active-packages-container p,
+.no-packages-message {
     grid-column: 1 / -1; /* Span all columns */
     text-align: center;
     width: 100%;
-    margin: 40px 0; /* Remove auto horizontal margin */
-    padding: 0; /* Remove any inherited padding */
+    margin: 40px 0;
+    padding: 20px;
+    color: #888;
+    box-sizing: border-box;
 }
 
 /* Desktop Carousel Controls */
@@ -4258,18 +4261,27 @@ body.light-mode .package-tab.active {
     }
 
     /* Center "No packages" messages properly on mobile */
-    .active-packages-container p {
-        margin-left: 5px; /* Offset the parent's -5px margin */
+    .active-packages-container p,
+    .no-packages-message {
         text-align: center;
-        width: calc(100% - 5px);
+        width: 100%;
+        margin: 20px 0;
+        padding: 20px;
+    }
+
+    /* When container only has a message, use flexbox for centering */
+    .active-packages-container:has(.no-packages-message) {
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     .active-packages-section {
         padding: 4px; /* Reduce padding on mobile */
-        width: auto;
+        width: 100%;
         height: auto;
         max-width: 100%; /* Full width on mobile */
-        margin-left: -5px; /* Move 5px to the left on mobile */
+        margin-left: 0; /* Remove left offset for proper centering */
     }
 
 
