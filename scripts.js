@@ -21234,6 +21234,9 @@ async function loadBuyPackagesDataOnPage() {
     // This stores hashrate, probability, and price data with timestamps
     capturePackageMetrics(allPackages);
 
+    // Immediately update averages so currentPosition is fresh for card rendering
+    updatePackageMetricsAverages();
+
     // Load solo recommendations to highlight packages
     console.log('🔔 Loading solo recommendations for package highlighting...');
     const soloRecommendations = await checkPackageRecommendations();
