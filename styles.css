@@ -1170,11 +1170,9 @@ a {
     width: 1390px;
     max-width: 1390px;
     box-sizing: border-box;
-    position: relative;
-    overflow: hidden;
 }
 
-/* Strip Floating Icons Container */
+/* Strip Floating Icons Container (inside hero section only) */
 #strip-floating-icons-container {
     position: absolute;
     top: 0;
@@ -1185,11 +1183,6 @@ a {
     pointer-events: none;
     z-index: 0;
     border-radius: 8px;
-}
-
-.portfolio-strip-content {
-    position: relative;
-    z-index: 1;
 }
 
 .strip-floating-icon {
@@ -1243,6 +1236,14 @@ body.light-mode .portfolio-strip {
     gap: 10px;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.portfolio-hero .hero-main,
+.portfolio-hero .hero-change {
+    position: relative;
+    z-index: 1;
 }
 
 .portfolio-hero:hover {
