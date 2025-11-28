@@ -22326,6 +22326,22 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     <div class="section-label">Potential Reward</div>
                     <div class="reward-display">
                         <div class="reward-line">
+                            ${(() => {
+                                // Get crypto icon from user's portfolio or use standard CoinGecko URLs
+                                const cryptoIdMap = {
+                                    'BTC': 'bitcoin',
+                                    'BCH': 'bitcoin-cash',
+                                    'RVN': 'ravencoin',
+                                    'DOGE': 'dogecoin',
+                                    'LTC': 'litecoin',
+                                    'KAS': 'kaspa',
+                                    'ETC': 'ethereum-classic'
+                                };
+                                const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+                                const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+                                const iconUrl = userCrypto?.thumb ? userCrypto.thumb.replace('/thumb/', '/small/') : '';
+                                return iconUrl ? `<img class="reward-crypto-icon" src="${iconUrl}" alt="${pkg.crypto}">` : '';
+                            })()}
                             <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0'}</span>
                             <span class="reward-symbol">${pkg.crypto || ''}</span>
                             <span class="reward-fiat" id="reward-value-display-${packageId}">≈ $${formatNumber(rewardAUD)}</span>

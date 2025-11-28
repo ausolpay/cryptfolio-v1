@@ -5892,6 +5892,13 @@ body.light-mode .stat-value-medium {
     justify-content: center;
 }
 
+.reward-crypto-icon {
+    width: 1.2em;
+    height: 1.2em;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 .reward-amount {
     font-size: 1.4em;
     font-weight: 700;
