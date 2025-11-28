@@ -22370,7 +22370,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         // Slower base speed (8-15s range)
                         const baseSpeed = Math.max(8, Math.min(15, probValue / 15));
 
-                        // For dual-crypto (Palladium), double the icons: S=2, M=4, L=6
+                        // For dual-crypto (Palladium): S=1+1, M=2+2, L=3+3 (DOGE + LTC)
+                        // For single crypto: S=1, M=2, L=3
                         const totalIcons = pkg.isDualCrypto ? iconCount * 2 : iconCount;
 
                         // Get dynamic speed from package metrics averages if available
@@ -22395,10 +22396,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             // Random animation direction (some go clockwise, some counter)
                             const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
 
-                            // For dual-crypto: alternate between DOGE and LTC icons
+                            // For dual-crypto (Palladium): first half DOGE, second half LTC
+                            // S: i<1 = DOGE, i>=1 = LTC (1 DOGE + 1 LTC)
+                            // M: i<2 = DOGE, i>=2 = LTC (2 DOGE + 2 LTC)
+                            // L: i<3 = DOGE, i>=3 = LTC (3 DOGE + 3 LTC)
                             let url;
                             if (pkg.isDualCrypto) {
-                                url = i % 2 === 0 ? (dualIconUrl || iconUrl) : iconUrl;
+                                // First iconCount icons are DOGE (merge crypto), rest are LTC (main crypto)
+                                url = i < iconCount ? (dualIconUrl || iconUrl) : iconUrl;
                             } else {
                                 url = iconUrl;
                             }
