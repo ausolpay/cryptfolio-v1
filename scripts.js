@@ -6748,14 +6748,14 @@ function updateTotalHoldingsModal() {
                 <div class="modal-stat-card">
                     <div class="stat-value positive">
                         <span class="triangle triangle-up"></span>
-                        ${recordHighText.replace(/[▲▼]/g, '').trim()}
+                        <span class="price-text">${recordHighText.replace(/[▲▼]/g, '').trim()}</span>
                     </div>
                     <div class="stat-label">Record High</div>
                 </div>
                 <div class="modal-stat-card">
                     <div class="stat-value negative">
                         <span class="triangle triangle-down"></span>
-                        ${recordLowText.replace(/[▲▼]/g, '').trim()}
+                        <span class="price-text">${recordLowText.replace(/[▲▼]/g, '').trim()}</span>
                     </div>
                     <div class="stat-label">Record Low</div>
                 </div>

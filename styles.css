@@ -2531,10 +2531,19 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     .modal-stats {
         grid-template-columns: 1fr;
         gap: 10px;
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
     }
 
     .modal-stat-card {
-        padding: 15px 30px;
+        padding: 20px 30px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .modal-stat-card .stat-value {
+        width: 100%;
     }
 
     .holdings-modal-content .close {
