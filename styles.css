@@ -5881,17 +5881,21 @@ body.light-mode .stat-value-medium {
     margin-top: 3px;
 }
 
-/* Dual stats for Palladium packages (DOGE + LTC) */
-.probability-block,
-.hashrate-block {
+/* Dual probability row for Palladium packages (DOGE + LTC side by side) */
+.dual-probability-row {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    grid-column: 1 / -1;
+    margin-bottom: 5px;
 }
 
-.stat-value-medium.dual-stat {
-    margin-top: 2px;
-    font-size: 1em;
-    opacity: 0.85;
+.dual-probability-row .stat-value-medium {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Rewards Section */

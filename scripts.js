@@ -22286,6 +22286,34 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             <div class="package-body">
                 <div class="package-section mining-info">
                     <div class="package-stat-grid">
+                        ${(pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium')) ? `
+                        <!-- Palladium: Both probabilities on same row above duration/hashrate -->
+                        <div class="stat-block dual-probability-row">
+                            <span class="stat-value-medium" id="probability-display-${packageIdForElements}">
+                                <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                    <line x1="2" y1="12" x2="6" y2="12"/>
+                                    <line x1="18" y1="12" x2="22" y2="12"/>
+                                </svg>
+                                ${pkg.probability || 'N/A'}
+                            </span>
+                            <span class="stat-value-medium" id="merge-probability-display-${packageIdForElements}">
+                                <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                    <line x1="2" y1="12" x2="6" y2="12"/>
+                                    <line x1="18" y1="12" x2="22" y2="12"/>
+                                </svg>
+                                ${pkg.mergeProbability || pkg.probability || 'N/A'}
+                            </span>
+                        </div>
+                        ` : `
+                        <!-- Non-Palladium: Single probability -->
                         <div class="stat-block probability-block">
                             <span class="stat-value-medium" id="probability-display-${packageIdForElements}">
                                 <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -22298,20 +22326,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 </svg>
                                 ${pkg.probability || 'N/A'}
                             </span>
-                            ${(pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium')) && pkg.mergeProbability ? `
-                            <span class="stat-value-medium dual-stat">
-                                <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
-                                    <line x1="12" y1="2" x2="12" y2="6"/>
-                                    <line x1="12" y1="18" x2="12" y2="22"/>
-                                    <line x1="2" y1="12" x2="6" y2="12"/>
-                                    <line x1="18" y1="12" x2="22" y2="12"/>
-                                </svg>
-                                ${pkg.mergeProbability}
-                            </span>
-                            ` : ''}
                         </div>
+                        `}
                         <div class="stat-block duration-block">
                             <span class="stat-value-medium" id="duration-${packageIdForElements}">
                                 <svg class="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -22335,20 +22351,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                     return pkg.hashrate;
                                 })()}
                             </span>
-                            ${(pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium')) && pkg.mergeHashrate ? `
-                            <span class="stat-value-medium dual-stat" id="merge-hashrate-${packageIdForElements}">
-                                <svg class="speed-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2" fill="currentColor"/>
-                                </svg>
-                                ${(() => {
-                                    const match = pkg.mergeHashrate.match(/^([\d.]+)\s*(.+)$/);
-                                    if (match) {
-                                        return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
-                                    }
-                                    return pkg.mergeHashrate;
-                                })()}
-                            </span>
-                            ` : ''}
                         </div>
                         ` : ''}
                     </div>
