@@ -22324,6 +22324,54 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 </div>
                 <div class="package-section rewards-info">
                     <div class="section-label">Potential Reward</div>
+                    ${(() => {
+                        /*
+                         * FLOATING TOKEN ICONS IN REWARD SECTION
+                         * Solo packages: S=1 icon, M=2 icons, L=3 icons
+                         * TODO: For team packages, dynamically add icons based on shares purchased
+                         * (1 icon per share added - will implement when doing team package styling)
+                         */
+                        const cryptoIdMap = {
+                            'BTC': 'bitcoin',
+                            'BCH': 'bitcoin-cash',
+                            'RVN': 'ravencoin',
+                            'DOGE': 'dogecoin',
+                            'LTC': 'litecoin',
+                            'KAS': 'kaspa',
+                            'ETC': 'ethereum-classic'
+                        };
+
+                        // Determine number of floating icons based on package size
+                        let iconCount = 1; // Default for S
+                        if (pkg.name?.includes(' M') || pkg.name?.endsWith('M')) iconCount = 2;
+                        if (pkg.name?.includes(' L') || pkg.name?.endsWith('L')) iconCount = 3;
+
+                        // Get icon URL
+                        const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+                        const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+                        const iconUrl = userCrypto?.thumb ? userCrypto.thumb.replace('/thumb/', '/small/') : '';
+
+                        // For dual-crypto, use the merge crypto icon (DOGE)
+                        let dualIconUrl = '';
+                        if (pkg.isDualCrypto) {
+                            const mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
+                            const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+                            dualIconUrl = mergeCrypto?.thumb ? mergeCrypto.thumb.replace('/thumb/', '/small/') : '';
+                        }
+
+                        let floatingHtml = '<div class="reward-floating-icons">';
+                        for (let i = 0; i < iconCount; i++) {
+                            const delay = i * 0.8;
+                            const startX = 20 + (i * 30);
+                            // Alternate between main and merge crypto for dual packages
+                            const url = pkg.isDualCrypto && i % 2 === 0 ? (dualIconUrl || iconUrl) : iconUrl;
+                            if (url) {
+                                floatingHtml += `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay}s; left: ${startX}%;" alt="">`;
+                            }
+                        }
+                        floatingHtml += '</div>';
+                        return floatingHtml;
+                    })()}
                     <div class="reward-display">
                         <div class="reward-line">
                             ${(() => {
