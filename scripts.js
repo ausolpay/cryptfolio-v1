@@ -22306,13 +22306,18 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         </div>
                         ${pkg.hashrate ? `
                         <div class="stat-block hashrate-block">
-                            <span class="stat-value-medium" id="hashrate-${packageIdForElements}">${(() => {
-                                const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
-                                if (match) {
-                                    return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
-                                }
-                                return pkg.hashrate;
-                            })()}</span>
+                            <span class="stat-value-medium" id="hashrate-${packageIdForElements}">
+                                <svg class="speed-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2" fill="currentColor"/>
+                                </svg>
+                                ${(() => {
+                                    const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                                    if (match) {
+                                        return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+                                    }
+                                    return pkg.hashrate;
+                                })()}
+                            </span>
                         </div>
                         ` : ''}
                     </div>

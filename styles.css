@@ -5822,16 +5822,23 @@ body.light-mode .package-section {
 .clock-icon {
     width: 1em;
     height: 1em;
-    color: #888;
+    color: #ffa500;
     flex-shrink: 0;
 }
 
 /* Hashrate block with unit */
 .hashrate-block .stat-value-medium {
     display: flex;
-    align-items: baseline;
-    gap: 3px;
+    align-items: center;
+    gap: 4px;
     margin-top: 10px;
+}
+
+.speed-icon {
+    width: 1em;
+    height: 1em;
+    color: #ffa500;
+    flex-shrink: 0;
 }
 
 .hashrate-unit {
