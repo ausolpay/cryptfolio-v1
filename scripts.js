@@ -19911,7 +19911,6 @@ function createTeamPackageCard(pkg) {
                             : `<img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${crypto}" onerror="this.style.display='none'">`
                         }
                         <span class="reward-amount" id="${cardId}-reward">${initialReward.toFixed(8)}</span>
-                        ${!isDualCrypto ? `<span class="reward-symbol">${crypto}</span>` : ''}
                         <span class="reward-fiat" id="${cardId}-reward-aud">≈ $${rewardAUD.toFixed(2)}</span>
                     </div>
                 </div>
@@ -22906,7 +22905,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 }
                             })()}
                             <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.isDualCrypto ? `${pkg.mergeBlockReward?.toFixed(0) || '0'} + ${pkg.blockReward?.toFixed(4) || '0'}` : (pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0')}</span>
-                            <span class="reward-symbol">${pkg.isDualCrypto ? `${pkg.mergeCrypto}+${pkg.mainCrypto}` : (pkg.crypto || '')}</span>
                             <span class="reward-fiat" id="reward-value-display-${packageId}">≈ $${formatNumber(rewardAUD)}</span>
                         </div>
                     </div>
@@ -23015,7 +23013,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             const decimals = teamCrypto === 'BTC' || teamCrypto === 'BCH' ? 4 : 2;
             rewardDisplay = `
                 <span class="reward-amount" id="team-reward-${packageIdForElements}">${(pkg.blockReward || 0).toFixed(decimals)}</span>
-                <span class="reward-symbol">${teamCrypto}</span>
             `;
         }
         rewardValueDisplay = `<span class="reward-fiat" id="team-reward-value-${packageIdForElements}">≈ $${formatNumber(rewardAUD)}</span>`;

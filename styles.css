@@ -6342,13 +6342,6 @@ body.light-mode .stat-value-medium {
     color: #4CAF50;
 }
 
-.reward-symbol {
-    font-size: 0.95em;
-    font-weight: 600;
-    color: #4CAF50;
-    opacity: 0.8;
-}
-
 .reward-fiat {
     font-size: 0.85em;
     color: #888;
