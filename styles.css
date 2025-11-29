@@ -4222,13 +4222,13 @@ body.light-mode .balance-card-btn svg {
     stroke: #e69500;
 }
 
-/* Action Buttons - Underneath balance content */
+/* Action Buttons - Underneath balance card */
 .easymining-action-buttons {
     display: flex;
     flex-direction: row;
     justify-content: center;
     gap: 10px;
-    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
 .action-btn {
