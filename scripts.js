@@ -14739,15 +14739,24 @@ function generateMockBlocks() {
 // =============================================================================
 
 function updateEasyMiningUI() {
-    // Update balances (BTC)
-    document.getElementById('easymining-available-btc').textContent = easyMiningData.availableBTC;
-    document.getElementById('easymining-pending-btc').textContent = easyMiningData.pendingBTC;
+    // Update balances (BTC) - include BTC suffix for new balance card format
+    document.getElementById('easymining-available-btc').textContent = `${easyMiningData.availableBTC} BTC`;
+    document.getElementById('easymining-pending-btc').textContent = `${easyMiningData.pendingBTC} BTC`;
 
     // Convert BTC balances to AUD and update
     const availableBTC = parseFloat(easyMiningData.availableBTC) || 0;
     const pendingBTC = parseFloat(easyMiningData.pendingBTC) || 0;
     const availableAUD = convertBTCtoAUD(availableBTC);
     const pendingAUD = convertBTCtoAUD(pendingBTC);
+
+    // Update border color based on available balance (red if < minimum share cost, green otherwise)
+    const minShareCost = 0.0001;
+    const balanceCard = document.getElementById('easymining-balance-card');
+    if (balanceCard) {
+        const borderColor = availableBTC < minShareCost ? '#f44336' : '#4CAF50';
+        balanceCard.style.borderLeftColor = borderColor;
+        balanceCard.style.borderRightColor = borderColor;
+    }
 
     document.getElementById('easymining-available-aud').textContent = `$${formatNumber(availableAUD.toFixed(2))}`;
     document.getElementById('easymining-pending-aud').textContent = `$${formatNumber(pendingAUD.toFixed(2))}`;

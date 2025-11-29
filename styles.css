@@ -4094,6 +4094,125 @@ body.light-mode .balance-label {
     background-color: #777777;
 }
 
+/* EasyMining Balance Card Styles */
+.easymining-balance-card {
+    background-color: #2a2a2a;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-left: 4px solid #4CAF50;
+    border-right: 4px solid #4CAF50;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+body.light-mode .easymining-balance-card {
+    background-color: #f5f5f5;
+    border-left-color: #4CAF50;
+    border-right-color: #4CAF50;
+}
+
+.balance-card-content {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 15px;
+}
+
+.balance-card-item {
+    text-align: center;
+    flex: 0 1 auto;
+}
+
+.balance-card-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.balance-card-label svg {
+    width: 14px;
+    height: 14px;
+}
+
+body.light-mode .balance-card-label {
+    color: #666;
+}
+
+.balance-card-value {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.balance-card-value.available {
+    color: #4CAF50;
+}
+
+.balance-card-value.pending {
+    color: #FFA500;
+}
+
+.balance-card-btc {
+    color: #888;
+    font-size: 13px;
+}
+
+body.light-mode .balance-card-btc {
+    color: #666;
+}
+
+.balance-card-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.balance-card-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.balance-card-btn.deposit {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.balance-card-btn.deposit:hover {
+    background-color: #45a049;
+    transform: translateY(-1px);
+}
+
+.balance-card-btn.withdraw {
+    background-color: #FFA500;
+    color: white;
+}
+
+.balance-card-btn.withdraw:hover {
+    background-color: #e69500;
+    transform: translateY(-1px);
+}
+
+/* Action Buttons Row */
+.easymining-action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
 .blocks-found-display {
     text-align: center;
     margin: 20px 0;
@@ -7225,6 +7344,20 @@ body.light-mode .easymining-settings-form input[type="number"] {
         flex: 1 1 calc(50% - 10px); /* Two items per row on tablet */
     }
 
+    /* EasyMining Balance Card - Tablet */
+    .easymining-balance-card {
+        max-width: 100%;
+        padding: 15px;
+    }
+
+    .balance-card-content {
+        gap: 20px;
+    }
+
+    .balance-card-value {
+        font-size: 20px;
+    }
+
     /* Reduce rocket size slightly */
     .blocks-found-rockets {
         font-size: 20px;
@@ -7275,6 +7408,38 @@ body.light-mode .easymining-settings-form input[type="number"] {
         font-size: 18px;
         gap: 5px;
         padding: 0 5px;
+    }
+
+    /* EasyMining Balance Card - Medium Mobile */
+    .easymining-balance-card {
+        padding: 12px;
+        margin-left: 5px;
+        margin-right: 5px;
+    }
+
+    .balance-card-content {
+        gap: 15px;
+    }
+
+    .balance-card-label {
+        font-size: 11px;
+    }
+
+    .balance-card-value {
+        font-size: 18px;
+    }
+
+    .balance-card-btc {
+        font-size: 11px;
+    }
+
+    .balance-card-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    .easymining-action-buttons {
+        gap: 8px;
     }
 }
 
@@ -7343,6 +7508,45 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .blocks-found-rockets {
         font-size: 16px;
         gap: 4px;
+    }
+
+    /* EasyMining Balance Card - Extra Small Mobile */
+    .easymining-balance-card {
+        padding: 10px;
+    }
+
+    .balance-card-content {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .balance-card-item {
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .balance-card-item:last-child {
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .balance-card-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .balance-card-btn {
+        width: 100%;
+    }
+
+    .easymining-action-buttons {
+        flex-direction: column;
+    }
+
+    .easymining-action-buttons .buy-packages-btn,
+    .easymining-action-buttons .clear-rockets-btn {
+        width: 100%;
+        margin: 0;
     }
 }
 
