@@ -21973,13 +21973,13 @@ async function loadBuyPackagesDataOnPage() {
             <div style="display: flex; justify-content: space-around; align-items: center; gap: 40px;">
                 <div style="flex: 1; text-align: center;">
                     <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
-                    <div style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                    <div style="color: #888; font-size: 13px;">≈ $${availableAUD} AUD</div>
+                    <div style="color: #4CAF50; font-size: 20px; font-weight: bold;">$${availableAUD}</div>
+                    <div style="color: #888; font-size: 13px;">${availableBalance.toFixed(8)} BTC</div>
                 </div>
                 <div style="flex: 1; text-align: center;">
                     <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
-                    <div style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
-                    <div style="color: #888; font-size: 13px;">≈ $${pendingAUD} AUD</div>
+                    <div style="color: #FFA500; font-size: 20px; font-weight: bold;">$${pendingAUD}</div>
+                    <div style="color: #888; font-size: 13px;">${pendingBalance.toFixed(8)} BTC</div>
                 </div>
             </div>
         </div>
