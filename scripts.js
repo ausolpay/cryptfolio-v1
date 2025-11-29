@@ -16702,6 +16702,32 @@ function updateTeamAlertCardValues(pkg) {
         console.log(`🔄 Synced alert card input for ${pkg.name}: ${myBoughtShares} shares`);
     }
 
+    // ✅ Update countdown timer for alert cards
+    const countdownEl = document.getElementById(`alert-countdown-${packageId}`);
+    if (countdownEl && pkg.lifeTimeTill) {
+        const startTime = new Date(pkg.lifeTimeTill);
+        const now = new Date();
+        const timeUntilStart = startTime - now;
+        const participants = pkg.numberOfParticipants || 0;
+
+        if (timeUntilStart > 0 && participants >= 2) {
+            const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+            const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+            countdownEl.innerHTML = hours > 0 ? `${hours}h ${minutes}m<span class="countdown-seconds"> ${seconds}s</span>` : `${minutes}m ${seconds}s`;
+            countdownEl.style.color = '#ffa500';
+            countdownEl.classList.remove('mining-lobby-fade');
+        } else if (participants < 2) {
+            countdownEl.textContent = 'Lobby';
+            countdownEl.style.color = '#ffa500';
+            countdownEl.classList.add('mining-lobby-fade');
+        } else {
+            countdownEl.textContent = 'Soon!';
+            countdownEl.style.color = '#4CAF50';
+            countdownEl.classList.remove('mining-lobby-fade');
+        }
+    }
+
     console.log(`✅ Updated team alert values for ${pkg.name}: participants=${pkg.numberOfParticipants}, shares=${myBoughtShares}`);
 
     // ✅ Dynamically update Clear Shares button visibility
@@ -22943,10 +22969,12 @@ function updateTeamPackageCountdowns() {
     });
 
     // Also update EasyMining alert countdown elements
-    // These use countdown-${pkg.id} (without 'buy-' prefix)
+    // Try both old pattern (countdown-${pkg.id}) and new pattern (alert-countdown-${packageId})
     currentRecommendations.forEach(pkg => {
         if (pkg.lifeTimeTill) {
-            const alertCountdownElement = document.getElementById(`countdown-${pkg.id}`);
+            const packageId = pkg.name.replace(/\s+/g, '-');
+            const alertCountdownElement = document.getElementById(`alert-countdown-${packageId}`) ||
+                                           document.getElementById(`countdown-${pkg.id}`);
             if (alertCountdownElement) {
                 const startTime = new Date(pkg.lifeTimeTill);
                 const now = new Date();
@@ -22984,6 +23012,45 @@ function updateTeamPackageCountdowns() {
             }
         }
     });
+
+    // Also update team alert cards (team recommendations in EasyMining section)
+    // These use alert-countdown-${packageId} pattern
+    if (typeof currentTeamRecommendations !== 'undefined' && currentTeamRecommendations.length > 0) {
+        currentTeamRecommendations.forEach(pkg => {
+            if (pkg.lifeTimeTill) {
+                const packageId = pkg.name.replace(/\s+/g, '-');
+                const alertCountdownElement = document.getElementById(`alert-countdown-${packageId}`);
+                if (alertCountdownElement) {
+                    const startTime = new Date(pkg.lifeTimeTill);
+                    const now = new Date();
+                    const timeUntilStart = startTime - now;
+                    const participants = pkg.numberOfParticipants || 0;
+
+                    if (participants < 2) {
+                        // Mining Lobby - waiting for players
+                        alertCountdownElement.textContent = 'Lobby';
+                        alertCountdownElement.style.color = '#ffa500';
+                        alertCountdownElement.classList.add('mining-lobby-fade');
+                    } else if (timeUntilStart > 0) {
+                        // Active countdown
+                        const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+                        const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+                        alertCountdownElement.innerHTML = hours > 0
+                            ? `${hours}h ${minutes}m<span class="countdown-seconds"> ${seconds}s</span>`
+                            : `${minutes}m ${seconds}s`;
+                        alertCountdownElement.style.color = '#ffa500';
+                        alertCountdownElement.classList.remove('mining-lobby-fade');
+                    } else {
+                        // Countdown ended
+                        alertCountdownElement.textContent = 'Soon!';
+                        alertCountdownElement.style.color = '#4CAF50';
+                        alertCountdownElement.classList.remove('mining-lobby-fade');
+                    }
+                }
+            }
+        });
+    }
 }
 
 // Start countdown update interval
