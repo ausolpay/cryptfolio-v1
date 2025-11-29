@@ -6266,27 +6266,26 @@ body.light-mode .stat-value-medium {
 
 .static-bg-icon {
     position: absolute;
-    width: 75%;
-    height: 75%;
-    max-width: none;
-    max-height: none;
+    width: 120px;
+    height: 120px;
+    aspect-ratio: 1;
     border-radius: 50%;
-    object-fit: contain;
+    object-fit: cover;
     background-color: #fff;
 }
 
 /* Palladium: two icons just slightly overlapping */
 .static-bg-icons.palladium .static-bg-icon {
-    width: 50%;
-    height: 50%;
+    width: 80px;
+    height: 80px;
 }
 
 .static-bg-icons.palladium .static-bg-icon:first-child {
-    transform: translate(-22%, 0);
+    transform: translate(-30%, 0);
 }
 
 .static-bg-icons.palladium .static-bg-icon.offset {
-    transform: translate(22%, 0);
+    transform: translate(30%, 0);
 }
 
 .reward-display {
