@@ -19843,6 +19843,31 @@ function createTeamPackageCard(pkg) {
     getOrCreateFloatingIconsConfig(`team-${packageName}`, floatingIconUrl, '', iconCount, false);
     const floatingIconsHtml = generateFloatingIconsHtml(`team-${packageName}`, 12, null);
 
+    // Get duration from ticket data
+    const duration = ticket.duration || 'N/A';
+
+    // Calculate countdown display
+    let countdownDisplay = '';
+    const lifeTimeTill = pkg.lifeTimeTill || ticket.lifeTimeTill;
+    if (lifeTimeTill) {
+        const startTime = new Date(lifeTimeTill);
+        const now = new Date();
+        const timeUntilStart = startTime - now;
+        if (timeUntilStart > 0 && participants >= 2) {
+            const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+            const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+            const countdownText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`;
+            countdownDisplay = `<span class="team-stat-value" id="${cardId}-countdown" style="color: #ffa500;">${countdownText}</span>`;
+        } else if (participants < 2) {
+            countdownDisplay = `<span class="team-stat-value mining-lobby-fade" id="${cardId}-countdown" style="color: #ffa500;">Lobby</span>`;
+        } else {
+            countdownDisplay = `<span class="team-stat-value" id="${cardId}-countdown" style="color: #4CAF50;">Soon!</span>`;
+        }
+    } else if (participants < 2) {
+        countdownDisplay = `<span class="team-stat-value mining-lobby-fade" id="${cardId}-countdown" style="color: #ffa500;">Lobby</span>`;
+    }
+
     card.innerHTML = `
         ${staticBgIcon}
         <div class="package-header">
@@ -19864,12 +19889,10 @@ function createTeamPackageCard(pkg) {
                     </div>
                     <div class="team-stat-item">
                         <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12,6 12,12 16,14"/>
                         </svg>
-                        <span class="team-stat-value">${participants}</span>
+                        <span class="team-stat-value">${duration}</span>
                     </div>
                 </div>
             </div>
@@ -19877,11 +19900,12 @@ function createTeamPackageCard(pkg) {
                 <div class="team-stats-grid">
                     <div class="team-stat-item">
                         <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                            <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
-                            <circle cx="12" cy="14" r="2" fill="currentColor"/>
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                         </svg>
-                        <span class="team-stat-value highlight-orange">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
+                        <span class="team-stat-value highlight-green">${participants}</span>
                     </div>
                     <div class="team-stat-item">
                         <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -19889,8 +19913,17 @@ function createTeamPackageCard(pkg) {
                             <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
                             <circle cx="12" cy="14" r="2" fill="currentColor"/>
                         </svg>
-                        <span class="team-stat-value highlight-green">${availableShares}</span>
+                        <span class="team-stat-value highlight-orange" id="${cardId}-shares">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
                     </div>
+                    ${countdownDisplay ? `
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12,6 12,12 16,14"/>
+                        </svg>
+                        ${countdownDisplay}
+                    </div>
+                    ` : ''}
                 </div>
             </div>
             <div class="package-section progress-section">
@@ -19902,7 +19935,7 @@ function createTeamPackageCard(pkg) {
                 <canvas class="mini-hashrate-canvas" id="${cardId}-mini-hashrate" width="200" height="30"></canvas>
             </div>
             <div class="package-section rewards-info">
-                <div class="section-label">Your Potential Reward</div>
+                <div class="section-label">Block Reward</div>
                 ${floatingIconsHtml}
                 <div class="reward-display">
                     <div class="reward-line">
@@ -19922,13 +19955,6 @@ function createTeamPackageCard(pkg) {
                         <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span class="price-value">$${pricePerShareAUD}</span>
-                </div>
-                <div class="price-row" style="margin-bottom: 0;">
-                    <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="price-value">${blockReward} ${crypto}</span>
                 </div>
                 <div class="share-selector">
                     <button class="share-button" onclick="adjustShares('${cardId}', -1, this)">-</button>
