@@ -26853,9 +26853,9 @@ function startAveragesPolling() {
 
     averagesPollingInterval = setInterval(() => {
         fetchAndUpdateAverages();
-    }, 60000);
+    }, 30000);
 
-    console.log('📊 Started averages polling (60s interval)');
+    console.log('📊 Started averages polling (30s interval)');
 }
 
 /**
