@@ -5720,11 +5720,11 @@ body.light-mode .buy-package-card {
 .team-stats-grid {
     display: flex;
     justify-content: center;
-    gap: 20px;
+    gap: 10px;
 }
 
 .team-stats-grid.three-col {
-    gap: 12px;
+    gap: 8px;
 }
 
 .team-stat-item {
