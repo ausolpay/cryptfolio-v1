@@ -7368,39 +7368,6 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 }
 
-/* Tablet Portrait & Phone Landscape - Wider sections */
-@media (max-width: 850px) {
-    .easymining-section {
-        width: calc(100% - 40px);
-        max-width: 100%;
-    }
-
-    .easymining-loading-bar {
-        width: calc(100% - 40px);
-        max-width: 100%;
-    }
-
-    .header-row {
-        width: calc(100% - 40px);
-        max-width: 100%;
-    }
-
-    .portfolio-strip {
-        width: calc(100% - 40px);
-        max-width: 100%;
-    }
-
-    .buy-packages-form {
-        width: calc(100% - 40px);
-        max-width: 100%;
-    }
-
-    .settings-page-content {
-        width: calc(100% - 40px);
-        max-width: 100%;
-    }
-}
-
 /* Mobile - 1 crypto box wide */
 /* Trigger when viewport can't fit 2 boxes (700px) */
 @media (max-width: 700px) {
