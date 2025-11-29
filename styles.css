@@ -7424,7 +7424,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .balance-card-buttons {
         flex: 1 1 100%;
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
         margin-top: 10px;
     }
 
@@ -7432,10 +7433,10 @@ body.light-mode .easymining-settings-form input[type="number"] {
         font-size: 20px;
     }
 
-    /* Action buttons horizontal on mobile */
+    /* Action buttons stacked on tablet */
     .easymining-action-buttons {
-        flex-direction: row;
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
     }
 
     /* Reduce rocket size slightly */
