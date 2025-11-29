@@ -8061,6 +8061,38 @@ body.light-mode .holdings-pnl-summary {
     flex-shrink: 0;
 }
 
+/* Dual icon container for Palladium packages (DOGE + LTC) */
+.averages-item-icon-dual {
+    position: relative;
+    width: 60px;
+    height: 44px;
+    margin-right: 16px;
+    flex-shrink: 0;
+}
+
+.averages-item-icon-dual img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: linear-gradient(135deg, #333 0%, #2a2a2a 100%);
+    padding: 4px;
+    border: 2px solid #444;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.averages-item-icon-back {
+    left: 0;
+    z-index: 1;
+}
+
+.averages-item-icon-front {
+    left: 20px;
+    z-index: 2;
+}
+
 .averages-item-info {
     flex: 1;
     min-width: 0;

@@ -26764,6 +26764,11 @@ function updateAveragesSection(type, packages, allHistory) {
             ? userCrypto.thumb.replace('/thumb/', '/small/')
             : (fallbackIcons[cryptoId] || '');
 
+        // Check if this is a Palladium package (mines both DOGE and LTC)
+        const isPalladium = pkg.name?.toLowerCase().includes('palladium');
+        const dogeIconUrl = fallbackIcons['dogecoin'];
+        const ltcIconUrl = fallbackIcons['litecoin'];
+
         const avgProbability = pkg.averages?.probability
             ? `1:${Math.round(pkg.averages.probability)}`
             : 'N/A';
@@ -26870,9 +26875,24 @@ function updateAveragesSection(type, packages, allHistory) {
             `;
         }
 
+        // Build icon HTML - Palladium gets two overlapping icons
+        let iconHTML;
+        if (isPalladium) {
+            iconHTML = `
+                <div class="averages-item-icon-dual">
+                    <img src="${dogeIconUrl}" alt="DOGE" class="averages-item-icon-back">
+                    <img src="${ltcIconUrl}" alt="LTC" class="averages-item-icon-front">
+                </div>
+            `;
+        } else {
+            iconHTML = iconUrl
+                ? `<img src="${iconUrl}" alt="${pkg.crypto}" class="averages-item-icon">`
+                : '<div class="averages-item-icon" style="background:#333;"></div>';
+        }
+
         listHTML += `
             <div class="averages-item">
-                ${iconUrl ? `<img src="${iconUrl}" alt="${pkg.crypto}" class="averages-item-icon">` : '<div class="averages-item-icon" style="background:#333;"></div>'}
+                ${iconHTML}
                 <div class="averages-item-info">
                     <div class="averages-item-name">${pkg.name}</div>
                     <div class="averages-item-meta">${pkg.algorithm || pkg.crypto || ''} • ${snapshotCount} snapshots • Last: ${lastUpdated}</div>
