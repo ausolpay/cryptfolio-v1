@@ -4175,33 +4175,43 @@ body.light-mode .balance-card-btc {
 }
 
 .balance-card-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     padding: 10px 20px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
+    background-color: #555555;
+    color: white;
     transition: background-color 0.2s, transform 0.1s;
 }
 
-.balance-card-btn.deposit {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.balance-card-btn.deposit:hover {
-    background-color: #45a049;
+.balance-card-btn:hover {
+    background-color: #666666;
     transform: translateY(-1px);
 }
 
-.balance-card-btn.withdraw {
-    background-color: #FFA500;
-    color: white;
+.balance-card-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: #FFA500;
 }
 
-.balance-card-btn.withdraw:hover {
-    background-color: #e69500;
-    transform: translateY(-1px);
+body.light-mode .balance-card-btn {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+body.light-mode .balance-card-btn:hover {
+    background-color: #d0d0d0;
+}
+
+body.light-mode .balance-card-btn svg {
+    stroke: #e69500;
 }
 
 /* Action Buttons Row */
