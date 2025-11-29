@@ -26782,12 +26782,18 @@ function clearPackageMetricsHistory() {
 /**
  * Confirm and clear package metrics with user prompt
  */
-function confirmClearPackageMetrics() {
+async function confirmClearPackageMetrics() {
     if (confirm('Are you sure you want to clear all package metrics history?\n\nThis will delete all stored averages and snapshots. This action cannot be undone.')) {
         clearPackageMetricsHistory();
-        // Refresh the display
+
+        // Show cleared state immediately
         updateAveragesDisplay();
-        alert('Package metrics history cleared successfully.');
+
+        // Fetch fresh data to repopulate
+        alert('Package metrics history cleared. Fetching fresh data...');
+        await fetchAndUpdateAverages();
+
+        console.log('✅ Metrics cleared and fresh data captured');
     }
 }
 
@@ -27000,14 +27006,20 @@ function updateAveragesSection(type, packages, allHistory) {
         listContainer.innerHTML = `
             <div class="averages-no-data">
                 <div class="averages-no-data-icon">📊</div>
-                <div class="averages-no-data-text">No ${type} package data collected yet.<br>Visit the Buy Packages page to start recording metrics.</div>
+                <div class="averages-no-data-text">No ${type} package data collected yet.<br>Visit the Buy Packages page or wait for background capture to start recording metrics.</div>
             </div>
         `;
         return;
     }
 
-    // Calculate overall stats
-    const stats = calculateOverallStats(packages, type);
+    // Calculate overall stats with error handling
+    let stats = {};
+    try {
+        stats = calculateOverallStats(packages, type);
+        console.log(`📊 Stats calculated for ${type}:`, stats);
+    } catch (error) {
+        console.error(`📊 Error calculating stats for ${type}:`, error);
+    }
 
     // Build stats cards based on package type
     let statsHTML = '';
