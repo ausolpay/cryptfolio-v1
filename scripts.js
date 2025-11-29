@@ -17094,7 +17094,7 @@ function createTeamPackageRecommendationCard(pkg) {
                 id="shares-${pkg.name.replace(/\s+/g, '-')}"
                 value="${initialShareValue}"
                 min="1"
-                max="9999"
+                max="${totalAvailableShares}"
                 class="share-adjuster-input"
                 readonly
                 data-block-reward="${blockReward}"
@@ -23457,7 +23457,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 id="shares-${pkg.name.replace(/\s+/g, '-')}"
                 value="${initialShareValue}"
                 min="${myBoughtShares || 1}"
-                max="9999"
+                max="${totalAvailableShares}"
                 class="share-adjuster-input"
                 readonly
                 data-block-reward="${blockReward}"
