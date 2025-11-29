@@ -7501,6 +7501,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
     }
 
+    /* Buttons horizontal on mobile, underneath balances */
+    .balance-card-buttons {
+        flex-direction: row;
+    }
+
+    .easymining-action-buttons {
+        flex-direction: row;
+    }
+
     .balance-card-label {
         font-size: 11px;
     }
