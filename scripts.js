@@ -22904,7 +22904,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                     return iconUrl ? `<img class="reward-crypto-icon" src="${iconUrl}" alt="${pkg.crypto}">` : '';
                                 }
                             })()}
-                            <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.isDualCrypto ? `${pkg.mergeBlockReward?.toFixed(0) || '0'} + ${pkg.blockReward?.toFixed(4) || '0'}` : (pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0')}</span>
+                            <span class="reward-amount" id="main-reward-display-${packageId}">${pkg.isDualCrypto ? `${pkg.mergeBlockReward?.toFixed(0) || '0'}+${pkg.blockReward?.toFixed(4) || '0'}` : (pkg.blockReward ? pkg.blockReward.toFixed(pkg.crypto === 'BTC' || pkg.crypto === 'BCH' ? 4 : 2) : '0')}</span>
                             <span class="reward-fiat" id="reward-value-display-${packageId}">≈ $${formatNumber(rewardAUD)}</span>
                         </div>
                     </div>
