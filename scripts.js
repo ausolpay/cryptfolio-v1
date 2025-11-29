@@ -19745,7 +19745,7 @@ function createTeamPackageCard(pkg) {
                             <circle cx="12" cy="12" r="10"/>
                             <path d="M12 6v6l4 2"/>
                         </svg>
-                        <span class="team-stat-value">${participants} <span class="stat-unit">miners</span></span>
+                        <span class="team-stat-value">${participants}</span>
                     </div>
                 </div>
             </div>
@@ -19792,25 +19792,23 @@ function createTeamPackageCard(pkg) {
                     </div>
                 </div>
             </div>
-            <div class="package-section price-info team-price-section">
-                <div class="team-price-grid">
-                    <div class="team-price-item">
-                        <svg class="team-stat-icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
-                        </svg>
-                        <span class="price-label">Per Share</span>
-                        <span class="price-value">$${pricePerShareAUD}</span>
-                    </div>
-                    <div class="team-price-item">
-                        <svg class="team-stat-icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                            <path d="M2 17l10 5 10-5"/>
-                            <path d="M2 12l10 5 10-5"/>
-                        </svg>
-                        <span class="price-label">Block Reward</span>
-                        <span class="price-value">${blockReward} ${crypto}</span>
-                    </div>
+            <div class="package-section price-info">
+                <div class="price-row">
+                    <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                    </svg>
+                    <span class="price-label">Per Share</span>
+                    <span class="price-value">$${pricePerShareAUD}</span>
+                </div>
+                <div class="price-row" style="margin-bottom: 0;">
+                    <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    <span class="price-label">Block Reward</span>
+                    <span class="price-value">${blockReward} ${crypto}</span>
                 </div>
                 <div class="share-selector">
                     <button class="share-button" onclick="adjustShares('${cardId}', -1, this)">-</button>
@@ -22790,8 +22788,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 </div>
                 <div class="package-section price-info">
                     <div class="price-row">
+                        <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                        </svg>
                         <span class="price-label">Price</span>
-                        <span class="price-value" id="price-${packageId}">$${priceAUD} AUD</span>
+                        <span class="price-value" id="price-${packageId}">$${priceAUD}</span>
                     </div>
                     <div class="buy-button-row">
                         ${soloBuyButton}
@@ -22920,7 +22922,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                             </svg>
-                            <span class="team-stat-value">${participants} <span class="stat-unit">miners</span></span>
+                            <span class="team-stat-value">${participants}</span>
                         </div>
                         ${countdownDisplay ? `
                         <div class="team-stat-item">
@@ -22974,16 +22976,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         </div>
                     </div>
                 </div>
-                <div class="package-section price-info team-price-section">
-                    <div class="team-price-grid">
-                        <div class="team-price-item">
-                            <svg class="team-stat-icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
-                            </svg>
-                            <span class="price-label">Per Share</span>
-                            <span class="price-value">$${pricePerShareAUD}</span>
-                        </div>
+                <div class="package-section price-info">
+                    <div class="price-row">
+                        <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                        </svg>
+                        <span class="price-label">Per Share</span>
+                        <span class="price-value">$${pricePerShareAUD}</span>
                     </div>
                     ${teamShareSelector}
                     ${myBoughtShares > 0 ? `

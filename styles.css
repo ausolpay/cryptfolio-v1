@@ -6297,15 +6297,23 @@ body.light-mode .reward-fiat {
 
 .price-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
     margin-bottom: 10px;
+}
+
+.price-icon {
+    width: 18px;
+    height: 18px;
+    color: #ffa500;
+    flex-shrink: 0;
 }
 
 .price-label {
     font-size: 0.95em;
     color: #888;
     font-weight: 500;
+    flex: 1;
 }
 
 .price-value {
