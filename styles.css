@@ -7065,6 +7065,11 @@ body.light-mode .easymining-settings-form input[type="number"] {
         max-width: 320px; /* Max width for readability */
     }
 
+    /* Hide seconds in countdown when hours are shown on mobile */
+    .countdown-seconds {
+        display: none;
+    }
+
     /* Scale down team package background icons on mobile */
     .team-package-card .static-bg-icon {
         width: 140px;

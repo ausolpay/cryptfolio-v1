@@ -22152,7 +22152,8 @@ function updateTeamPackageCountdowns() {
                     const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
 
-                    countdownElement.textContent = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+                    // On mobile, hide seconds when hours > 0 (via CSS class)
+                    countdownElement.innerHTML = hours > 0 ? `${hours}h ${minutes}m<span class="countdown-seconds"> ${seconds}s</span>` : `${minutes}m ${seconds}s`;
                     countdownElement.style.color = '#FFA500';
 
                     // AUTO-CLEAR LOGIC: Check if countdown <= 30 seconds AND auto-clear is enabled
@@ -22481,7 +22482,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
                     const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
-                    const countdownText = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+                    // On mobile, hide seconds when hours > 0 (via CSS class)
+                    const countdownText = hours > 0 ? `${hours}h ${minutes}m<span class="countdown-seconds"> ${seconds}s</span>` : `${minutes}m ${seconds}s`;
 
                     countdownInfo = `
                         <div class="buy-package-stat">
