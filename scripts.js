@@ -26403,13 +26403,24 @@ function parseHashrate(hashrateStr) {
 }
 
 /**
- * Parse probability string to numeric value
- * Example: "1:150" -> 150
+ * Parse probability string or number to numeric value
+ * Example: "1:150" -> 150, or just returns the number if already numeric
  */
-function parseProbability(probabilityStr) {
-    if (!probabilityStr) return 0;
-    const match = probabilityStr.match(/1:(\d+)/);
-    return match ? parseInt(match[1]) : 0;
+function parseProbability(probabilityVal) {
+    if (!probabilityVal) return 0;
+
+    // If it's already a number, return it
+    if (typeof probabilityVal === 'number') {
+        return probabilityVal;
+    }
+
+    // If it's a string, try to parse it
+    if (typeof probabilityVal === 'string') {
+        const match = probabilityVal.match(/1:(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+    }
+
+    return 0;
 }
 
 /**
