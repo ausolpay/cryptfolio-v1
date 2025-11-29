@@ -2183,6 +2183,10 @@ function updateDepositsBalance() {
             pendingLocal
         });
 
+        // Determine border color based on available balance (red if < 0.0001 BTC, green otherwise)
+        const minShareCost = 0.0001; // Minimum cost for one share
+        const borderColor = availableBalance < minShareCost ? '#f44336' : '#4CAF50';
+
         // Check if elements already exist (for smooth updates without flickering)
         const existingAvailableBTC = document.getElementById('deposits-available-btc');
         const existingAvailableLocal = document.getElementById('deposits-available-aud');
@@ -2195,10 +2199,16 @@ function updateDepositsBalance() {
             existingAvailableBTC.textContent = `${availableBalance.toFixed(8)} BTC`;
             existingPendingLocal.textContent = `${currencySymbol}${pendingLocal}`;
             existingPendingBTC.textContent = `${pendingBalance.toFixed(8)} BTC`;
+            // Update border colors
+            const container = document.getElementById('deposits-balance-container');
+            if (container) {
+                container.style.borderLeftColor = borderColor;
+                container.style.borderRightColor = borderColor;
+            }
         } else {
             // First render - create full HTML with IDs
             balanceSection.innerHTML = `
-                <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                <div id="deposits-balance-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor};">
                     <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
                         <div style="flex: 0 1 auto; text-align: center;">
                             <div style="color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
@@ -21875,6 +21885,30 @@ function updateSoloPackageCardsInPlace(soloPackages, soloRecommendedNames) {
     console.log(`✅ Smart updated ${soloPackages.length} solo package cards`);
 }
 
+/**
+ * Update balance section border colors based on available balance
+ * Turns red if balance < 0.0001 BTC (min share cost), green otherwise
+ */
+function updateBalanceSectionBorderColor() {
+    const availableBalance = window.niceHashBalance?.available || 0;
+    const minShareCost = 0.0001; // Minimum cost for one share
+    const borderColor = availableBalance < minShareCost ? '#f44336' : '#4CAF50';
+
+    // Update buy packages page balance container
+    const buyPackagesContainer = document.getElementById('balance-section-container');
+    if (buyPackagesContainer) {
+        buyPackagesContainer.style.borderLeftColor = borderColor;
+        buyPackagesContainer.style.borderRightColor = borderColor;
+    }
+
+    // Update deposits page balance container
+    const depositsContainer = document.getElementById('deposits-balance-container');
+    if (depositsContainer) {
+        depositsContainer.style.borderLeftColor = borderColor;
+        depositsContainer.style.borderRightColor = borderColor;
+    }
+}
+
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
@@ -21980,8 +22014,12 @@ async function loadBuyPackagesDataOnPage() {
     const pendingAUD = btcPrice > 0 ? (pendingBalance * btcPrice).toFixed(2) : '0.00';
     console.log(`💵 Balance section BTC price: $${btcPrice} AUD`);
 
+    // Determine border color based on available balance (red if < 0.0001 BTC, green otherwise)
+    const minShareCost = 0.0001; // Minimum cost for one share
+    const borderColor = availableBalance < minShareCost ? '#f44336' : '#4CAF50';
+
     balanceSection.innerHTML = `
-        <div style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+        <div id="balance-section-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor};">
             <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
                 <div style="flex: 0 1 auto; text-align: center;">
                     <div style="color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
