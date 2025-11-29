@@ -8261,17 +8261,24 @@ body.light-mode .averages-stat-value {
 /* Responsive Styles */
 @media (max-width: 768px) {
     .averages-content {
-        padding: 15px;
+        padding: 10px;
+        max-width: 100%;
+    }
+
+    .averages-section {
+        border-radius: 12px;
+        margin-bottom: 20px;
     }
 
     .averages-overall-stats {
         grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        padding: 15px;
+        gap: 8px;
+        padding: 12px;
     }
 
     .averages-stat-card {
-        padding: 12px;
+        padding: 10px 8px;
+        border-radius: 8px;
     }
 
     /* Optimal Package Today on its own row on mobile */
@@ -8279,52 +8286,165 @@ body.light-mode .averages-stat-value {
         grid-column: 1 / -1;
     }
 
+    .averages-stat-label {
+        font-size: 9px;
+    }
+
     .averages-stat-value {
-        font-size: 16px;
+        font-size: 13px;
+    }
+
+    .averages-stat-sub {
+        font-size: 10px;
     }
 
     .averages-item {
         flex-wrap: wrap;
-        padding: 12px 15px;
+        padding: 12px;
     }
 
     .averages-item-icon {
-        width: 35px;
-        height: 35px;
+        width: 32px;
+        height: 32px;
+        margin-right: 10px;
+        padding: 4px;
+    }
+
+    .averages-item-icon-dual {
+        width: 48px;
+        height: 32px;
+        margin-right: 10px;
+    }
+
+    .averages-item-icon-dual img {
+        width: 26px;
+        height: 26px;
+        padding: 3px;
+    }
+
+    .averages-item-icon-front {
+        left: 20px;
+    }
+
+    .averages-item-info {
+        margin-right: 10px;
+    }
+
+    .averages-item-name {
+        font-size: 13px;
     }
 
     .averages-item-stats {
         width: 100%;
         margin-top: 10px;
-        justify-content: space-between;
+        justify-content: flex-start;
+        gap: 6px;
     }
 
     .averages-item-stat {
         text-align: center;
         min-width: auto;
         flex: 1;
+        max-width: calc(50% - 3px);
+        padding: 5px 4px;
+    }
+
+    .averages-item-stat-label {
+        font-size: 8px;
+    }
+
+    .averages-item-stat-value {
+        font-size: 11px;
     }
 }
 
 @media (max-width: 480px) {
+    .averages-content {
+        padding: 8px;
+    }
+
+    .averages-section {
+        border-radius: 10px;
+        margin-bottom: 15px;
+    }
+
     .averages-overall-stats {
         grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        padding: 10px;
+    }
+
+    .averages-stat-card {
+        padding: 8px 6px;
     }
 
     .averages-section-title {
-        font-size: 16px;
+        font-size: 14px;
         padding: 12px 15px;
     }
 
+    .averages-stat-label {
+        font-size: 8px;
+        margin-bottom: 4px;
+    }
+
+    .averages-stat-value {
+        font-size: 12px;
+    }
+
+    .averages-stat-sub {
+        font-size: 9px;
+        margin-top: 3px;
+    }
+
+    .averages-item {
+        padding: 10px;
+    }
+
+    .averages-item-icon {
+        width: 28px;
+        height: 28px;
+        margin-right: 8px;
+    }
+
+    .averages-item-icon-dual {
+        width: 42px;
+        height: 28px;
+        margin-right: 8px;
+    }
+
+    .averages-item-icon-dual img {
+        width: 22px;
+        height: 22px;
+    }
+
+    .averages-item-icon-front {
+        left: 18px;
+    }
+
     .averages-item-name {
-        font-size: 14px;
+        font-size: 12px;
+    }
+
+    .averages-item-meta {
+        font-size: 10px;
     }
 
     .averages-item-stats {
-        gap: 10px;
+        gap: 4px;
+        margin-top: 8px;
+    }
+
+    .averages-item-stat {
+        padding: 4px 3px;
+        border-radius: 4px;
+    }
+
+    .averages-item-stat-label {
+        font-size: 7px;
     }
 
     .averages-item-stat-value {
-        font-size: 12px;
+        font-size: 10px;
     }
 }
