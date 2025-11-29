@@ -24651,10 +24651,11 @@ function stopBuyPackagesPolling() {
         console.log('⏹️ Buy packages polling stopped');
     }
 
-    // Also stop package metrics averaging when leaving the page
-    stopPackageMetricsAveraging();
+    // Keep package metrics averaging running even on other pages
+    // This continues to update averages from stored snapshots
+    // (New snapshots are only captured when on buy packages page)
 
-    // Stop floating icon speed updates
+    // Stop floating icon speed updates (only needed on buy packages page)
     stopFloatingIconSpeedUpdates();
 }
 
@@ -24860,16 +24861,17 @@ function updateFloatingIconSpeeds() {
 }
 
 /**
- * Start the floating icon speed update interval (60 seconds)
+ * Start the floating icon speed update interval (5 seconds)
+ * Updates CSS custom properties without restarting animations
  */
 function startFloatingIconSpeedUpdates() {
     stopFloatingIconSpeedUpdates();
 
     floatingIconSpeedInterval = setInterval(() => {
         updateFloatingIconSpeeds();
-    }, 60000);
+    }, 5000);
 
-    console.log('🎈 Started floating icon speed updates (60s interval)');
+    console.log('🎈 Started floating icon speed updates (5s interval)');
 }
 
 /**
