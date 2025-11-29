@@ -8455,29 +8455,36 @@ function initStripFloatingIcons() {
         const valueRatio = totalValue > 0 ? crypto.value / totalValue : 0;
         const size = 20 + (valueRatio * 30);
 
-        // Speed based on 24h change (slower for strip: 15-30s)
+        // Speed based on 24h change (top mover fastest: 8s, slowest: 20s - same as modal)
         const changeRatio = crypto.change24h / maxChange;
-        const speed = 30 - (changeRatio * 15);
+        const speed = 20 - (changeRatio * 12);
 
-        // z-index based on value
+        // z-index based on value (bigger = higher)
         const zIndex = index + 1;
 
-        // Vertical movement based on sentiment (subtler for strip)
-        let floatY = -10 - Math.random() * 10;
+        // Vertical bias based on sentiment (bullish up, bearish down)
+        // Neutral (45-55) has balanced movement
+        let floatYUp = -25 - Math.random() * 20;
+        let floatYDown = 25 + Math.random() * 20;
+
         if (crypto.sentiment > 55) {
-            floatY = -15 - Math.random() * 15;
+            // Bullish: more upward movement
+            floatYUp = -40 - Math.random() * 25;
+            floatYDown = 15 + Math.random() * 15;
         } else if (crypto.sentiment < 45) {
-            floatY = 5 + Math.random() * 10;
+            // Bearish: more downward movement
+            floatYUp = -15 - Math.random() * 15;
+            floatYDown = 40 + Math.random() * 25;
         }
 
         // Random starting position within strip bounds
-        const startX = Math.random() * 90 + 5; // 5-95%
+        const startX = Math.random() * 80 + 10; // 10-90%
         const startY = Math.random() * 60 + 20; // 20-80%
 
-        // Subtle movement for strip
-        const floatX = 10 + Math.random() * 20;
-        const rotateAmount = -5 + Math.random() * 10;
-        const delay = Math.random() * 8;
+        // Random float range and rotation (same as modal)
+        const floatX = 20 + Math.random() * 40;
+        const rotateAmount = -10 + Math.random() * 20;
+        const delay = Math.random() * 5;
 
         icon.style.cssText = `
             width: ${size}px;
@@ -8488,7 +8495,8 @@ function initStripFloatingIcons() {
             --float-speed: ${speed}s;
             --float-delay: ${delay}s;
             --float-x: ${floatX}px;
-            --float-y: ${floatY}px;
+            --float-y-up: ${floatYUp}px;
+            --float-y-down: ${floatYDown}px;
             --rotate-amount: ${rotateAmount}deg;
         `;
 
