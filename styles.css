@@ -4529,6 +4529,7 @@ body.light-mode .clear-shares-btn:hover {
     right: 5px;
     font-size: 20px;
     animation: pulse 1s infinite;
+    z-index: 2;
 }
 
 /* Flashing animation for active packages with blocks */
@@ -5739,6 +5740,8 @@ body.light-mode .buy-package-card {
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 165, 0, 0.3);
     margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
 }
 
 .package-header h4 {
@@ -5759,6 +5762,8 @@ body.light-mode .buy-package-card {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    position: relative;
+    z-index: 1;
 }
 
 /* Package Sections */
@@ -5997,6 +6002,52 @@ body.light-mode .stat-value-medium {
         transform: translate(0, 0);
         opacity: 0.25;
     }
+}
+
+/*
+ * STATIC BACKGROUND ICONS
+ * Large faint icons in the background of package cards
+ * Palladium packages show two overlapping icons
+ */
+.static-bg-icons {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+}
+
+.static-bg-icon {
+    position: absolute;
+    width: 180%;
+    height: 180%;
+    max-width: none;
+    max-height: none;
+    opacity: 0.22;
+    border-radius: 50%;
+    object-fit: contain;
+    filter: grayscale(20%);
+}
+
+/* Palladium: two icons overlapping with offset */
+.static-bg-icons.palladium .static-bg-icon {
+    width: 130%;
+    height: 130%;
+}
+
+.static-bg-icons.palladium .static-bg-icon:first-child {
+    transform: translate(-15%, 10%);
+}
+
+.static-bg-icons.palladium .static-bg-icon.offset {
+    transform: translate(15%, -15%);
 }
 
 .reward-display {

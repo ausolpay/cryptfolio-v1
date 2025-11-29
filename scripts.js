@@ -22412,7 +22412,60 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // Solo packages get the new redesigned layout
     if (!pkg.isTeam) {
+        // Generate static background icon(s) - large, faint, fills container
+        const staticBgIcon = (() => {
+            const cryptoIdMap = {
+                'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
+                'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+            };
+            const fallbackIcons = {
+                'bitcoin': 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',
+                'bitcoin-cash': 'https://assets.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png',
+                'ravencoin': 'https://assets.coingecko.com/coins/images/3412/large/ravencoin.png',
+                'dogecoin': 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png',
+                'litecoin': 'https://assets.coingecko.com/coins/images/2/large/litecoin.png',
+                'kaspa': 'https://assets.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+                'ethereum-classic': 'https://assets.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
+            };
+
+            const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+            const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+            const iconUrl = userCrypto?.thumb
+                ? userCrypto.thumb.replace('/thumb/', '/large/')
+                : (fallbackIcons[cryptoId] || '');
+
+            const isPalladium = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
+
+            if (isPalladium) {
+                // Get merge crypto icon for Palladium
+                let mergeId = '';
+                if (pkg.mergeCrypto) {
+                    mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
+                } else if (pkg.crypto?.toUpperCase() === 'DOGE') {
+                    mergeId = 'litecoin';
+                } else if (pkg.crypto?.toUpperCase() === 'LTC') {
+                    mergeId = 'dogecoin';
+                }
+                const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+                const mergeIconUrl = mergeCrypto?.thumb
+                    ? mergeCrypto.thumb.replace('/thumb/', '/large/')
+                    : (fallbackIcons[mergeId] || '');
+
+                // Two overlapping icons for Palladium
+                return `<div class="static-bg-icons palladium">
+                    <img class="static-bg-icon" src="${iconUrl}" alt="">
+                    <img class="static-bg-icon offset" src="${mergeIconUrl}" alt="">
+                </div>`;
+            } else {
+                // Single centered icon
+                return `<div class="static-bg-icons">
+                    <img class="static-bg-icon" src="${iconUrl}" alt="">
+                </div>`;
+            }
+        })();
+
         card.innerHTML = `
+            ${staticBgIcon}
             ${robotHtml}
             <div class="package-header">
                 <h4>${pkg.name}${isRecommended ? ' <span class="recommended-star">⭐</span>' : ''}</h4>
