@@ -6026,20 +6026,19 @@ body.light-mode .stat-value-medium {
 
 .static-bg-icon {
     position: absolute;
-    width: 180%;
-    height: 180%;
+    width: 75%;
+    height: 75%;
     max-width: none;
     max-height: none;
-    opacity: 0.22;
+    opacity: 0.08;
     border-radius: 50%;
     object-fit: contain;
-    filter: grayscale(20%);
 }
 
 /* Palladium: two icons overlapping with offset */
 .static-bg-icons.palladium .static-bg-icon {
-    width: 130%;
-    height: 130%;
+    width: 55%;
+    height: 55%;
 }
 
 .static-bg-icons.palladium .static-bg-icon:first-child {
