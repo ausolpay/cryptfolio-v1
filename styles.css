@@ -4094,17 +4094,23 @@ body.light-mode .balance-label {
     background-color: #777777;
 }
 
+/* EasyMining Top Row - Balance + Action Buttons */
+.easymining-top-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
 /* EasyMining Balance Card Styles */
 .easymining-balance-card {
     background-color: #2a2a2a;
     border-radius: 12px;
     padding: 20px;
-    margin-bottom: 15px;
     border-left: 4px solid #4CAF50;
     border-right: 4px solid #4CAF50;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
+    flex: 0 1 auto;
 }
 
 body.light-mode .easymining-balance-card {
@@ -4215,13 +4221,11 @@ body.light-mode .balance-card-btn svg {
     stroke: #e69500;
 }
 
-/* Action Buttons Row */
+/* Action Buttons - Vertical on desktop, next to balance card */
 .easymining-action-buttons {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
 }
 
 .action-btn {
@@ -7396,6 +7400,12 @@ body.light-mode .easymining-settings-form input[type="number"] {
         flex: 1 1 calc(50% - 10px); /* Two items per row on tablet */
     }
 
+    /* EasyMining Top Row - Stack on mobile */
+    .easymining-top-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
     /* EasyMining Balance Card - Tablet */
     .easymining-balance-card {
         max-width: 100%;
@@ -7408,6 +7418,12 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .balance-card-value {
         font-size: 20px;
+    }
+
+    /* Action buttons horizontal on mobile */
+    .easymining-action-buttons {
+        flex-direction: row;
+        justify-content: center;
     }
 
     /* Reduce rocket size slightly */

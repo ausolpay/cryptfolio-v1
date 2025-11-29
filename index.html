@@ -278,71 +278,74 @@
                 <span class="toggle-text">EasyMining</span>
             </div>
             <div id="easymining-content" class="easymining-content" style="display: none;">
-                <!-- Balance Card with Deposit/Withdraw -->
-                <div id="easymining-balance-card" class="easymining-balance-card">
-                    <div class="balance-card-content">
-                        <div class="balance-card-item available">
-                            <div class="balance-card-label">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                Available Balance
+                <!-- Balance and Action Row -->
+                <div class="easymining-top-row">
+                    <!-- Balance Card with Deposit/Withdraw -->
+                    <div id="easymining-balance-card" class="easymining-balance-card">
+                        <div class="balance-card-content">
+                            <div class="balance-card-item available">
+                                <div class="balance-card-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    Available Balance
+                                </div>
+                                <div id="easymining-available-aud" class="balance-card-value available">$0.00</div>
+                                <div id="easymining-available-btc" class="balance-card-btc">0.00000000 BTC</div>
                             </div>
-                            <div id="easymining-available-aud" class="balance-card-value available">$0.00</div>
-                            <div id="easymining-available-btc" class="balance-card-btc">0.00000000 BTC</div>
+                            <div class="balance-card-item pending">
+                                <div class="balance-card-label">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12,6 12,12 16,14"/>
+                                    </svg>
+                                    Pending Balance
+                                </div>
+                                <div id="easymining-pending-aud" class="balance-card-value pending">$0.00</div>
+                                <div id="easymining-pending-btc" class="balance-card-btc">0.00000000 BTC</div>
+                            </div>
                         </div>
-                        <div class="balance-card-item pending">
-                            <div class="balance-card-label">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polyline points="12,6 12,12 16,14"/>
+                        <div class="balance-card-buttons">
+                            <button onclick="showDepositsPage()" class="balance-card-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 3v12m0 0l-4-4m4 4l4-4"/>
+                                    <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
                                 </svg>
-                                Pending Balance
-                            </div>
-                            <div id="easymining-pending-aud" class="balance-card-value pending">$0.00</div>
-                            <div id="easymining-pending-btc" class="balance-card-btc">0.00000000 BTC</div>
+                                Deposit
+                            </button>
+                            <button onclick="showWithdrawPage()" class="balance-card-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 21V9m0 0l4 4m-4-4l-4 4"/>
+                                    <path d="M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2"/>
+                                </svg>
+                                Withdraw
+                            </button>
                         </div>
                     </div>
-                    <div class="balance-card-buttons">
-                        <button onclick="showDepositsPage()" class="balance-card-btn">
+
+                    <!-- Action Buttons -->
+                    <div class="easymining-action-buttons">
+                        <button onclick="showBuyPackagesPage()" class="action-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 3v12m0 0l-4-4m4 4l4-4"/>
-                                <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                <path d="M16 10a4 4 0 01-8 0"/>
                             </svg>
-                            Deposit
+                            Buy Packages
                         </button>
-                        <button onclick="showWithdrawPage()" class="balance-card-btn">
+                        <button onclick="clearRockets()" class="action-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 21V9m0 0l4 4m-4-4l-4 4"/>
-                                <path d="M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2"/>
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
                             </svg>
-                            Withdraw
+                            Clear Rockets
                         </button>
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="easymining-action-buttons">
-                    <button onclick="showBuyPackagesPage()" class="action-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <path d="M16 10a4 4 0 01-8 0"/>
-                        </svg>
-                        Buy Packages
-                    </button>
-                    <button onclick="clearRockets()" class="action-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                            <line x1="10" y1="11" x2="10" y2="17"/>
-                            <line x1="14" y1="11" x2="14" y2="17"/>
-                        </svg>
-                        Clear Rockets
-                    </button>
-                </div>
-                
                 <div class="blocks-found-display">
                     <span class="blocks-found-label">Blocks Found</span>
                     <div id="blocks-found-rockets" class="blocks-found-rockets"></div>
