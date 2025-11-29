@@ -15073,105 +15073,188 @@ function displayActivePackages() {
             blockBadge = ` 🚀 x${pkg.totalBlocks}`;
         }
 
+        // Generate static background icon(s) for the card
+        const staticBgIcon = (() => {
+            const cryptoIdMap = {
+                'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
+                'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+            };
+            const fallbackIcons = {
+                'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+                'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png',
+                'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
+                'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
+                'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+                'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
+            };
+            const isPalladium = pkg.cryptoSecondary && (pkg.name?.toLowerCase().includes('palladium') || pkg.name?.toLowerCase().includes('team palladium'));
+            if (isPalladium) {
+                const mainId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+                const mergeId = cryptoIdMap[pkg.cryptoSecondary?.toUpperCase()] || '';
+                const mainCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mainId);
+                const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+                const mainIconUrl = mainCrypto?.thumb ? mainCrypto.thumb.replace('/thumb/', '/large/') : (fallbackIcons[mainId] || '');
+                const mergeIconUrl = mergeCrypto?.thumb ? mergeCrypto.thumb.replace('/thumb/', '/large/') : (fallbackIcons[mergeId] || '');
+                return `<div class="static-bg-icons palladium">
+                    <img class="static-bg-icon" src="${mainIconUrl}" alt="${pkg.crypto || ''}" onerror="this.style.display='none'">
+                    <img class="static-bg-icon offset" src="${mergeIconUrl}" alt="${pkg.cryptoSecondary || ''}" onerror="this.style.display='none'">
+                </div>`;
+            } else {
+                const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+                const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+                const iconUrl = userCrypto?.thumb ? userCrypto.thumb.replace('/thumb/', '/large/') : (fallbackIcons[cryptoId] || '');
+                return `<div class="static-bg-icons">
+                    <img class="static-bg-icon" src="${iconUrl}" alt="${pkg.crypto || ''}" onerror="this.style.display='none'">
+                </div>`;
+            }
+        })();
+
+        // Calculate reward AUD for display
+        const rewardAUD = (() => {
+            let totalAUD = 0;
+            if (pkg.reward > 0) {
+                totalAUD += convertCryptoToAUD(pkg.reward, pkg.crypto);
+            }
+            if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
+                totalAUD += convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary);
+            }
+            return totalAUD;
+        })();
+
         card.innerHTML = `
+            ${staticBgIcon}
             ${robotHtml}
             ${rocketHtml}
-            <div class="package-card-name">${pkg.name}${blockBadge}</div>
-            <div class="package-card-stat">
-                <span>Reward:</span>
-                <span style="color: ${pkg.blockFound ? '#00ff00' : '#888'};">${rewardDisplay}</span>
+            <div class="package-header">
+                <h4>${pkg.name}${blockBadge}</h4>
             </div>
-            ${pkg.blockFound && (pkg.reward > 0 || (pkg.rewardSecondary > 0 && pkg.cryptoSecondary)) ? `
-            <div class="package-card-stat">
-                <span>Reward AUD:</span>
-                <span style="color: #00ff00;">${(() => {
-                    let totalAUD = 0;
-                    if (pkg.reward > 0) {
-                        totalAUD += convertCryptoToAUD(pkg.reward, pkg.crypto);
-                    }
-                    if (pkg.rewardSecondary > 0 && pkg.cryptoSecondary) {
-                        totalAUD += convertCryptoToAUD(pkg.rewardSecondary, pkg.cryptoSecondary);
-                    }
-                    return '$' + formatNumber(totalAUD.toFixed(2));
-                })()}</span>
+            <div class="package-body">
+                <!-- Mining Stats Section (Active packages only) -->
+                ${pkg.active ? `
+                <div class="package-section mining-info">
+                    <div class="package-stat-grid">
+                        ${pkg.probability ? `
+                        <div class="stat-block">
+                            <span class="stat-value-medium">
+                                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                </svg>
+                                ${pkg.probability}${pkg.mergeProbability ? `<br><span class="secondary-prob">${pkg.mergeProbability}</span>` : ''}
+                            </span>
+                        </div>
+                        ` : ''}
+                        <div class="stat-block">
+                            <span class="stat-value-medium">
+                                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12,6 12,12 16,14"/>
+                                </svg>
+                                ${pkg.timeRemaining}
+                            </span>
+                        </div>
+                        ${pkg.hashrate ? `
+                        <div class="stat-block">
+                            <span class="stat-value-medium hashrate-value">
+                                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2" fill="currentColor"/>
+                                </svg>
+                                ${pkg.hashrate}
+                            </span>
+                        </div>
+                        ` : ''}
+                        ${pkg.rigsCount !== undefined ? `
+                        <div class="stat-block">
+                            <span class="stat-value-medium rigs-value">
+                                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                                ${pkg.rigsCount}
+                            </span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Reward Section -->
+                <div class="package-section rewards-info">
+                    <div class="section-label">${pkg.blockFound ? 'Reward Earned' : (pkg.active ? 'Potential Reward' : 'No Reward')}</div>
+                    <div class="reward-display">
+                        <div class="reward-line">
+                            <svg class="reward-icon ${pkg.blockFound ? 'found' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6"/>
+                                <path d="M12 12V3"/>
+                                <path d="M12 3l4 4"/>
+                                <path d="M12 3L8 7"/>
+                                <rect x="2" y="9" width="20" height="5" rx="1"/>
+                            </svg>
+                            <span class="reward-amount ${pkg.blockFound ? 'found' : ''}">${rewardDisplay}</span>
+                            ${pkg.blockFound && rewardAUD > 0 ? `<span class="reward-fiat found">≈ $${formatNumber(rewardAUD.toFixed(2))}</span>` : ''}
+                            ${pkg.active && pkg.potentialReward > 0 ? `<span class="reward-fiat potential">≈ $${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))}${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? ` + $${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))}` : ''}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Info Section (Team packages only) -->
+                ${pkg.isTeam && (pkg.ownedShares > 0 || pkg.numberOfParticipants !== null) ? `
+                <div class="package-section team-info">
+                    <div class="team-stats-row">
+                        ${pkg.ownedShares !== null && pkg.ownedShares !== undefined && pkg.totalShares !== null && pkg.totalShares !== undefined && pkg.ownedShares > 0 && pkg.totalShares > 0 ? `
+                        <span class="team-stat">
+                            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
+                                <circle cx="17" cy="7" r="3"/>
+                                <path d="M21 21v-2a3 3 0 00-3-3h-1"/>
+                            </svg>
+                            ${Math.round(pkg.ownedShares)}/${Math.round(pkg.totalShares)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)
+                        </span>
+                        ` : ''}
+                        ${pkg.active && pkg.numberOfParticipants !== null ? `
+                        <span class="team-stat">
+                            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 010 7.75"/>
+                            </svg>
+                            ${pkg.numberOfParticipants} users
+                        </span>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- Price Section -->
+                <div class="package-section price-info">
+                    <div class="price-row">
+                        <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="price-value" style="color: ${remainingPriceColor};">$${remainingPriceAUD.toFixed(2)}</span>
+                        <span class="price-label">${pkg.active ? 'remaining' : 'cost'}</span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="package-progress-bar">
+                    <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
+                </div>
+
+                <!-- Clear Shares Button (Team packages only) -->
+                ${pkg.active && pkg.isTeam && pkg.ownedShares > 0 ? `
+                <button class="clear-shares-btn" onclick="event.stopPropagation(); clearTeamSharesManual('${pkg.id}', '${pkg.name}')">
+                    Clear Shares
+                </button>
+                ` : ''}
             </div>
-            ` : ''}
-            ${pkg.isTeam && pkg.ownedShares !== null && pkg.ownedShares !== undefined && pkg.totalShares !== null && pkg.totalShares !== undefined && pkg.ownedShares > 0 && pkg.totalShares > 0 ? `
-            <div class="package-card-stat">
-                <span>My Shares:</span>
-                <span>${Math.round(pkg.ownedShares)} / ${Math.round(pkg.totalShares)} (${(pkg.userSharePercentage * 100).toFixed(1)}%)</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.potentialReward > 0 ? `
-            <div class="package-card-stat">
-                <span>Potential:</span>
-                <span style="color: #ffa500;">$${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))}${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? `<br>+ $${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))}` : ''}</span>
-            </div>
-            ` : ''}
-            <div class="package-card-stat">
-                <span>Time:</span>
-                <span>${pkg.timeRemaining}</span>
-            </div>
-            ${pkg.active && pkg.probability ? `
-            <div class="package-card-stat">
-                <span>Probability:</span>
-                <span style="color: #4CAF50;">${pkg.probability}${pkg.mergeProbability ? `<br>${pkg.mergeProbability}` : ''}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.hashrate ? `
-            <div class="package-card-stat">
-                <span>Hashrate:</span>
-                <span style="color: #00ccff;">${pkg.hashrate}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.ready && packageInitialValues[pkg.id]?.hashrate ? `
-            <div class="package-card-stat">
-                <span>HR (OAS):</span>
-                <span style="color: #888;">${packageInitialValues[pkg.id].hashrate}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.rigsCount !== undefined ? `
-            <div class="package-card-stat">
-                <span>Rigs:</span>
-                <span style="color: #ff9800;">${pkg.rigsCount}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.ready && packageInitialValues[pkg.id]?.rigs !== undefined ? `
-            <div class="package-card-stat">
-                <span>Rigs (OAS):</span>
-                <span style="color: #888;">${packageInitialValues[pkg.id].rigs}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.isTeam && pkg.numberOfParticipants !== null ? `
-            <div class="package-card-stat">
-                <span>Participants:</span>
-                <span style="color: #4CAF50;">${pkg.numberOfParticipants}</span>
-            </div>
-            ` : ''}
-            ${pkg.active && pkg.isTeam && pkg.totalCostBTC !== null ? `
-            <div class="package-card-stat">
-                <span>Total Cost:</span>
-                <span style="color: #ffa500;">$${formatNumber(convertBTCtoAUD(pkg.totalCostBTC).toFixed(2))}</span>
-            </div>
-            ` : ''}
-            ${pkg.active ? `
-            <div class="package-card-stat">
-                <span>Shares Price:</span>
-                <span>$${priceAUD.toFixed(2)}</span>
-            </div>
-            ` : ''}
-            <div class="package-card-stat">
-                <span>${pkg.active ? 'Remaining:' : 'Price:'}</span>
-                <span style="color: ${remainingPriceColor};">$${remainingPriceAUD.toFixed(2)}</span>
-            </div>
-            <div class="package-progress-bar">
-                <div class="package-progress-fill" style="width: ${pkg.progress}%"></div>
-            </div>
-            ${pkg.active && pkg.isTeam && pkg.ownedShares > 0 ? `
-            <button class="clear-shares-btn" onclick="event.stopPropagation(); clearTeamSharesManual('${pkg.id}', '${pkg.name}')">
-                Clear Shares
-            </button>
-            ` : ''}
         `;
 
         container.appendChild(card);

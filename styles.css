@@ -4432,11 +4432,11 @@ body.light-mode .package-tab.active {
 
 .active-packages-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, 1fr); /* 3 cards per row on desktop */
     gap: 15px;
     margin-bottom: 15px;
-    box-sizing: border-box; /* Ensure width calculations include any padding */
-    max-width: 100%; /* Ensure container doesn't overflow */
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 /* Center "No packages" messages in My Packages section */
@@ -4501,11 +4501,19 @@ body.light-mode .package-tab.active {
     user-select: none;
 }
 
-/* Single column on mobile */
+/* Tablet - 2 cards per row */
+@media (max-width: 1040px) {
+    .active-packages-container {
+        grid-template-columns: repeat(2, 1fr); /* 2 cards per row on tablet */
+        gap: 12px;
+    }
+}
+
+/* Mobile - 1 card per row */
 @media (max-width: 768px) {
     .active-packages-container {
         grid-template-columns: 1fr; /* One package per row on mobile */
-        gap: 10px; /* Reduce gap on mobile */
+        gap: 10px;
         width: 100%;
         max-width: 100%;
         padding: 0;
@@ -4560,7 +4568,30 @@ body.light-mode .package-tab.active {
     }
 
     .package-card {
-        padding: 6px; /* Reduce padding on mobile */
+        padding: 10px;
+        min-height: 240px;
+    }
+
+    .package-card .package-header h4 {
+        font-size: 0.9em;
+    }
+
+    .package-card .stat-value-medium {
+        font-size: 0.8em;
+    }
+
+    .package-card .reward-amount {
+        font-size: 0.85em;
+    }
+
+    .package-card .static-bg-icon {
+        width: 100px;
+        height: 100px;
+    }
+
+    .package-card .static-bg-icons.palladium .static-bg-icon {
+        width: 70px;
+        height: 70px;
     }
 
     .stat-item {
@@ -4662,6 +4693,10 @@ body.light-mode .package-tab.active {
     }
 }
 
+/* =============================================================================
+   RESTYLED PACKAGE CARDS (Active/Completed/Rewards - matching Buy Packages)
+   ============================================================================= */
+
 .package-card {
     background-color: #2a2a2a;
     border: 1px solid #444;
@@ -4670,8 +4705,13 @@ body.light-mode .package-tab.active {
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
-    max-width: 100%; /* Ensure card doesn't overflow container */
+    max-width: 100%;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 280px;
+    height: auto;
 }
 
 body.light-mode .package-card {
@@ -4684,6 +4724,263 @@ body.light-mode .package-card {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
+/* Package Card Header (matches buy package header) */
+.package-card .package-header {
+    text-align: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 165, 0, 0.3);
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.package-card .package-header h4 {
+    margin: 0;
+    color: #ffa500;
+    font-size: 1em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Package Card Body */
+.package-card .package-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Package Card Sections */
+.package-card .package-section {
+    background-color: rgba(50, 50, 50, 0.4);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+body.light-mode .package-card .package-section {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Stat Grid for Mining Info */
+.package-card .package-stat-grid {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.package-card .stat-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.package-card .stat-value-medium {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+body.light-mode .package-card .stat-value-medium {
+    color: #333;
+}
+
+.package-card .stat-icon {
+    width: 14px;
+    height: 14px;
+    color: #ffa500;
+    flex-shrink: 0;
+}
+
+.package-card .hashrate-value {
+    color: #00ccff;
+}
+
+.package-card .rigs-value {
+    color: #ff9800;
+}
+
+.package-card .secondary-prob {
+    font-size: 0.85em;
+    color: #888;
+}
+
+/* Rewards Section */
+.package-card .rewards-info .section-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.package-card .reward-display {
+    text-align: center;
+}
+
+.package-card .reward-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.package-card .reward-icon {
+    width: 18px;
+    height: 18px;
+    color: #888;
+    flex-shrink: 0;
+}
+
+.package-card .reward-icon.found {
+    color: #00ff00;
+}
+
+.package-card .reward-amount {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #888;
+}
+
+.package-card .reward-amount.found {
+    color: #00ff00;
+}
+
+.package-card .reward-fiat {
+    font-size: 0.8em;
+    color: #888;
+}
+
+.package-card .reward-fiat.found {
+    color: #00ff00;
+}
+
+.package-card .reward-fiat.potential {
+    color: #ffa500;
+}
+
+/* Team Info Section */
+.package-card .team-info .team-stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.package-card .team-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85em;
+    color: #fff;
+}
+
+body.light-mode .package-card .team-stat {
+    color: #333;
+}
+
+/* Price Section */
+.package-card .price-info .price-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.package-card .price-icon {
+    width: 16px;
+    height: 16px;
+    color: #ffa500;
+}
+
+.package-card .price-value {
+    font-size: 1em;
+    font-weight: 700;
+}
+
+.package-card .price-label {
+    font-size: 0.7em;
+    color: #888;
+    text-transform: uppercase;
+}
+
+/* Progress Bar */
+.package-card .package-progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #444;
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+body.light-mode .package-card .package-progress-bar {
+    background-color: #ddd;
+}
+
+.package-card .package-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff00, #00aa00);
+    transition: width 0.5s ease;
+}
+
+/* Static Background Icons */
+.package-card .static-bg-icons {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+    pointer-events: none;
+}
+
+.package-card .static-bg-icon {
+    width: 120px;
+    height: 120px;
+    opacity: 0.08;
+    object-fit: contain;
+}
+
+.package-card .static-bg-icons.palladium {
+    display: flex;
+    gap: 0;
+}
+
+.package-card .static-bg-icons.palladium .static-bg-icon {
+    width: 90px;
+    height: 90px;
+}
+
+.package-card .static-bg-icons.palladium .static-bg-icon.offset {
+    margin-left: -30px;
+}
+
+/* Clear Shares Button */
+.package-card .clear-shares-btn {
+    margin-top: 8px;
+    padding: 4px 8px;
+    font-size: 0.75em;
+    background-color: rgba(255, 100, 100, 0.2);
+    border: 1px solid #ff6464;
+    color: #ff6464;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.package-card .clear-shares-btn:hover {
+    background-color: rgba(255, 100, 100, 0.4);
+}
+
+/* Legacy styles for backwards compatibility */
 .package-card-name {
     font-size: 14px;
     font-weight: bold;
@@ -4698,6 +4995,7 @@ body.light-mode .package-card {
     justify-content: space-between;
 }
 
+/* Progress bar (standalone, for old structure) */
 .package-progress-bar {
     width: 100%;
     height: 6px;
