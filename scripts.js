@@ -24852,33 +24852,34 @@ function getOrCreateFloatingIconsConfig(packageName, iconUrl, dualIconUrl, iconC
         createdAt: Date.now()
     };
 
-    // Generate main icons with random properties (no delay - all start immediately)
+    // Generate main icons with random properties
+    // Small random delay offset creates variety in orbital position (not staggered start)
     for (let i = 0; i < iconCount; i++) {
         config.mainIcons.push({
-            delay: 0,
+            delay: -(Math.random() * 8),  // Negative delay = starts at random point in animation cycle
             startX: isPalladium ? (5 + (i * 25) + Math.random() * 10) : (5 + (i * (80 / iconCount)) + Math.random() * 10),
             startY: isPalladium ? (10 + Math.random() * 35) : (10 + Math.random() * 70),
-            speedMultiplier: 0.8 + Math.random() * 0.4,
+            speedMultiplier: 0.7 + Math.random() * 0.6,  // More speed variety (0.7-1.3x)
             speedYRatio: isPalladium ? (0.8 + Math.random() * 0.4) : (0.7 + Math.random() * 0.6),
             pulseSpeed: isPalladium ? (5 + Math.random() * 4) : (6 + Math.random() * 6),
-            rangeX: isPalladium ? (20 + Math.random() * 25) : (25 + Math.random() * 35),
-            rangeY: isPalladium ? (25 + Math.random() * 20) : (30 + Math.random() * 25),
+            rangeX: isPalladium ? (15 + Math.random() * 30) : (20 + Math.random() * 40),  // More range variety
+            rangeY: isPalladium ? (20 + Math.random() * 25) : (25 + Math.random() * 30),
             direction: Math.random() > 0.5 ? 'normal' : 'reverse'
         });
     }
 
-    // Generate merge icons for Palladium packages (no delay - all start immediately)
+    // Generate merge icons for Palladium packages
     if (isPalladium && dualIconUrl) {
         for (let i = 0; i < iconCount; i++) {
             config.mergeIcons.push({
-                delay: 0,
+                delay: -(Math.random() * 8),  // Negative delay = starts at random point in animation cycle
                 startX: 50 + (i * 20) + Math.random() * 15,
                 startY: 45 + Math.random() * 40,
-                speedMultiplier: 0.8 + Math.random() * 0.4,
+                speedMultiplier: 0.7 + Math.random() * 0.6,  // More speed variety
                 speedYRatio: 0.7 + Math.random() * 0.5,
                 pulseSpeed: 6 + Math.random() * 5,
-                rangeX: 25 + Math.random() * 30,
-                rangeY: 20 + Math.random() * 25,
+                rangeX: 20 + Math.random() * 35,  // More range variety
+                rangeY: 15 + Math.random() * 30,
                 direction: Math.random() > 0.5 ? 'normal' : 'reverse'
             });
         }
