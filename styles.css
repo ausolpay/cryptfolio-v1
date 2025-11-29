@@ -8081,12 +8081,12 @@ body.light-mode .api-hub-button .api-desc {
 }
 
 .update-btn {
-    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    background-color: #555555;
     color: white;
 }
 
 .update-btn:hover {
-    background: linear-gradient(135deg, #388E3C 0%, #2E7D32 100%);
+    background-color: #666666;
 }
 
 .delete-btn {
