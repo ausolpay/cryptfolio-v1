@@ -4700,7 +4700,7 @@ body.light-mode .stat-label {
 @media (max-width: 700px) {
     .recommendations-container {
         grid-template-columns: 1fr;
-        padding: 0 10px;
+        padding: 0 5px;
         gap: 10px;
         width: auto;
         max-width: 100%;
