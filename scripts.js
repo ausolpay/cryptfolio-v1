@@ -23168,6 +23168,15 @@ function adjustShares(packageName, delta, buttonElement) {
         }
         window.packageShareValues[packageName] = newValue;
         console.log(`💾 Saved Buy Package ${packageName} = ${newValue}`);
+
+        // DYNAMIC FLOATING ICONS: Add/remove icon based on share adjustment
+        // Each + press adds a floating icon, each - press removes one (min 1)
+        // This gives visual feedback that more shares = more potential reward
+        if (delta > 0) {
+            addFloatingIconForShares(packageName);
+        } else if (delta < 0) {
+            removeFloatingIconForShares(packageName);
+        }
     }
 
     // Pause polling for 10 seconds when adjusting shares
@@ -25217,6 +25226,93 @@ function getOrCreateFloatingIconsConfig(packageName, iconUrl, dualIconUrl, iconC
     console.log(`🎈 Created floating icons config for ${packageName}: ${config.mainIcons.length} main + ${config.mergeIcons.length} merge icons`);
 
     return config;
+}
+
+/**
+ * DYNAMIC FLOATING ICON UPDATE FOR TEAM PACKAGES
+ * When user presses the + button to increase shares (even before buying),
+ * an extra floating token icon is added to the Block Reward animation.
+ * This provides visual feedback that more shares = more potential reward.
+ *
+ * Called from adjustShares() when delta > 0 (plus button pressed)
+ */
+function addFloatingIconForShares(packageName) {
+    const key = packageName.replace(/\s+/g, '-');
+    const teamKey = `team-${key}`;
+    const config = floatingIconsStore[teamKey];
+
+    if (!config) {
+        console.log(`🎈 No floating icons config found for ${teamKey}`);
+        return;
+    }
+
+    // Add a new icon to the config
+    const newIcon = {
+        delay: -(Math.random() * 8),
+        startX: 5 + Math.random() * 80,
+        startY: 10 + Math.random() * 70,
+        speedMultiplier: 0.7 + Math.random() * 0.6,
+        speedYRatio: 0.7 + Math.random() * 0.6,
+        pulseSpeed: 6 + Math.random() * 6,
+        rangeX: 20 + Math.random() * 40,
+        rangeY: 25 + Math.random() * 30,
+        direction: Math.random() > 0.5 ? 'normal' : 'reverse'
+    };
+
+    config.mainIcons.push(newIcon);
+    config.iconCount = config.mainIcons.length;
+
+    // Find the container in the DOM and add the new icon
+    const container = document.querySelector(`[data-package-key="${teamKey}"]`);
+    if (container && config.iconUrl) {
+        const speed = 12 * newIcon.speedMultiplier;
+
+        const iconImg = document.createElement('img');
+        iconImg.className = 'reward-floating-icon';
+        iconImg.src = config.iconUrl;
+        iconImg.style.cssText = `
+            --float-delay: ${newIcon.delay.toFixed(1)}s;
+            --float-speed: ${speed.toFixed(1)}s;
+            --range-x: ${newIcon.rangeX.toFixed(0)}px;
+            --range-y: ${newIcon.rangeY.toFixed(0)}px;
+            left: ${newIcon.startX.toFixed(0)}%;
+            top: ${newIcon.startY.toFixed(0)}%;
+            animation-direction: ${newIcon.direction};
+        `;
+        iconImg.onerror = function() { this.style.display = 'none'; };
+
+        container.appendChild(iconImg);
+        console.log(`🎈 Added floating icon for ${packageName} (now ${config.mainIcons.length} icons)`);
+    }
+}
+
+/**
+ * Remove a floating icon when shares decrease (minus button pressed)
+ * Called from adjustShares() when delta < 0
+ */
+function removeFloatingIconForShares(packageName) {
+    const key = packageName.replace(/\s+/g, '-');
+    const teamKey = `team-${key}`;
+    const config = floatingIconsStore[teamKey];
+
+    if (!config || config.mainIcons.length <= 1) {
+        // Keep at least 1 icon
+        return;
+    }
+
+    // Remove from config
+    config.mainIcons.pop();
+    config.iconCount = config.mainIcons.length;
+
+    // Remove from DOM
+    const container = document.querySelector(`[data-package-key="${teamKey}"]`);
+    if (container) {
+        const icons = container.querySelectorAll('.reward-floating-icon');
+        if (icons.length > 1) {
+            icons[icons.length - 1].remove();
+            console.log(`🎈 Removed floating icon for ${packageName} (now ${config.mainIcons.length} icons)`);
+        }
+    }
 }
 
 /**
