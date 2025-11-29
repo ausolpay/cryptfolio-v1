@@ -5731,7 +5731,7 @@ body.light-mode .buy-package-card {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
 }
 
 .team-stat-icon {
