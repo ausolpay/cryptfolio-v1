@@ -4224,6 +4224,47 @@ body.light-mode .balance-card-btn svg {
     flex-wrap: wrap;
 }
 
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    background-color: #555555;
+    color: white;
+    transition: background-color 0.2s, transform 0.1s;
+    min-width: 140px;
+}
+
+.action-btn:hover {
+    background-color: #666666;
+    transform: translateY(-1px);
+}
+
+.action-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: #FFA500;
+}
+
+body.light-mode .action-btn {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+body.light-mode .action-btn:hover {
+    background-color: #d0d0d0;
+}
+
+body.light-mode .action-btn svg {
+    stroke: #e69500;
+}
+
 .blocks-found-display {
     text-align: center;
     margin: 20px 0;
@@ -7398,12 +7439,11 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     /* Keep buttons side by side */
-    .buy-packages-btn,
-    .clear-rockets-btn {
+    .action-btn {
         flex: 1 1 calc(50% - 10px);
-        margin: 5px;
+        min-width: auto;
         padding: 10px 12px;
-        font-size: 14px;
+        font-size: 13px;
     }
 
     .blocks-found-display {
@@ -7473,12 +7513,11 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     /* Keep buttons side by side on smaller screens */
-    .buy-packages-btn,
-    .clear-rockets-btn {
+    .action-btn {
         flex: 1 1 calc(50% - 10px);
-        margin: 5px;
+        min-width: auto;
         padding: 10px;
-        font-size: 13px;
+        font-size: 12px;
     }
 }
 
@@ -7507,11 +7546,10 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     /* Full width buttons on very small screens */
-    .buy-packages-btn,
-    .clear-rockets-btn {
+    .action-btn {
         flex-basis: 100%;
         width: 100%;
-        margin: 5px 0;
+        min-width: auto;
         padding: 12px 16px;
         font-size: 14px;
     }
@@ -7554,8 +7592,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         flex-direction: column;
     }
 
-    .easymining-action-buttons .buy-packages-btn,
-    .easymining-action-buttons .clear-rockets-btn {
+    .easymining-action-buttons .action-btn {
         width: 100%;
         margin: 0;
     }
