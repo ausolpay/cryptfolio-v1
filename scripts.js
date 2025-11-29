@@ -27100,17 +27100,12 @@ function updateAveragesSection(type, packages, allHistory) {
         </div>
     `;
 
-    // Row 2: Best by Hashrate
+    // Row 2: Best by Hashrate and Price
     statsHTML += `
         <div class="averages-stat-card">
             <div class="averages-stat-label">Best Avg Hashrate</div>
             <div class="averages-stat-value">${stats.bestHashrate || 'N/A'}</div>
             <div class="averages-stat-sub">${stats.bestHashrateValue || ''}</div>
-        </div>
-        <div class="averages-stat-card">
-            <div class="averages-stat-label">Most Recorded</div>
-            <div class="averages-stat-value">${stats.mostRecorded || 'N/A'}</div>
-            <div class="averages-stat-sub">${stats.mostRecordedCount || 0} snapshots</div>
         </div>
         <div class="averages-stat-card">
             <div class="averages-stat-label">Highest Avg Price</div>
@@ -27128,9 +27123,9 @@ function updateAveragesSection(type, packages, allHistory) {
                 <div class="averages-stat-sub">${stats.mostParticipantsValue || ''}</div>
             </div>
             <div class="averages-stat-card">
-                <div class="averages-stat-label">Highest Shares</div>
-                <div class="averages-stat-value">${stats.highestShares || 'N/A'}</div>
-                <div class="averages-stat-sub">${stats.highestSharesValue || ''}</div>
+                <div class="averages-stat-label">Highest Shares Today</div>
+                <div class="averages-stat-value">${stats.highestSharesToday || 'N/A'}</div>
+                <div class="averages-stat-sub">${stats.highestSharesTodayValue || ''}</div>
             </div>
         `;
     }
@@ -27359,19 +27354,12 @@ function calculateOverallStats(packages, type) {
     let bestProb7Days = null, bestProb7DaysVal = Infinity;
     let bestProb30Days = null, bestProb30DaysVal = Infinity;
     let bestHashrate = null, bestHashrateVal = 0;
-    let mostRecorded = null, mostRecordedCount = 0;
     let highestPrice = null, highestPriceVal = 0;
     let mostParticipants = null, mostParticipantsVal = 0;
-    let highestShares = null, highestSharesVal = 0;
+    let highestSharesToday = null, highestSharesTodayVal = 0;
 
     packages.forEach(pkg => {
         const snapshots = pkg.snapshots || [];
-
-        // Most recorded snapshots
-        if (snapshots.length > mostRecordedCount) {
-            mostRecordedCount = snapshots.length;
-            mostRecorded = pkg.name;
-        }
 
         // Best average hashrate
         if (pkg.averages?.hashrate && pkg.averages.hashrate > bestHashrateVal) {
@@ -27391,13 +27379,7 @@ function calculateOverallStats(packages, type) {
             mostParticipants = pkg.name;
         }
 
-        // Team-specific: Highest shares (max recorded)
-        if (isTeam && pkg.averages?.maxShares && pkg.averages.maxShares > highestSharesVal) {
-            highestSharesVal = pkg.averages.maxShares;
-            highestShares = pkg.name;
-        }
-
-        // Find best probability by time period
+        // Find best probability by time period and highest shares today
         snapshots.forEach(s => {
             const timestamp = new Date(s.timestamp);
             const prob = s.probabilityRaw || Infinity;
@@ -27406,6 +27388,12 @@ function calculateOverallStats(packages, type) {
             if (timestamp >= todayStart && prob < bestProbTodayVal && prob > 0) {
                 bestProbTodayVal = prob;
                 bestProbToday = pkg.name;
+            }
+
+            // Team-specific: Highest shares today
+            if (isTeam && timestamp >= todayStart && s.shares > highestSharesTodayVal) {
+                highestSharesTodayVal = s.shares;
+                highestSharesToday = pkg.name;
             }
 
             // Last 7 days
@@ -27436,10 +27424,6 @@ function calculateOverallStats(packages, type) {
     stats.bestHashrate = bestHashrate;
     stats.bestHashrateValue = bestHashrate ? formatHashrateForAverages(bestHashrateVal) : '';
 
-    // Most recorded
-    stats.mostRecorded = mostRecorded;
-    stats.mostRecordedCount = mostRecordedCount;
-
     // Highest price
     stats.highestPrice = highestPrice;
     stats.highestPriceValue = highestPrice ? `${getUserCurrencySymbol()}${formatNumber(highestPriceVal.toFixed(2))}` : '';
@@ -27449,8 +27433,8 @@ function calculateOverallStats(packages, type) {
         stats.mostParticipants = mostParticipants;
         stats.mostParticipantsValue = mostParticipants ? `${mostParticipantsVal} max` : '';
 
-        stats.highestShares = highestShares;
-        stats.highestSharesValue = highestShares ? `${highestSharesVal.toFixed(2)}% max` : '';
+        stats.highestSharesToday = highestSharesToday;
+        stats.highestSharesTodayValue = highestSharesToday ? `${highestSharesTodayVal.toFixed(2)}%` : '';
     }
 
     // Calculate optimal packages by time period (combines all metrics)
