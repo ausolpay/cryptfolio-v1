@@ -8263,11 +8263,15 @@ body.light-mode .averages-stat-value {
     .averages-content {
         padding: 10px;
         max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 
     .averages-section {
         border-radius: 12px;
         margin: 0 5px 20px 5px;
+        box-sizing: border-box;
+        max-width: calc(100% - 10px);
     }
 
     .averages-overall-stats {
