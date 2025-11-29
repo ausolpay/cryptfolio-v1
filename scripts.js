@@ -19738,27 +19738,8 @@ function createTeamPackageCard(pkg) {
                             <line x1="2" y1="12" x2="6" y2="12"/>
                             <line x1="18" y1="12" x2="22" y2="12"/>
                         </svg>
+                        <span class="team-stat-label">Probability</span>
                         <span class="team-stat-value">${probability}</span>
-                    </div>
-                    <div class="team-stat-item">
-                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 6v6l4 2"/>
-                        </svg>
-                        <span class="team-stat-value">${participants}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="package-section share-info">
-                <div class="team-stats-grid three-col">
-                    <div class="team-stat-item">
-                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                            <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
-                            <circle cx="12" cy="14" r="2" fill="currentColor"/>
-                        </svg>
-                        <span class="team-stat-label">Available</span>
-                        <span class="team-stat-value highlight-green">${availableShares}</span>
                     </div>
                     <div class="team-stat-item">
                         <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -19767,16 +19748,30 @@ function createTeamPackageCard(pkg) {
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                         </svg>
-                        <span class="team-stat-label">Pool Total</span>
-                        <span class="team-stat-value">${totalBoughtShares}</span>
+                        <span class="team-stat-label">Participants</span>
+                        <span class="team-stat-value">${participants}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="package-section share-info">
+                <div class="team-stats-grid">
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                            <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
+                            <circle cx="12" cy="14" r="2" fill="currentColor"/>
+                        </svg>
+                        <span class="team-stat-label">Shares</span>
+                        <span class="team-stat-value highlight-orange">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
                     </div>
                     <div class="team-stat-item">
                         <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                            <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
+                            <circle cx="12" cy="14" r="2" fill="currentColor"/>
                         </svg>
-                        <span class="team-stat-label">My Shares</span>
-                        <span class="team-stat-value highlight-orange" id="${cardId}-my-shares">${myBoughtShares}</span>
+                        <span class="team-stat-label">Available</span>
+                        <span class="team-stat-value highlight-green">${availableShares}</span>
                     </div>
                 </div>
             </div>
@@ -22913,8 +22908,30 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <line x1="2" y1="12" x2="6" y2="12"/>
                                 <line x1="18" y1="12" x2="22" y2="12"/>
                             </svg>
+                            <span class="team-stat-label">Probability</span>
                             <span class="team-stat-value" id="team-probability-${packageIdForElements}">${pkg.probability || 'N/A'}</span>
                         </div>
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12,6 12,12 16,14"/>
+                            </svg>
+                            <span class="team-stat-label">Duration</span>
+                            <span class="team-stat-value" id="team-duration-${packageIdForElements}">${pkg.duration || 'N/A'}</span>
+                        </div>
+                        ${pkg.hashrate ? `
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                            </svg>
+                            <span class="team-stat-label">Hashrate</span>
+                            <span class="team-stat-value" id="team-hashrate-${packageIdForElements}">${pkg.hashrate}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="package-section share-info">
+                    <div class="team-stats-grid">
                         <div class="team-stat-item">
                             <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -22922,7 +22939,17 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                             </svg>
-                            <span class="team-stat-value">${participants}</span>
+                            <span class="team-stat-label">Participants</span>
+                            <span class="team-stat-value highlight-green">${participants}</span>
+                        </div>
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                                <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
+                                <circle cx="12" cy="14" r="2" fill="currentColor"/>
+                            </svg>
+                            <span class="team-stat-label">Shares</span>
+                            <span class="team-stat-value highlight-orange" id="team-shares-${packageIdForElements}">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
                         </div>
                         ${countdownDisplay ? `
                         <div class="team-stat-item">
@@ -22930,39 +22957,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <circle cx="12" cy="12" r="10"/>
                                 <polyline points="12,6 12,12 16,14"/>
                             </svg>
+                            <span class="team-stat-label">Starting</span>
                             ${countdownDisplay}
                         </div>
                         ` : ''}
-                    </div>
-                </div>
-                <div class="package-section share-info">
-                    <div class="team-stats-grid three-col">
-                        <div class="team-stat-item">
-                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                                <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
-                                <circle cx="12" cy="14" r="2" fill="currentColor"/>
-                            </svg>
-                            <span class="team-stat-label">Available</span>
-                            <span class="team-stat-value highlight-green">${availableShares}</span>
-                        </div>
-                        <div class="team-stat-item">
-                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                                <path d="M2 17l10 5 10-5"/>
-                                <path d="M2 12l10 5 10-5"/>
-                            </svg>
-                            <span class="team-stat-label">Pool</span>
-                            <span class="team-stat-value">${totalBoughtShares}</span>
-                        </div>
-                        <div class="team-stat-item">
-                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                            </svg>
-                            <span class="team-stat-label">Mine</span>
-                            <span class="team-stat-value highlight-orange" id="team-my-shares-${packageIdForElements}">${myBoughtShares}</span>
-                        </div>
                     </div>
                 </div>
                 <div class="package-section rewards-info">
