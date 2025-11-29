@@ -5014,26 +5014,26 @@ body.light-mode .package-card .package-progress-bar {
     transition: width 0.5s ease;
 }
 
-/* Static Background Icons (matches buy packages style) */
+/* Static Background Icons (contained inside card) */
 .package-card .static-bg-icons {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     pointer-events: none;
     z-index: 0;
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
 }
 
 .package-card .static-bg-icon {
-    position: absolute;
-    width: 140px;
-    height: 140px;
-    aspect-ratio: 1;
+    width: 120px;
+    height: 120px;
+    max-width: 60%;
+    max-height: 60%;
     border-radius: 50%;
     object-fit: cover;
     object-position: center;
@@ -5041,17 +5041,23 @@ body.light-mode .package-card .package-progress-bar {
     opacity: 0.08;
 }
 
+.package-card .static-bg-icons.palladium {
+    gap: 0;
+}
+
 .package-card .static-bg-icons.palladium .static-bg-icon {
-    width: 110px;
-    height: 110px;
+    width: 90px;
+    height: 90px;
+    max-width: 45%;
+    max-height: 50%;
 }
 
 .package-card .static-bg-icons.palladium .static-bg-icon:first-child {
-    transform: translate(-25%, 0);
+    margin-right: -20px;
 }
 
 .package-card .static-bg-icons.palladium .static-bg-icon.offset {
-    transform: translate(25%, 0);
+    margin-left: -20px;
 }
 
 /* Clear Shares Button */
