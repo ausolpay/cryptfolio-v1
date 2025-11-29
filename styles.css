@@ -7446,6 +7446,17 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 }
 
+/* Phone Landscape - Keep buttons horizontal */
+@media (max-width: 850px) and (orientation: landscape) {
+    .balance-card-buttons {
+        flex-direction: row;
+    }
+
+    .easymining-action-buttons {
+        flex-direction: row;
+    }
+}
+
 /* Medium Mobile (450px - 600px) */
 /* Two balance items per row, buttons still side by side */
 @media (max-width: 600px) {
