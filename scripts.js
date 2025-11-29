@@ -14982,12 +14982,18 @@ function displayActivePackages() {
             }
         }
 
-        // Generate floating icons for completed packages with rewards (blockFound + reward > 0)
-        let completedFloatingIconsHtml = '';
-        if (pkg.blockFound && (pkg.reward > 0 || (pkg.rewardSecondary > 0 && pkg.cryptoSecondary))) {
-            const primaryIconUrl = getCryptoIcon(pkg.crypto);
-            const secondaryIconUrl = isPalladium ? getCryptoIcon(pkg.cryptoSecondary) : '';
-            completedFloatingIconsHtml = generateRewardFloatingIcons(pkg.id, primaryIconUrl, secondaryIconUrl, isPalladium);
+        // Generate floating icons for reward section
+        // Active packages: slow floating (unless they've won a reward, then fast)
+        // Completed with rewards: fast floating
+        let rewardFloatingIconsHtml = '';
+        const hasWonReward = pkg.blockFound && (pkg.reward > 0 || (pkg.rewardSecondary > 0 && pkg.cryptoSecondary));
+        const primaryIconUrl = getCryptoIcon(pkg.crypto);
+        const secondaryIconUrl = isPalladium ? getCryptoIcon(pkg.cryptoSecondary) : '';
+
+        if (pkg.active || hasWonReward) {
+            // Fast speed for won rewards, slow for active without reward
+            const isFast = hasWonReward;
+            rewardFloatingIconsHtml = generateRewardFloatingIconsWithSpeed(pkg.id, primaryIconUrl, secondaryIconUrl, isPalladium, isFast);
         }
 
         // Robot icon for auto-bought packages (flashing, same style as rocket)
@@ -15203,6 +15209,7 @@ function displayActivePackages() {
                         ${pkg.hashrate ? `
                         <div class="stat-block">
                             <span class="stat-value-medium hashrate-value">
+                                <span class="live-indicator"></span>
                                 <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2" fill="currentColor"/>
                                 </svg>
@@ -15223,12 +15230,30 @@ function displayActivePackages() {
                         </div>
                         ` : ''}
                     </div>
+                    ${pkg.isTeam && packageInitialValues[pkg.id]?.ready ? `
+                    <div class="oas-stats">
+                        ${packageInitialValues[pkg.id]?.hashrate ? `<span class="oas-stat">OAS: ${packageInitialValues[pkg.id].hashrate}</span>` : ''}
+                        ${packageInitialValues[pkg.id]?.rigs !== undefined ? `<span class="oas-stat">Rigs: ${packageInitialValues[pkg.id].rigs}</span>` : ''}
+                    </div>
+                    ` : ''}
+                </div>
+                ` : ''}
+
+                <!-- Closest to Reward Progress (Active packages only) -->
+                ${pkg.active && pkg.progress > 0 ? `
+                <div class="package-section closest-reward-section">
+                    <div class="closest-reward-bar">
+                        <div class="closest-reward-fill" style="width: ${Math.min(pkg.progress, 100)}%">
+                            <span class="closest-reward-indicator"></span>
+                        </div>
+                    </div>
+                    <div class="closest-reward-label">${pkg.progress.toFixed(1)}% to reward</div>
                 </div>
                 ` : ''}
 
                 <!-- Reward Section -->
-                <div class="package-section rewards-info ${pkg.blockFound && (pkg.reward > 0 || pkg.rewardSecondary > 0) ? 'has-floating-icons' : ''}">
-                    ${completedFloatingIconsHtml}
+                <div class="package-section rewards-info ${(pkg.active || hasWonReward) ? 'has-floating-icons' : ''}">
+                    ${rewardFloatingIconsHtml}
                     <div class="section-label">${pkg.blockFound ? 'Reward Earned' : (pkg.active ? 'Potential Reward' : 'No Reward')}</div>
                     <div class="reward-display">
                         <div class="reward-line">
@@ -17211,23 +17236,44 @@ function createTeamPackageRecommendationCard(pkg) {
         countdownDisplay = `<span class="team-stat-value mining-lobby-fade" id="alert-countdown-${packageId}" style="color: #ffa500;">Lobby</span>`;
     }
 
-    // Reward display with icons
+    // Reward display with icons - calculate MY SHARE of block reward for team packages
     let rewardDisplay = '';
     let rewardValueDisplay = '';
+
+    // Calculate my share of block reward using the same formula
+    let myShareMergeReward = pkg.mergeBlockReward || 0;
+    let myShareMainReward = pkg.blockReward || 0;
+    let myShareRewardAUD = parseFloat(rewardAUD) || 0;
+
+    if (pkg.addedAmount !== undefined) {
+        const totalBoughtSharesForReward = Math.round((pkg.addedAmount || 0) * 10000);
+        const myBoughtSharesForReward = myCurrentShares || 0;
+        const mySharesForReward = myBoughtSharesForReward || 1; // Show for owned shares, or 1 if none
+
+        const othersBoughtForReward = totalBoughtSharesForReward - myBoughtSharesForReward;
+        const totalSharesForReward = othersBoughtForReward + mySharesForReward;
+
+        if (totalSharesForReward > 0) {
+            myShareMergeReward = ((pkg.mergeBlockReward || 0) / totalSharesForReward) * mySharesForReward;
+            myShareMainReward = ((pkg.blockReward || 0) / totalSharesForReward) * mySharesForReward;
+            myShareRewardAUD = (parseFloat(rewardAUD) / totalSharesForReward) * mySharesForReward;
+        }
+    }
+
     if (pkg.isDualCrypto) {
         const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
         rewardDisplay = `
-            <span class="reward-amount" id="alert-reward-merge-${packageId}">${(pkg.mergeBlockReward || 0).toFixed(mergeDecimals)}</span>
+            <span class="reward-amount" id="alert-reward-merge-${packageId}">${myShareMergeReward.toFixed(mergeDecimals)}</span>
             <span style="margin: 0 2px;">+</span>
-            <span class="reward-amount" id="alert-reward-main-${packageId}">${(pkg.blockReward || 0).toFixed(4)}</span>
+            <span class="reward-amount" id="alert-reward-main-${packageId}">${myShareMainReward.toFixed(4)}</span>
         `;
     } else {
         const decimals = teamCrypto === 'BTC' || teamCrypto === 'BCH' ? 4 : 2;
         rewardDisplay = `
-            <span class="reward-amount" id="alert-reward-${packageId}">${(pkg.blockReward || 0).toFixed(decimals)}</span>
+            <span class="reward-amount" id="alert-reward-${packageId}">${myShareMainReward.toFixed(decimals)}</span>
         `;
     }
-    rewardValueDisplay = `<span class="reward-fiat" id="alert-reward-value-${packageId}">≈ $${formatNumber(rewardAUD)}</span>`;
+    rewardValueDisplay = `<span class="reward-fiat" id="alert-reward-value-${packageId}">≈ $${formatNumber(myShareRewardAUD.toFixed(2))}</span>`;
 
     card.innerHTML = `
         ${staticBgIcon}
@@ -17311,7 +17357,7 @@ function createTeamPackageRecommendationCard(pkg) {
                 <canvas class="mini-hashrate-canvas" id="alert-mini-hashrate-${packageId}" width="200" height="30"></canvas>
             </div>
             <div class="package-section rewards-info">
-                <div class="section-label">Block Reward</div>
+                <div class="section-label">Potential Reward</div>
                 ${floatingIconsHtml}
                 <div class="reward-display">
                     <div class="reward-line">
@@ -23785,23 +23831,41 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         const sharePrice = 0.0001;
         const pricePerShareAUD = convertBTCtoAUD(sharePrice).toFixed(2);
 
-        // Calculate reward display
+        // Calculate reward display - MY SHARE of block reward for team packages
         let rewardDisplay = '';
         let rewardValueDisplay = '';
+
+        // Calculate my share of block reward using the same formula
+        let myShareMergeReward = pkg.mergeBlockReward || 0;
+        let myShareMainReward = pkg.blockReward || 0;
+        let myShareRewardAUD = parseFloat(rewardAUD) || 0;
+
+        if (pkg.addedAmount !== undefined) {
+            const mySharesForReward = myBoughtShares || 1; // Show for owned shares, or 1 if none
+            const othersBoughtForReward = totalBoughtShares - myBoughtShares;
+            const totalSharesForReward = othersBoughtForReward + mySharesForReward;
+
+            if (totalSharesForReward > 0) {
+                myShareMergeReward = ((pkg.mergeBlockReward || 0) / totalSharesForReward) * mySharesForReward;
+                myShareMainReward = ((pkg.blockReward || 0) / totalSharesForReward) * mySharesForReward;
+                myShareRewardAUD = (parseFloat(rewardAUD) / totalSharesForReward) * mySharesForReward;
+            }
+        }
+
         if (pkg.isDualCrypto) {
             const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
             rewardDisplay = `
-                <span class="reward-amount" id="team-reward-merge-${packageIdForElements}">${(pkg.mergeBlockReward || 0).toFixed(mergeDecimals)}</span>
+                <span class="reward-amount" id="team-reward-merge-${packageIdForElements}">${myShareMergeReward.toFixed(mergeDecimals)}</span>
                 <span style="margin: 0 4px;">+</span>
-                <span class="reward-amount" id="team-reward-main-${packageIdForElements}">${(pkg.blockReward || 0).toFixed(4)}</span>
+                <span class="reward-amount" id="team-reward-main-${packageIdForElements}">${myShareMainReward.toFixed(4)}</span>
             `;
         } else {
             const decimals = teamCrypto === 'BTC' || teamCrypto === 'BCH' ? 4 : 2;
             rewardDisplay = `
-                <span class="reward-amount" id="team-reward-${packageIdForElements}">${(pkg.blockReward || 0).toFixed(decimals)}</span>
+                <span class="reward-amount" id="team-reward-${packageIdForElements}">${myShareMainReward.toFixed(decimals)}</span>
             `;
         }
-        rewardValueDisplay = `<span class="reward-fiat" id="team-reward-value-${packageIdForElements}">≈ $${formatNumber(rewardAUD)}</span>`;
+        rewardValueDisplay = `<span class="reward-fiat" id="team-reward-value-${packageIdForElements}">≈ $${formatNumber(myShareRewardAUD.toFixed(2))}</span>`;
 
         // Countdown display for team section
         let countdownDisplay = '';
@@ -23906,7 +23970,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     <canvas class="mini-hashrate-canvas" id="mini-hashrate-${packageIdForElements}" width="200" height="30"></canvas>
                 </div>
                 <div class="package-section rewards-info">
-                    <div class="section-label">Block Reward</div>
+                    <div class="section-label">Potential Reward</div>
                     ${floatingIconsHtml}
                     <div class="reward-display">
                         <div class="reward-line">
@@ -26402,20 +26466,25 @@ function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
 }
 
 /**
- * Generate floating icons for completed packages with rewards
- * Creates 12 fast-moving icons with random movement patterns
+ * Generate floating icons for packages with configurable speed
+ * isFast = true: 3-7 seconds (for won rewards)
+ * isFast = false: 12-20 seconds (for active packages without reward)
  * For Palladium: 6 of each crypto (DOGE + LTC = 12 total)
  */
-function generateRewardFloatingIcons(pkgId, primaryIconUrl, secondaryIconUrl, isPalladium) {
+function generateRewardFloatingIconsWithSpeed(pkgId, primaryIconUrl, secondaryIconUrl, isPalladium, isFast) {
     const iconCount = isPalladium ? 6 : 12; // 6 each for Palladium, 12 of one for others
     let html = `<div class="completed-reward-floating-icons" data-pkg-id="${pkgId}">`;
+
+    // Speed ranges: fast (3-7s) for won rewards, slow (12-20s) for active
+    const minSpeed = isFast ? 3 : 12;
+    const speedRange = isFast ? 4 : 8;
 
     // Generate primary crypto icons
     for (let i = 0; i < iconCount; i++) {
         const delay = -(Math.random() * 10); // Random start point in animation
         const startX = Math.random() * 90 + 5; // 5-95%
         const startY = Math.random() * 80 + 10; // 10-90%
-        const speed = 3 + Math.random() * 4; // Fast: 3-7 seconds
+        const speed = minSpeed + Math.random() * speedRange;
         const rangeX = 30 + Math.random() * 50; // Wide movement
         const rangeY = 25 + Math.random() * 40;
         const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
@@ -26439,7 +26508,7 @@ function generateRewardFloatingIcons(pkgId, primaryIconUrl, secondaryIconUrl, is
             const delay = -(Math.random() * 10);
             const startX = Math.random() * 90 + 5;
             const startY = Math.random() * 80 + 10;
-            const speed = 3 + Math.random() * 4;
+            const speed = minSpeed + Math.random() * speedRange;
             const rangeX = 30 + Math.random() * 50;
             const rangeY = 25 + Math.random() * 40;
             const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
@@ -26460,6 +26529,13 @@ function generateRewardFloatingIcons(pkgId, primaryIconUrl, secondaryIconUrl, is
 
     html += '</div>';
     return html;
+}
+
+/**
+ * Generate floating icons for completed packages with rewards (legacy, uses fast speed)
+ */
+function generateRewardFloatingIcons(pkgId, primaryIconUrl, secondaryIconUrl, isPalladium) {
+    return generateRewardFloatingIconsWithSpeed(pkgId, primaryIconUrl, secondaryIconUrl, isPalladium, true);
 }
 
 /**
