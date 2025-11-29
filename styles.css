@@ -4811,6 +4811,12 @@ body.light-mode .package-card .stat-value-medium {
     color: #888;
 }
 
+/* Rocket Icon (SVG) */
+.package-card .rocket-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
 /* Rewards Section */
 .package-card .rewards-info .section-label {
     font-size: 9px;
@@ -4831,6 +4837,28 @@ body.light-mode .package-card .stat-value-medium {
     justify-content: center;
     gap: 6px;
     flex-wrap: wrap;
+}
+
+/* Reward Crypto Icons */
+.package-card .reward-crypto-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: contain;
+}
+
+.package-card .reward-crypto-icon.single {
+    width: 24px;
+    height: 24px;
+}
+
+.package-card .dual-crypto-icons.reward-icons {
+    display: flex;
+    align-items: center;
+}
+
+.package-card .dual-crypto-icons.reward-icons .reward-crypto-icon:last-child {
+    margin-left: -8px;
 }
 
 .package-card .reward-icon {

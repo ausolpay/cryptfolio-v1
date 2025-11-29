@@ -14926,30 +14926,59 @@ function displayActivePackages() {
         const remainingColorGreen = Math.round(255 * (1 - progressPercent / 100));
         const remainingPriceColor = pkg.active ? `rgb(${remainingColorRed}, ${remainingColorGreen}, 0)` : 'inherit';
 
-        // Determine reward display - show crypto reward (RVN, BCH, BTC, etc.) not BTC earnings
-        // For Team Palladium dual mining, show both DOGE and LTC on separate lines
+        // Determine reward display with crypto icons (no abbreviations, icons show which crypto)
+        // For Team Palladium dual mining, show overlapping icons like buy packages
+        const cryptoIdMap = {
+            'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
+            'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+        };
+        const fallbackIconsSmall = {
+            'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
+            'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+            'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
+            'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
+            'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
+            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+            'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
+        };
+
+        // Get crypto icon URL
+        const getCryptoIcon = (cryptoSymbol) => {
+            const cryptoId = cryptoIdMap[cryptoSymbol?.toUpperCase()] || cryptoSymbol?.toLowerCase();
+            const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+            return userCrypto?.thumb ? userCrypto.thumb.replace('/thumb/', '/small/') : (fallbackIconsSmall[cryptoId] || '');
+        };
+
         let rewardDisplay;
+        let rewardIconsHtml = '';
+        const isPalladium = pkg.cryptoSecondary && (pkg.name?.toLowerCase().includes('palladium') || pkg.name?.toLowerCase().includes('team palladium'));
 
-        // Check if there are actual secondary rewards to display
-        // For Team Palladium packages with blocks, we should show both primary and secondary
-        let hasSecondaryReward = pkg.cryptoSecondary && (pkg.rewardSecondary > 0 || pkg.blockFound);
+        if (isPalladium) {
+            // Dual-crypto: show overlapping icons like buy packages
+            const primaryIconUrl = getCryptoIcon(pkg.crypto);
+            const secondaryIconUrl = getCryptoIcon(pkg.cryptoSecondary);
+            rewardIconsHtml = `<span class="dual-crypto-icons reward-icons">
+                ${secondaryIconUrl ? `<img class="reward-crypto-icon" src="${secondaryIconUrl}" alt="${pkg.cryptoSecondary}">` : ''}
+                ${primaryIconUrl ? `<img class="reward-crypto-icon" src="${primaryIconUrl}" alt="${pkg.crypto}">` : ''}
+            </span>`;
 
-        if (pkg.blockFound) {
-            // Show primary crypto reward when block found
-            const primaryReward = pkg.reward > 0 ? pkg.reward.toFixed(rewardDecimals) : '0';
-            rewardDisplay = `${primaryReward} ${pkg.crypto}`;
-
-            // For dual-mining packages (Team Palladium), always show secondary if it exists
-            if (pkg.cryptoSecondary) {
+            if (pkg.blockFound) {
+                const primaryReward = pkg.reward > 0 ? pkg.reward.toFixed(rewardDecimals) : '0';
                 const secondaryReward = pkg.rewardSecondary > 0 ? pkg.rewardSecondary.toFixed(secondaryRewardDecimals) : '0';
-                rewardDisplay += `<br>${secondaryReward} ${pkg.cryptoSecondary}`;
+                rewardDisplay = `${secondaryReward} + ${primaryReward}`;
+            } else {
+                rewardDisplay = `0 + 0`;
             }
         } else {
-            // No block found yet - show both cryptos for Team Palladium
-            if (pkg.cryptoSecondary) {
-                rewardDisplay = `0 ${pkg.crypto}<br>0 ${pkg.cryptoSecondary}`;
+            // Single crypto: show single icon
+            const iconUrl = getCryptoIcon(pkg.crypto);
+            rewardIconsHtml = iconUrl ? `<img class="reward-crypto-icon single" src="${iconUrl}" alt="${pkg.crypto}">` : '';
+
+            if (pkg.blockFound) {
+                const primaryReward = pkg.reward > 0 ? pkg.reward.toFixed(rewardDecimals) : '0';
+                rewardDisplay = primaryReward;
             } else {
-                rewardDisplay = `0 ${pkg.crypto}`;
+                rewardDisplay = '0';
             }
         }
 
@@ -15062,8 +15091,15 @@ function displayActivePackages() {
         // - Completed packages: no rocket (removed to avoid clutter)
         let rocketHtml = '';
         if (pkg.active) {
-            // Active package: always flashing rocket (shows it's currently mining)
-            rocketHtml = '<div class="block-found-indicator flashing">🚀</div>';
+            // Active package: always flashing white SVG rocket (shows it's currently mining)
+            rocketHtml = `<div class="block-found-indicator flashing rocket-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                </svg>
+            </div>`;
         }
         // Completed packages: no rocket icon
 
@@ -15187,13 +15223,7 @@ function displayActivePackages() {
                     <div class="section-label">${pkg.blockFound ? 'Reward Earned' : (pkg.active ? 'Potential Reward' : 'No Reward')}</div>
                     <div class="reward-display">
                         <div class="reward-line">
-                            <svg class="reward-icon ${pkg.blockFound ? 'found' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6"/>
-                                <path d="M12 12V3"/>
-                                <path d="M12 3l4 4"/>
-                                <path d="M12 3L8 7"/>
-                                <rect x="2" y="9" width="20" height="5" rx="1"/>
-                            </svg>
+                            ${rewardIconsHtml}
                             <span class="reward-amount ${pkg.blockFound ? 'found' : ''}">${rewardDisplay}</span>
                             ${pkg.blockFound && rewardAUD > 0 ? `<span class="reward-fiat found">≈ $${formatNumber(rewardAUD.toFixed(2))}</span>` : ''}
                             ${pkg.active && pkg.potentialReward > 0 ? `<span class="reward-fiat potential">≈ $${formatNumber(convertCryptoToAUD(pkg.potentialReward, pkg.crypto).toFixed(2))}${pkg.potentialRewardSecondary > 0 && pkg.cryptoSecondary ? ` + $${formatNumber(convertCryptoToAUD(pkg.potentialRewardSecondary, pkg.cryptoSecondary).toFixed(2))}` : ''}</span>` : ''}
@@ -15239,7 +15269,6 @@ function displayActivePackages() {
                             <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         <span class="price-value" style="color: ${remainingPriceColor};">$${remainingPriceAUD.toFixed(2)}</span>
-                        <span class="price-label">${pkg.active ? 'remaining' : 'cost'}</span>
                     </div>
                 </div>
 
