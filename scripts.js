@@ -26083,13 +26083,46 @@ function getPackageMetricsHistory() {
 
 /**
  * Save package metrics history to localStorage
+ * Handles quota exceeded by trimming old snapshots
  */
 function savePackageMetricsHistory(history) {
     try {
         localStorage.setItem(PACKAGE_METRICS_STORAGE_KEY, JSON.stringify(history));
     } catch (error) {
-        console.error('❌ Error saving package metrics history:', error);
+        if (error.name === 'QuotaExceededError') {
+            console.warn('⚠️ Storage quota exceeded, trimming old snapshots...');
+            // Trim snapshots to free up space
+            const trimmedHistory = trimPackageMetricsHistory(history);
+            try {
+                localStorage.setItem(PACKAGE_METRICS_STORAGE_KEY, JSON.stringify(trimmedHistory));
+                console.log('✅ Successfully saved after trimming');
+            } catch (retryError) {
+                console.error('❌ Still exceeding quota after trim, clearing old data...');
+                // Last resort: clear and start fresh
+                localStorage.removeItem(PACKAGE_METRICS_STORAGE_KEY);
+            }
+        } else {
+            console.error('❌ Error saving package metrics history:', error);
+        }
     }
+}
+
+/**
+ * Trim package metrics history to reduce storage size
+ * Keeps only the most recent snapshots per package
+ */
+function trimPackageMetricsHistory(history) {
+    const MAX_SNAPSHOTS_PER_PACKAGE = 100; // Reduced from 200 during trim
+
+    Object.keys(history).forEach(name => {
+        if (history[name].snapshots && history[name].snapshots.length > MAX_SNAPSHOTS_PER_PACKAGE) {
+            // Keep only the most recent snapshots
+            history[name].snapshots = history[name].snapshots.slice(-MAX_SNAPSHOTS_PER_PACKAGE);
+            console.log(`📊 Trimmed ${name} to ${MAX_SNAPSHOTS_PER_PACKAGE} snapshots`);
+        }
+    });
+
+    return history;
 }
 
 /**
@@ -26179,9 +26212,9 @@ function capturePackageMetrics(packages) {
         // Add to snapshots array
         history[name].snapshots.push(snapshot);
 
-        // Keep only last 1000 snapshots per package to prevent storage bloat
-        if (history[name].snapshots.length > 1000) {
-            history[name].snapshots = history[name].snapshots.slice(-1000);
+        // Keep only last 200 snapshots per package to prevent storage bloat
+        if (history[name].snapshots.length > 200) {
+            history[name].snapshots = history[name].snapshots.slice(-200);
         }
 
         capturedCount++;
@@ -26462,6 +26495,18 @@ function getAllPackageMetricsSummary() {
 function clearPackageMetricsHistory() {
     localStorage.removeItem(PACKAGE_METRICS_STORAGE_KEY);
     console.log('🗑️ Cleared package metrics history');
+}
+
+/**
+ * Confirm and clear package metrics with user prompt
+ */
+function confirmClearPackageMetrics() {
+    if (confirm('Are you sure you want to clear all package metrics history?\n\nThis will delete all stored averages and snapshots. This action cannot be undone.')) {
+        clearPackageMetricsHistory();
+        // Refresh the display
+        updateAveragesDisplay();
+        alert('Package metrics history cleared successfully.');
+    }
 }
 
 // =============================================================================
