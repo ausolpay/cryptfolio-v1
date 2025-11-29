@@ -8229,12 +8229,12 @@ function updateFloatingIcons() {
     cryptoData.forEach((crypto, index) => {
         // Calculate dynamic properties
         const valueRatio = totalValue > 0 ? crypto.value / totalValue : 0;
-        const size = 40 + (valueRatio * 80);
+        const size = Math.round(40 + (valueRatio * 80)); // Round to avoid tiny changes
         const changeRatio = crypto.change24h / maxChange;
-        const speed = 20 - (changeRatio * 12);
+        const speed = Math.round((20 - (changeRatio * 12)) * 10) / 10; // Round to 1 decimal
         const zIndex = index + 1;
 
-        // Vertical bias based on sentiment
+        // Vertical bias based on sentiment (only calculated for new icons)
         let floatYUp = -40 - Math.random() * 30;
         let floatYDown = 40 + Math.random() * 30;
         if (crypto.sentiment > 55) {
@@ -8248,17 +8248,33 @@ function updateFloatingIcons() {
         let icon = container.querySelector(`[data-crypto-id="${crypto.id}"]`);
 
         if (icon) {
-            // Update existing icon's dynamic properties
-            icon.style.width = `${size}px`;
-            icon.style.height = `${size}px`;
-            icon.style.zIndex = zIndex;
-            icon.style.setProperty('--float-speed', `${speed}s`);
-            // Don't update position or other random values to avoid jarring movement
+            // Update existing icon's dynamic properties ONLY if they changed
+            // This prevents animation restarts from unnecessary style updates
+            const currentSize = parseInt(icon.dataset.currentSize) || 0;
+            const currentZIndex = parseInt(icon.dataset.currentZIndex) || 0;
+
+            // Only update size if changed by more than 2px (prevents micro-updates)
+            if (Math.abs(size - currentSize) > 2) {
+                icon.style.width = `${size}px`;
+                icon.style.height = `${size}px`;
+                icon.dataset.currentSize = size;
+            }
+
+            // Only update z-index if changed
+            if (zIndex !== currentZIndex) {
+                icon.style.zIndex = zIndex;
+                icon.dataset.currentZIndex = zIndex;
+            }
+
+            // NOTE: Don't update --float-speed during polling as it restarts animation
+            // Speed is set at icon creation and stays fixed to preserve smooth animation
         } else {
             // Add new icon
             icon = document.createElement('div');
             icon.className = 'floating-crypto-icon';
             icon.dataset.cryptoId = crypto.id;
+            icon.dataset.currentSize = size;
+            icon.dataset.currentZIndex = zIndex;
 
             const startX = Math.random() * 80 + 10;
             const startY = Math.random() * 80 + 10;
