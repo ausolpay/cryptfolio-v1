@@ -22419,13 +22419,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
             };
             const fallbackIcons = {
-                'bitcoin': 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',
-                'bitcoin-cash': 'https://assets.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png',
-                'ravencoin': 'https://assets.coingecko.com/coins/images/3412/large/ravencoin.png',
-                'dogecoin': 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png',
-                'litecoin': 'https://assets.coingecko.com/coins/images/2/large/litecoin.png',
-                'kaspa': 'https://assets.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
-                'ethereum-classic': 'https://assets.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
+                'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+                'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png',
+                'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
+                'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
+                'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+                'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
             };
 
             const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();

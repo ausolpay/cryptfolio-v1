@@ -6022,6 +6022,7 @@ body.light-mode .stat-value-medium {
     align-items: center;
     justify-content: center;
     overflow: visible;
+    opacity: 0.08;
 }
 
 .static-bg-icon {
@@ -6030,7 +6031,6 @@ body.light-mode .stat-value-medium {
     height: 75%;
     max-width: none;
     max-height: none;
-    opacity: 0.08;
     border-radius: 50%;
     object-fit: contain;
     background-color: #fff;
