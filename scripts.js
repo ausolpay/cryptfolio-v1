@@ -22184,10 +22184,16 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             durationEl.textContent = pkg.duration;
         }
 
-        // Update hashrate
-        const hashrateEl = card.querySelector(`#hashrate-${packageIdForElements}`);
+        // Update hashrate - preserve hashrate-unit styling
+        const hashrateEl = card.querySelector(`#hashrate-${packageIdForElements}`) ||
+                           card.querySelector(`#team-hashrate-${packageIdForElements}`);
         if (hashrateEl && pkg.hashrate) {
-            hashrateEl.textContent = pkg.hashrate;
+            const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+            if (match) {
+                hashrateEl.innerHTML = `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+            } else {
+                hashrateEl.textContent = pkg.hashrate;
+            }
         }
 
         // ✅ Update Clear Shares button visibility based on current shares
