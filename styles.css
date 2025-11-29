@@ -5691,8 +5691,8 @@ body.light-mode .tab-button {
     justify-content: space-between;
     overflow: hidden; /* Keep content within bounds */
     box-sizing: border-box;
-    width: 336px; /* Fixed square width - 1/5 smaller than 420px */
-    height: 336px; /* Fixed square height - 1/5 smaller than 420px */
+    width: 403px; /* Fixed square width - 20% wider */
+    height: 403px; /* Fixed square height - 20% wider */
     font-size: 14px; /* Base font size that scales with card */
 }
 
@@ -6917,7 +6917,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
 .buy-packages-container-page {
     display: grid;
-    grid-template-columns: repeat(3, 336px); /* 3 fixed square boxes per row on desktop */
+    grid-template-columns: repeat(3, 403px); /* 3 fixed square boxes per row on desktop (20% wider) */
     gap: 15px; /* Gap between cards */
     margin: 20px auto 0 auto; /* Center the section */
     padding: 0 20px;
