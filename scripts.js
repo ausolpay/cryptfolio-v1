@@ -24501,21 +24501,30 @@ function adjustShares(packageName, delta, buttonElement) {
         }
     }
 
-    // ✅ FIX: Update Buy button state for highlighted team packages (EasyMining alerts)
-    // Find Buy button in the same container
-    const buyButton = container?.querySelector('.buy-now-btn');
+    // ✅ FIX: Update Buy button state for team packages
+    // Find Buy button in the same container (exclude Clear Shares button)
+    const buyButton = container?.querySelector('.buy-now-btn:not(.clear-shares-btn)');
     if (buyButton) {
-        // Buy button only disables if balance < 0.0001 (minimum 1 share)
-        if (availableBalance < sharePrice) {
+        // Buy button disables if can't afford the NEW shares to purchase
+        // newShares = current input value - already owned shares
+        if (newShares > 0 && availableBalance < currentShareCost) {
+            // Can't afford the new shares being requested
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
-            console.log(`🛒 Buy button DISABLED - balance: ${availableBalance} < ${sharePrice} (min 1 share)`);
+            console.log(`🛒 Buy button DISABLED - balance: ${availableBalance.toFixed(6)} < cost: ${currentShareCost.toFixed(6)} (${newShares} new shares)`);
+        } else if (newShares <= 0) {
+            // No new shares to buy (input equals owned shares)
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+            console.log(`🛒 Buy button DISABLED - no new shares to buy (input: ${newValue}, owned: ${myBoughtShares})`);
         } else {
+            // Can afford the new shares
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
-            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance} >= ${sharePrice}`);
+            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance.toFixed(6)} >= cost: ${currentShareCost.toFixed(6)} (${newShares} new shares)`);
         }
     }
 }
