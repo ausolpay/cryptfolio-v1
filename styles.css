@@ -4895,11 +4895,18 @@ body.light-mode .package-card .stat-value-medium {
     color: #ffa500;
 }
 
+/* All Reward Sections - consistent height */
+.package-card .rewards-info {
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 /* Completed Packages with Rewards - Floating Icons */
 .package-card .rewards-info.has-floating-icons {
     position: relative;
     overflow: hidden;
-    min-height: 80px;
 }
 
 .completed-reward-floating-icons {
