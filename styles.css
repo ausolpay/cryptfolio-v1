@@ -4110,7 +4110,8 @@ body.light-mode .balance-label {
     padding: 20px;
     border-left: 4px solid #4CAF50;
     border-right: 4px solid #4CAF50;
-    flex: 0 1 auto;
+    max-width: 600px;
+    margin: 0 auto 15px auto;
 }
 
 body.light-mode .easymining-balance-card {
@@ -4221,12 +4222,13 @@ body.light-mode .balance-card-btn svg {
     stroke: #e69500;
 }
 
-/* Action Buttons - Horizontal, next to balance card */
+/* Action Buttons - Underneath balance content */
 .easymining-action-buttons {
     display: flex;
     flex-direction: row;
+    justify-content: center;
     gap: 10px;
-    align-items: center;
+    margin-top: 15px;
 }
 
 .action-btn {
