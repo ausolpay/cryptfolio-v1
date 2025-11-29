@@ -22388,9 +22388,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     ${(() => {
                         /*
                          * FLOATING TOKEN ICONS IN REWARD SECTION
+                         * Uses persistent floating icons system to avoid animation restarts
                          * Solo packages: S=1 icon, M=2 icons, L=3 icons
-                         * TODO: For team packages, dynamically add icons based on shares purchased
-                         * (1 icon per share added - will implement when doing team package styling)
                          */
                         const cryptoIdMap = {
                             'BTC': 'bitcoin',
@@ -22426,17 +22425,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             : (fallbackIcons[cryptoId] || '');
 
                         // For dual-crypto (Palladium), get the merge crypto icon
-                        // Palladium packages have merged mining: DOGE+LTC mine together
                         let dualIconUrl = '';
-                        let mergeId = '';
-                        const isPalladiumPackage = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
+                        const isPalladium = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
 
-                        if (isPalladiumPackage) {
-                            // Determine the merge crypto based on package or mergeCrypto property
+                        if (isPalladium) {
+                            let mergeId = '';
                             if (pkg.mergeCrypto) {
                                 mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
                             } else {
-                                // Infer merge crypto from package name: if main is DOGE, merge is LTC and vice versa
+                                // Infer merge crypto from package
                                 if (pkg.crypto?.toUpperCase() === 'DOGE' || pkg.name?.toUpperCase().includes('DOGE')) {
                                     mergeId = 'litecoin';
                                 } else if (pkg.crypto?.toUpperCase() === 'LTC' || pkg.name?.toUpperCase().includes('LTC')) {
@@ -22444,121 +22441,27 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 }
                             }
 
-                            console.log(`🔍 Palladium detection for ${pkg.name}: crypto=${pkg.crypto}, mergeId=${mergeId}`);
-
                             if (mergeId) {
-                                // Try portfolio first, then ALWAYS use fallback if not found
                                 const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
-                                if (mergeCrypto?.thumb) {
-                                    dualIconUrl = mergeCrypto.thumb.replace('/thumb/', '/small/');
-                                    console.log(`  ✅ Using portfolio icon for ${mergeId}: ${dualIconUrl}`);
-                                } else {
-                                    // Use fallback - this should always work
-                                    dualIconUrl = fallbackIcons[mergeId];
-                                    console.log(`  ⚠️ Using fallback icon for ${mergeId}: ${dualIconUrl}`);
-                                }
+                                dualIconUrl = mergeCrypto?.thumb
+                                    ? mergeCrypto.thumb.replace('/thumb/', '/small/')
+                                    : (fallbackIcons[mergeId] || '');
                             }
-
-                            console.log(`🔍 Palladium ${pkg.name}: iconUrl=${iconUrl ? 'YES' : 'NO'}, dualIconUrl=${dualIconUrl ? 'YES' : 'NO'}`);
                         }
 
-                        // Calculate animation speed based on probability (lower = faster)
-                        // Main crypto probability
+                        // Calculate base animation speed from probability
                         const probMatch = (pkg.probability || '1:100').match(/1:(\d+)/);
-                        const mainProbValue = probMatch ? parseInt(probMatch[1]) : 100;
-                        const mainBaseSpeed = Math.max(8, Math.min(15, mainProbValue / 15));
+                        const probValue = probMatch ? parseInt(probMatch[1]) : 100;
+                        const baseSpeed = Math.max(8, Math.min(15, probValue / 15));
 
-                        // Merge crypto probability (for Palladium LTC)
-                        const mergeProbMatch = (pkg.mergeProbability || pkg.probability || '1:100').match(/1:(\d+)/);
-                        const mergeProbValue = mergeProbMatch ? parseInt(mergeProbMatch[1]) : 100;
-                        const mergeBaseSpeed = Math.max(8, Math.min(15, mergeProbValue / 15));
-
-                        // Get dynamic speed from package metrics averages if available
+                        // Get dynamic speed from package metrics if available
                         const metricsSpeed = getPackageMetricsSpeed(pkg.name);
 
-                        let floatingHtml = '<div class="reward-floating-icons">';
+                        // Get or create persistent floating icons config (preserves positions across re-renders)
+                        getOrCreateFloatingIconsConfig(pkg.name, iconUrl, dualIconUrl, iconCount, isPalladium);
 
-                        // Helper function to add a floating icon
-                        const addFloatingIcon = (url, index, total) => {
-                            const delay = index * 2.5 + Math.random() * 3;
-                            const startX = 5 + (index * (80 / total)) + Math.random() * 10;
-                            const startY = 10 + Math.random() * 70;
-                            const speed = metricsSpeed || (mainBaseSpeed + (Math.random() * 6 - 3));
-                            const speedY = speed * (0.7 + Math.random() * 0.6);
-                            const pulseSpeed = 6 + Math.random() * 6;
-                            const rangeX = 25 + Math.random() * 35;
-                            const rangeY = 30 + Math.random() * 25;
-                            const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
-
-                            return `<img class="reward-floating-icon" src="${url}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
-                        };
-
-                        // Check if this is a Palladium package (dual-crypto with merged mining)
-                        const isPalladium = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
-
-                        if (isPalladium) {
-                            // Dual-crypto (Palladium): Add both main and merge crypto icons
-                            // S=1 of each, M=2 of each, L=3 of each
-                            // Main crypto uses main probability/hashrate, merge crypto uses merge probability/hashrate
-                            const totalIcons = iconCount * 2;
-                            let mainIconsAdded = 0;
-                            let mergeIconsAdded = 0;
-
-                            console.log(`🎨 Palladium floating icons for ${pkg.name}: iconCount=${iconCount}`);
-                            console.log(`   Main icon URL: ${iconUrl || 'MISSING'}`);
-                            console.log(`   Merge icon URL: ${dualIconUrl || 'MISSING'}`);
-                            console.log(`   Main speed: ${mainBaseSpeed.toFixed(1)}s, Merge speed: ${mergeBaseSpeed.toFixed(1)}s`);
-
-                            // Add main crypto icons (e.g., DOGE) - uses DOGE probability for animation speed
-                            for (let i = 0; i < iconCount; i++) {
-                                if (iconUrl) {
-                                    // Main icons: left side, uses main crypto's probability
-                                    const delay = i * 2.5 + Math.random() * 2;
-                                    const startX = 5 + (i * 25) + Math.random() * 10;
-                                    const startY = 10 + Math.random() * 35;
-                                    const speed = metricsSpeed || (mainBaseSpeed + (Math.random() * 4 - 2));
-                                    const speedY = speed * (0.8 + Math.random() * 0.4);
-                                    const pulseSpeed = 5 + Math.random() * 4;
-                                    const rangeX = 20 + Math.random() * 25;
-                                    const rangeY = 25 + Math.random() * 20;
-                                    const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
-
-                                    floatingHtml += `<img class="reward-floating-icon" src="${iconUrl}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
-                                    mainIconsAdded++;
-                                }
-                            }
-
-                            // Add merge crypto icons (e.g., LTC) - uses LTC probability for animation speed
-                            for (let i = 0; i < iconCount; i++) {
-                                if (dualIconUrl) {
-                                    // Merge icons: right side, uses merge crypto's probability
-                                    const delay = i * 2.5 + 1.5 + Math.random() * 2;
-                                    const startX = 50 + (i * 20) + Math.random() * 15;
-                                    const startY = 45 + Math.random() * 40;
-                                    const speed = metricsSpeed || (mergeBaseSpeed + (Math.random() * 4 - 2));
-                                    const speedY = speed * (0.7 + Math.random() * 0.5);
-                                    const pulseSpeed = 6 + Math.random() * 5;
-                                    const rangeX = 25 + Math.random() * 30;
-                                    const rangeY = 20 + Math.random() * 25;
-                                    const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
-
-                                    floatingHtml += `<img class="reward-floating-icon" src="${dualIconUrl}" style="--float-delay: ${delay.toFixed(1)}s; --float-speed: ${speed.toFixed(1)}s; --float-speed-y: ${speedY.toFixed(1)}s; --pulse-speed: ${pulseSpeed.toFixed(1)}s; --range-x: ${rangeX.toFixed(0)}px; --range-y: ${rangeY.toFixed(0)}px; left: ${startX.toFixed(0)}%; top: ${startY.toFixed(0)}%; animation-direction: ${direction};" alt="">`;
-                                    mergeIconsAdded++;
-                                }
-                            }
-
-                            console.log(`🎨 Added ${mainIconsAdded} main + ${mergeIconsAdded} merge = ${mainIconsAdded + mergeIconsAdded} floating icons for ${pkg.name}`);
-                        } else {
-                            // Single crypto: S=1, M=2, L=3
-                            for (let i = 0; i < iconCount; i++) {
-                                if (iconUrl) {
-                                    floatingHtml += addFloatingIcon(iconUrl, i, iconCount);
-                                }
-                            }
-                        }
-
-                        floatingHtml += '</div>';
-                        return floatingHtml;
+                        // Generate HTML using stored config (same positions every time)
+                        return generateFloatingIconsHtml(pkg.name, baseSpeed, metricsSpeed);
                     })()}
                     <div class="reward-display">
                         <div class="reward-line">
@@ -24725,6 +24628,9 @@ function startBuyPackagesPolling() {
     // Start package metrics averaging (calculates averages every 5 seconds)
     startPackageMetricsAveraging();
 
+    // Start floating icon speed updates (updates every 60 seconds without animation restart)
+    startFloatingIconSpeedUpdates();
+
     // Poll every 5 seconds
     buyPackagesPollingInterval = setInterval(() => {
         if (!buyPackagesPollingPaused) {
@@ -24747,6 +24653,9 @@ function stopBuyPackagesPolling() {
 
     // Also stop package metrics averaging when leaving the page
     stopPackageMetricsAveraging();
+
+    // Stop floating icon speed updates
+    stopFloatingIconSpeedUpdates();
 }
 
 function pauseBuyPackagesPolling() {
@@ -24778,6 +24687,200 @@ const PACKAGE_METRICS_STORAGE_KEY = 'packageMetricsHistory';
 
 // Interval for updating averages (5 seconds)
 let packageMetricsAverageInterval = null;
+
+// =============================================================================
+// PERSISTENT FLOATING ICONS SYSTEM
+// Tracks floating icons per package to avoid animation restarts on re-render
+// Icons are stored with their random properties and only speed is updated
+// =============================================================================
+
+// Store floating icon configurations per package (persistent across re-renders)
+const floatingIconsStore = {};
+
+// Interval for updating floating icon speeds (60 seconds)
+let floatingIconSpeedInterval = null;
+
+/**
+ * Get or create floating icons configuration for a package
+ * Returns stored config if exists (preserving positions), creates new if not
+ */
+function getOrCreateFloatingIconsConfig(packageName, iconUrl, dualIconUrl, iconCount, isPalladium) {
+    const key = packageName.replace(/\s+/g, '-');
+
+    // Return existing config if already initialized
+    if (floatingIconsStore[key]) {
+        return floatingIconsStore[key];
+    }
+
+    // Create new config with random positions/delays
+    const config = {
+        packageName,
+        iconUrl,
+        dualIconUrl,
+        iconCount,
+        isPalladium,
+        mainIcons: [],
+        mergeIcons: [],
+        createdAt: Date.now()
+    };
+
+    // Generate main icons with random properties
+    for (let i = 0; i < iconCount; i++) {
+        config.mainIcons.push({
+            delay: isPalladium ? (i * 2.5 + Math.random() * 2) : (i * 2.5 + Math.random() * 3),
+            startX: isPalladium ? (5 + (i * 25) + Math.random() * 10) : (5 + (i * (80 / iconCount)) + Math.random() * 10),
+            startY: isPalladium ? (10 + Math.random() * 35) : (10 + Math.random() * 70),
+            speedMultiplier: 0.8 + Math.random() * 0.4,
+            speedYRatio: isPalladium ? (0.8 + Math.random() * 0.4) : (0.7 + Math.random() * 0.6),
+            pulseSpeed: isPalladium ? (5 + Math.random() * 4) : (6 + Math.random() * 6),
+            rangeX: isPalladium ? (20 + Math.random() * 25) : (25 + Math.random() * 35),
+            rangeY: isPalladium ? (25 + Math.random() * 20) : (30 + Math.random() * 25),
+            direction: Math.random() > 0.5 ? 'normal' : 'reverse'
+        });
+    }
+
+    // Generate merge icons for Palladium packages
+    if (isPalladium && dualIconUrl) {
+        for (let i = 0; i < iconCount; i++) {
+            config.mergeIcons.push({
+                delay: i * 2.5 + 1.5 + Math.random() * 2,
+                startX: 50 + (i * 20) + Math.random() * 15,
+                startY: 45 + Math.random() * 40,
+                speedMultiplier: 0.8 + Math.random() * 0.4,
+                speedYRatio: 0.7 + Math.random() * 0.5,
+                pulseSpeed: 6 + Math.random() * 5,
+                rangeX: 25 + Math.random() * 30,
+                rangeY: 20 + Math.random() * 25,
+                direction: Math.random() > 0.5 ? 'normal' : 'reverse'
+            });
+        }
+    }
+
+    floatingIconsStore[key] = config;
+    console.log(`🎈 Created floating icons config for ${packageName}: ${config.mainIcons.length} main + ${config.mergeIcons.length} merge icons`);
+
+    return config;
+}
+
+/**
+ * Generate floating icons HTML using stored config (consistent positions)
+ */
+function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
+    const key = packageName.replace(/\s+/g, '-');
+    const config = floatingIconsStore[key];
+
+    if (!config) return '<div class="reward-floating-icons"></div>';
+
+    let html = `<div class="reward-floating-icons" data-package-key="${key}">`;
+
+    // Add main icons
+    config.mainIcons.forEach((icon, i) => {
+        if (config.iconUrl) {
+            const speed = metricsSpeed || (baseSpeed * icon.speedMultiplier);
+            const speedY = speed * icon.speedYRatio;
+
+            html += `<img class="reward-floating-icon" src="${config.iconUrl}"
+                style="--float-delay: ${icon.delay.toFixed(1)}s;
+                       --float-speed: ${speed.toFixed(1)}s;
+                       --float-speed-y: ${speedY.toFixed(1)}s;
+                       --pulse-speed: ${icon.pulseSpeed.toFixed(1)}s;
+                       --range-x: ${icon.rangeX.toFixed(0)}px;
+                       --range-y: ${icon.rangeY.toFixed(0)}px;
+                       left: ${icon.startX.toFixed(0)}%;
+                       top: ${icon.startY.toFixed(0)}%;
+                       animation-direction: ${icon.direction};"
+                alt="">`;
+        }
+    });
+
+    // Add merge icons for Palladium
+    config.mergeIcons.forEach((icon, i) => {
+        if (config.dualIconUrl) {
+            const speed = metricsSpeed || (baseSpeed * icon.speedMultiplier);
+            const speedY = speed * icon.speedYRatio;
+
+            html += `<img class="reward-floating-icon" src="${config.dualIconUrl}"
+                style="--float-delay: ${icon.delay.toFixed(1)}s;
+                       --float-speed: ${speed.toFixed(1)}s;
+                       --float-speed-y: ${speedY.toFixed(1)}s;
+                       --pulse-speed: ${icon.pulseSpeed.toFixed(1)}s;
+                       --range-x: ${icon.rangeX.toFixed(0)}px;
+                       --range-y: ${icon.rangeY.toFixed(0)}px;
+                       left: ${icon.startX.toFixed(0)}%;
+                       top: ${icon.startY.toFixed(0)}%;
+                       animation-direction: ${icon.direction};"
+                alt="">`;
+        }
+    });
+
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Update animation speeds on existing floating icons without recreating them
+ * Called every 60 seconds to sync with metrics changes
+ */
+function updateFloatingIconSpeeds() {
+    console.log('🔄 Updating floating icon speeds from metrics...');
+    let updatedCount = 0;
+
+    Object.keys(floatingIconsStore).forEach(key => {
+        const config = floatingIconsStore[key];
+        const metricsSpeed = getPackageMetricsSpeed(config.packageName);
+
+        // Find the floating icons container for this package
+        const container = document.querySelector(`[data-package-key="${key}"]`);
+        if (!container) return;
+
+        const icons = container.querySelectorAll('.reward-floating-icon');
+        icons.forEach((icon, i) => {
+            // Determine which config to use (main or merge)
+            const isMainIcon = i < config.mainIcons.length;
+            const iconConfig = isMainIcon
+                ? config.mainIcons[i]
+                : config.mergeIcons[i - config.mainIcons.length];
+
+            if (!iconConfig) return;
+
+            // Calculate new speed
+            const baseSpeed = 10; // Default base
+            const speed = metricsSpeed || (baseSpeed * iconConfig.speedMultiplier);
+            const speedY = speed * iconConfig.speedYRatio;
+
+            // Update CSS custom properties (doesn't restart animation)
+            icon.style.setProperty('--float-speed', `${speed.toFixed(1)}s`);
+            icon.style.setProperty('--float-speed-y', `${speedY.toFixed(1)}s`);
+        });
+
+        updatedCount++;
+    });
+
+    console.log(`✅ Updated speeds for ${updatedCount} packages`);
+}
+
+/**
+ * Start the floating icon speed update interval (60 seconds)
+ */
+function startFloatingIconSpeedUpdates() {
+    stopFloatingIconSpeedUpdates();
+
+    floatingIconSpeedInterval = setInterval(() => {
+        updateFloatingIconSpeeds();
+    }, 60000);
+
+    console.log('🎈 Started floating icon speed updates (60s interval)');
+}
+
+/**
+ * Stop the floating icon speed update interval
+ */
+function stopFloatingIconSpeedUpdates() {
+    if (floatingIconSpeedInterval) {
+        clearInterval(floatingIconSpeedInterval);
+        floatingIconSpeedInterval = null;
+    }
+}
 
 /**
  * Get the package metrics history from localStorage
