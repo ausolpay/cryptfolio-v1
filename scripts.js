@@ -26417,14 +26417,23 @@ function parseProbability(probabilityStr) {
  * Called each time user lands on Buy Packages page
  */
 function capturePackageMetrics(packages) {
+    console.log('📊 capturePackageMetrics called with', packages?.length || 0, 'packages');
+
     if (!packages || packages.length === 0) {
         console.log('📊 No packages to capture metrics for');
         return;
     }
 
+    // Log package breakdown
+    const soloCount = packages.filter(p => !p.isTeam).length;
+    const teamCount = packages.filter(p => p.isTeam).length;
+    console.log(`📊 Package breakdown: ${soloCount} solo, ${teamCount} team`);
+
     const timestamp = new Date().toISOString();
     const history = getPackageMetricsHistory();
     let capturedCount = 0;
+    let teamCaptured = 0;
+    let soloCaptured = 0;
 
     packages.forEach(pkg => {
         const name = pkg.name;
@@ -26482,10 +26491,21 @@ function capturePackageMetrics(packages) {
         }
 
         capturedCount++;
+        if (pkg.isTeam) {
+            teamCaptured++;
+        } else {
+            soloCaptured++;
+        }
     });
 
     savePackageMetricsHistory(history);
-    console.log(`📊 Captured metrics for ${capturedCount} packages at ${timestamp}`);
+    console.log(`📊 Captured metrics for ${capturedCount} packages (${soloCaptured} solo, ${teamCaptured} team) at ${timestamp}`);
+
+    // Log the storage content for debugging
+    const savedHistory = getPackageMetricsHistory();
+    const savedTeamCount = Object.values(savedHistory).filter(p => p.isTeam).length;
+    const savedSoloCount = Object.values(savedHistory).filter(p => !p.isTeam).length;
+    console.log(`📊 Storage now has ${Object.keys(savedHistory).length} packages (${savedSoloCount} solo, ${savedTeamCount} team)`);
 }
 
 /**
@@ -26947,7 +26967,14 @@ function updateAveragesDisplay() {
     try {
         console.log('📊 updateAveragesDisplay called');
         const history = getPackageMetricsHistory();
-        console.log('📊 Package metrics history:', Object.keys(history).length, 'packages');
+        const packageCount = Object.keys(history).length;
+        console.log('📊 Package metrics history:', packageCount, 'packages');
+
+        if (packageCount === 0) {
+            console.log('📊 No packages in history - storage may be empty');
+            console.log('📊 localStorage key:', PACKAGE_METRICS_STORAGE_KEY);
+            console.log('📊 Raw storage value:', localStorage.getItem(PACKAGE_METRICS_STORAGE_KEY)?.substring(0, 200) || 'null');
+        }
 
         // Separate team and single packages
         const teamPackages = [];
@@ -26963,7 +26990,7 @@ function updateAveragesDisplay() {
             }
         });
 
-        console.log(`📊 Team packages: ${teamPackages.length}, Single packages: ${singlePackages.length}`);
+        console.log(`📊 Display: Team packages: ${teamPackages.length}, Single packages: ${singlePackages.length}`);
 
         // Update Team Packages section
         updateAveragesSection('team', teamPackages, history);
