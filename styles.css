@@ -5693,7 +5693,8 @@ body.light-mode .tab-button {
     overflow: hidden; /* Keep content within bounds */
     box-sizing: border-box;
     width: 363px; /* Fixed square width */
-    height: 363px; /* Fixed square height */
+    min-height: 363px; /* Minimum height, allows content to expand */
+    height: auto; /* Responsive height based on content */
     font-size: 14px; /* Base font size that scales with card */
 }
 
@@ -6988,12 +6989,12 @@ body.light-mode .easymining-settings-form input[type="number"] {
         flex-shrink: 0; /* Prevent cards from shrinking */
         scroll-snap-align: start; /* Snap to start of each card */
         width: 300px;
-        height: 300px;
+        min-height: 300px; /* Minimum height, allows content to expand */
+        height: auto; /* Responsive height based on content */
         font-size: 13px; /* Slightly smaller font for smaller boxes */
     }
 
     .buy-package-card.team-package {
-        height: auto; /* Team packages expand to fit content on tablet */
         min-height: 300px; /* Minimum height matches solo packages */
         width: 320px; /* Fit tablet width */
     }
@@ -7059,13 +7060,13 @@ body.light-mode .easymining-settings-form input[type="number"] {
         flex-shrink: 0; /* Prevent cards from shrinking */
         scroll-snap-align: start; /* Snap to start of each card */
         width: 280px;
-        height: 280px;
+        min-height: 280px; /* Minimum height, allows content to expand */
+        height: auto; /* Responsive height based on content */
         font-size: 12px; /* Smaller font for mobile boxes */
         padding: 12px;
     }
 
     .buy-package-card.team-package {
-        height: auto; /* Team packages expand to fit content on mobile */
         min-height: 280px; /* Minimum height matches solo packages */
         width: 100%; /* Full width on mobile */
         max-width: 320px; /* Max width for readability */
