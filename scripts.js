@@ -2191,10 +2191,10 @@ function updateDepositsBalance() {
 
         if (existingAvailableBTC && existingAvailableLocal && existingPendingBTC && existingPendingLocal) {
             // Update existing elements (no flicker)
+            existingAvailableLocal.textContent = `${currencySymbol}${availableLocal}`;
             existingAvailableBTC.textContent = `${availableBalance.toFixed(8)} BTC`;
-            existingAvailableLocal.textContent = `≈ ${currencySymbol}${availableLocal}`;
+            existingPendingLocal.textContent = `${currencySymbol}${pendingLocal}`;
             existingPendingBTC.textContent = `${pendingBalance.toFixed(8)} BTC`;
-            existingPendingLocal.textContent = `≈ ${currencySymbol}${pendingLocal}`;
         } else {
             // First render - create full HTML with IDs
             balanceSection.innerHTML = `
@@ -2202,13 +2202,13 @@ function updateDepositsBalance() {
                     <div style="display: flex; justify-content: space-around; align-items: center; gap: 40px;">
                         <div style="flex: 1; text-align: center;">
                             <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">💰 Available Balance</div>
-                            <div id="deposits-available-btc" style="color: #4CAF50; font-size: 20px; font-weight: bold;">${availableBalance.toFixed(8)} BTC</div>
-                            <div id="deposits-available-aud" style="color: #888; font-size: 13px;">≈ ${currencySymbol}${availableLocal}</div>
+                            <div id="deposits-available-aud" style="color: #4CAF50; font-size: 20px; font-weight: bold;">${currencySymbol}${availableLocal}</div>
+                            <div id="deposits-available-btc" style="color: #888; font-size: 13px;">${availableBalance.toFixed(8)} BTC</div>
                         </div>
                         <div style="flex: 1; text-align: center;">
                             <div style="color: #aaa; font-size: 14px; margin-bottom: 8px;">⏳ Pending Balance</div>
-                            <div id="deposits-pending-btc" style="color: #FFA500; font-size: 20px; font-weight: bold;">${pendingBalance.toFixed(8)} BTC</div>
-                            <div id="deposits-pending-aud" style="color: #888; font-size: 13px;">≈ ${currencySymbol}${pendingLocal}</div>
+                            <div id="deposits-pending-aud" style="color: #FFA500; font-size: 20px; font-weight: bold;">${currencySymbol}${pendingLocal}</div>
+                            <div id="deposits-pending-btc" style="color: #888; font-size: 13px;">${pendingBalance.toFixed(8)} BTC</div>
                         </div>
                     </div>
                 </div>
