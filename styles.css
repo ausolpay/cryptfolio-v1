@@ -8025,6 +8025,27 @@ body.light-mode .holdings-pnl-summary {
     font-weight: 500;
 }
 
+/* Optimal Package Today - Featured card with orange highlight */
+.averages-stat-card.optimal-today {
+    background: linear-gradient(135deg, #3d2a00 0%, #2a1d00 100%);
+    border: 2px solid #ffa500;
+    box-shadow: 0 0 15px rgba(255, 165, 0, 0.3);
+}
+
+.averages-stat-card.optimal-today .averages-stat-label {
+    color: #ffa500;
+    font-weight: 600;
+}
+
+.averages-stat-card.optimal-today .averages-stat-value {
+    color: #ffa500;
+    font-size: 15px;
+}
+
+.averages-stat-card.optimal-today .averages-stat-sub {
+    color: #ffcc66;
+}
+
 .averages-list {
     padding: 0;
 }

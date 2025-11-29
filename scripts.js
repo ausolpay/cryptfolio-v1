@@ -26759,6 +26759,25 @@ function updateAveragesSection(type, packages, allHistory) {
     // Build stats cards based on package type
     let statsHTML = '';
 
+    // Row 0: Optimal Package Today (featured/highlighted)
+    statsHTML += `
+        <div class="averages-stat-card optimal-today">
+            <div class="averages-stat-label">Optimal Package Today</div>
+            <div class="averages-stat-value">${stats.optimalToday || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.optimalToday ? `Score: ${stats.optimalTodayScore}/100` : ''}</div>
+        </div>
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Optimal 7 Days</div>
+            <div class="averages-stat-value">${stats.optimal7Days || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.optimal7Days ? `Score: ${stats.optimal7DaysScore}/100` : ''}</div>
+        </div>
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Optimal 30 Days</div>
+            <div class="averages-stat-value">${stats.optimal30Days || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.optimal30Days ? `Score: ${stats.optimal30DaysScore}/100` : ''}</div>
+        </div>
+    `;
+
     // Row 1: Best by Probability (time periods)
     statsHTML += `
         <div class="averages-stat-card">
@@ -27095,7 +27114,116 @@ function calculateOverallStats(packages, type) {
         stats.highestSharesValue = highestShares ? `${highestSharesVal.toFixed(2)}% max` : '';
     }
 
+    // Calculate optimal packages by time period (combines all metrics)
+    const optimalResults = calculateOptimalPackages(packages, isTeam, todayStart, sevenDaysAgo, thirtyDaysAgo);
+    stats.optimalToday = optimalResults.today?.name || null;
+    stats.optimalTodayScore = optimalResults.today?.score || 0;
+    stats.optimal7Days = optimalResults.sevenDays?.name || null;
+    stats.optimal7DaysScore = optimalResults.sevenDays?.score || 0;
+    stats.optimal30Days = optimalResults.thirtyDays?.name || null;
+    stats.optimal30DaysScore = optimalResults.thirtyDays?.score || 0;
+
     return stats;
+}
+
+/**
+ * Calculate optimal packages based on combined metrics for each time period
+ * Scoring: Lower probability = better, Higher hashrate = better
+ * For team packages: More participants and higher shares = better
+ */
+function calculateOptimalPackages(packages, isTeam, todayStart, sevenDaysAgo, thirtyDaysAgo) {
+    const results = { today: null, sevenDays: null, thirtyDays: null };
+
+    // Collect time-period specific averages for each package
+    const packageScores = {
+        today: [],
+        sevenDays: [],
+        thirtyDays: []
+    };
+
+    packages.forEach(pkg => {
+        const snapshots = pkg.snapshots || [];
+        if (snapshots.length === 0) return;
+
+        // Calculate averages for each time period
+        ['today', 'sevenDays', 'thirtyDays'].forEach(period => {
+            const cutoff = period === 'today' ? todayStart :
+                          period === 'sevenDays' ? sevenDaysAgo : thirtyDaysAgo;
+
+            const periodSnapshots = snapshots.filter(s => new Date(s.timestamp) >= cutoff);
+            if (periodSnapshots.length === 0) return;
+
+            // Calculate period averages
+            const avgProb = periodSnapshots.reduce((sum, s) => sum + (s.probabilityRaw || 0), 0) / periodSnapshots.length;
+            const avgHashrate = periodSnapshots.reduce((sum, s) => sum + (s.hashrateRaw || 0), 0) / periodSnapshots.length;
+            const avgParticipants = isTeam ? periodSnapshots.reduce((sum, s) => sum + (s.participants || 0), 0) / periodSnapshots.length : 0;
+            const avgShares = isTeam ? periodSnapshots.reduce((sum, s) => sum + (s.shares || 0), 0) / periodSnapshots.length : 0;
+
+            packageScores[period].push({
+                name: pkg.name,
+                avgProb,
+                avgHashrate,
+                avgParticipants,
+                avgShares,
+                snapshotCount: periodSnapshots.length
+            });
+        });
+    });
+
+    // Calculate optimal for each period
+    ['today', 'sevenDays', 'thirtyDays'].forEach(period => {
+        const scores = packageScores[period];
+        if (scores.length === 0) return;
+
+        // Find min/max for normalization
+        const minProb = Math.min(...scores.map(s => s.avgProb).filter(p => p > 0)) || 1;
+        const maxProb = Math.max(...scores.map(s => s.avgProb)) || 1;
+        const minHashrate = Math.min(...scores.map(s => s.avgHashrate).filter(h => h > 0)) || 0;
+        const maxHashrate = Math.max(...scores.map(s => s.avgHashrate)) || 1;
+        const maxParticipants = Math.max(...scores.map(s => s.avgParticipants)) || 1;
+        const maxShares = Math.max(...scores.map(s => s.avgShares)) || 1;
+
+        // Score each package (higher = better)
+        scores.forEach(pkg => {
+            let score = 0;
+
+            // Probability score (lower prob = higher score) - weight: 40%
+            if (pkg.avgProb > 0 && maxProb > minProb) {
+                const probScore = 1 - ((pkg.avgProb - minProb) / (maxProb - minProb));
+                score += probScore * 40;
+            }
+
+            // Hashrate score (higher = better) - weight: 30%
+            if (maxHashrate > minHashrate) {
+                const hashScore = (pkg.avgHashrate - minHashrate) / (maxHashrate - minHashrate);
+                score += hashScore * 30;
+            }
+
+            // Team-specific scoring
+            if (isTeam) {
+                // Participants score - weight: 15%
+                if (maxParticipants > 0) {
+                    score += (pkg.avgParticipants / maxParticipants) * 15;
+                }
+                // Shares score - weight: 15%
+                if (maxShares > 0) {
+                    score += (pkg.avgShares / maxShares) * 15;
+                }
+            } else {
+                // For single packages, give extra weight to probability and hashrate
+                score += 15; // Bonus for having data
+                score += 15; // Balance out weights
+            }
+
+            pkg.score = Math.round(score);
+        });
+
+        // Find highest scoring package
+        const best = scores.reduce((best, pkg) => pkg.score > (best?.score || 0) ? pkg : best, null);
+        results[period] = best;
+    });
+
+    return results;
 }
 
 /**
