@@ -24765,6 +24765,7 @@ function getOrCreateFloatingIconsConfig(packageName, iconUrl, dualIconUrl, iconC
 
 /**
  * Generate floating icons HTML using stored config (consistent positions)
+ * Uses single orbital animation controlled by --float-speed
  */
 function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
     const key = packageName.replace(/\s+/g, '-');
@@ -24778,13 +24779,10 @@ function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
     config.mainIcons.forEach((icon, i) => {
         if (config.iconUrl) {
             const speed = metricsSpeed || (baseSpeed * icon.speedMultiplier);
-            const speedY = speed * icon.speedYRatio;
 
             html += `<img class="reward-floating-icon" src="${config.iconUrl}"
                 style="--float-delay: ${icon.delay.toFixed(1)}s;
                        --float-speed: ${speed.toFixed(1)}s;
-                       --float-speed-y: ${speedY.toFixed(1)}s;
-                       --pulse-speed: ${icon.pulseSpeed.toFixed(1)}s;
                        --range-x: ${icon.rangeX.toFixed(0)}px;
                        --range-y: ${icon.rangeY.toFixed(0)}px;
                        left: ${icon.startX.toFixed(0)}%;
@@ -24798,13 +24796,10 @@ function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
     config.mergeIcons.forEach((icon, i) => {
         if (config.dualIconUrl) {
             const speed = metricsSpeed || (baseSpeed * icon.speedMultiplier);
-            const speedY = speed * icon.speedYRatio;
 
             html += `<img class="reward-floating-icon" src="${config.dualIconUrl}"
                 style="--float-delay: ${icon.delay.toFixed(1)}s;
                        --float-speed: ${speed.toFixed(1)}s;
-                       --float-speed-y: ${speedY.toFixed(1)}s;
-                       --pulse-speed: ${icon.pulseSpeed.toFixed(1)}s;
                        --range-x: ${icon.rangeX.toFixed(0)}px;
                        --range-y: ${icon.rangeY.toFixed(0)}px;
                        left: ${icon.startX.toFixed(0)}%;
@@ -24820,10 +24815,10 @@ function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
 
 /**
  * Update animation speeds on existing floating icons without recreating them
- * Called every 60 seconds to sync with metrics changes
+ * Called every 5 seconds to sync with metrics changes
+ * Only updates CSS custom property --float-speed (doesn't restart animation)
  */
 function updateFloatingIconSpeeds() {
-    console.log('🔄 Updating floating icon speeds from metrics...');
     let updatedCount = 0;
 
     Object.keys(floatingIconsStore).forEach(key => {
@@ -24844,20 +24839,20 @@ function updateFloatingIconSpeeds() {
 
             if (!iconConfig) return;
 
-            // Calculate new speed
-            const baseSpeed = 10; // Default base
+            // Calculate new speed based on metrics or use stored multiplier
+            const baseSpeed = 10;
             const speed = metricsSpeed || (baseSpeed * iconConfig.speedMultiplier);
-            const speedY = speed * iconConfig.speedYRatio;
 
-            // Update CSS custom properties (doesn't restart animation)
+            // Update CSS custom property (doesn't restart animation, just changes speed)
             icon.style.setProperty('--float-speed', `${speed.toFixed(1)}s`);
-            icon.style.setProperty('--float-speed-y', `${speedY.toFixed(1)}s`);
         });
 
         updatedCount++;
     });
 
-    console.log(`✅ Updated speeds for ${updatedCount} packages`);
+    if (updatedCount > 0) {
+        console.log(`🎈 Updated icon speeds for ${updatedCount} packages`);
+    }
 }
 
 /**

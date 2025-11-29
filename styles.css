@@ -5935,35 +5935,68 @@ body.light-mode .stat-value-medium {
     border-radius: 50%;
     background-color: #fff;
     opacity: 0.3;
-    /* Continuous smooth orbital motion using linear timing */
-    animation: rewardFloatX var(--float-speed, 10s) linear infinite,
-               rewardFloatY var(--float-speed-y, 12s) linear infinite,
-               rewardPulse var(--pulse-speed, 8s) ease-in-out infinite;
+    /* Single orbital animation combining X and Y for smooth continuous motion */
+    animation: rewardFloatOrbital var(--float-speed, 10s) linear infinite;
     animation-delay: var(--float-delay, 0s);
+    will-change: transform, opacity;
 }
 
-/* Smooth continuous horizontal oscillation */
-@keyframes rewardFloatX {
-    0% { transform: translateX(0); }
-    25% { transform: translateX(var(--range-x, 25px)); }
-    50% { transform: translateX(0); }
-    75% { transform: translateX(calc(var(--range-x, 25px) * -1)); }
-    100% { transform: translateX(0); }
-}
-
-/* Smooth continuous vertical oscillation (different speed creates orbital effect) */
-@keyframes rewardFloatY {
-    0% { transform: translateY(0); }
-    25% { transform: translateY(calc(var(--range-y, 20px) * -1)); }
-    50% { transform: translateY(0); }
-    75% { transform: translateY(var(--range-y, 20px)); }
-    100% { transform: translateY(0); }
-}
-
-/* Subtle opacity pulse */
-@keyframes rewardPulse {
-    0%, 100% { opacity: 0.25; }
-    50% { opacity: 0.4; }
+/* Combined orbital motion - figure-8 pattern with X and Y combined */
+@keyframes rewardFloatOrbital {
+    0% {
+        transform: translate(0, 0);
+        opacity: 0.25;
+    }
+    12.5% {
+        transform: translate(
+            calc(var(--range-x, 25px) * 0.7),
+            calc(var(--range-y, 20px) * -0.7)
+        );
+        opacity: 0.3;
+    }
+    25% {
+        transform: translate(
+            var(--range-x, 25px),
+            0
+        );
+        opacity: 0.35;
+    }
+    37.5% {
+        transform: translate(
+            calc(var(--range-x, 25px) * 0.7),
+            calc(var(--range-y, 20px) * 0.7)
+        );
+        opacity: 0.4;
+    }
+    50% {
+        transform: translate(0, var(--range-y, 20px));
+        opacity: 0.35;
+    }
+    62.5% {
+        transform: translate(
+            calc(var(--range-x, 25px) * -0.7),
+            calc(var(--range-y, 20px) * 0.7)
+        );
+        opacity: 0.3;
+    }
+    75% {
+        transform: translate(
+            calc(var(--range-x, 25px) * -1),
+            0
+        );
+        opacity: 0.25;
+    }
+    87.5% {
+        transform: translate(
+            calc(var(--range-x, 25px) * -0.7),
+            calc(var(--range-y, 20px) * -0.7)
+        );
+        opacity: 0.3;
+    }
+    100% {
+        transform: translate(0, 0);
+        opacity: 0.25;
+    }
 }
 
 .reward-display {
