@@ -1176,6 +1176,8 @@ function showAppPage() {
     stopPackageDetailPolling();
     // Stop BTC price polling for mining charts
     stopMEXCBTCPricePolling();
+    // Stop averages polling
+    stopAveragesPolling();
 
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
@@ -1194,6 +1196,7 @@ function showAppPage() {
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('averages-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
     document.getElementById('account-settings-page').style.display = 'none';
 
@@ -1218,6 +1221,7 @@ function showEasyMiningSettingsPage() {
     // Stop buy packages and alerts polling when leaving the page
     stopBuyPackagesPolling();
     stopEasyMiningAlertsPolling();
+    stopAveragesPolling();
     stopPackageDetailTimer();
     stopPackageDetailPolling();
 
@@ -1232,6 +1236,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('averages-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
 
     // Show EasyMining settings page
@@ -1301,6 +1306,7 @@ function showWithdrawalAddressesPage() {
     // Stop polling when leaving app page
     stopBuyPackagesPolling();
     stopEasyMiningAlertsPolling();
+    stopAveragesPolling();
 
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
@@ -1310,6 +1316,7 @@ function showWithdrawalAddressesPage() {
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('averages-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
 
     // Show withdrawal addresses page
@@ -1673,12 +1680,16 @@ async function showTravelDataPage() {
     window.scrollTo(0, 0);
     console.log('📍 Showing Travel Data Management Page');
 
+    // Stop polling
+    stopAveragesPolling();
+
     // Hide all other pages
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('register-page').style.display = 'none';
     document.getElementById('app-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('averages-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
 
@@ -26453,6 +26464,357 @@ function stopEasyMiningAlertsPolling() {
 }
 
 // =============================================================================
+// PACKAGE AVERAGES PAGE
+// =============================================================================
+
+let averagesPollingInterval = null;
+
+/**
+ * Show the Averages page
+ */
+function showAveragesPage() {
+    window.scrollTo(0, 0);
+    console.log('📊 Showing Package Averages Page');
+
+    // Stop other polling
+    stopBuyPackagesPolling();
+    stopEasyMiningAlertsPolling();
+    stopAveragesPolling();
+
+    // Hide all other pages
+    const pagesToHide = [
+        'login-page', 'register-page', 'app-page', 'buy-packages-page',
+        'package-detail-page', 'easymining-settings-page', 'package-alerts-page',
+        'settings-page', 'withdrawal-addresses-page', 'travel-data-page', 'deposits-page'
+    ];
+
+    pagesToHide.forEach(id => {
+        const page = document.getElementById(id);
+        if (page) page.style.display = 'none';
+    });
+
+    // Show averages page
+    document.getElementById('averages-page').style.display = 'block';
+
+    // Initial update
+    updateAveragesDisplay();
+
+    // Start polling every 5 seconds
+    startAveragesPolling();
+}
+
+/**
+ * Start polling for averages updates
+ */
+function startAveragesPolling() {
+    stopAveragesPolling();
+
+    averagesPollingInterval = setInterval(() => {
+        updateAveragesDisplay();
+    }, 5000);
+
+    console.log('📊 Started averages polling (5s interval)');
+}
+
+/**
+ * Stop polling for averages updates
+ */
+function stopAveragesPolling() {
+    if (averagesPollingInterval) {
+        clearInterval(averagesPollingInterval);
+        averagesPollingInterval = null;
+        console.log('⏹️ Stopped averages polling');
+    }
+}
+
+/**
+ * Update the averages display with current data
+ */
+function updateAveragesDisplay() {
+    const history = getPackageMetricsHistory();
+
+    // Separate team and single packages
+    const teamPackages = [];
+    const singlePackages = [];
+
+    Object.keys(history).forEach(name => {
+        const pkg = history[name];
+        if (pkg.isTeam) {
+            teamPackages.push({ name, ...pkg });
+        } else {
+            singlePackages.push({ name, ...pkg });
+        }
+    });
+
+    // Update Team Packages section
+    updateAveragesSection('team', teamPackages, history);
+
+    // Update Single Packages section
+    updateAveragesSection('single', singlePackages, history);
+}
+
+/**
+ * Update a specific averages section (team or single)
+ */
+function updateAveragesSection(type, packages, allHistory) {
+    const statsContainer = document.getElementById(`${type}-overall-stats`);
+    const listContainer = document.getElementById(`${type}-averages-list`);
+
+    if (!statsContainer || !listContainer) return;
+
+    if (packages.length === 0) {
+        statsContainer.innerHTML = '';
+        listContainer.innerHTML = `
+            <div class="averages-no-data">
+                <div class="averages-no-data-icon">📊</div>
+                <div class="averages-no-data-text">No ${type} package data collected yet.<br>Visit the Buy Packages page to start recording metrics.</div>
+            </div>
+        `;
+        return;
+    }
+
+    // Calculate overall stats
+    const stats = calculateOverallStats(packages, type);
+
+    // Render overall stats
+    statsContainer.innerHTML = `
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Best Today</div>
+            <div class="averages-stat-value highlight">${stats.bestToday || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.bestTodayReason || ''}</div>
+        </div>
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Best 7 Days</div>
+            <div class="averages-stat-value highlight">${stats.best7Days || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.best7DaysReason || ''}</div>
+        </div>
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Best 30 Days</div>
+            <div class="averages-stat-value highlight">${stats.best30Days || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.best30DaysReason || ''}</div>
+        </div>
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Most Recorded</div>
+            <div class="averages-stat-value">${stats.mostRecorded || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.mostRecordedCount || ''} snapshots</div>
+        </div>
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Highest Avg Price</div>
+            <div class="averages-stat-value">${stats.highestAvgPrice || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.highestAvgPriceValue || ''}</div>
+        </div>
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Best Probability</div>
+            <div class="averages-stat-value highlight">${stats.bestProbability || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.bestProbabilityValue || ''}</div>
+        </div>
+    `;
+
+    // Render package list
+    const cryptoIdMap = {
+        'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
+        'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+    };
+
+    const fallbackIcons = {
+        'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
+        'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+        'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
+        'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
+        'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
+        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+        'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
+    };
+
+    // Sort by snapshot count (most data first)
+    packages.sort((a, b) => (b.snapshots?.length || 0) - (a.snapshots?.length || 0));
+
+    let listHTML = '';
+    packages.forEach(pkg => {
+        const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+        const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+        const iconUrl = userCrypto?.thumb
+            ? userCrypto.thumb.replace('/thumb/', '/small/')
+            : (fallbackIcons[cryptoId] || '');
+
+        const avgProbability = pkg.averages?.probability
+            ? `1:${Math.round(pkg.averages.probability)}`
+            : 'N/A';
+
+        const avgHashrate = pkg.averages?.hashrate
+            ? formatHashrate(pkg.averages.hashrate)
+            : 'N/A';
+
+        const avgPriceBTC = pkg.averages?.priceBTC
+            ? pkg.averages.priceBTC.toFixed(6)
+            : 'N/A';
+
+        const avgPriceAUD = pkg.averages?.priceAUD
+            ? formatCurrency(pkg.averages.priceAUD, getUserCurrency())
+            : 'N/A';
+
+        const snapshotCount = pkg.snapshots?.length || 0;
+        const lastUpdated = pkg.averages?.lastUpdated
+            ? new Date(pkg.averages.lastUpdated).toLocaleString()
+            : 'Never';
+
+        // Calculate current vs average indicators
+        let probabilityIndicator = '';
+        let hashrateIndicator = '';
+
+        if (pkg.currentVsAverage) {
+            const probRatio = pkg.currentVsAverage.probabilityRatio;
+            if (probRatio && probRatio < 0.95) {
+                probabilityIndicator = '<span class="positive">▼</span>'; // Lower is better
+            } else if (probRatio && probRatio > 1.05) {
+                probabilityIndicator = '<span class="negative">▲</span>';
+            }
+
+            const hashRatio = pkg.currentVsAverage.hashrateRatio;
+            if (hashRatio && hashRatio > 1.05) {
+                hashrateIndicator = '<span class="positive">▲</span>'; // Higher is better
+            } else if (hashRatio && hashRatio < 0.95) {
+                hashrateIndicator = '<span class="negative">▼</span>';
+            }
+        }
+
+        listHTML += `
+            <div class="averages-item">
+                ${iconUrl ? `<img src="${iconUrl}" alt="${pkg.crypto}" class="averages-item-icon">` : ''}
+                <div class="averages-item-info">
+                    <div class="averages-item-name">${pkg.name}</div>
+                    <div class="averages-item-meta">${pkg.algorithm || ''} • ${snapshotCount} snapshots • Last: ${lastUpdated}</div>
+                </div>
+                <div class="averages-item-stats">
+                    <div class="averages-item-stat">
+                        <div class="averages-item-stat-label">Avg Prob</div>
+                        <div class="averages-item-stat-value">${avgProbability} ${probabilityIndicator}</div>
+                    </div>
+                    <div class="averages-item-stat">
+                        <div class="averages-item-stat-label">Avg Hashrate</div>
+                        <div class="averages-item-stat-value">${avgHashrate} ${hashrateIndicator}</div>
+                    </div>
+                    <div class="averages-item-stat">
+                        <div class="averages-item-stat-label">Avg Price</div>
+                        <div class="averages-item-stat-value">${avgPriceBTC} BTC</div>
+                    </div>
+                    <div class="averages-item-stat">
+                        <div class="averages-item-stat-label">Avg ${getUserCurrency().toUpperCase()}</div>
+                        <div class="averages-item-stat-value">${avgPriceAUD}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    listContainer.innerHTML = listHTML;
+}
+
+/**
+ * Calculate overall stats for a section
+ */
+function calculateOverallStats(packages, type) {
+    const stats = {};
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Find best package (lowest probability) for different time periods
+    let bestToday = null, bestTodayProb = Infinity;
+    let best7Days = null, best7DaysProb = Infinity;
+    let best30Days = null, best30DaysProb = Infinity;
+    let mostRecorded = null, mostRecordedCount = 0;
+    let highestAvgPrice = null, highestAvgPriceVal = 0;
+    let bestProbability = null, bestProbabilityVal = Infinity;
+
+    packages.forEach(pkg => {
+        const snapshots = pkg.snapshots || [];
+
+        // Most recorded
+        if (snapshots.length > mostRecordedCount) {
+            mostRecordedCount = snapshots.length;
+            mostRecorded = pkg.name;
+        }
+
+        // Highest average price
+        if (pkg.averages?.priceAUD && pkg.averages.priceAUD > highestAvgPriceVal) {
+            highestAvgPriceVal = pkg.averages.priceAUD;
+            highestAvgPrice = pkg.name;
+        }
+
+        // Best overall probability
+        if (pkg.averages?.probability && pkg.averages.probability < bestProbabilityVal) {
+            bestProbabilityVal = pkg.averages.probability;
+            bestProbability = pkg.name;
+        }
+
+        // Filter by time period and find best probability
+        snapshots.forEach(s => {
+            const timestamp = new Date(s.timestamp);
+            const prob = s.probabilityRaw || Infinity;
+
+            // Today
+            if (timestamp >= todayStart && prob < bestTodayProb) {
+                bestTodayProb = prob;
+                bestToday = pkg.name;
+            }
+
+            // Last 7 days
+            if (timestamp >= sevenDaysAgo && prob < best7DaysProb) {
+                best7DaysProb = prob;
+                best7Days = pkg.name;
+            }
+
+            // Last 30 days
+            if (timestamp >= thirtyDaysAgo && prob < best30DaysProb) {
+                best30DaysProb = prob;
+                best30Days = pkg.name;
+            }
+        });
+    });
+
+    stats.bestToday = bestToday;
+    stats.bestTodayReason = bestToday ? `1:${Math.round(bestTodayProb)}` : '';
+
+    stats.best7Days = best7Days;
+    stats.best7DaysReason = best7Days ? `1:${Math.round(best7DaysProb)}` : '';
+
+    stats.best30Days = best30Days;
+    stats.best30DaysReason = best30Days ? `1:${Math.round(best30DaysProb)}` : '';
+
+    stats.mostRecorded = mostRecorded;
+    stats.mostRecordedCount = mostRecordedCount;
+
+    stats.highestAvgPrice = highestAvgPrice;
+    stats.highestAvgPriceValue = highestAvgPrice ? formatCurrency(highestAvgPriceVal, getUserCurrency()) : '';
+
+    stats.bestProbability = bestProbability;
+    stats.bestProbabilityValue = bestProbability ? `1:${Math.round(bestProbabilityVal)}` : '';
+
+    return stats;
+}
+
+/**
+ * Format hashrate value to human readable string
+ */
+function formatHashrate(thPerSec) {
+    if (!thPerSec || thPerSec === 0) return '0 H/s';
+
+    if (thPerSec >= 1000) {
+        return `${(thPerSec / 1000).toFixed(2)} PH/s`;
+    } else if (thPerSec >= 1) {
+        return `${thPerSec.toFixed(2)} TH/s`;
+    } else if (thPerSec >= 0.001) {
+        return `${(thPerSec * 1000).toFixed(2)} GH/s`;
+    } else if (thPerSec >= 0.000001) {
+        return `${(thPerSec * 1000000).toFixed(2)} MH/s`;
+    } else {
+        return `${(thPerSec * 1000000000).toFixed(2)} KH/s`;
+    }
+}
+
+// =============================================================================
 // EASYMINING POLLING WATCHDOG
 // =============================================================================
 
@@ -26599,6 +26961,7 @@ function cleanupResources() {
     stopEasyMiningPolling();
     stopBuyPackagesPolling();
     stopEasyMiningAlertsPolling();
+    stopAveragesPolling();
 
     // Stop missed rewards check
     stopMissedRewardsCheck();

@@ -621,6 +621,13 @@
                         </div>
                         <span class="settings-arrow">→</span>
                     </div>
+                    <div class="settings-row clickable" onclick="showAveragesPage()">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Averages</span>
+                            <span class="settings-row-desc">View package performance metrics</span>
+                        </div>
+                        <span class="settings-arrow">→</span>
+                    </div>
                 </div>
             </div>
 
@@ -891,6 +898,57 @@
                 <!-- Delete Button (shown when travel data selected) -->
                 <div id="delete-travel-data-section" style="display: none; margin-top: 20px;">
                     <button onclick="deleteTravelData()" class="delete-button" style="width: 100%;">🗑️ Delete Selected Travel Data</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="showEasyMiningSettingsPage()">← Back to EasyMining Settings</button>
+        </div>
+
+        <div class="app-footer">
+            <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+            <span class="footer-separator"></span>
+            <div class="footer-text">
+                <span>CryptFolio v2 (Beta)</span>
+                <span class="footer-divider">|</span>
+                <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
+                <span class="footer-divider">|</span>
+                <span>Data by CoinGecko / MEXC</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Package Averages Page -->
+    <div id="averages-page" class="container" style="display: none;">
+        <div class="header">
+            <div>
+                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
+                <h1 class="app-title">CRYPTFOLIO v2</h1>
+                <p>Package Averages</p>
+            </div>
+
+            <div class="averages-content">
+                <!-- Team Packages Section -->
+                <div class="averages-section">
+                    <h3 class="averages-section-title">Team Packages</h3>
+                    <div class="averages-overall-stats" id="team-overall-stats">
+                        <!-- Overall team stats populated by JS -->
+                    </div>
+                    <div class="averages-list" id="team-averages-list">
+                        <!-- Team package averages populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Single Packages Section -->
+                <div class="averages-section">
+                    <h3 class="averages-section-title">Single Packages</h3>
+                    <div class="averages-overall-stats" id="single-overall-stats">
+                        <!-- Overall single stats populated by JS -->
+                    </div>
+                    <div class="averages-list" id="single-averages-list">
+                        <!-- Single package averages populated by JS -->
+                    </div>
                 </div>
             </div>
         </div>

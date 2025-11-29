@@ -7941,3 +7941,270 @@ body.light-mode .holdings-pnl-summary {
         gap: 4px;
     }
 }
+
+/* ============================================================
+   PACKAGE AVERAGES PAGE STYLES
+   ============================================================ */
+
+.averages-content {
+    width: 100%;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.averages-section {
+    background: #1a1a1a;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+
+.averages-section-title {
+    margin: 0;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    color: #000;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.averages-overall-stats {
+    padding: 20px;
+    background: #222;
+    border-bottom: 1px solid #333;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.averages-stat-card {
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    border-left: 3px solid #ffa500;
+}
+
+.averages-stat-label {
+    color: #888;
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.averages-stat-value {
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.averages-stat-value.highlight {
+    color: #4CAF50;
+}
+
+.averages-stat-sub {
+    color: #888;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.averages-list {
+    padding: 0;
+}
+
+.averages-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    background: #1e1e1e;
+    border-bottom: 1px solid #333;
+    transition: background 0.2s ease;
+}
+
+.averages-item:last-child {
+    border-bottom: none;
+}
+
+.averages-item:hover {
+    background: #252525;
+}
+
+.averages-item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 15px;
+    object-fit: contain;
+    background: #2a2a2a;
+    padding: 5px;
+}
+
+.averages-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.averages-item-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.averages-item-meta {
+    font-size: 12px;
+    color: #888;
+}
+
+.averages-item-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.averages-item-stat {
+    text-align: right;
+    min-width: 80px;
+}
+
+.averages-item-stat-label {
+    font-size: 10px;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.averages-item-stat-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.averages-item-stat-value.positive {
+    color: #4CAF50;
+}
+
+.averages-item-stat-value.negative {
+    color: #f44336;
+}
+
+.averages-no-data {
+    padding: 40px 20px;
+    text-align: center;
+    color: #888;
+}
+
+.averages-no-data-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.averages-no-data-text {
+    font-size: 14px;
+}
+
+/* Light Mode */
+body.light-mode .averages-section {
+    background: #f5f5f5;
+    border-color: #ddd;
+}
+
+body.light-mode .averages-overall-stats {
+    background: #eee;
+}
+
+body.light-mode .averages-stat-card {
+    background: #fff;
+}
+
+body.light-mode .averages-item {
+    background: #fff;
+    border-color: #eee;
+}
+
+body.light-mode .averages-item:hover {
+    background: #f9f9f9;
+}
+
+body.light-mode .averages-item-name {
+    color: #333;
+}
+
+body.light-mode .averages-item-stat-value {
+    color: #333;
+}
+
+body.light-mode .averages-stat-value {
+    color: #333;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .averages-content {
+        padding: 15px;
+    }
+
+    .averages-overall-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 15px;
+    }
+
+    .averages-stat-card {
+        padding: 12px;
+    }
+
+    .averages-stat-value {
+        font-size: 16px;
+    }
+
+    .averages-item {
+        flex-wrap: wrap;
+        padding: 12px 15px;
+    }
+
+    .averages-item-icon {
+        width: 35px;
+        height: 35px;
+    }
+
+    .averages-item-stats {
+        width: 100%;
+        margin-top: 10px;
+        justify-content: space-between;
+    }
+
+    .averages-item-stat {
+        text-align: center;
+        min-width: auto;
+        flex: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .averages-overall-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .averages-section-title {
+        font-size: 16px;
+        padding: 12px 15px;
+    }
+
+    .averages-item-name {
+        font-size: 14px;
+    }
+
+    .averages-item-stats {
+        gap: 10px;
+    }
+
+    .averages-item-stat-value {
+        font-size: 12px;
+    }
+}
