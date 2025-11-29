@@ -6391,7 +6391,10 @@ body.light-mode .price-value {
 /* Buy Button Row */
 .buy-button-row {
     display: block;
-    width: 100%;
+    width: calc(100% + 24px);
+    margin-left: -12px;
+    margin-right: -12px;
+    margin-bottom: -10px;
 }
 
 .buy-button-row .buy-now-btn {
@@ -6400,7 +6403,7 @@ body.light-mode .price-value {
     padding: 10px;
     font-size: 14px;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 0 0 8px 8px;
     transition: all 0.2s ease;
     box-sizing: border-box;
 }
