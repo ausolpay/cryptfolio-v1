@@ -17261,11 +17261,13 @@ function createTeamPackageRecommendationCard(pkg) {
     }
 
     if (pkg.isDualCrypto) {
+        // Palladium: mergeCrypto=DOGE (0 decimals), mainCrypto=LTC (2 decimals)
         const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
+        const mainDecimals = pkg.mainCrypto === 'LTC' ? 2 : (pkg.mainCrypto === 'BTC' ? 4 : 0);
         rewardDisplay = `
             <span class="reward-amount" id="alert-reward-merge-${packageId}">${myShareMergeReward.toFixed(mergeDecimals)}</span>
             <span style="margin: 0 2px;">+</span>
-            <span class="reward-amount" id="alert-reward-main-${packageId}">${myShareMainReward.toFixed(4)}</span>
+            <span class="reward-amount" id="alert-reward-main-${packageId}">${myShareMainReward.toFixed(mainDecimals)}</span>
         `;
     } else {
         const decimals = teamCrypto === 'BTC' || teamCrypto === 'BCH' ? 4 : 2;
@@ -23853,11 +23855,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
 
         if (pkg.isDualCrypto) {
+            // Palladium: mergeCrypto=DOGE (0 decimals), mainCrypto=LTC (2 decimals)
             const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
+            const mainDecimals = pkg.mainCrypto === 'LTC' ? 2 : (pkg.mainCrypto === 'BTC' ? 4 : 0);
             rewardDisplay = `
                 <span class="reward-amount" id="team-reward-merge-${packageIdForElements}">${myShareMergeReward.toFixed(mergeDecimals)}</span>
                 <span style="margin: 0 4px;">+</span>
-                <span class="reward-amount" id="team-reward-main-${packageIdForElements}">${myShareMainReward.toFixed(4)}</span>
+                <span class="reward-amount" id="team-reward-main-${packageIdForElements}">${myShareMainReward.toFixed(mainDecimals)}</span>
             `;
         } else {
             const decimals = teamCrypto === 'BTC' || teamCrypto === 'BCH' ? 4 : 2;
