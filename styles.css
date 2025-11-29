@@ -7954,50 +7954,64 @@ body.light-mode .holdings-pnl-summary {
 }
 
 .averages-section {
-    background: #1a1a1a;
-    border-radius: 12px;
+    background: linear-gradient(180deg, #1e1e1e 0%, #1a1a1a 100%);
+    border-radius: 16px;
     margin-bottom: 30px;
     overflow: hidden;
     border: 1px solid #333;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .averages-section-title {
     margin: 0;
-    padding: 15px 20px;
+    padding: 18px 24px;
     background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
     color: #000;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .averages-overall-stats {
     padding: 20px;
-    background: #222;
+    background: linear-gradient(180deg, #252525 0%, #1e1e1e 100%);
     border-bottom: 1px solid #333;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
 }
 
 .averages-stat-card {
-    background: #2a2a2a;
-    border-radius: 8px;
-    padding: 15px;
+    background: linear-gradient(135deg, #2a2a2a 0%, #222 100%);
+    border-radius: 10px;
+    padding: 14px 12px;
     text-align: center;
     border-left: 3px solid #ffa500;
+    border: 1px solid #333;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.averages-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 165, 0, 0.15);
 }
 
 .averages-stat-label {
     color: #888;
-    font-size: 12px;
+    font-size: 10px;
     text-transform: uppercase;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
 }
 
 .averages-stat-value {
     color: #fff;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .averages-stat-value.highlight {
@@ -8005,9 +8019,10 @@ body.light-mode .holdings-pnl-summary {
 }
 
 .averages-stat-sub {
-    color: #888;
+    color: #ffa500;
     font-size: 11px;
     margin-top: 4px;
+    font-weight: 500;
 }
 
 .averages-list {
@@ -8017,78 +8032,90 @@ body.light-mode .holdings-pnl-summary {
 .averages-item {
     display: flex;
     align-items: center;
-    padding: 15px 20px;
-    background: #1e1e1e;
-    border-bottom: 1px solid #333;
-    transition: background 0.2s ease;
+    padding: 16px 20px;
+    background: linear-gradient(90deg, #1e1e1e 0%, #1a1a1a 100%);
+    border-bottom: 1px solid #2a2a2a;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
 }
 
 .averages-item:last-child {
     border-bottom: none;
+    border-radius: 0 0 16px 16px;
 }
 
 .averages-item:hover {
-    background: #252525;
+    background: linear-gradient(90deg, #252525 0%, #222 100%);
+    border-left-color: #ffa500;
 }
 
 .averages-item-icon {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    margin-right: 15px;
+    margin-right: 16px;
     object-fit: contain;
-    background: #2a2a2a;
-    padding: 5px;
+    background: linear-gradient(135deg, #333 0%, #2a2a2a 100%);
+    padding: 6px;
+    border: 2px solid #444;
+    flex-shrink: 0;
 }
 
 .averages-item-info {
     flex: 1;
     min-width: 0;
+    margin-right: 15px;
 }
 
 .averages-item-name {
     font-size: 15px;
     font-weight: 600;
     color: #fff;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .averages-item-meta {
-    font-size: 12px;
-    color: #888;
+    font-size: 11px;
+    color: #666;
 }
 
 .averages-item-stats {
     display: flex;
-    gap: 20px;
+    gap: 15px;
     flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .averages-item-stat {
-    text-align: right;
-    min-width: 80px;
+    text-align: center;
+    min-width: 70px;
+    padding: 6px 8px;
+    background: rgba(42, 42, 42, 0.5);
+    border-radius: 6px;
 }
 
 .averages-item-stat-label {
-    font-size: 10px;
+    font-size: 9px;
     color: #666;
     text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
 }
 
 .averages-item-stat-value {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: #fff;
 }
 
-.averages-item-stat-value.positive {
+.averages-item-stat-value .positive {
     color: #4CAF50;
 }
 
-.averages-item-stat-value.negative {
+.averages-item-stat-value .negative {
     color: #f44336;
 }
 

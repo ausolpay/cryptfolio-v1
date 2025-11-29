@@ -26160,7 +26160,7 @@ function capturePackageMetrics(packages) {
         const hashrateRaw = parseHashrate(pkg.hashrate);
         const probabilityRaw = parseProbability(pkg.probability);
 
-        // Create snapshot
+        // Create snapshot with all available metrics
         const snapshot = {
             timestamp,
             hashrate: pkg.hashrate,
@@ -26170,7 +26170,10 @@ function capturePackageMetrics(packages) {
             priceBTC: parseFloat(pkg.priceBTC) || 0,
             priceAUD: parseFloat(pkg.priceAUD) || 0,
             duration: pkg.duration,
-            blockReward: pkg.blockReward
+            blockReward: pkg.blockReward,
+            // Team package specific metrics
+            participants: pkg.numberOfParticipants || 0,
+            shares: parseFloat(pkg.shares) || 0  // Share percentage (e.g., 5.25%)
         };
 
         // Add to snapshots array
@@ -26209,13 +26212,19 @@ function updatePackageMetricsAverages() {
         let totalProbability = 0;
         let totalPriceBTC = 0;
         let totalPriceAUD = 0;
+        let totalParticipants = 0;
+        let totalShares = 0;
         let validCount = 0;
+        let participantCount = 0;
+        let sharesCount = 0;
 
         // Track min/max for hashrate and probability
         let minHashrate = Infinity;
         let maxHashrate = 0;
         let minProbability = Infinity;  // Lower is better (1:40 vs 1:200)
         let maxProbability = 0;
+        let maxParticipants = 0;
+        let maxShares = 0;
 
         snapshots.forEach(s => {
             if (s.hashrateRaw > 0) {
@@ -26230,6 +26239,18 @@ function updatePackageMetricsAverages() {
             }
             if (s.priceBTC > 0) totalPriceBTC += s.priceBTC;
             if (s.priceAUD > 0) totalPriceAUD += s.priceAUD;
+            // Track participants (team packages)
+            if (s.participants > 0) {
+                totalParticipants += s.participants;
+                maxParticipants = Math.max(maxParticipants, s.participants);
+                participantCount++;
+            }
+            // Track shares percentage
+            if (s.shares > 0) {
+                totalShares += s.shares;
+                maxShares = Math.max(maxShares, s.shares);
+                sharesCount++;
+            }
             validCount++;
         });
 
@@ -26240,6 +26261,10 @@ function updatePackageMetricsAverages() {
                 probability: totalProbability / validCount,
                 priceBTC: totalPriceBTC / validCount,
                 priceAUD: totalPriceAUD / validCount,
+                participants: participantCount > 0 ? totalParticipants / participantCount : 0,
+                shares: sharesCount > 0 ? totalShares / sharesCount : 0,
+                maxParticipants: maxParticipants,
+                maxShares: maxShares,
                 snapshotCount: validCount,
                 lastUpdated: timestamp
             };
@@ -26253,6 +26278,12 @@ function updatePackageMetricsAverages() {
                 probability: {
                     min: minProbability === Infinity ? 0 : minProbability,  // Best (lowest odds)
                     max: maxProbability  // Worst (highest odds like 1:200)
+                },
+                participants: {
+                    max: maxParticipants
+                },
+                shares: {
+                    max: maxShares
                 }
             };
 
@@ -26562,6 +26593,8 @@ function updateAveragesSection(type, packages, allHistory) {
 
     if (!statsContainer || !listContainer) return;
 
+    const isTeam = type === 'team';
+
     if (packages.length === 0) {
         statsContainer.innerHTML = '';
         listContainer.innerHTML = `
@@ -26576,39 +26609,64 @@ function updateAveragesSection(type, packages, allHistory) {
     // Calculate overall stats
     const stats = calculateOverallStats(packages, type);
 
-    // Render overall stats
-    statsContainer.innerHTML = `
+    // Build stats cards based on package type
+    let statsHTML = '';
+
+    // Row 1: Best by Probability (time periods)
+    statsHTML += `
         <div class="averages-stat-card">
-            <div class="averages-stat-label">Best Today</div>
-            <div class="averages-stat-value highlight">${stats.bestToday || 'N/A'}</div>
-            <div class="averages-stat-sub">${stats.bestTodayReason || ''}</div>
+            <div class="averages-stat-label">Best Prob Today</div>
+            <div class="averages-stat-value highlight">${stats.bestProbToday || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.bestProbTodayValue || ''}</div>
         </div>
         <div class="averages-stat-card">
-            <div class="averages-stat-label">Best 7 Days</div>
-            <div class="averages-stat-value highlight">${stats.best7Days || 'N/A'}</div>
-            <div class="averages-stat-sub">${stats.best7DaysReason || ''}</div>
+            <div class="averages-stat-label">Best Prob 7 Days</div>
+            <div class="averages-stat-value highlight">${stats.bestProb7Days || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.bestProb7DaysValue || ''}</div>
         </div>
         <div class="averages-stat-card">
-            <div class="averages-stat-label">Best 30 Days</div>
-            <div class="averages-stat-value highlight">${stats.best30Days || 'N/A'}</div>
-            <div class="averages-stat-sub">${stats.best30DaysReason || ''}</div>
+            <div class="averages-stat-label">Best Prob 30 Days</div>
+            <div class="averages-stat-value highlight">${stats.bestProb30Days || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.bestProb30DaysValue || ''}</div>
+        </div>
+    `;
+
+    // Row 2: Best by Hashrate
+    statsHTML += `
+        <div class="averages-stat-card">
+            <div class="averages-stat-label">Best Avg Hashrate</div>
+            <div class="averages-stat-value">${stats.bestHashrate || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.bestHashrateValue || ''}</div>
         </div>
         <div class="averages-stat-card">
             <div class="averages-stat-label">Most Recorded</div>
             <div class="averages-stat-value">${stats.mostRecorded || 'N/A'}</div>
-            <div class="averages-stat-sub">${stats.mostRecordedCount || ''} snapshots</div>
+            <div class="averages-stat-sub">${stats.mostRecordedCount || 0} snapshots</div>
         </div>
         <div class="averages-stat-card">
             <div class="averages-stat-label">Highest Avg Price</div>
-            <div class="averages-stat-value">${stats.highestAvgPrice || 'N/A'}</div>
-            <div class="averages-stat-sub">${stats.highestAvgPriceValue || ''}</div>
-        </div>
-        <div class="averages-stat-card">
-            <div class="averages-stat-label">Best Probability</div>
-            <div class="averages-stat-value highlight">${stats.bestProbability || 'N/A'}</div>
-            <div class="averages-stat-sub">${stats.bestProbabilityValue || ''}</div>
+            <div class="averages-stat-value">${stats.highestPrice || 'N/A'}</div>
+            <div class="averages-stat-sub">${stats.highestPriceValue || ''}</div>
         </div>
     `;
+
+    // Team-specific stats
+    if (isTeam) {
+        statsHTML += `
+            <div class="averages-stat-card">
+                <div class="averages-stat-label">Most Participants</div>
+                <div class="averages-stat-value highlight">${stats.mostParticipants || 'N/A'}</div>
+                <div class="averages-stat-sub">${stats.mostParticipantsValue || ''}</div>
+            </div>
+            <div class="averages-stat-card">
+                <div class="averages-stat-label">Highest Shares</div>
+                <div class="averages-stat-value">${stats.highestShares || 'N/A'}</div>
+                <div class="averages-stat-sub">${stats.highestSharesValue || ''}</div>
+            </div>
+        `;
+    }
+
+    statsContainer.innerHTML = statsHTML;
 
     // Render package list
     const cryptoIdMap = {
@@ -26653,6 +26711,20 @@ function updateAveragesSection(type, packages, allHistory) {
             ? formatCurrency(pkg.averages.priceAUD, getUserCurrency())
             : 'N/A';
 
+        const avgParticipants = pkg.averages?.participants
+            ? Math.round(pkg.averages.participants)
+            : 0;
+
+        const maxParticipants = pkg.averages?.maxParticipants || 0;
+
+        const avgShares = pkg.averages?.shares
+            ? pkg.averages.shares.toFixed(2)
+            : '0';
+
+        const maxShares = pkg.averages?.maxShares
+            ? pkg.averages.maxShares.toFixed(2)
+            : '0';
+
         const snapshotCount = pkg.snapshots?.length || 0;
         const lastUpdated = pkg.averages?.lastUpdated
             ? new Date(pkg.averages.lastUpdated).toLocaleString()
@@ -26665,43 +26737,79 @@ function updateAveragesSection(type, packages, allHistory) {
         if (pkg.currentVsAverage) {
             const probRatio = pkg.currentVsAverage.probabilityRatio;
             if (probRatio && probRatio < 0.95) {
-                probabilityIndicator = '<span class="positive">▼</span>'; // Lower is better
+                probabilityIndicator = '<span class="positive">▼</span>';
             } else if (probRatio && probRatio > 1.05) {
                 probabilityIndicator = '<span class="negative">▲</span>';
             }
 
             const hashRatio = pkg.currentVsAverage.hashrateRatio;
             if (hashRatio && hashRatio > 1.05) {
-                hashrateIndicator = '<span class="positive">▲</span>'; // Higher is better
+                hashrateIndicator = '<span class="positive">▲</span>';
             } else if (hashRatio && hashRatio < 0.95) {
                 hashrateIndicator = '<span class="negative">▼</span>';
             }
         }
 
+        // Get latest snapshot for current values
+        const latestSnapshot = pkg.snapshots?.[pkg.snapshots.length - 1];
+        const currentProb = latestSnapshot?.probabilityRaw ? `1:${latestSnapshot.probabilityRaw}` : '';
+        const currentHashrate = latestSnapshot?.hashrateRaw ? formatHashrate(latestSnapshot.hashrateRaw) : '';
+
+        // Build stats row based on package type
+        let statsRow = '';
+        if (isTeam) {
+            statsRow = `
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Prob</div>
+                    <div class="averages-item-stat-value">${avgProbability} ${probabilityIndicator}</div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Hash</div>
+                    <div class="averages-item-stat-value">${avgHashrate} ${hashrateIndicator}</div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Participants</div>
+                    <div class="averages-item-stat-value">${avgParticipants} <span style="color:#888;font-size:10px;">max ${maxParticipants}</span></div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Shares</div>
+                    <div class="averages-item-stat-value">${avgShares}% <span style="color:#888;font-size:10px;">max ${maxShares}%</span></div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Price</div>
+                    <div class="averages-item-stat-value">${avgPriceAUD}</div>
+                </div>
+            `;
+        } else {
+            statsRow = `
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Prob</div>
+                    <div class="averages-item-stat-value">${avgProbability} ${probabilityIndicator}</div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Hash</div>
+                    <div class="averages-item-stat-value">${avgHashrate} ${hashrateIndicator}</div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Price BTC</div>
+                    <div class="averages-item-stat-value">${avgPriceBTC}</div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg ${getUserCurrency().toUpperCase()}</div>
+                    <div class="averages-item-stat-value">${avgPriceAUD}</div>
+                </div>
+            `;
+        }
+
         listHTML += `
             <div class="averages-item">
-                ${iconUrl ? `<img src="${iconUrl}" alt="${pkg.crypto}" class="averages-item-icon">` : ''}
+                ${iconUrl ? `<img src="${iconUrl}" alt="${pkg.crypto}" class="averages-item-icon">` : '<div class="averages-item-icon" style="background:#333;"></div>'}
                 <div class="averages-item-info">
                     <div class="averages-item-name">${pkg.name}</div>
-                    <div class="averages-item-meta">${pkg.algorithm || ''} • ${snapshotCount} snapshots • Last: ${lastUpdated}</div>
+                    <div class="averages-item-meta">${pkg.algorithm || pkg.crypto || ''} • ${snapshotCount} snapshots • Last: ${lastUpdated}</div>
                 </div>
                 <div class="averages-item-stats">
-                    <div class="averages-item-stat">
-                        <div class="averages-item-stat-label">Avg Prob</div>
-                        <div class="averages-item-stat-value">${avgProbability} ${probabilityIndicator}</div>
-                    </div>
-                    <div class="averages-item-stat">
-                        <div class="averages-item-stat-label">Avg Hashrate</div>
-                        <div class="averages-item-stat-value">${avgHashrate} ${hashrateIndicator}</div>
-                    </div>
-                    <div class="averages-item-stat">
-                        <div class="averages-item-stat-label">Avg Price</div>
-                        <div class="averages-item-stat-value">${avgPriceBTC} BTC</div>
-                    </div>
-                    <div class="averages-item-stat">
-                        <div class="averages-item-stat-label">Avg ${getUserCurrency().toUpperCase()}</div>
-                        <div class="averages-item-stat-value">${avgPriceAUD}</div>
-                    </div>
+                    ${statsRow}
                 </div>
             </div>
         `;
@@ -26719,78 +26827,106 @@ function calculateOverallStats(packages, type) {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const isTeam = type === 'team';
 
-    // Find best package (lowest probability) for different time periods
-    let bestToday = null, bestTodayProb = Infinity;
-    let best7Days = null, best7DaysProb = Infinity;
-    let best30Days = null, best30DaysProb = Infinity;
+    // Track best packages by various metrics
+    let bestProbToday = null, bestProbTodayVal = Infinity;
+    let bestProb7Days = null, bestProb7DaysVal = Infinity;
+    let bestProb30Days = null, bestProb30DaysVal = Infinity;
+    let bestHashrate = null, bestHashrateVal = 0;
     let mostRecorded = null, mostRecordedCount = 0;
-    let highestAvgPrice = null, highestAvgPriceVal = 0;
-    let bestProbability = null, bestProbabilityVal = Infinity;
+    let highestPrice = null, highestPriceVal = 0;
+    let mostParticipants = null, mostParticipantsVal = 0;
+    let highestShares = null, highestSharesVal = 0;
 
     packages.forEach(pkg => {
         const snapshots = pkg.snapshots || [];
 
-        // Most recorded
+        // Most recorded snapshots
         if (snapshots.length > mostRecordedCount) {
             mostRecordedCount = snapshots.length;
             mostRecorded = pkg.name;
         }
 
+        // Best average hashrate
+        if (pkg.averages?.hashrate && pkg.averages.hashrate > bestHashrateVal) {
+            bestHashrateVal = pkg.averages.hashrate;
+            bestHashrate = pkg.name;
+        }
+
         // Highest average price
-        if (pkg.averages?.priceAUD && pkg.averages.priceAUD > highestAvgPriceVal) {
-            highestAvgPriceVal = pkg.averages.priceAUD;
-            highestAvgPrice = pkg.name;
+        if (pkg.averages?.priceAUD && pkg.averages.priceAUD > highestPriceVal) {
+            highestPriceVal = pkg.averages.priceAUD;
+            highestPrice = pkg.name;
         }
 
-        // Best overall probability
-        if (pkg.averages?.probability && pkg.averages.probability < bestProbabilityVal) {
-            bestProbabilityVal = pkg.averages.probability;
-            bestProbability = pkg.name;
+        // Team-specific: Most participants (max recorded)
+        if (isTeam && pkg.averages?.maxParticipants && pkg.averages.maxParticipants > mostParticipantsVal) {
+            mostParticipantsVal = pkg.averages.maxParticipants;
+            mostParticipants = pkg.name;
         }
 
-        // Filter by time period and find best probability
+        // Team-specific: Highest shares (max recorded)
+        if (isTeam && pkg.averages?.maxShares && pkg.averages.maxShares > highestSharesVal) {
+            highestSharesVal = pkg.averages.maxShares;
+            highestShares = pkg.name;
+        }
+
+        // Find best probability by time period
         snapshots.forEach(s => {
             const timestamp = new Date(s.timestamp);
             const prob = s.probabilityRaw || Infinity;
 
             // Today
-            if (timestamp >= todayStart && prob < bestTodayProb) {
-                bestTodayProb = prob;
-                bestToday = pkg.name;
+            if (timestamp >= todayStart && prob < bestProbTodayVal && prob > 0) {
+                bestProbTodayVal = prob;
+                bestProbToday = pkg.name;
             }
 
             // Last 7 days
-            if (timestamp >= sevenDaysAgo && prob < best7DaysProb) {
-                best7DaysProb = prob;
-                best7Days = pkg.name;
+            if (timestamp >= sevenDaysAgo && prob < bestProb7DaysVal && prob > 0) {
+                bestProb7DaysVal = prob;
+                bestProb7Days = pkg.name;
             }
 
             // Last 30 days
-            if (timestamp >= thirtyDaysAgo && prob < best30DaysProb) {
-                best30DaysProb = prob;
-                best30Days = pkg.name;
+            if (timestamp >= thirtyDaysAgo && prob < bestProb30DaysVal && prob > 0) {
+                bestProb30DaysVal = prob;
+                bestProb30Days = pkg.name;
             }
         });
     });
 
-    stats.bestToday = bestToday;
-    stats.bestTodayReason = bestToday ? `1:${Math.round(bestTodayProb)}` : '';
+    // Best probability by time period
+    stats.bestProbToday = bestProbToday;
+    stats.bestProbTodayValue = bestProbToday ? `1:${Math.round(bestProbTodayVal)}` : '';
 
-    stats.best7Days = best7Days;
-    stats.best7DaysReason = best7Days ? `1:${Math.round(best7DaysProb)}` : '';
+    stats.bestProb7Days = bestProb7Days;
+    stats.bestProb7DaysValue = bestProb7Days ? `1:${Math.round(bestProb7DaysVal)}` : '';
 
-    stats.best30Days = best30Days;
-    stats.best30DaysReason = best30Days ? `1:${Math.round(best30DaysProb)}` : '';
+    stats.bestProb30Days = bestProb30Days;
+    stats.bestProb30DaysValue = bestProb30Days ? `1:${Math.round(bestProb30DaysVal)}` : '';
 
+    // Best hashrate
+    stats.bestHashrate = bestHashrate;
+    stats.bestHashrateValue = bestHashrate ? formatHashrate(bestHashrateVal) : '';
+
+    // Most recorded
     stats.mostRecorded = mostRecorded;
     stats.mostRecordedCount = mostRecordedCount;
 
-    stats.highestAvgPrice = highestAvgPrice;
-    stats.highestAvgPriceValue = highestAvgPrice ? formatCurrency(highestAvgPriceVal, getUserCurrency()) : '';
+    // Highest price
+    stats.highestPrice = highestPrice;
+    stats.highestPriceValue = highestPrice ? formatCurrency(highestPriceVal, getUserCurrency()) : '';
 
-    stats.bestProbability = bestProbability;
-    stats.bestProbabilityValue = bestProbability ? `1:${Math.round(bestProbabilityVal)}` : '';
+    // Team-specific stats
+    if (isTeam) {
+        stats.mostParticipants = mostParticipants;
+        stats.mostParticipantsValue = mostParticipants ? `${mostParticipantsVal} max` : '';
+
+        stats.highestShares = highestShares;
+        stats.highestSharesValue = highestShares ? `${highestSharesVal.toFixed(2)}% max` : '';
+    }
 
     return stats;
 }
