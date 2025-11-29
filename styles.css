@@ -5729,9 +5729,9 @@ body.light-mode .buy-package-card {
 
 .team-stat-item {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 2px;
+    gap: 6px;
 }
 
 .team-stat-icon {
@@ -5777,11 +5777,16 @@ body.light-mode .team-stat-value {
 }
 
 .team-stat-value.highlight-green {
-    color: #4CAF50;
+    color: #fff;
 }
 
 .team-stat-value.highlight-orange {
-    color: #ffa500;
+    color: #fff;
+}
+
+body.light-mode .team-stat-value.highlight-green,
+body.light-mode .team-stat-value.highlight-orange {
+    color: #333;
 }
 
 /* Team price section */
@@ -6309,6 +6314,7 @@ body.light-mode .reward-fiat {
 .price-row {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     margin-bottom: 10px;
 }
