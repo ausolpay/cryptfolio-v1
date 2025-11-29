@@ -26391,6 +26391,10 @@ function capturePackageMetrics(packages) {
         const hashrateRaw = parseHashrate(pkg.hashrate);
         const probabilityRaw = parseProbability(pkg.probability);
 
+        // Check if this is a Palladium package (dual mining DOGE + LTC)
+        const isPalladium = name.toLowerCase().includes('palladium');
+        const mergeProbabilityRaw = isPalladium ? parseProbability(pkg.mergeProbabilityPrecision || pkg.mergeProbability) : 0;
+
         // Create snapshot with all available metrics
         const snapshot = {
             timestamp,
@@ -26398,6 +26402,9 @@ function capturePackageMetrics(packages) {
             hashrateRaw,
             probability: pkg.probability,
             probabilityRaw,
+            // Palladium dual-mining: LTC probability is main, DOGE is merge
+            probabilityLtc: isPalladium ? probabilityRaw : 0,
+            probabilityDoge: isPalladium ? mergeProbabilityRaw : 0,
             priceBTC: parseFloat(pkg.priceBTC) || 0,
             priceAUD: parseFloat(pkg.priceAUD) || 0,
             duration: pkg.duration,
@@ -26406,6 +26413,11 @@ function capturePackageMetrics(packages) {
             participants: pkg.numberOfParticipants || 0,
             shares: parseFloat(pkg.shares) || 0  // Share percentage (e.g., 5.25%)
         };
+
+        // Mark as Palladium in history for display purposes
+        if (isPalladium) {
+            history[name].isPalladium = true;
+        }
 
         // Add to snapshots array
         history[name].snapshots.push(snapshot);
@@ -26449,6 +26461,12 @@ function updatePackageMetricsAverages() {
         let participantCount = 0;
         let sharesCount = 0;
 
+        // Palladium dual probability tracking
+        let totalProbabilityLtc = 0;
+        let totalProbabilityDoge = 0;
+        let ltcProbCount = 0;
+        let dogeProbCount = 0;
+
         // Track min/max for hashrate and probability
         let minHashrate = Infinity;
         let maxHashrate = 0;
@@ -26467,6 +26485,15 @@ function updatePackageMetricsAverages() {
                 totalProbability += s.probabilityRaw;
                 minProbability = Math.min(minProbability, s.probabilityRaw);
                 maxProbability = Math.max(maxProbability, s.probabilityRaw);
+            }
+            // Palladium dual probabilities
+            if (s.probabilityLtc > 0) {
+                totalProbabilityLtc += s.probabilityLtc;
+                ltcProbCount++;
+            }
+            if (s.probabilityDoge > 0) {
+                totalProbabilityDoge += s.probabilityDoge;
+                dogeProbCount++;
             }
             if (s.priceBTC > 0) totalPriceBTC += s.priceBTC;
             if (s.priceAUD > 0) totalPriceAUD += s.priceAUD;
@@ -26496,6 +26523,9 @@ function updatePackageMetricsAverages() {
                 shares: sharesCount > 0 ? totalShares / sharesCount : 0,
                 maxParticipants: maxParticipants,
                 maxShares: maxShares,
+                // Palladium dual probabilities
+                probabilityLtc: ltcProbCount > 0 ? totalProbabilityLtc / ltcProbCount : 0,
+                probabilityDoge: dogeProbCount > 0 ? totalProbabilityDoge / dogeProbCount : 0,
                 snapshotCount: validCount,
                 lastUpdated: timestamp
             };
@@ -27008,6 +27038,14 @@ function updateAveragesSection(type, packages, allHistory) {
             ? `1:${Math.round(pkg.averages.probability)}`
             : 'N/A';
 
+        // Palladium dual probabilities
+        const avgProbLtc = isPalladium && pkg.averages?.probabilityLtc
+            ? `1:${Math.round(pkg.averages.probabilityLtc)}`
+            : null;
+        const avgProbDoge = isPalladium && pkg.averages?.probabilityDoge
+            ? `1:${Math.round(pkg.averages.probabilityDoge)}`
+            : null;
+
         const avgHashrate = pkg.averages?.hashrate
             ? formatHashrateForAverages(pkg.averages.hashrate)
             : 'N/A';
@@ -27067,11 +27105,25 @@ function updateAveragesSection(type, packages, allHistory) {
         // Build stats row based on package type
         let statsRow = '';
         if (isTeam) {
-            statsRow = `
+            // For Palladium, show both LTC and DOGE probabilities
+            const probStats = isPalladium && avgProbLtc && avgProbDoge ? `
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Prob LTC</div>
+                    <div class="averages-item-stat-value">${avgProbLtc}</div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Prob DOGE</div>
+                    <div class="averages-item-stat-value">${avgProbDoge}</div>
+                </div>
+            ` : `
                 <div class="averages-item-stat">
                     <div class="averages-item-stat-label">Avg Prob</div>
                     <div class="averages-item-stat-value">${avgProbability} ${probabilityIndicator}</div>
                 </div>
+            `;
+
+            statsRow = `
+                ${probStats}
                 <div class="averages-item-stat">
                     <div class="averages-item-stat-label">Avg Hash</div>
                     <div class="averages-item-stat-value">${avgHashrate} ${hashrateIndicator}</div>
@@ -27090,11 +27142,25 @@ function updateAveragesSection(type, packages, allHistory) {
                 </div>
             `;
         } else {
-            statsRow = `
+            // For Palladium single packages, show both LTC and DOGE probabilities
+            const probStats = isPalladium && avgProbLtc && avgProbDoge ? `
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Prob LTC</div>
+                    <div class="averages-item-stat-value">${avgProbLtc}</div>
+                </div>
+                <div class="averages-item-stat">
+                    <div class="averages-item-stat-label">Avg Prob DOGE</div>
+                    <div class="averages-item-stat-value">${avgProbDoge}</div>
+                </div>
+            ` : `
                 <div class="averages-item-stat">
                     <div class="averages-item-stat-label">Avg Prob</div>
                     <div class="averages-item-stat-value">${avgProbability} ${probabilityIndicator}</div>
                 </div>
+            `;
+
+            statsRow = `
+                ${probStats}
                 <div class="averages-item-stat">
                     <div class="averages-item-stat-label">Avg Hash</div>
                     <div class="averages-item-stat-value">${avgHashrate} ${hashrateIndicator}</div>
