@@ -6390,16 +6390,19 @@ body.light-mode .price-value {
 
 /* Buy Button Row */
 .buy-button-row {
+    display: block;
     width: 100%;
 }
 
 .buy-button-row .buy-now-btn {
+    display: block;
     width: 100%;
     padding: 10px;
     font-size: 14px;
     font-weight: 600;
     border-radius: 6px;
     transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .buy-button-row .buy-now-btn:hover {
