@@ -4431,6 +4431,8 @@ function showBuyPackagesPage() {
     // Cache portfolio prices BEFORE leaving - these are WebSocket-updated and most accurate
     cachePortfolioPrices();
 
+    // Stop EasyMining polling and background metrics capture to prevent race conditions
+    stopEasyMiningPolling();
     // Stop EasyMining alerts polling when leaving main app page
     stopEasyMiningAlertsPolling();
     // Stop package detail live timer and polling when leaving
@@ -22156,22 +22158,40 @@ async function loadBuyPackagesDataOnPage() {
 
     // Capture package metrics for historical tracking and averaging
     // This stores hashrate, probability, and price data with timestamps
-    capturePackageMetrics(allPackages);
+    try {
+        capturePackageMetrics(allPackages);
+    } catch (error) {
+        console.error('❌ Error capturing package metrics:', error);
+    }
 
     // Immediately update averages so currentPosition is fresh for card rendering
-    updatePackageMetricsAverages();
+    try {
+        updatePackageMetricsAverages();
+    } catch (error) {
+        console.error('❌ Error updating package metrics averages:', error);
+    }
 
     // Load solo recommendations to highlight packages
-    console.log('🔔 Loading solo recommendations for package highlighting...');
-    const soloRecommendations = await checkPackageRecommendations();
-    const soloRecommendedNames = soloRecommendations.map(pkg => pkg.name);
-    console.log(`✅ Found ${soloRecommendedNames.length} recommended solo package(s) for highlighting`);
+    let soloRecommendedNames = [];
+    try {
+        console.log('🔔 Loading solo recommendations for package highlighting...');
+        const soloRecommendations = await checkPackageRecommendations();
+        soloRecommendedNames = soloRecommendations.map(pkg => pkg.name);
+        console.log(`✅ Found ${soloRecommendedNames.length} recommended solo package(s) for highlighting`);
+    } catch (error) {
+        console.error('❌ Error loading solo recommendations:', error);
+    }
 
     // Load team recommendations to highlight packages
-    console.log('🔔 Loading team recommendations for package highlighting...');
-    const teamRecommendations = await checkTeamRecommendations();
-    const teamRecommendedNames = teamRecommendations.map(pkg => pkg.name);
-    console.log(`✅ Found ${teamRecommendedNames.length} recommended team package(s) for highlighting`);
+    let teamRecommendedNames = [];
+    try {
+        console.log('🔔 Loading team recommendations for package highlighting...');
+        const teamRecommendations = await checkTeamRecommendations();
+        teamRecommendedNames = teamRecommendations.map(pkg => pkg.name);
+        console.log(`✅ Found ${teamRecommendedNames.length} recommended team package(s) for highlighting`);
+    } catch (error) {
+        console.error('❌ Error loading team recommendations:', error);
+    }
 
     // Recommendations section container is hidden in HTML - we only use recommendedNames for highlighting
     // Recommendations display only shows in EasyMining section
