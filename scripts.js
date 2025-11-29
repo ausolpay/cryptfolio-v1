@@ -24852,10 +24852,10 @@ function getOrCreateFloatingIconsConfig(packageName, iconUrl, dualIconUrl, iconC
         createdAt: Date.now()
     };
 
-    // Generate main icons with random properties
+    // Generate main icons with random properties (no delay - all start immediately)
     for (let i = 0; i < iconCount; i++) {
         config.mainIcons.push({
-            delay: isPalladium ? (i * 2.5 + Math.random() * 2) : (i * 2.5 + Math.random() * 3),
+            delay: 0,
             startX: isPalladium ? (5 + (i * 25) + Math.random() * 10) : (5 + (i * (80 / iconCount)) + Math.random() * 10),
             startY: isPalladium ? (10 + Math.random() * 35) : (10 + Math.random() * 70),
             speedMultiplier: 0.8 + Math.random() * 0.4,
@@ -24867,11 +24867,11 @@ function getOrCreateFloatingIconsConfig(packageName, iconUrl, dualIconUrl, iconC
         });
     }
 
-    // Generate merge icons for Palladium packages
+    // Generate merge icons for Palladium packages (no delay - all start immediately)
     if (isPalladium && dualIconUrl) {
         for (let i = 0; i < iconCount; i++) {
             config.mergeIcons.push({
-                delay: i * 2.5 + 1.5 + Math.random() * 2,
+                delay: 0,
                 startX: 50 + (i * 20) + Math.random() * 15,
                 startY: 45 + Math.random() * 40,
                 speedMultiplier: 0.8 + Math.random() * 0.4,
