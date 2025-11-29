@@ -22428,38 +22428,41 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
             };
 
-            const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
-            const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
-            const iconUrl = userCrypto?.thumb
-                ? userCrypto.thumb.replace('/thumb/', '/large/')
-                : (fallbackIcons[cryptoId] || '');
-
             const isPalladium = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
 
             if (isPalladium) {
-                // Get merge crypto icon for Palladium
-                let mergeId = '';
-                if (pkg.mergeCrypto) {
-                    mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
-                } else if (pkg.crypto?.toUpperCase() === 'DOGE') {
-                    mergeId = 'litecoin';
-                } else if (pkg.crypto?.toUpperCase() === 'LTC') {
-                    mergeId = 'dogecoin';
-                }
+                // Use mainCrypto and mergeCrypto for Palladium (same as reward section)
+                const mainId = cryptoIdMap[pkg.mainCrypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+                const mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || '';
+
+                const mainCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mainId);
                 const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+
+                // Use large icons, fallback to stored thumb URL if no large available
+                const mainIconUrl = mainCrypto?.thumb
+                    ? mainCrypto.thumb.replace('/thumb/', '/large/')
+                    : (fallbackIcons[mainId] || '');
                 const mergeIconUrl = mergeCrypto?.thumb
                     ? mergeCrypto.thumb.replace('/thumb/', '/large/')
                     : (fallbackIcons[mergeId] || '');
 
+                console.log('🖼️ Palladium static icons:', { mainId, mergeId, mainIconUrl, mergeIconUrl });
+
                 // Two overlapping icons for Palladium
                 return `<div class="static-bg-icons palladium">
-                    <img class="static-bg-icon" src="${iconUrl}" alt="">
-                    <img class="static-bg-icon offset" src="${mergeIconUrl}" alt="">
+                    <img class="static-bg-icon" src="${mainIconUrl}" alt="${pkg.mainCrypto || ''}" onerror="this.style.display='none'">
+                    <img class="static-bg-icon offset" src="${mergeIconUrl}" alt="${pkg.mergeCrypto || ''}" onerror="this.style.display='none'">
                 </div>`;
             } else {
                 // Single centered icon
+                const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
+                const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+                const iconUrl = userCrypto?.thumb
+                    ? userCrypto.thumb.replace('/thumb/', '/large/')
+                    : (fallbackIcons[cryptoId] || '');
+
                 return `<div class="static-bg-icons">
-                    <img class="static-bg-icon" src="${iconUrl}" alt="">
+                    <img class="static-bg-icon" src="${iconUrl}" alt="${pkg.crypto || ''}" onerror="this.style.display='none'">
                 </div>`;
             }
         })();
