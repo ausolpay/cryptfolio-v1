@@ -7163,16 +7163,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
 @media (max-width: 700px) {
     .easymining-section {
         margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container (padding adds to width) */
-        padding: 20px; /* Same as crypto-container */
+        width: calc(100% - 30px); /* Full width minus padding */
+        max-width: 340px;
+        box-sizing: border-box;
+        padding: 15px; /* Reduced padding on mobile */
     }
 
     .easymining-loading-bar {
         margin: 0 auto 15px auto; /* Center the section */
-        width: 300px;
-        box-sizing: content-box; /* Match crypto-container (padding adds to width) */
-        padding: 20px; /* Same as crypto-container */
+        width: calc(100% - 30px); /* Full width minus padding */
+        max-width: 340px;
+        box-sizing: border-box;
+        padding: 15px; /* Reduced padding on mobile */
     }
 
     .easymining-content {
