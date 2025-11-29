@@ -5708,7 +5708,190 @@ body.light-mode .buy-package-card {
 
 .buy-package-card.team-package {
     height: auto; /* Allow team packages to expand to fit content */
-    min-height: 336px; /* Minimum height to maintain visual consistency */
+    min-height: 380px; /* Minimum height to maintain visual consistency */
+    width: 360px; /* Slightly wider for team package content */
+}
+
+/* ============================================
+   TEAM PACKAGE CARD STYLES (matching solo style)
+   ============================================ */
+
+/* Team stats grid - 2 column layout */
+.team-stats-grid {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.team-stats-grid.three-col {
+    gap: 12px;
+}
+
+.team-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.team-stat-icon {
+    width: 16px;
+    height: 16px;
+    color: #ffa500;
+    flex-shrink: 0;
+}
+
+.team-stat-icon.small {
+    width: 14px;
+    height: 14px;
+}
+
+.team-stat-label {
+    font-size: 0.7em;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+body.light-mode .team-stat-label {
+    color: #666;
+}
+
+.team-stat-value {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+body.light-mode .team-stat-value {
+    color: #333;
+}
+
+.team-stat-value .stat-unit {
+    font-size: 0.8em;
+    font-weight: 400;
+    color: #888;
+}
+
+.team-stat-value.highlight-green {
+    color: #4CAF50;
+}
+
+.team-stat-value.highlight-orange {
+    color: #ffa500;
+}
+
+/* Team price section */
+.team-price-section {
+    padding: 8px 12px !important;
+}
+
+.team-price-grid {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 10px;
+}
+
+.team-price-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.team-price-item .price-label {
+    font-size: 0.7em;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.team-price-item .price-value {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #ffa500;
+}
+
+/* Share selector styling (updated) */
+.team-package .share-selector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.team-package .share-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #ffa500;
+    background: transparent;
+    color: #ffa500;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.team-package .share-button:hover {
+    background: #ffa500;
+    color: #fff;
+}
+
+.team-package .share-input {
+    width: 70px;
+    text-align: center;
+    padding: 6px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+body.light-mode .team-package .share-input {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: #ddd;
+    color: #333;
+}
+
+/* Total cost styling */
+.team-package .total-cost {
+    text-align: center;
+    color: #ffa500;
+    font-weight: 600;
+    font-size: 0.9em;
+    margin: 6px 0;
+}
+
+/* Team buy button */
+.team-buy-btn {
+    background: linear-gradient(135deg, #ffa500, #ff8c00) !important;
+    border: none !important;
+}
+
+.team-buy-btn:hover {
+    background: linear-gradient(135deg, #ffb733, #ffa500) !important;
+}
+
+/* Clear shares button */
+.clear-shares-btn {
+    background: #d32f2f !important;
+    border: none !important;
+    margin-top: 6px;
+}
+
+.clear-shares-btn:hover {
+    background: #b71c1c !important;
+}
+
+/* Share info section */
+.share-info {
+    padding: 8px 10px !important;
 }
 
 .buy-package-card h4 {

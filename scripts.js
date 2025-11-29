@@ -19614,7 +19614,7 @@ function calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares, myS
 // Create UI card for team package with share selector
 function createTeamPackageCard(pkg) {
     const card = document.createElement('div');
-    card.className = 'buy-package-card team-package-card';
+    card.className = 'buy-package-card team-package-card team-package';
 
     // Extract package details from API response
     // Team package structure: { id, currencyAlgoTicket: { name, price, probability, currencyAlgo: { currency, blockReward } }, numberOfParticipants, fullAmount, addedAmount }
@@ -19671,74 +19671,182 @@ function createTeamPackageCard(pkg) {
     // If user has no shares, show 0 reward (they can see it update when they adjust the input)
     const initialReward = myBoughtShares > 0 ? calculateTeamReward(blockReward, totalBoughtShares, myBoughtShares, myBoughtShares) : 0;
 
+    // Calculate reward in AUD
+    const cryptoId = crypto.toLowerCase() === 'btc' ? 'bitcoin' : crypto.toLowerCase();
+    const cryptoPrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
+    const rewardAUD = initialReward * cryptoPrice;
+
+    // Static background icon (same as solo packages)
+    const cryptoIdMap = {
+        'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
+        'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+    };
+    const fallbackIcons = {
+        'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+        'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png',
+        'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
+        'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
+        'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
+        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+        'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
+    };
+    const bgCryptoId = cryptoIdMap[crypto?.toUpperCase()] || crypto?.toLowerCase();
+    const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === bgCryptoId);
+    const bgIconUrl = userCrypto?.thumb
+        ? userCrypto.thumb.replace('/thumb/', '/large/')
+        : (fallbackIcons[bgCryptoId] || '');
+
+    const staticBgIcon = `<div class="static-bg-icons">
+        <img class="static-bg-icon" src="${bgIconUrl}" alt="${crypto}" onerror="this.style.display='none'">
+    </div>`;
+
+    // Floating icons for reward section (same pattern as solo)
+    const floatingFallbackIcons = {
+        'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
+        'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+        'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
+        'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
+        'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
+        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+        'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
+    };
+    const floatingIconUrl = userCrypto?.thumb
+        ? userCrypto.thumb.replace('/thumb/', '/small/')
+        : (floatingFallbackIcons[bgCryptoId] || '');
+
+    // Number of floating icons based on shares owned (1-3)
+    const iconCount = myBoughtShares > 0 ? Math.min(3, Math.max(1, Math.ceil(myBoughtShares / 5))) : 1;
+
+    // Get or create persistent floating icons config for team package
+    getOrCreateFloatingIconsConfig(`team-${packageName}`, floatingIconUrl, '', iconCount, false);
+    const floatingIconsHtml = generateFloatingIconsHtml(`team-${packageName}`, 12, null);
+
     card.innerHTML = `
-        <h4>👥 ${packageName}</h4>
-        <p style="color: #ffa500; font-weight: bold; font-size: 18px;">${crypto}</p>
-        <div class="buy-package-stats">
-            <div class="buy-package-stat">
-                <span>Probability:</span>
-                <span>${probability}</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Share Price (BTC):</span>
-                <span>${sharePrice.toFixed(8)} BTC</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Share Price (AUD):</span>
-                <span>$${pricePerShareAUD}</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Block Reward:</span>
-                <span>${blockReward} ${crypto}</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Share Distribution:</span>
-                <span style="color: #4CAF50;" id="${cardId}-share-dist">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Your Potential Reward:</span>
-                <span style="color: #FFD700; font-weight: bold;" id="${cardId}-reward">${initialReward.toFixed(8)} ${crypto}</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Available Shares:</span>
-                <span style="color: #4CAF50;">${availableShares}</span>
-            </div>
-            <div class="buy-package-stat">
-                <span>Participants:</span>
-                <span>${participants}</span>
-            </div>
+        ${staticBgIcon}
+        <div class="package-header">
+            <h4>👥 ${packageName}</h4>
         </div>
-        <div class="share-selector">
-            <button class="share-button" onclick="adjustShares('${cardId}', -1, this)">-</button>
-            <input
-                type="number"
-                id="${cardId}-shares"
-                class="share-input"
-                value="${myBoughtShares}"
-                min="1"
-                max="${myBoughtShares + availableShares}"
-                oninput="updateShareCost('${cardId}')"
-                onchange="validateShares('${cardId}', ${myBoughtShares + availableShares})"
-                data-block-reward="${blockReward}"
-                data-total-bought="${totalBoughtShares}"
-                data-my-bought="${myBoughtShares}"
-                data-total-available="${totalAvailableShares}"
-                data-crypto="${crypto}"
-            />
-            <button class="share-button" onclick="adjustShares('${cardId}', 1, this)">+</button>
-        </div>
-        <div class="total-cost" id="${cardId}-cost" style="margin: 10px 0; color: #ffa500; font-weight: bold;">
-            Total: 0 BTC ($0.00 AUD)
-        </div>
-        <button class="buy-package-button" onclick="buyTeamPackageUpdated('${packageId}', '${crypto}', '${cardId}')">
-            Buy Shares
-        </button>
-        <div id="buy-clear-shares-container-${packageName.replace(/\s+/g, '-')}" style="${myBoughtShares > 0 ? 'display: block;' : 'display: none;'}">
-            ${myBoughtShares > 0 ? `
-            <button class="buy-package-button" style="background-color: #d32f2f; margin-top: 10px;" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">
-                Clear Shares
-            </button>
-            ` : ''}
+        <div class="package-body">
+            <div class="package-section mining-info">
+                <div class="team-stats-grid">
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                            <line x1="12" y1="2" x2="12" y2="6"/>
+                            <line x1="12" y1="18" x2="12" y2="22"/>
+                            <line x1="2" y1="12" x2="6" y2="12"/>
+                            <line x1="18" y1="12" x2="22" y2="12"/>
+                        </svg>
+                        <span class="team-stat-value">${probability}</span>
+                    </div>
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        <span class="team-stat-value">${participants} <span class="stat-unit">miners</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="package-section share-info">
+                <div class="team-stats-grid three-col">
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                            <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
+                            <circle cx="12" cy="14" r="2" fill="currentColor"/>
+                        </svg>
+                        <span class="team-stat-label">Available</span>
+                        <span class="team-stat-value highlight-green">${availableShares}</span>
+                    </div>
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        <span class="team-stat-label">Pool Total</span>
+                        <span class="team-stat-value">${totalBoughtShares}</span>
+                    </div>
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span class="team-stat-label">My Shares</span>
+                        <span class="team-stat-value highlight-orange" id="${cardId}-my-shares">${myBoughtShares}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="package-section rewards-info">
+                <div class="section-label">Your Potential Reward</div>
+                ${floatingIconsHtml}
+                <div class="reward-display">
+                    <div class="reward-line">
+                        <img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${crypto}" onerror="this.style.display='none'">
+                        <span class="reward-amount" id="${cardId}-reward">${initialReward.toFixed(8)}</span>
+                        <span class="reward-symbol">${crypto}</span>
+                        <span class="reward-fiat" id="${cardId}-reward-aud">≈ $${rewardAUD.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="package-section price-info team-price-section">
+                <div class="team-price-grid">
+                    <div class="team-price-item">
+                        <svg class="team-stat-icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                        </svg>
+                        <span class="price-label">Per Share</span>
+                        <span class="price-value">$${pricePerShareAUD}</span>
+                    </div>
+                    <div class="team-price-item">
+                        <svg class="team-stat-icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        <span class="price-label">Block Reward</span>
+                        <span class="price-value">${blockReward} ${crypto}</span>
+                    </div>
+                </div>
+                <div class="share-selector">
+                    <button class="share-button" onclick="adjustShares('${cardId}', -1, this)">-</button>
+                    <input
+                        type="number"
+                        id="${cardId}-shares"
+                        class="share-input"
+                        value="${myBoughtShares}"
+                        min="1"
+                        max="${myBoughtShares + availableShares}"
+                        oninput="updateShareCost('${cardId}')"
+                        onchange="validateShares('${cardId}', ${myBoughtShares + availableShares})"
+                        data-block-reward="${blockReward}"
+                        data-total-bought="${totalBoughtShares}"
+                        data-my-bought="${myBoughtShares}"
+                        data-total-available="${totalAvailableShares}"
+                        data-crypto="${crypto}"
+                    />
+                    <button class="share-button" onclick="adjustShares('${cardId}', 1, this)">+</button>
+                </div>
+                <div class="total-cost" id="${cardId}-cost">
+                    Total: 0 BTC ($0.00 AUD)
+                </div>
+                <div class="buy-button-row">
+                    <button class="buy-now-btn team-buy-btn" onclick="buyTeamPackageUpdated('${packageId}', '${crypto}', '${cardId}')">
+                        Buy Shares
+                    </button>
+                </div>
+                ${myBoughtShares > 0 ? `
+                <div class="buy-button-row" id="buy-clear-shares-container-${packageName.replace(/\s+/g, '-')}">
+                    <button class="buy-now-btn clear-shares-btn" onclick="clearTeamSharesManual('${packageId}', '${packageName}')">
+                        Clear Shares
+                    </button>
+                </div>
+                ` : `<div id="buy-clear-shares-container-${packageName.replace(/\s+/g, '-')}" style="display: none;"></div>`}
+            </div>
         </div>
     `;
 
