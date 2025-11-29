@@ -7075,6 +7075,16 @@ body.light-mode .easymining-settings-form input[type="number"] {
         width: 110px;
         height: 110px;
     }
+
+    /* Tighter gap between +/- buttons and input on mobile */
+    .share-adjuster {
+        gap: 2px;
+    }
+
+    .share-adjuster-input {
+        padding: 2px;
+        width: 50px;
+    }
 }
 
 /* =============================================================================
