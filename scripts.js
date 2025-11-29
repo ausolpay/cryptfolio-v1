@@ -2208,7 +2208,7 @@ function updateDepositsBalance() {
         } else {
             // First render - create full HTML with IDs
             balanceSection.innerHTML = `
-                <div id="deposits-balance-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor}; max-width: 800px; margin: 0 auto;">
+                <div id="deposits-balance-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor}; max-width: 600px; min-width: 300px; margin: 0 auto;">
                     <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
                         <div style="flex: 0 1 auto; text-align: center;">
                             <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
@@ -22019,7 +22019,7 @@ async function loadBuyPackagesDataOnPage() {
     const borderColor = availableBalance < minShareCost ? '#f44336' : '#4CAF50';
 
     balanceSection.innerHTML = `
-        <div id="balance-section-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor}; max-width: 800px; margin: 0 auto;">
+        <div id="balance-section-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor}; max-width: 1040px; min-width: 300px; margin: 0 auto;">
             <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
                 <div style="flex: 0 1 auto; text-align: center;">
                     <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
