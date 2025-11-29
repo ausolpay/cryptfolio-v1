@@ -7274,6 +7274,13 @@ body.light-mode .share-adjuster-btn:hover {
     min-height: auto !important; /* Override global input min-height */
 }
 
+/* Wider input for team alert cards in EasyMining section */
+.easymining-alert-card .share-adjuster-input,
+#team-alerts-container .share-adjuster-input {
+    width: 70px;
+    min-width: 70px;
+}
+
 body.light-mode .share-adjuster-input {
     background-color: #fff;
     color: #000;
