@@ -4598,6 +4598,9 @@ function updateHoldings(crypto) {
         // Track for "Added Today" metric
         trackHoldingsChange(crypto, 0, amountToAdd, livePrice);
 
+        // Refresh floating icons in Total Holdings modal
+        refreshFloatingIcons();
+
         console.log(`✅ Added ${amountToAdd} ${crypto.toUpperCase()} at $${livePrice.toFixed(2)} AUD`);
     } else if (!isNaN(amountToAdd) && amountToAdd === 0) {
         // Clear input if 0 entered
@@ -8168,28 +8171,160 @@ function initFloatingIcons() {
     console.log(`🎨 Initialized ${cryptoData.length} floating icons in Total Holdings modal`);
 }
 
+// Polling interval for Total Holdings floating icons
+let floatingIconsUpdateInterval = null;
+
 /**
  * Update floating icons with current live data
- * Called periodically to refresh animation properties
+ * Called periodically to refresh animation properties and add/remove icons
  */
 function updateFloatingIcons() {
     const container = document.getElementById('floating-icons-container');
-    if (!container || container.children.length === 0) return;
+    if (!container || !loggedInUser || !users[loggedInUser]?.cryptos) return;
 
-    const cryptos = users[loggedInUser]?.cryptos || [];
-    const maxChange = Math.max(...cryptos.map(c => Math.abs(cryptoPriceChanges[c.id] || 0)), 1);
+    const cryptos = users[loggedInUser].cryptos;
 
+    // Calculate current crypto data
+    const cryptoData = cryptos.map(crypto => {
+        const price = cryptoPrices[crypto.id]?.aud || 0;
+        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        const value = price * holdings;
+        const change24h = Math.abs(cryptoPriceChanges[crypto.id] || 0);
+        const sentiment = getStoredSentiment(crypto.id) || 50;
+
+        return {
+            id: crypto.id,
+            thumb: crypto.thumb,
+            value,
+            change24h,
+            sentiment
+        };
+    }).filter(c => c.thumb && c.value > 0);
+
+    if (cryptoData.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    // Calculate totals for normalization
+    const totalValue = cryptoData.reduce((sum, c) => sum + c.value, 0);
+    const maxChange = Math.max(...cryptoData.map(c => c.change24h), 1);
+
+    // Sort by value (for z-index assignment)
+    cryptoData.sort((a, b) => a.value - b.value);
+
+    // Get existing icon IDs
+    const existingIds = new Set(Array.from(container.children).map(el => el.dataset.cryptoId));
+    const newIds = new Set(cryptoData.map(c => c.id));
+
+    // Remove icons for cryptos no longer in portfolio or with 0 value
     Array.from(container.children).forEach(icon => {
-        const cryptoId = icon.dataset.cryptoId;
-        if (!cryptoId) return;
-
-        const change24h = Math.abs(cryptoPriceChanges[cryptoId] || 0);
-        const changeRatio = change24h / maxChange;
-        const speed = 20 - (changeRatio * 12);
-
-        // Update speed based on current 24h change
-        icon.style.setProperty('--float-speed', `${speed}s`);
+        if (!newIds.has(icon.dataset.cryptoId)) {
+            icon.remove();
+            console.log(`🎨 Removed floating icon for ${icon.dataset.cryptoId}`);
+        }
     });
+
+    // Update existing icons and add new ones
+    cryptoData.forEach((crypto, index) => {
+        // Calculate dynamic properties
+        const valueRatio = totalValue > 0 ? crypto.value / totalValue : 0;
+        const size = 40 + (valueRatio * 80);
+        const changeRatio = crypto.change24h / maxChange;
+        const speed = 20 - (changeRatio * 12);
+        const zIndex = index + 1;
+
+        // Vertical bias based on sentiment
+        let floatYUp = -40 - Math.random() * 30;
+        let floatYDown = 40 + Math.random() * 30;
+        if (crypto.sentiment > 55) {
+            floatYUp = -60 - Math.random() * 40;
+            floatYDown = 20 + Math.random() * 20;
+        } else if (crypto.sentiment < 45) {
+            floatYUp = -20 - Math.random() * 20;
+            floatYDown = 60 + Math.random() * 40;
+        }
+
+        let icon = container.querySelector(`[data-crypto-id="${crypto.id}"]`);
+
+        if (icon) {
+            // Update existing icon's dynamic properties
+            icon.style.width = `${size}px`;
+            icon.style.height = `${size}px`;
+            icon.style.zIndex = zIndex;
+            icon.style.setProperty('--float-speed', `${speed}s`);
+            // Don't update position or other random values to avoid jarring movement
+        } else {
+            // Add new icon
+            icon = document.createElement('div');
+            icon.className = 'floating-crypto-icon';
+            icon.dataset.cryptoId = crypto.id;
+
+            const startX = Math.random() * 80 + 10;
+            const startY = Math.random() * 80 + 10;
+            const floatX = 20 + Math.random() * 40;
+            const rotateAmount = -10 + Math.random() * 20;
+            const delay = Math.random() * 5;
+
+            icon.style.cssText = `
+                width: ${size}px;
+                height: ${size}px;
+                left: ${startX}%;
+                top: ${startY}%;
+                z-index: ${zIndex};
+                --float-speed: ${speed}s;
+                --float-delay: ${delay}s;
+                --float-x: ${floatX}px;
+                --float-y-up: ${floatYUp}px;
+                --float-y-down: ${floatYDown}px;
+                --rotate-amount: ${rotateAmount}deg;
+            `;
+
+            const img = document.createElement('img');
+            img.src = crypto.thumb.replace('/thumb/', '/large/');
+            img.alt = crypto.id;
+            img.onerror = () => icon.remove();
+            icon.appendChild(img);
+
+            container.appendChild(icon);
+            console.log(`🎨 Added floating icon for ${crypto.id}`);
+        }
+    });
+}
+
+/**
+ * Start polling for floating icons updates
+ */
+function startFloatingIconsPolling() {
+    stopFloatingIconsPolling();
+    // Update every 5 seconds
+    floatingIconsUpdateInterval = setInterval(() => {
+        updateFloatingIcons();
+    }, 5000);
+    console.log('🎨 Started floating icons polling');
+}
+
+/**
+ * Stop polling for floating icons updates
+ */
+function stopFloatingIconsPolling() {
+    if (floatingIconsUpdateInterval) {
+        clearInterval(floatingIconsUpdateInterval);
+        floatingIconsUpdateInterval = null;
+        console.log('🎨 Stopped floating icons polling');
+    }
+}
+
+/**
+ * Refresh floating icons immediately (call after holdings change)
+ */
+function refreshFloatingIcons() {
+    const modal = document.getElementById('total-holdings-modal');
+    if (modal && modal.style.display !== 'none') {
+        updateFloatingIcons();
+    }
+    // Also refresh strip icons
+    refreshStripFloatingIcons();
 }
 
 /**
@@ -8200,6 +8335,7 @@ function destroyFloatingIcons() {
     if (container) {
         container.innerHTML = '';
     }
+    stopFloatingIconsPolling();
     console.log('🎨 Destroyed floating icons');
 }
 
@@ -8336,6 +8472,7 @@ function showTotalHoldingsModal() {
     updateTotalHoldingsModal(); // Ensure the modal content is updated before showing the modal
     document.getElementById('total-holdings-modal').style.display = 'block';
     initFloatingIcons(); // Initialize floating crypto icons background
+    startFloatingIconsPolling(); // Start polling for live updates
 }
 
 document.getElementById('password-login').addEventListener('keyup', function(event) {
@@ -17257,6 +17394,9 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
         // Update total portfolio value
         updateTotalHoldings();
+
+        // Refresh floating icons in Total Holdings modal
+        refreshFloatingIcons();
     } finally {
         // 🔓 Always unlock, even if there was an error
         isProcessingRewards = false;
@@ -17470,6 +17610,9 @@ async function addCryptoById(cryptoId) {
 
             // Invalidate rate limits cache (crypto count changed)
             invalidateRateLimitsCache();
+
+            // Refresh floating icons (new crypto added)
+            refreshFloatingIcons();
 
             // Set the initial price from CoinGecko data (prevents 0 price issue)
             console.log(`🔍 Checking for market_data in API response for ${crypto.id}...`);
