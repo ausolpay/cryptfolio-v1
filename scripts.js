@@ -26632,11 +26632,29 @@ function showAveragesPage() {
     // Show averages page
     document.getElementById('averages-page').style.display = 'block';
 
-    // Initial update
-    updateAveragesDisplay();
+    // Fetch fresh data and update display
+    fetchAndUpdateAverages();
 
-    // Start polling every 5 seconds
+    // Start polling every 60 seconds
     startAveragesPolling();
+}
+
+/**
+ * Fetch fresh package data and update the averages display
+ */
+async function fetchAndUpdateAverages() {
+    console.log('📊 Fetching fresh data for Averages page...');
+
+    try {
+        // Load fresh package data (this also captures metrics)
+        await loadBuyPackagesDataOnPage();
+        console.log('✅ Fresh data loaded for Averages');
+    } catch (error) {
+        console.warn('⚠️ Could not fetch fresh data:', error.message);
+    }
+
+    // Update the display with latest data
+    updateAveragesDisplay();
 }
 
 /**
@@ -26646,10 +26664,10 @@ function startAveragesPolling() {
     stopAveragesPolling();
 
     averagesPollingInterval = setInterval(() => {
-        updateAveragesDisplay();
-    }, 5000);
+        fetchAndUpdateAverages();
+    }, 60000);
 
-    console.log('📊 Started averages polling (5s interval)');
+    console.log('📊 Started averages polling (60s interval)');
 }
 
 /**
