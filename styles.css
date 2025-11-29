@@ -4175,8 +4175,9 @@ body.light-mode .balance-card-btc {
 
 .balance-card-buttons {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
 }
 
 .balance-card-btn {
@@ -4220,11 +4221,12 @@ body.light-mode .balance-card-btn svg {
     stroke: #e69500;
 }
 
-/* Action Buttons - Vertical on desktop, next to balance card */
+/* Action Buttons - Horizontal, next to balance card */
 .easymining-action-buttons {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 10px;
+    align-items: center;
 }
 
 .action-btn {
@@ -7422,7 +7424,6 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .balance-card-buttons {
         flex: 1 1 100%;
-        flex-direction: row;
         justify-content: center;
         margin-top: 10px;
     }
