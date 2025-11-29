@@ -5789,6 +5789,46 @@ body.light-mode .team-stat-value.highlight-orange {
     color: #333;
 }
 
+/* Mini Progress Bar for Team Packages */
+.progress-section {
+    padding: 6px 12px !important;
+}
+
+.mini-progress-bar {
+    width: 100%;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+body.light-mode .mini-progress-bar {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.mini-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ffa500, #ff8c00);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* Mini Hashrate Monitor for Team Packages */
+.hashrate-section {
+    padding: 6px 12px !important;
+}
+
+.mini-hashrate-canvas {
+    width: 100%;
+    height: 30px;
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+body.light-mode .mini-hashrate-canvas {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
 /* Team price section */
 .team-price-section {
     padding: 8px 12px !important;

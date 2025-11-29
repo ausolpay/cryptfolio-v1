@@ -17783,6 +17783,99 @@ function renderLineGraph(canvasId, dataPoints, options = {}) {
     return { min, max, current: lastValue };
 }
 
+// Render mini hashrate graph for team package cards
+function renderMiniHashrateGraph(canvasId, dataPoints, options = {}) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    if (!dataPoints || dataPoints.length < 2) {
+        // Draw placeholder line
+        ctx.strokeStyle = 'rgba(255, 165, 0, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        return;
+    }
+
+    // Calculate min/max for scaling
+    const values = dataPoints.filter(v => v !== null && v !== undefined && !isNaN(v));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const padding = range * 0.1;
+
+    const scaledMin = min - padding;
+    const scaledMax = max + padding;
+    const scaledRange = scaledMax - scaledMin;
+
+    // Line colors
+    const lineColor = options.color || '#4CAF50';
+    const fillColor = options.fillColor || 'rgba(76, 175, 80, 0.2)';
+
+    // Draw filled area under line
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+
+    for (let i = 0; i < dataPoints.length; i++) {
+        const x = (i / (dataPoints.length - 1)) * width;
+        const normalizedY = (dataPoints[i] - scaledMin) / scaledRange;
+        const y = height - (normalizedY * height);
+        ctx.lineTo(x, y);
+    }
+
+    ctx.lineTo(width, height);
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    for (let i = 0; i < dataPoints.length; i++) {
+        const x = (i / (dataPoints.length - 1)) * width;
+        const normalizedY = (dataPoints[i] - scaledMin) / scaledRange;
+        const y = height - (normalizedY * height);
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.stroke();
+}
+
+// Initialize mini hashrate graphs for team packages
+function initMiniHashrateGraphs() {
+    const canvases = document.querySelectorAll('.mini-hashrate-canvas');
+    canvases.forEach(canvas => {
+        // Generate simulated data for demo (will be replaced with real data when available)
+        const dataPoints = [];
+        const baseValue = 50 + Math.random() * 50;
+        for (let i = 0; i < 20; i++) {
+            dataPoints.push(baseValue + (Math.random() - 0.5) * 20);
+        }
+        renderMiniHashrateGraph(canvas.id, dataPoints, {
+            color: '#4CAF50',
+            fillColor: 'rgba(76, 175, 80, 0.15)'
+        });
+    });
+}
+
 // Update live metrics display (called from updateMiningProgressChart)
 function updateLiveMetricsGraphs(pkg, chartData) {
     if (!pkg || !chartData) return;
@@ -19771,6 +19864,14 @@ function createTeamPackageCard(pkg) {
                     </div>
                 </div>
             </div>
+            <div class="package-section progress-section">
+                <div class="mini-progress-bar">
+                    <div class="mini-progress-fill" id="${cardId}-progress" style="width: ${totalAvailableShares > 0 ? ((totalBoughtShares / totalAvailableShares) * 100).toFixed(1) : 0}%"></div>
+                </div>
+            </div>
+            <div class="package-section hashrate-section">
+                <canvas class="mini-hashrate-canvas" id="${cardId}-mini-hashrate" width="200" height="30"></canvas>
+            </div>
             <div class="package-section rewards-info">
                 <div class="section-label">Your Potential Reward</div>
                 ${floatingIconsHtml}
@@ -21583,6 +21684,9 @@ async function loadBuyPackagesDataOnPage() {
     }
     console.log('✅ Team packages populated');
 
+    // Initialize mini hashrate graphs for team packages
+    setTimeout(() => initMiniHashrateGraphs(), 100);
+
     // Start countdown updates for team packages
     startCountdownUpdates();
 
@@ -22948,6 +23052,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         </div>
                         ` : ''}
                     </div>
+                </div>
+                <div class="package-section progress-section">
+                    <div class="mini-progress-bar">
+                        <div class="mini-progress-fill" id="team-progress-${packageIdForElements}" style="width: ${totalAvailableShares > 0 ? ((totalBoughtShares / totalAvailableShares) * 100).toFixed(1) : 0}%"></div>
+                    </div>
+                </div>
+                <div class="package-section hashrate-section">
+                    <canvas class="mini-hashrate-canvas" id="mini-hashrate-${packageIdForElements}" width="200" height="30"></canvas>
                 </div>
                 <div class="package-section rewards-info">
                     <div class="section-label">Block Reward</div>
