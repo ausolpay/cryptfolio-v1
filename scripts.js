@@ -7936,8 +7936,23 @@ function addCryptoContainer(id, symbol, name, thumb) {
         <p><span id="${id}-holdings">0.000</span> ${symbol.toUpperCase()}</p>
         <p><span id="${id}-dollar-sign">$</span><span id="${id}-value-aud">0.00</span></p>
         <input type="number" id="${id}-input" style="margin-top: 15px;" placeholder="Enter ${name} holdings">
-        <button style="margin-bottom: 15px;" onclick="updateHoldings('${id}')">Update Holdings</button>
-        <button style="margin-bottom: 15px;" class="delete-button" onclick="showDeleteModal('${id}-container', '${id}')">Delete</button>
+        <button style="margin-bottom: 15px;" class="update-btn" onclick="updateHoldings('${id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 4v6h-6"/>
+                <path d="M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            Update Holdings
+        </button>
+        <button style="margin-bottom: 15px;" class="delete-button" onclick="showDeleteModal('${id}-container', '${id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+            </svg>
+            Delete
+        </button>
         <p style="margin-top: -5px;">7D: <span id="${id}-triangle-7d" class="triangle"></span><span id="${id}-percentage-change-7d">0.00%</span> 30D: <span id="${id}-triangle-30d" class="triangle"></span><span id="${id}-percentage-change-30d">0.00%</span></p>
         <div class="mini-rsi-bar" id="${id}-mini-rsi">
             <span class="mini-rsi-label sell">SELL</span>

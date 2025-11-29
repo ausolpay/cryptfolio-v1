@@ -2744,7 +2744,36 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
     gap: 10px;
 }
 
+/* Update Holdings Button */
+.update-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #555555;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.update-btn:hover {
+    background-color: #666666;
+}
+
+.update-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: #FFA500;
+}
+
 .delete-button, .cancel-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     padding: 10px 20px;
     border: none;
     border-radius: 4px;
@@ -2754,6 +2783,12 @@ body.light-mode .modal-hero .modal-change-values .change-label.negative {
 .delete-button {
     background-color: #ff5555;
     color: #ffffff;
+}
+
+.delete-button svg {
+    width: 16px;
+    height: 16px;
+    stroke: #ffffff;
 }
 
 .cancel-button {
