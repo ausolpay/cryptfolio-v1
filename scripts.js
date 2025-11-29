@@ -19786,17 +19786,6 @@ function createTeamPackageCard(pkg) {
         'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
         'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
     };
-    const bgCryptoId = cryptoIdMap[crypto?.toUpperCase()] || crypto?.toLowerCase();
-    const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === bgCryptoId);
-    const bgIconUrl = userCrypto?.thumb
-        ? userCrypto.thumb.replace('/thumb/', '/large/')
-        : (fallbackIcons[bgCryptoId] || '');
-
-    const staticBgIcon = `<div class="static-bg-icons">
-        <img class="static-bg-icon" src="${bgIconUrl}" alt="${crypto}" onerror="this.style.display='none'">
-    </div>`;
-
-    // Floating icons for reward section (same pattern as solo)
     const floatingFallbackIcons = {
         'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
         'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
@@ -19806,9 +19795,46 @@ function createTeamPackageCard(pkg) {
         'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
         'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
     };
+
+    // Check for dual-crypto (Palladium) packages
+    const isDualCrypto = !!ticket.mergeCurrencyAlgo;
+    const mergeCrypto = isDualCrypto ? ticket.mergeCurrencyAlgo?.currency : null;
+
+    const bgCryptoId = cryptoIdMap[crypto?.toUpperCase()] || crypto?.toLowerCase();
+    const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === bgCryptoId);
+    const bgIconUrl = userCrypto?.thumb
+        ? userCrypto.thumb.replace('/thumb/', '/large/')
+        : (fallbackIcons[bgCryptoId] || '');
     const floatingIconUrl = userCrypto?.thumb
         ? userCrypto.thumb.replace('/thumb/', '/small/')
         : (floatingFallbackIcons[bgCryptoId] || '');
+
+    // For dual crypto (Palladium), get merge crypto icons too
+    let mergeIconUrl = '';
+    let mergeFloatingIconUrl = '';
+    if (isDualCrypto && mergeCrypto) {
+        const mergeId = cryptoIdMap[mergeCrypto?.toUpperCase()] || mergeCrypto?.toLowerCase();
+        const mergeUserCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+        mergeIconUrl = mergeUserCrypto?.thumb
+            ? mergeUserCrypto.thumb.replace('/thumb/', '/large/')
+            : (fallbackIcons[mergeId] || '');
+        mergeFloatingIconUrl = mergeUserCrypto?.thumb
+            ? mergeUserCrypto.thumb.replace('/thumb/', '/small/')
+            : (floatingFallbackIcons[mergeId] || '');
+    }
+
+    // Static background icon - handle dual crypto (Palladium) with overlapping icons
+    let staticBgIcon = '';
+    if (isDualCrypto && mergeCrypto) {
+        staticBgIcon = `<div class="static-bg-icons palladium">
+            <img class="static-bg-icon" src="${bgIconUrl}" alt="${crypto}" onerror="this.style.display='none'">
+            <img class="static-bg-icon offset" src="${mergeIconUrl}" alt="${mergeCrypto}" onerror="this.style.display='none'">
+        </div>`;
+    } else {
+        staticBgIcon = `<div class="static-bg-icons">
+            <img class="static-bg-icon" src="${bgIconUrl}" alt="${crypto}" onerror="this.style.display='none'">
+        </div>`;
+    }
 
     // Number of floating icons based on shares owned (1-3)
     const iconCount = myBoughtShares > 0 ? Math.min(3, Math.max(1, Math.ceil(myBoughtShares / 5))) : 1;
@@ -19880,9 +19906,12 @@ function createTeamPackageCard(pkg) {
                 ${floatingIconsHtml}
                 <div class="reward-display">
                     <div class="reward-line">
-                        <img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${crypto}" onerror="this.style.display='none'">
+                        ${isDualCrypto && mergeCrypto
+                            ? `<span class="dual-crypto-icons"><img class="reward-crypto-icon" src="${mergeFloatingIconUrl}" alt="${mergeCrypto}" onerror="this.style.display='none'"><img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${crypto}" onerror="this.style.display='none'"></span>`
+                            : `<img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${crypto}" onerror="this.style.display='none'">`
+                        }
                         <span class="reward-amount" id="${cardId}-reward">${initialReward.toFixed(8)}</span>
-                        <span class="reward-symbol">${crypto}</span>
+                        <span class="reward-symbol">${isDualCrypto ? `${mergeCrypto}+${crypto}` : crypto}</span>
                         <span class="reward-fiat" id="${cardId}-reward-aud">≈ $${rewardAUD.toFixed(2)}</span>
                     </div>
                 </div>
@@ -22932,10 +22961,32 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             ? userCrypto.thumb.replace('/thumb/', '/small/')
             : (floatingFallbackIcons[bgCryptoId] || '');
 
-        // Static background icon
-        const staticBgIcon = `<div class="static-bg-icons">
-            <img class="static-bg-icon" src="${bgIconUrl}" alt="${teamCrypto}" onerror="this.style.display='none'">
-        </div>`;
+        // For dual crypto (Palladium), get merge crypto icons too
+        let mergeIconUrl = '';
+        let mergeFloatingIconUrl = '';
+        if (pkg.isDualCrypto && pkg.mergeCrypto) {
+            const mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
+            const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
+            mergeIconUrl = mergeCrypto?.thumb
+                ? mergeCrypto.thumb.replace('/thumb/', '/large/')
+                : (fallbackIcons[mergeId] || '');
+            mergeFloatingIconUrl = mergeCrypto?.thumb
+                ? mergeCrypto.thumb.replace('/thumb/', '/small/')
+                : (floatingFallbackIcons[mergeId] || '');
+        }
+
+        // Static background icon - handle dual crypto (Palladium) with overlapping icons
+        let staticBgIcon = '';
+        if (pkg.isDualCrypto && pkg.mergeCrypto) {
+            staticBgIcon = `<div class="static-bg-icons palladium">
+                <img class="static-bg-icon" src="${bgIconUrl}" alt="${pkg.mainCrypto || ''}" onerror="this.style.display='none'">
+                <img class="static-bg-icon offset" src="${mergeIconUrl}" alt="${pkg.mergeCrypto || ''}" onerror="this.style.display='none'">
+            </div>`;
+        } else {
+            staticBgIcon = `<div class="static-bg-icons">
+                <img class="static-bg-icon" src="${bgIconUrl}" alt="${teamCrypto}" onerror="this.style.display='none'">
+            </div>`;
+        }
 
         // Floating icons (1-3 based on shares owned)
         const iconCount = myBoughtShares > 0 ? Math.min(3, Math.max(1, Math.ceil(myBoughtShares / 5))) : 1;
@@ -23072,7 +23123,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     ${floatingIconsHtml}
                     <div class="reward-display">
                         <div class="reward-line">
-                            <img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${teamCrypto}" onerror="this.style.display='none'">
+                            ${pkg.isDualCrypto && pkg.mergeCrypto
+                                ? `<span class="dual-crypto-icons"><img class="reward-crypto-icon" src="${mergeFloatingIconUrl}" alt="${pkg.mergeCrypto}" onerror="this.style.display='none'"><img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${pkg.mainCrypto}" onerror="this.style.display='none'"></span>`
+                                : `<img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${teamCrypto}" onerror="this.style.display='none'">`
+                            }
                             ${rewardDisplay}
                             ${rewardValueDisplay}
                         </div>
