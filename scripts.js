@@ -23989,7 +23989,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             <circle cx="12" cy="12" r="10"/>
                             <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <span class="price-value">$${pricePerShareAUD}</span>
+                        <span class="price-value" id="team-price-${packageIdForElements}">$${pricePerShareAUD}</span>
                     </div>
                     ${teamShareSelector}
                     ${myBoughtShares > 0 ? `
@@ -24218,6 +24218,8 @@ function adjustShares(packageName, delta, buttonElement) {
                                container.querySelector(`#reward-value-${packageId}`) ||
                                document.getElementById(`${idPrefix}reward-value-${packageId}`);
     const priceElement = container.querySelector(`#${idPrefix}price-${packageId}`) ||
+                         container.querySelector(`#team-price-${packageId}`) ||
+                         container.querySelector(`#alert-price-${packageId}`) ||
                          container.querySelector(`#price-${packageId}`) ||
                          document.getElementById(`${idPrefix}price-${packageId}`);
     // For main/merge rewards:
