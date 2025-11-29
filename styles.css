@@ -5014,50 +5014,47 @@ body.light-mode .package-card .package-progress-bar {
     transition: width 0.5s ease;
 }
 
-/* Static Background Icons (contained inside card) */
+/* Static Background Icons (matches buy packages exactly) */
 .package-card .static-bg-icons {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 0;
     display: flex;
-    justify-content: center;
     align-items: center;
-    overflow: hidden;
+    justify-content: center;
+    overflow: visible;
+    opacity: 0.06;
 }
 
 .package-card .static-bg-icon {
-    width: 120px;
-    height: 120px;
-    max-width: 60%;
-    max-height: 60%;
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    aspect-ratio: 1;
     border-radius: 50%;
     object-fit: cover;
     object-position: center;
     background-color: #fff;
-    opacity: 0.08;
-}
-
-.package-card .static-bg-icons.palladium {
-    gap: 0;
+    transform: scale(1.1);
+    overflow: hidden;
 }
 
 .package-card .static-bg-icons.palladium .static-bg-icon {
-    width: 90px;
-    height: 90px;
-    max-width: 45%;
-    max-height: 50%;
+    width: 110px;
+    height: 110px;
 }
 
 .package-card .static-bg-icons.palladium .static-bg-icon:first-child {
-    margin-right: -20px;
+    transform: translate(-30%, 0);
 }
 
 .package-card .static-bg-icons.palladium .static-bg-icon.offset {
-    margin-left: -20px;
+    transform: translate(30%, 0);
 }
 
 /* Clear Shares Button */
