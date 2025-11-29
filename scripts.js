@@ -2211,8 +2211,8 @@ function updateDepositsBalance() {
                 <div id="deposits-balance-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor}; max-width: 800px; margin: 0 auto;">
                     <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
                         <div style="flex: 0 1 auto; text-align: center;">
-                            <div style="color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                     <circle cx="12" cy="12" r="10"/>
                                     <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
@@ -2222,8 +2222,8 @@ function updateDepositsBalance() {
                             <div id="deposits-available-btc" style="color: #888; font-size: 13px;">${availableBalance.toFixed(8)} BTC</div>
                         </div>
                         <div style="flex: 0 1 auto; text-align: center;">
-                            <div style="color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                     <circle cx="12" cy="12" r="10"/>
                                     <polyline points="12,6 12,12 16,14"/>
                                 </svg>
@@ -22022,8 +22022,8 @@ async function loadBuyPackagesDataOnPage() {
         <div id="balance-section-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor}; max-width: 800px; margin: 0 auto;">
             <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
                 <div style="flex: 0 1 auto; text-align: center;">
-                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                             <circle cx="12" cy="12" r="10"/>
                             <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
@@ -22033,8 +22033,8 @@ async function loadBuyPackagesDataOnPage() {
                     <div style="color: #888; font-size: 13px;">${availableBalance.toFixed(8)} BTC</div>
                 </div>
                 <div style="flex: 0 1 auto; text-align: center;">
-                    <div style="color: #aaa; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                             <circle cx="12" cy="12" r="10"/>
                             <polyline points="12,6 12,12 16,14"/>
                         </svg>
