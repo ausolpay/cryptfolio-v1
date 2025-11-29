@@ -26777,7 +26777,7 @@ function updateAveragesSection(type, packages, allHistory) {
             : 'N/A';
 
         const avgPriceAUD = pkg.averages?.priceAUD
-            ? formatCurrency(pkg.averages.priceAUD, getUserCurrency())
+            ? `${getUserCurrencySymbol()}${formatNumber(pkg.averages.priceAUD.toFixed(2))}`
             : 'N/A';
 
         const avgParticipants = pkg.averages?.participants
@@ -26986,7 +26986,7 @@ function calculateOverallStats(packages, type) {
 
     // Highest price
     stats.highestPrice = highestPrice;
-    stats.highestPriceValue = highestPrice ? formatCurrency(highestPriceVal, getUserCurrency()) : '';
+    stats.highestPriceValue = highestPrice ? `${getUserCurrencySymbol()}${formatNumber(highestPriceVal.toFixed(2))}` : '';
 
     // Team-specific stats
     if (isTeam) {
