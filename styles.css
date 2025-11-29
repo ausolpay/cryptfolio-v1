@@ -4188,6 +4188,7 @@ body.light-mode .balance-card-btc {
     background-color: #555555;
     color: white;
     transition: background-color 0.2s, transform 0.1s;
+    min-width: 120px;
 }
 
 .balance-card-btn:hover {
