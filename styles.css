@@ -6993,6 +6993,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card.team-package {
         height: auto; /* Team packages expand to fit content on tablet */
         min-height: 300px; /* Minimum height matches solo packages */
+        width: 320px; /* Fit tablet width */
+    }
+
+    /* Scale down team package background icons on tablet */
+    .team-package-card .static-bg-icon {
+        width: 160px;
+        height: 160px;
+    }
+
+    .team-package-card .static-bg-icons.palladium .static-bg-icon {
+        width: 130px;
+        height: 130px;
     }
 }
 
@@ -7053,6 +7065,19 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card.team-package {
         height: auto; /* Team packages expand to fit content on mobile */
         min-height: 280px; /* Minimum height matches solo packages */
+        width: 100%; /* Full width on mobile */
+        max-width: 320px; /* Max width for readability */
+    }
+
+    /* Scale down team package background icons on mobile */
+    .team-package-card .static-bg-icon {
+        width: 140px;
+        height: 140px;
+    }
+
+    .team-package-card .static-bg-icons.palladium .static-bg-icon {
+        width: 110px;
+        height: 110px;
     }
 }
 
