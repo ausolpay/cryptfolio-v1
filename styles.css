@@ -4554,17 +4554,23 @@ body.light-mode .package-tab.active {
     }
 
     .recommendations-section {
-        padding: 4px; /* Reduce padding on mobile */
+        padding: 5px; /* Reduced side padding on mobile */
+        margin-top: 10px;
     }
 
-    /* EasyMining section alerts - more height on mobile for buy button and shares selector */
+    /* EasyMining section alerts - responsive on mobile */
     .recommendations-container .buy-package-card {
         min-height: auto; /* Auto height to fit content */
         height: auto; /* Allow content to determine height */
+        width: 100%; /* Full width on mobile */
+        max-width: 100%; /* Ensure doesn't overflow */
+        box-sizing: border-box;
     }
 
     .recommendations-container .buy-package-card.team-package {
         min-height: auto; /* Extra height for team packages with shares selector */
+        width: 100%; /* Full width on mobile */
+        max-width: 100%; /* Ensure doesn't overflow */
     }
 
     .package-card {
@@ -5433,14 +5439,32 @@ body.light-mode .stat-label {
         grid-template-columns: 1fr;
         padding: 0 5px;
         gap: 10px;
-        width: auto;
+        width: 100%;
         max-width: 100%;
+        box-sizing: border-box;
     }
 
     .recommendations-section {
-        width: auto;
+        width: 100%;
         height: auto;
-        padding: 10px;
+        padding: 5px; /* Reduced side padding on mobile */
+        box-sizing: border-box;
+    }
+
+    /* Ensure alert cards fill container width on mobile */
+    .recommendations-container .buy-package-card,
+    .recommendations-container .buy-package-card.team-package {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Subheader strips closer to edges on mobile */
+    .easymining-subheader {
+        margin-left: 0;
+        margin-right: 0;
+        padding: 8px 10px;
+        font-size: 13px;
     }
 }
 
