@@ -1477,8 +1477,30 @@ body.light-mode .stat-item {
     margin-bottom: 2px;
 }
 
+.stat-value.highlight-orange {
+    color: #ffa500;
+}
+
+.stat-value.highlight-green {
+    color: #4CAF50;
+}
+
+.stat-item.best-package-stat {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 165, 0, 0.2);
+}
+
 body.light-mode .stat-value {
     color: #333;
+}
+
+body.light-mode .stat-value.highlight-orange {
+    color: #e69500;
+}
+
+body.light-mode .stat-value.highlight-green {
+    color: #388E3C;
 }
 
 .stat-label {

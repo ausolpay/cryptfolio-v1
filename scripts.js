@@ -15408,6 +15408,144 @@ function updateStats() {
         totalSpent: totalSpentTodayBTC,   // Still in BTC for consistency
         pnl: pnlTodayAUD                  // Now in AUD
     };
+
+    // Update best package stats from averages data
+    updateBestPackageStats();
+}
+
+/**
+ * Update best package stats in the EasyMining section
+ * Uses data from the package metrics history (same as Averages page)
+ */
+function updateBestPackageStats() {
+    const history = getPackageMetricsHistory();
+    if (!history || Object.keys(history).length === 0) {
+        return; // No data yet
+    }
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const allTimeStart = new Date(0); // Beginning of time
+
+    // Separate team and single packages
+    const teamPackages = [];
+    const singlePackages = [];
+
+    Object.keys(history).forEach(name => {
+        const pkg = history[name];
+        if (pkg.isTeam) {
+            teamPackages.push({ name, ...pkg });
+        } else {
+            singlePackages.push({ name, ...pkg });
+        }
+    });
+
+    // Calculate optimal packages for today
+    const todayTeamOptimal = calculateOptimalForPeriod(teamPackages, todayStart, true);
+    const todaySingleOptimal = calculateOptimalForPeriod(singlePackages, todayStart, false);
+
+    // Calculate optimal packages all time
+    const allTimeTeamOptimal = calculateOptimalForPeriod(teamPackages, allTimeStart, true);
+    const allTimeSingleOptimal = calculateOptimalForPeriod(singlePackages, allTimeStart, false);
+
+    // Calculate best probability today
+    const todayTeamBestProb = calculateBestProbForPeriod(teamPackages, todayStart);
+    const todaySingleBestProb = calculateBestProbForPeriod(singlePackages, todayStart);
+
+    // Update Today's Stats UI
+    const bestTeamTodayEl = document.getElementById('best-team-pkg-today');
+    const bestSingleTodayEl = document.getElementById('best-single-pkg-today');
+    const bestProbTeamTodayEl = document.getElementById('best-prob-team-today');
+    const bestProbSingleTodayEl = document.getElementById('best-prob-single-today');
+
+    if (bestTeamTodayEl) bestTeamTodayEl.textContent = todayTeamOptimal?.name || '-';
+    if (bestSingleTodayEl) bestSingleTodayEl.textContent = todaySingleOptimal?.name || '-';
+    if (bestProbTeamTodayEl) bestProbTeamTodayEl.textContent = todayTeamBestProb ? `${todayTeamBestProb.name} (1:${todayTeamBestProb.prob})` : '-';
+    if (bestProbSingleTodayEl) bestProbSingleTodayEl.textContent = todaySingleBestProb ? `${todaySingleBestProb.name} (1:${todaySingleBestProb.prob})` : '-';
+
+    // Update All Time Stats UI
+    const bestTeamAllTimeEl = document.getElementById('best-team-pkg-alltime');
+    const bestSingleAllTimeEl = document.getElementById('best-single-pkg-alltime');
+
+    if (bestTeamAllTimeEl) bestTeamAllTimeEl.textContent = allTimeTeamOptimal?.name || '-';
+    if (bestSingleAllTimeEl) bestSingleAllTimeEl.textContent = allTimeSingleOptimal?.name || '-';
+}
+
+/**
+ * Calculate optimal package for a time period (simplified version for stats)
+ */
+function calculateOptimalForPeriod(packages, cutoffDate, isTeam) {
+    if (packages.length === 0) return null;
+
+    const packageScores = [];
+
+    packages.forEach(pkg => {
+        const snapshots = pkg.snapshots || [];
+        const periodSnapshots = snapshots.filter(s => new Date(s.timestamp) >= cutoffDate);
+        if (periodSnapshots.length === 0) return;
+
+        const avgProb = periodSnapshots.reduce((sum, s) => sum + (s.probabilityRaw || 0), 0) / periodSnapshots.length;
+        const avgHashrate = periodSnapshots.reduce((sum, s) => sum + (s.hashrateRaw || 0), 0) / periodSnapshots.length;
+        const avgParticipants = isTeam ? periodSnapshots.reduce((sum, s) => sum + (s.participants || 0), 0) / periodSnapshots.length : 0;
+        const avgShares = isTeam ? periodSnapshots.reduce((sum, s) => sum + (s.shares || 0), 0) / periodSnapshots.length : 0;
+
+        packageScores.push({
+            name: pkg.name,
+            avgProb,
+            avgHashrate,
+            avgParticipants,
+            avgShares
+        });
+    });
+
+    if (packageScores.length === 0) return null;
+
+    // Normalize and score
+    const minProb = Math.min(...packageScores.map(s => s.avgProb).filter(p => p > 0)) || 1;
+    const maxProb = Math.max(...packageScores.map(s => s.avgProb)) || 1;
+    const minHashrate = Math.min(...packageScores.map(s => s.avgHashrate).filter(h => h > 0)) || 0;
+    const maxHashrate = Math.max(...packageScores.map(s => s.avgHashrate)) || 1;
+    const maxParticipants = Math.max(...packageScores.map(s => s.avgParticipants)) || 1;
+    const maxShares = Math.max(...packageScores.map(s => s.avgShares)) || 1;
+
+    packageScores.forEach(pkg => {
+        let score = 0;
+        if (pkg.avgProb > 0 && maxProb > minProb) {
+            score += (1 - ((pkg.avgProb - minProb) / (maxProb - minProb))) * 40;
+        }
+        if (maxHashrate > minHashrate) {
+            score += ((pkg.avgHashrate - minHashrate) / (maxHashrate - minHashrate)) * 30;
+        }
+        if (isTeam) {
+            if (maxParticipants > 0) score += (pkg.avgParticipants / maxParticipants) * 15;
+            if (maxShares > 0) score += (pkg.avgShares / maxShares) * 15;
+        } else {
+            score += 30;
+        }
+        pkg.score = Math.round(score);
+    });
+
+    return packageScores.reduce((best, pkg) => pkg.score > (best?.score || 0) ? pkg : best, null);
+}
+
+/**
+ * Calculate best probability package for a time period
+ */
+function calculateBestProbForPeriod(packages, cutoffDate) {
+    let bestPkg = null;
+    let bestProb = Infinity;
+
+    packages.forEach(pkg => {
+        const snapshots = pkg.snapshots || [];
+        snapshots.forEach(s => {
+            if (new Date(s.timestamp) >= cutoffDate && s.probabilityRaw > 0 && s.probabilityRaw < bestProb) {
+                bestProb = s.probabilityRaw;
+                bestPkg = { name: pkg.name, prob: Math.round(bestProb) };
+            }
+        });
+    });
+
+    return bestPkg;
 }
 
 // Track current recommendations to prevent unnecessary re-renders
