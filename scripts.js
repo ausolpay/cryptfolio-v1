@@ -21163,6 +21163,109 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
     window.currentTeamPackages = teamPackages;
 }
 
+/**
+ * Smart update solo package cards in place - preserves floating icons and animations
+ * Only updates data values (probability, duration, hashrate, prices, optimal status)
+ */
+function updateSoloPackageCardsInPlace(soloPackages, soloRecommendedNames) {
+    console.log('🔄 Smart update: Updating solo package cards in place (preserving animations)...');
+
+    soloPackages.forEach(pkg => {
+        const card = document.querySelector(`[data-package-id="${pkg.id}"]`);
+        if (!card) {
+            console.log(`⚠️ Card not found for solo package ${pkg.id}, skipping update`);
+            return;
+        }
+
+        const packageIdForElements = pkg.name.replace(/\s+/g, '-');
+
+        // Update probability display (text content after SVG)
+        const probEl = card.querySelector(`#probability-display-${packageIdForElements}`);
+        if (probEl && pkg.probability) {
+            // Keep the SVG, update the text after it
+            const svg = probEl.querySelector('svg');
+            if (svg) {
+                probEl.innerHTML = '';
+                probEl.appendChild(svg);
+                probEl.appendChild(document.createTextNode(' ' + pkg.probability));
+            }
+        }
+
+        // Update merge probability for Palladium
+        const mergeProbEl = card.querySelector(`#merge-probability-display-${packageIdForElements}`);
+        if (mergeProbEl && (pkg.mergeProbability || pkg.probability)) {
+            const svg = mergeProbEl.querySelector('svg');
+            if (svg) {
+                mergeProbEl.innerHTML = '';
+                mergeProbEl.appendChild(svg);
+                mergeProbEl.appendChild(document.createTextNode(' ' + (pkg.mergeProbability || pkg.probability)));
+            }
+        }
+
+        // Update duration
+        const durationEl = card.querySelector(`#duration-${packageIdForElements}`);
+        if (durationEl && pkg.duration) {
+            const svg = durationEl.querySelector('svg');
+            if (svg) {
+                durationEl.innerHTML = '';
+                durationEl.appendChild(svg);
+                durationEl.appendChild(document.createTextNode(' ' + pkg.duration));
+            }
+        }
+
+        // Update hashrate
+        const hashrateEl = card.querySelector(`#hashrate-${packageIdForElements}`);
+        if (hashrateEl && pkg.hashrate) {
+            const svg = hashrateEl.querySelector('svg');
+            if (svg) {
+                hashrateEl.innerHTML = '';
+                hashrateEl.appendChild(svg);
+                const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                if (match) {
+                    hashrateEl.appendChild(document.createTextNode(' ' + match[1]));
+                    const unitSpan = document.createElement('span');
+                    unitSpan.className = 'hashrate-unit';
+                    unitSpan.textContent = match[2];
+                    hashrateEl.appendChild(unitSpan);
+                } else {
+                    hashrateEl.appendChild(document.createTextNode(' ' + pkg.hashrate));
+                }
+            }
+        }
+
+        // Update optimal conditions on buy button
+        const buyBtn = card.querySelector('.buy-now-btn');
+        if (buyBtn) {
+            const isOptimal = isOptimalConditions(pkg.name);
+            if (isOptimal) {
+                buyBtn.classList.add('optimal-conditions');
+            } else {
+                buyBtn.classList.remove('optimal-conditions');
+            }
+        }
+
+        // Update recommended status
+        const isRecommended = soloRecommendedNames.includes(pkg.name);
+        const titleElement = card.querySelector('h4');
+        if (titleElement) {
+            const hasRecommended = card.classList.contains('recommended');
+            if (isRecommended && !hasRecommended) {
+                card.classList.add('recommended');
+                if (!titleElement.innerHTML.includes('⭐')) {
+                    titleElement.innerHTML = `${pkg.name} <span class="recommended-star">⭐</span>`;
+                }
+            } else if (!isRecommended && hasRecommended) {
+                card.classList.remove('recommended');
+                titleElement.textContent = pkg.name;
+            }
+        }
+
+        // Note: Floating icons are NOT touched - they persist with their animations
+    });
+
+    console.log(`✅ Smart updated ${soloPackages.length} solo package cards`);
+}
+
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
@@ -21294,17 +21397,41 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     console.log(`📦 Populating ${singlePackages.length} single packages...`);
-    singleContainer.innerHTML = '';
 
-    singlePackages.forEach(pkg => {
-        try {
-            const isRecommended = soloRecommendedNames.includes(pkg.name);
-            const card = createBuyPackageCardForPage(pkg, isRecommended);
-            singleContainer.appendChild(card);
-        } catch (error) {
-            console.error('❌ Error creating card for package:', pkg.name, error);
-        }
-    });
+    // Smart re-rendering: Check if we can update in place (preserves floating icon animations)
+    const existingSoloIds = Array.from(singleContainer.querySelectorAll('[data-package-id]'))
+        .map(el => el.dataset.packageId);
+    const newSoloIds = singlePackages.map(pkg => pkg.id);
+    const newSoloIdSet = new Set(newSoloIds);
+
+    // Check if same packages exist (same IDs in same order)
+    const sameSoloPackages = existingSoloIds.length === newSoloIds.length &&
+        existingSoloIds.every((id, index) => id === newSoloIds[index]);
+
+    // Check if any package was removed or added
+    const soloPackageRemoved = existingSoloIds.some(id => !newSoloIdSet.has(id));
+    const existingSoloIdSet = new Set(existingSoloIds);
+    const soloPackageAdded = newSoloIds.some(id => !existingSoloIdSet.has(id));
+
+    if (sameSoloPackages && singleContainer.children.length > 0 && !soloPackageRemoved && !soloPackageAdded) {
+        // Smart update: update data fields without destroying floating icon animations
+        console.log('🔄 Same solo packages detected - using smart update (preserving animations)');
+        updateSoloPackageCardsInPlace(singlePackages, soloRecommendedNames);
+    } else {
+        // Full re-render needed (packages changed or first load)
+        console.log('🔄 Solo packages changed or first load - doing full re-render');
+        singleContainer.innerHTML = '';
+
+        singlePackages.forEach(pkg => {
+            try {
+                const isRecommended = soloRecommendedNames.includes(pkg.name);
+                const card = createBuyPackageCardForPage(pkg, isRecommended);
+                singleContainer.appendChild(card);
+            } catch (error) {
+                console.error('❌ Error creating card for package:', pkg.name, error);
+            }
+        });
+    }
     console.log('✅ Single packages populated');
 
     // Populate team packages
