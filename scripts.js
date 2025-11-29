@@ -24210,12 +24210,31 @@ function adjustShares(packageName, delta, buttonElement) {
 
     // Update reward value and price based on shares (works for both highlighted and non-highlighted packages)
     const packageId = packageName.replace(/\s+/g, '-');
-    // Use alert- prefix for EasyMining context, standard IDs for Buy Packages page
-    const idPrefix = isEasyMiningAlert ? 'alert-' : '';
-    const rewardValueElement = container.querySelector(`#${idPrefix}reward-value-${packageId}`) || document.getElementById(`${idPrefix}reward-value-${packageId}`);
-    const priceElement = container.querySelector(`#${idPrefix}price-${packageId}`) || document.getElementById(`${idPrefix}price-${packageId}`);
-    const mainRewardElement = container.querySelector(`#${idPrefix}main-reward-${packageId}`) || document.getElementById(`${idPrefix}main-reward-${packageId}`);
-    const mergeRewardElement = container.querySelector(`#${idPrefix}merge-reward-${packageId}`) || document.getElementById(`${idPrefix}merge-reward-${packageId}`);
+    // Use alert- prefix for EasyMining context, team- prefix for Buy Packages page
+    const idPrefix = isEasyMiningAlert ? 'alert-' : 'team-';
+
+    // Try multiple ID patterns - new styled cards use team-reward-value, alerts use alert-reward-value
+    const rewardValueElement = container.querySelector(`#${idPrefix}reward-value-${packageId}`) ||
+                               container.querySelector(`#reward-value-${packageId}`) ||
+                               document.getElementById(`${idPrefix}reward-value-${packageId}`);
+    const priceElement = container.querySelector(`#${idPrefix}price-${packageId}`) ||
+                         container.querySelector(`#price-${packageId}`) ||
+                         document.getElementById(`${idPrefix}price-${packageId}`);
+    // For main/merge rewards:
+    // - Dual crypto: alerts use alert-reward-main, buy page uses team-reward-main
+    // - Single crypto: alerts use alert-reward, buy page uses team-reward
+    const mainRewardElement = container.querySelector(`#${idPrefix}reward-main-${packageId}`) ||
+                              container.querySelector(`#${idPrefix}reward-${packageId}`) ||
+                              container.querySelector(`#team-reward-main-${packageId}`) ||
+                              container.querySelector(`#team-reward-${packageId}`) ||
+                              container.querySelector(`#alert-reward-main-${packageId}`) ||
+                              container.querySelector(`#alert-reward-${packageId}`) ||
+                              document.getElementById(`${idPrefix}reward-main-${packageId}`) ||
+                              document.getElementById(`${idPrefix}reward-${packageId}`);
+    const mergeRewardElement = container.querySelector(`#${idPrefix}reward-merge-${packageId}`) ||
+                               container.querySelector(`#team-reward-merge-${packageId}`) ||
+                               container.querySelector(`#alert-reward-merge-${packageId}`) ||
+                               document.getElementById(`${idPrefix}reward-merge-${packageId}`);
 
     console.log(`🔍 Element lookup for packageId "${packageId}":`, {
         rewardValueFound: !!rewardValueElement,
@@ -24265,8 +24284,12 @@ function adjustShares(packageName, delta, buttonElement) {
         // Update AUD displays
         if (rewardValueElement) {
             const oldReward = rewardValueElement.textContent;
-            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)}`;
-            console.log(`✅ Updated reward value: ${oldReward} → $${formatNumber(myRewardAUD)}`);
+            // New styled cards use "≈ $" prefix, detect which format to use
+            const hasApproxPrefix = oldReward.includes('≈');
+            rewardValueElement.textContent = hasApproxPrefix
+                ? `≈ $${formatNumber(myRewardAUD)}`
+                : `$${formatNumber(myRewardAUD)}`;
+            console.log(`✅ Updated reward value: ${oldReward} → ${rewardValueElement.textContent}`);
             // Verify the update actually happened
             console.log(`✔️ Verification - reward element now shows: "${rewardValueElement.textContent}"`);
         } else {
@@ -24284,18 +24307,31 @@ function adjustShares(packageName, delta, buttonElement) {
         }
 
         // Update crypto reward amounts with CORRECT formula
+        // New styled cards show only numbers (crypto icon is separate), old style shows "amount SYMBOL"
         if (mainRewardElement && totalMainReward) {
             const rewardPerShare = totalShares > 0 ? totalMainReward / totalShares : 0;
             const myMainReward = rewardPerShare * myShares;
-            const decimals = baseValues.mainCrypto === 'BTC' || baseValues.mainCrypto === 'BCH' ? 4 : 0;
-            mainRewardElement.textContent = `${myMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
+            const decimals = baseValues.mainCrypto === 'BTC' || baseValues.mainCrypto === 'BCH' ? 4 : 2;
+            // Check if element currently has crypto symbol in text (old style) or just number (new style)
+            const currentText = mainRewardElement.textContent.trim();
+            const hasSymbol = currentText.includes(baseValues.mainCrypto);
+            mainRewardElement.textContent = hasSymbol
+                ? `${myMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`
+                : myMainReward.toFixed(decimals);
+            console.log(`✅ Updated main reward: ${myMainReward.toFixed(decimals)}`);
         }
 
         if (mergeRewardElement && totalMergeReward && baseValues.isDualCrypto) {
             const rewardPerShare = totalShares > 0 ? totalMergeReward / totalShares : 0;
             const myMergeReward = rewardPerShare * myShares;
             const mergeDecimals = baseValues.mergeCrypto === 'LTC' ? 2 : 0;
-            mergeRewardElement.textContent = `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`;
+            // Check if element currently has crypto symbol in text (old style) or just number (new style)
+            const currentText = mergeRewardElement.textContent.trim();
+            const hasSymbol = currentText.includes(baseValues.mergeCrypto);
+            mergeRewardElement.textContent = hasSymbol
+                ? `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`
+                : myMergeReward.toFixed(mergeDecimals);
+            console.log(`✅ Updated merge reward: ${myMergeReward.toFixed(mergeDecimals)}`);
         }
 
         console.log(`📊 adjustShares Updated ${packageName}:`, {
