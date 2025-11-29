@@ -26562,31 +26562,41 @@ function stopAveragesPolling() {
  * Update the averages display with current data
  */
 function updateAveragesDisplay() {
-    console.log('📊 updateAveragesDisplay called');
-    const history = getPackageMetricsHistory();
-    console.log('📊 Package metrics history:', Object.keys(history).length, 'packages');
+    try {
+        console.log('📊 updateAveragesDisplay called');
+        const history = getPackageMetricsHistory();
+        console.log('📊 Package metrics history:', Object.keys(history).length, 'packages');
 
-    // Separate team and single packages
-    const teamPackages = [];
-    const singlePackages = [];
+        // Separate team and single packages
+        const teamPackages = [];
+        const singlePackages = [];
 
-    Object.keys(history).forEach(name => {
-        const pkg = history[name];
-        console.log(`📊 Package: ${name}, isTeam: ${pkg.isTeam}, snapshots: ${pkg.snapshots?.length || 0}`);
-        if (pkg.isTeam) {
-            teamPackages.push({ name, ...pkg });
-        } else {
-            singlePackages.push({ name, ...pkg });
-        }
-    });
+        Object.keys(history).forEach(name => {
+            const pkg = history[name];
+            console.log(`📊 Package: ${name}, isTeam: ${pkg.isTeam}, snapshots: ${pkg.snapshots?.length || 0}`);
+            if (pkg.isTeam) {
+                teamPackages.push({ name, ...pkg });
+            } else {
+                singlePackages.push({ name, ...pkg });
+            }
+        });
 
-    console.log(`📊 Team packages: ${teamPackages.length}, Single packages: ${singlePackages.length}`);
+        console.log(`📊 Team packages: ${teamPackages.length}, Single packages: ${singlePackages.length}`);
 
-    // Update Team Packages section
-    updateAveragesSection('team', teamPackages, history);
+        // Update Team Packages section
+        updateAveragesSection('team', teamPackages, history);
 
-    // Update Single Packages section
-    updateAveragesSection('single', singlePackages, history);
+        // Update Single Packages section
+        updateAveragesSection('single', singlePackages, history);
+    } catch (error) {
+        console.error('❌ Error in updateAveragesDisplay:', error);
+        // Show error state in UI
+        const teamList = document.getElementById('team-averages-list');
+        const singleList = document.getElementById('single-averages-list');
+        const errorHTML = `<div class="averages-no-data"><div class="averages-no-data-icon">⚠️</div><div class="averages-no-data-text">Error loading data. Check console for details.</div></div>`;
+        if (teamList) teamList.innerHTML = errorHTML;
+        if (singleList) singleList.innerHTML = errorHTML;
+    }
 }
 
 /**

@@ -8135,6 +8135,19 @@ body.light-mode .holdings-pnl-summary {
     font-size: 14px;
 }
 
+.averages-loading {
+    padding: 30px 20px;
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
 /* Light Mode */
 body.light-mode .averages-section {
     background: #f5f5f5;
