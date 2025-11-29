@@ -19738,7 +19738,6 @@ function createTeamPackageCard(pkg) {
                             <line x1="2" y1="12" x2="6" y2="12"/>
                             <line x1="18" y1="12" x2="22" y2="12"/>
                         </svg>
-                        <span class="team-stat-label">Probability</span>
                         <span class="team-stat-value">${probability}</span>
                     </div>
                     <div class="team-stat-item">
@@ -19748,7 +19747,6 @@ function createTeamPackageCard(pkg) {
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                         </svg>
-                        <span class="team-stat-label">Participants</span>
                         <span class="team-stat-value">${participants}</span>
                     </div>
                 </div>
@@ -19761,7 +19759,6 @@ function createTeamPackageCard(pkg) {
                             <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
                             <circle cx="12" cy="14" r="2" fill="currentColor"/>
                         </svg>
-                        <span class="team-stat-label">Shares</span>
                         <span class="team-stat-value highlight-orange">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
                     </div>
                     <div class="team-stat-item">
@@ -19770,7 +19767,6 @@ function createTeamPackageCard(pkg) {
                             <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
                             <circle cx="12" cy="14" r="2" fill="currentColor"/>
                         </svg>
-                        <span class="team-stat-label">Available</span>
                         <span class="team-stat-value highlight-green">${availableShares}</span>
                     </div>
                 </div>
@@ -19793,7 +19789,6 @@ function createTeamPackageCard(pkg) {
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <span class="price-label">Per Share</span>
                     <span class="price-value">$${pricePerShareAUD}</span>
                 </div>
                 <div class="price-row" style="margin-bottom: 0;">
@@ -19801,7 +19796,6 @@ function createTeamPackageCard(pkg) {
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <span class="price-label">Block Reward</span>
                     <span class="price-value">${blockReward} ${crypto}</span>
                 </div>
                 <div class="share-selector">
@@ -22786,7 +22780,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             <circle cx="12" cy="12" r="10"/>
                             <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <span class="price-label">Price</span>
                         <span class="price-value" id="price-${packageId}">$${priceAUD}</span>
                     </div>
                     <div class="buy-button-row">
@@ -22907,7 +22900,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <line x1="2" y1="12" x2="6" y2="12"/>
                                 <line x1="18" y1="12" x2="22" y2="12"/>
                             </svg>
-                            <span class="team-stat-label">Probability</span>
                             <span class="team-stat-value" id="team-probability-${packageIdForElements}">${pkg.probability || 'N/A'}</span>
                         </div>
                         <div class="team-stat-item">
@@ -22915,7 +22907,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <circle cx="12" cy="12" r="10"/>
                                 <polyline points="12,6 12,12 16,14"/>
                             </svg>
-                            <span class="team-stat-label">Duration</span>
                             <span class="team-stat-value" id="team-duration-${packageIdForElements}">${pkg.duration || 'N/A'}</span>
                         </div>
                         ${pkg.hashrate ? `
@@ -22923,7 +22914,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                             </svg>
-                            <span class="team-stat-label">Hashrate</span>
                             <span class="team-stat-value" id="team-hashrate-${packageIdForElements}">${pkg.hashrate}</span>
                         </div>
                         ` : ''}
@@ -22938,7 +22928,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                             </svg>
-                            <span class="team-stat-label">Participants</span>
                             <span class="team-stat-value highlight-green">${participants}</span>
                         </div>
                         <div class="team-stat-item">
@@ -22947,7 +22936,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
                                 <circle cx="12" cy="14" r="2" fill="currentColor"/>
                             </svg>
-                            <span class="team-stat-label">Shares</span>
                             <span class="team-stat-value highlight-orange" id="team-shares-${packageIdForElements}">(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})</span>
                         </div>
                         ${countdownDisplay ? `
@@ -22956,7 +22944,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <circle cx="12" cy="12" r="10"/>
                                 <polyline points="12,6 12,12 16,14"/>
                             </svg>
-                            <span class="team-stat-label">Starting</span>
                             ${countdownDisplay}
                         </div>
                         ` : ''}
@@ -22979,7 +22966,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             <circle cx="12" cy="12" r="10"/>
                             <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <span class="price-label">Per Share</span>
                         <span class="price-value">$${pricePerShareAUD}</span>
                     </div>
                     ${teamShareSelector}
