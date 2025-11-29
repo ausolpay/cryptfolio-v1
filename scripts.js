@@ -25688,6 +25688,9 @@ function startEasyMiningPolling() {
         lastEasyMiningPollTime = Date.now();
     }, 5000);
 
+    // Start background metrics capture every 30 seconds (captures package data for Averages page)
+    startBackgroundMetricsCapture();
+
     // Start watchdog to ensure polling stays alive
     startPollingWatchdog();
 
@@ -25704,6 +25707,63 @@ function stopEasyMiningPolling() {
     if (pollingWatchdogInterval) {
         clearInterval(pollingWatchdogInterval);
         pollingWatchdogInterval = null;
+    }
+
+    // Stop background metrics capture
+    stopBackgroundMetricsCapture();
+}
+
+// =============================================================================
+// BACKGROUND PACKAGE METRICS CAPTURE
+// =============================================================================
+
+let backgroundMetricsInterval = null;
+
+/**
+ * Start background metrics capture - runs every 30 seconds to capture package data
+ * even when user is not on the Buy Packages page
+ */
+function startBackgroundMetricsCapture() {
+    stopBackgroundMetricsCapture();
+
+    console.log('📊 Starting background metrics capture (30s interval)...');
+
+    // Capture immediately on start
+    captureBackgroundMetrics();
+
+    // Then capture every 30 seconds
+    backgroundMetricsInterval = setInterval(() => {
+        captureBackgroundMetrics();
+    }, 30000);
+}
+
+function stopBackgroundMetricsCapture() {
+    if (backgroundMetricsInterval) {
+        clearInterval(backgroundMetricsInterval);
+        backgroundMetricsInterval = null;
+        console.log('⏹️ Stopped background metrics capture');
+    }
+}
+
+/**
+ * Capture metrics in the background by loading buy packages data
+ */
+async function captureBackgroundMetrics() {
+    // Skip if already on Buy Packages page (it has its own polling)
+    const buyPackagesPage = document.getElementById('buy-packages-page');
+    if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+        return;
+    }
+
+    try {
+        // Silently load and capture package data
+        await loadBuyPackagesDataOnPage();
+        console.log('📊 Background metrics captured');
+    } catch (error) {
+        // Silently fail - don't spam console with errors
+        if (Math.random() < 0.1) {
+            console.warn('⚠️ Background metrics capture failed:', error.message);
+        }
     }
 }
 
