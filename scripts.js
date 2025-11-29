@@ -16571,7 +16571,7 @@ function updateTeamAlertCardValues(pkg) {
         if (probEl) probEl.textContent = pkg.probability;
     }
 
-    // Update hashrate with live speed calculation
+    // Update hashrate with live speed calculation - preserve hashrate-unit styling
     const hashrateEl = document.getElementById(`alert-hashrate-${packageId}`);
     if (hashrateEl && pkg.projectedSpeed) {
         // Recalculate live speed based on current fill percentage
@@ -16580,9 +16580,15 @@ function updateTeamAlertCardValues(pkg) {
         const maxSpeed = pkg.projectedSpeed.toFixed(4);
         // Use stored displayUnit or get it dynamically
         const unit = pkg.displayUnit || getPackageDisplayUnit(pkg);
-        hashrateEl.textContent = `${currentSpeed} / ${maxSpeed} ${unit}/s`;
+        hashrateEl.innerHTML = `${currentSpeed} / ${maxSpeed}<span class="hashrate-unit"> ${unit}/s</span>`;
     } else if (hashrateEl && pkg.hashrate) {
-        hashrateEl.textContent = pkg.hashrate;
+        // Parse hashrate to separate value from unit for styling
+        const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+        if (match) {
+            hashrateEl.innerHTML = `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+        } else {
+            hashrateEl.textContent = pkg.hashrate;
+        }
     }
 
     // Update participants
