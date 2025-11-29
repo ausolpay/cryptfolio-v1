@@ -1949,6 +1949,19 @@ input[type="number"], .add-crypto input[type="text"], .login-form input[type="em
     min-height: 44px; /* Match button height */
 }
 
+/* Holdings input in crypto containers - stable focus on mobile */
+.crypto-container input[type="number"] {
+    -webkit-user-select: text;
+    user-select: text;
+    touch-action: manipulation; /* Prevents zoom and other touch gestures that disrupt typing */
+}
+
+.crypto-container input[type="number"]:focus {
+    outline: 2px solid #ffa500;
+    outline-offset: 2px;
+    border-color: #ffa500;
+}
+
 .login-buttons, .register-buttons {
     margin-top: 10px;
 }

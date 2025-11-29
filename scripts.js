@@ -8048,6 +8048,12 @@ function formatAudPrice(price) {
 }
 
 function sortContainersByValue() {
+    // Skip sorting if user is focused on a holdings input to prevent disrupting typing
+    const activeElement = document.activeElement;
+    if (activeElement && activeElement.id && activeElement.id.endsWith('-input')) {
+        return; // Don't sort while user is entering holdings
+    }
+
     const containers = Array.from(document.getElementsByClassName('crypto-container'));
     const containerParent = document.getElementById('crypto-containers');
 
@@ -9065,28 +9071,67 @@ if (!conversionRateInterval) {
 
 
 let focusedElement = null;
+let focusedElementId = null;
 let focusedElementSelectionStart = null;
 let focusedElementSelectionEnd = null;
+let focusedElementValue = null;
 
 // Save focus details globally before DOM updates
 function saveFocusDetails() {
     focusedElement = document.activeElement;
     if (focusedElement && focusedElement.tagName === 'INPUT') {
+        focusedElementId = focusedElement.id;
         focusedElementSelectionStart = focusedElement.selectionStart;
         focusedElementSelectionEnd = focusedElement.selectionEnd;
+        focusedElementValue = focusedElement.value;
     } else {
         focusedElement = null;
+        focusedElementId = null;
+        focusedElementValue = null;
     }
 }
 
 // Restore focus details after DOM updates
 function restoreFocusDetails() {
+    // First try to restore by element reference
     if (focusedElement && document.body.contains(focusedElement)) {
         focusedElement.focus();
+        // Restore the value if it was changed during update
+        if (focusedElementValue !== null && focusedElement.value !== focusedElementValue) {
+            focusedElement.value = focusedElementValue;
+        }
         if (focusedElement.setSelectionRange && focusedElementSelectionStart !== null) {
-            focusedElement.setSelectionRange(focusedElementSelectionStart, focusedElementSelectionEnd);
+            try {
+                focusedElement.setSelectionRange(focusedElementSelectionStart, focusedElementSelectionEnd);
+            } catch (e) {
+                // Some input types don't support setSelectionRange
+            }
         }
     }
+    // Fallback: try to find element by ID (useful after DOM rebuild)
+    else if (focusedElementId) {
+        const element = document.getElementById(focusedElementId);
+        if (element) {
+            element.focus();
+            if (focusedElementValue !== null) {
+                element.value = focusedElementValue;
+            }
+            if (element.setSelectionRange && focusedElementSelectionStart !== null) {
+                try {
+                    element.setSelectionRange(focusedElementSelectionStart, focusedElementSelectionEnd);
+                } catch (e) {
+                    // Some input types don't support setSelectionRange
+                }
+            }
+        }
+    }
+}
+
+// Check if user is currently typing in a holdings input
+function isUserTypingInHoldingsInput() {
+    const activeElement = document.activeElement;
+    return activeElement && activeElement.tagName === 'INPUT' &&
+           activeElement.id && activeElement.id.endsWith('-input');
 }
 
 async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') {
