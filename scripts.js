@@ -22591,45 +22591,38 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
                         // Fallback CoinGecko icon URLs for when user doesn't have crypto in portfolio
                         const fallbackIcons = {
-                            'bitcoin': 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
-                            'bitcoin-cash': 'https://assets.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
-                            'ravencoin': 'https://assets.coingecko.com/coins/images/3412/small/ravencoin.png',
-                            'dogecoin': 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
-                            'litecoin': 'https://assets.coingecko.com/coins/images/2/small/litecoin.png',
-                            'kaspa': 'https://assets.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
-                            'ethereum-classic': 'https://assets.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
+                            'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
+                            'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+                            'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
+                            'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
+                            'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
+                            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+                            'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
                         };
-
-                        // Get icon URL - try user's portfolio first, then fallback
-                        const cryptoId = cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase();
-                        const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
-                        const iconUrl = userCrypto?.thumb
-                            ? userCrypto.thumb.replace('/thumb/', '/small/')
-                            : (fallbackIcons[cryptoId] || '');
 
                         // For dual-crypto (Palladium), get the merge crypto icon
                         let dualIconUrl = '';
                         const isPalladium = pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium');
 
-                        if (isPalladium) {
-                            let mergeId = '';
-                            if (pkg.mergeCrypto) {
-                                mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || pkg.mergeCrypto?.toLowerCase();
-                            } else {
-                                // Infer merge crypto from package
-                                if (pkg.crypto?.toUpperCase() === 'DOGE' || pkg.name?.toUpperCase().includes('DOGE')) {
-                                    mergeId = 'litecoin';
-                                } else if (pkg.crypto?.toUpperCase() === 'LTC' || pkg.name?.toUpperCase().includes('LTC')) {
-                                    mergeId = 'dogecoin';
-                                }
-                            }
+                        // Get icon URL - for Palladium use mainCrypto, otherwise use crypto
+                        const cryptoId = isPalladium
+                            ? (cryptoIdMap[pkg.mainCrypto?.toUpperCase()] || pkg.crypto?.toLowerCase())
+                            : (cryptoIdMap[pkg.crypto?.toUpperCase()] || pkg.crypto?.toLowerCase());
+                        const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+                        const iconUrl = userCrypto?.thumb
+                            ? userCrypto.thumb.replace('/thumb/', '/small/')
+                            : (fallbackIcons[cryptoId] || '');
 
+                        if (isPalladium) {
+                            // Use pkg.mergeCrypto directly for Palladium
+                            const mergeId = cryptoIdMap[pkg.mergeCrypto?.toUpperCase()] || '';
                             if (mergeId) {
                                 const mergeCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === mergeId);
                                 dualIconUrl = mergeCrypto?.thumb
                                     ? mergeCrypto.thumb.replace('/thumb/', '/small/')
                                     : (fallbackIcons[mergeId] || '');
                             }
+                            console.log('🎈 Floating icons (Palladium):', { cryptoId, mergeId, iconUrl, dualIconUrl });
                         }
 
                         // Calculate base animation speed from probability
