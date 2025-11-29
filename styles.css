@@ -6035,7 +6035,7 @@ body.light-mode .package-section {
 .package-stat-grid {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 8px;
     width: 100%;
 }
 
@@ -6139,14 +6139,13 @@ body.light-mode .stat-value-medium {
     display: flex;
     align-items: center;
     gap: 3px;
-    font-size: 0.95em;
 }
 
 .palladium-stats-row .probability-icon,
 .palladium-stats-row .clock-icon,
 .palladium-stats-row .speed-icon {
-    width: 0.9em;
-    height: 0.9em;
+    width: 1em;
+    height: 1em;
 }
 
 /* Rewards Section */
