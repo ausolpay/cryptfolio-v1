@@ -6271,7 +6271,10 @@ body.light-mode .stat-value-medium {
     aspect-ratio: 1;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center;
     background-color: #fff;
+    transform: scale(1.15);
+    overflow: hidden;
 }
 
 /* Palladium solo: two icons just slightly overlapping */
