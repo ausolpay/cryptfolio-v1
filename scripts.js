@@ -14288,7 +14288,7 @@ function calculateTimeRemaining(orderOrTimestamp) {
         if (days > 0) {
             return `${days}d ${hours}h`;
         }
-        return `${hours}h ${minutes}m`;
+        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
     }
 
     // Fallback to endTimestamp calculation for completed packages or if estimateDurationInSeconds is not available
@@ -14318,7 +14318,7 @@ function calculateTimeRemaining(orderOrTimestamp) {
     if (days > 0) {
         return `${days}d ${hours}h`;
     }
-    return `${hours}h ${minutes}m`;
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
 // Helper function to calculate progress percentage
@@ -16314,13 +16314,14 @@ function createTeamPackageRecommendationCard(pkg) {
                 const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
 
+                const countdownText = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
                 countdownInfo = `
                     <div class="buy-package-stat">
                         <span>Starting:</span>
-                        <span id="countdown-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                        <span id="countdown-${pkg.id}" style="color: #FFA500;">${countdownText}</span>
                     </div>
                 `;
-                console.log(`📅 ${pkg.name} alert - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
+                console.log(`📅 ${pkg.name} alert - Participants: ${participants} (>= 2) → Countdown: ${countdownText}`);
             }
         } else {
             // Countdown has ended - show "Starting Soon!" until package goes active
@@ -17970,11 +17971,13 @@ function updatePackageDetailLive() {
             const hours = Math.floor(remainingMs / 3600000);
             const minutes = Math.floor((remainingMs % 3600000) / 60000);
             const seconds = Math.floor((remainingMs % 60000) / 1000);
-            countdownEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            countdownEl.textContent = hours > 0
+                ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         } else if (!pkg.active) {
             countdownEl.textContent = 'Completed';
         } else {
-            countdownEl.textContent = '00:00:00';
+            countdownEl.textContent = '00:00';
         }
     }
 
@@ -21923,7 +21926,7 @@ function updateTeamPackageCountdowns() {
                     const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
 
-                    countdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+                    countdownElement.textContent = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
                     countdownElement.style.color = '#FFA500';
 
                     // AUTO-CLEAR LOGIC: Check if countdown <= 30 seconds AND auto-clear is enabled
@@ -22080,7 +22083,7 @@ function updateTeamPackageCountdowns() {
                     const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
                     const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
-                    alertCountdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+                    alertCountdownElement.textContent = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
                     alertCountdownElement.style.color = '#FFA500';
                     alertCountdownElement.style.fontWeight = 'normal';
                     alertCountdownElement.classList.remove('mining-lobby-fade');
@@ -22252,14 +22255,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
                     const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+                    const countdownText = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
 
                     countdownInfo = `
                         <div class="buy-package-stat">
                             <span>Starting:</span>
-                            <span id="countdown-buy-${pkg.id}" style="color: #FFA500;">${hours}h ${minutes}m ${seconds}s</span>
+                            <span id="countdown-buy-${pkg.id}" style="color: #FFA500;">${countdownText}</span>
                         </div>
                     `;
-                    console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${hours}h ${minutes}m ${seconds}s`);
+                    console.log(`📅 ${pkg.name} - Participants: ${participants} (>= 2) → Countdown: ${countdownText}`);
                 }
             } else {
                 // Countdown has ended - show "Starting Soon!" until package goes active
@@ -22976,7 +22980,9 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             if (timeUntilStart > 0 && participants >= 2) {
                 const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
                 const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
-                countdownDisplay = `<span class="team-stat-value" id="countdown-buy-${pkg.id}" style="color: #ffa500;">${hours}h ${minutes}m</span>`;
+                const seconds = Math.floor((timeUntilStart % (1000 * 60)) / 1000);
+                const countdownText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`;
+                countdownDisplay = `<span class="team-stat-value" id="countdown-buy-${pkg.id}" style="color: #ffa500;">${countdownText}</span>`;
             } else if (participants < 2) {
                 countdownDisplay = `<span class="team-stat-value mining-lobby-fade" id="countdown-buy-${pkg.id}" style="color: #ffa500;">Lobby</span>`;
             } else {
