@@ -1187,13 +1187,14 @@ a {
 
 .strip-floating-icon {
     position: absolute;
-    opacity: 0.15;
+    opacity: 0.33;
     border-radius: 50%;
     overflow: hidden;
     pointer-events: none;
     will-change: transform;
-    animation: floatIconStrip var(--float-speed, 20s) ease-in-out infinite;
+    animation: floatIconStrip var(--float-speed, 15s) ease-in-out infinite;
     animation-delay: var(--float-delay, 0s);
+    transition: width 1s ease-out, height 1s ease-out;
 }
 
 .strip-floating-icon img {
@@ -1206,16 +1207,19 @@ a {
 
 @keyframes floatIconStrip {
     0% {
-        transform: translateX(0) translateY(0) rotate(0deg);
+        transform: translate(0, 0) rotate(0deg);
     }
-    33% {
-        transform: translateX(var(--float-x, 20px)) translateY(var(--float-y, -15px)) rotate(var(--rotate-amount, 3deg));
+    25% {
+        transform: translate(var(--float-x, 30px), var(--float-y-up, -40px)) rotate(var(--rotate-amount, 5deg));
     }
-    66% {
-        transform: translateX(calc(var(--float-x, 20px) * -0.5)) translateY(calc(var(--float-y, -15px) * -0.8)) rotate(calc(var(--rotate-amount, 3deg) * -1));
+    50% {
+        transform: translate(calc(var(--float-x, 30px) * -0.5), 0) rotate(0deg);
+    }
+    75% {
+        transform: translate(calc(var(--float-x, 30px) * -1), var(--float-y-down, 40px)) rotate(calc(var(--rotate-amount, 5deg) * -1));
     }
     100% {
-        transform: translateX(0) translateY(0) rotate(0deg);
+        transform: translate(0, 0) rotate(0deg);
     }
 }
 
