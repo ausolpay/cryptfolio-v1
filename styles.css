@@ -8267,7 +8267,7 @@ body.light-mode .averages-stat-value {
 
     .averages-section {
         border-radius: 12px;
-        margin-bottom: 20px;
+        margin: 0 5px 20px 5px;
     }
 
     .averages-overall-stats {
