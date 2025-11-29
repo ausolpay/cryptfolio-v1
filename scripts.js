@@ -8478,10 +8478,37 @@ function initStripFloatingIcons() {
 }
 
 /**
- * Refresh strip floating icons (call when cryptos change)
+ * Refresh strip floating icons with smart update (preserves animations)
+ * Only adds new icons or removes missing ones - doesn't restart existing animations
  */
 function refreshStripFloatingIcons() {
-    initStripFloatingIcons();
+    const container = document.getElementById('strip-floating-icons-container');
+    if (!container || !loggedInUser || !users[loggedInUser]?.cryptos) return;
+
+    const cryptos = users[loggedInUser].cryptos;
+
+    // Calculate current crypto data
+    const cryptoData = cryptos.map(crypto => {
+        const price = cryptoPrices[crypto.id]?.aud || 0;
+        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        const value = price * holdings;
+        return { id: crypto.id, thumb: crypto.thumb, value };
+    }).filter(c => c.thumb && c.value > 0);
+
+    // Get existing and new icon IDs
+    const existingIds = new Set(Array.from(container.children).map(el => el.dataset.cryptoId));
+    const newIds = new Set(cryptoData.map(c => c.id));
+
+    // Check if any icons need to be added or removed
+    const needsAdd = cryptoData.some(c => !existingIds.has(c.id));
+    const needsRemove = Array.from(existingIds).some(id => !newIds.has(id));
+
+    // Only reinitialize if cryptos were added/removed (not for value changes)
+    if (needsAdd || needsRemove) {
+        console.log('🎨 Strip icons: crypto list changed, reinitializing...');
+        initStripFloatingIcons();
+    }
+    // Otherwise, leave animations running - don't update size/position to preserve animation
 }
 
 // =============================================================================
@@ -17291,6 +17318,8 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
         if (unprocessedBlocks.length === 0) {
             console.log('   ℹ️ No new blocks to process');
+            isProcessingRewards = false; // Unlock before returning
+            return; // Exit early - don't refresh icons or update holdings unnecessarily
         }
 
         // Group blocks by cryptoId for efficient processing
