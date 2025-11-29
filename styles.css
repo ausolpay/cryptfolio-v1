@@ -4895,6 +4895,60 @@ body.light-mode .package-card .stat-value-medium {
     color: #ffa500;
 }
 
+/* Completed Packages with Rewards - Floating Icons */
+.package-card .rewards-info.has-floating-icons {
+    position: relative;
+    overflow: hidden;
+    min-height: 80px;
+}
+
+.completed-reward-floating-icons {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.completed-floating-icon {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    opacity: 0.35;
+    animation: completedFloatRandom var(--float-speed, 5s) ease-in-out infinite;
+    animation-delay: var(--float-delay, 0s);
+    will-change: transform;
+}
+
+@keyframes completedFloatRandom {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(var(--range-x, 30px), calc(var(--range-y, 20px) * -1)) rotate(var(--rotation, 5deg));
+    }
+    50% {
+        transform: translate(calc(var(--range-x, 30px) * -0.5), calc(var(--range-y, 20px) * 0.5)) rotate(calc(var(--rotation, 5deg) * -0.5));
+    }
+    75% {
+        transform: translate(calc(var(--range-x, 30px) * -1), var(--range-y, 20px)) rotate(calc(var(--rotation, 5deg) * -1));
+    }
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+}
+
+.package-card .rewards-info.has-floating-icons .section-label,
+.package-card .rewards-info.has-floating-icons .reward-display {
+    position: relative;
+    z-index: 1;
+}
+
 /* Team Info Section */
 .package-card .team-info .team-stats-row {
     display: flex;

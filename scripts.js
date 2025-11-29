@@ -14982,6 +14982,14 @@ function displayActivePackages() {
             }
         }
 
+        // Generate floating icons for completed packages with rewards (blockFound + reward > 0)
+        let completedFloatingIconsHtml = '';
+        if (pkg.blockFound && (pkg.reward > 0 || (pkg.rewardSecondary > 0 && pkg.cryptoSecondary))) {
+            const primaryIconUrl = getCryptoIcon(pkg.crypto);
+            const secondaryIconUrl = isPalladium ? getCryptoIcon(pkg.cryptoSecondary) : '';
+            completedFloatingIconsHtml = generateRewardFloatingIcons(pkg.id, primaryIconUrl, secondaryIconUrl, isPalladium);
+        }
+
         // Robot icon for auto-bought packages (flashing, same style as rocket)
         const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
 
@@ -15219,7 +15227,8 @@ function displayActivePackages() {
                 ` : ''}
 
                 <!-- Reward Section -->
-                <div class="package-section rewards-info">
+                <div class="package-section rewards-info ${pkg.blockFound && (pkg.reward > 0 || pkg.rewardSecondary > 0) ? 'has-floating-icons' : ''}">
+                    ${completedFloatingIconsHtml}
                     <div class="section-label">${pkg.blockFound ? 'Reward Earned' : (pkg.active ? 'Potential Reward' : 'No Reward')}</div>
                     <div class="reward-display">
                         <div class="reward-line">
@@ -26387,6 +26396,67 @@ function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
                 alt="">`;
         }
     });
+
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Generate floating icons for completed packages with rewards
+ * Creates 12 fast-moving icons with random movement patterns
+ * For Palladium: 6 of each crypto (DOGE + LTC = 12 total)
+ */
+function generateRewardFloatingIcons(pkgId, primaryIconUrl, secondaryIconUrl, isPalladium) {
+    const iconCount = isPalladium ? 6 : 12; // 6 each for Palladium, 12 of one for others
+    let html = `<div class="completed-reward-floating-icons" data-pkg-id="${pkgId}">`;
+
+    // Generate primary crypto icons
+    for (let i = 0; i < iconCount; i++) {
+        const delay = -(Math.random() * 10); // Random start point in animation
+        const startX = Math.random() * 90 + 5; // 5-95%
+        const startY = Math.random() * 80 + 10; // 10-90%
+        const speed = 3 + Math.random() * 4; // Fast: 3-7 seconds
+        const rangeX = 30 + Math.random() * 50; // Wide movement
+        const rangeY = 25 + Math.random() * 40;
+        const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+        const rotation = -15 + Math.random() * 30; // -15 to +15 degrees
+
+        html += `<img class="completed-floating-icon" src="${primaryIconUrl}"
+            style="--float-delay: ${delay.toFixed(1)}s;
+                   --float-speed: ${speed.toFixed(1)}s;
+                   --range-x: ${rangeX.toFixed(0)}px;
+                   --range-y: ${rangeY.toFixed(0)}px;
+                   --rotation: ${rotation.toFixed(0)}deg;
+                   left: ${startX.toFixed(0)}%;
+                   top: ${startY.toFixed(0)}%;
+                   animation-direction: ${direction};"
+            alt="" onerror="this.style.display='none'">`;
+    }
+
+    // For Palladium: add secondary crypto icons (6 more)
+    if (isPalladium && secondaryIconUrl) {
+        for (let i = 0; i < iconCount; i++) {
+            const delay = -(Math.random() * 10);
+            const startX = Math.random() * 90 + 5;
+            const startY = Math.random() * 80 + 10;
+            const speed = 3 + Math.random() * 4;
+            const rangeX = 30 + Math.random() * 50;
+            const rangeY = 25 + Math.random() * 40;
+            const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+            const rotation = -15 + Math.random() * 30;
+
+            html += `<img class="completed-floating-icon" src="${secondaryIconUrl}"
+                style="--float-delay: ${delay.toFixed(1)}s;
+                       --float-speed: ${speed.toFixed(1)}s;
+                       --range-x: ${rangeX.toFixed(0)}px;
+                       --range-y: ${rangeY.toFixed(0)}px;
+                       --rotation: ${rotation.toFixed(0)}deg;
+                       left: ${startX.toFixed(0)}%;
+                       top: ${startY.toFixed(0)}%;
+                       animation-direction: ${direction};"
+                alt="" onerror="this.style.display='none'">`;
+        }
+    }
 
     html += '</div>';
     return html;
