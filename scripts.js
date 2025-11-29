@@ -22800,30 +22800,201 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             </div>
         `;
     } else {
-        // Team packages keep original layout for now
+        // Team packages - NEW STYLED LAYOUT (matching solo packages)
+        const cryptoIdMap = {
+            'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
+            'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+        };
+        const fallbackIcons = {
+            'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+            'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png',
+            'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
+            'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
+            'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
+            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+            'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
+        };
+        const floatingFallbackIcons = {
+            'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
+            'bitcoin-cash': 'https://coin-images.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+            'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
+            'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
+            'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
+            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+            'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
+        };
+
+        // Get crypto for icons
+        const teamCrypto = pkg.mainCrypto || pkg.crypto || 'BTC';
+        const bgCryptoId = cryptoIdMap[teamCrypto?.toUpperCase()] || teamCrypto?.toLowerCase();
+        const userCrypto = users[loggedInUser]?.cryptos?.find(c => c.id === bgCryptoId);
+        const bgIconUrl = userCrypto?.thumb
+            ? userCrypto.thumb.replace('/thumb/', '/large/')
+            : (fallbackIcons[bgCryptoId] || '');
+        const floatingIconUrl = userCrypto?.thumb
+            ? userCrypto.thumb.replace('/thumb/', '/small/')
+            : (floatingFallbackIcons[bgCryptoId] || '');
+
+        // Static background icon
+        const staticBgIcon = `<div class="static-bg-icons">
+            <img class="static-bg-icon" src="${bgIconUrl}" alt="${teamCrypto}" onerror="this.style.display='none'">
+        </div>`;
+
+        // Floating icons (1-3 based on shares owned)
+        const iconCount = myBoughtShares > 0 ? Math.min(3, Math.max(1, Math.ceil(myBoughtShares / 5))) : 1;
+        getOrCreateFloatingIconsConfig(`team-${pkg.name}`, floatingIconUrl, '', iconCount, false);
+        const floatingIconsHtml = generateFloatingIconsHtml(`team-${pkg.name}`, 12, null);
+
+        // Calculate participants and available shares
+        const participants = pkg.numberOfParticipants || 0;
+        const availableShares = totalAvailableShares - totalBoughtShares;
+
+        // Calculate share price in AUD
+        const sharePrice = 0.0001;
+        const pricePerShareAUD = convertBTCtoAUD(sharePrice).toFixed(2);
+
+        // Calculate reward display
+        let rewardDisplay = '';
+        let rewardValueDisplay = '';
+        if (pkg.isDualCrypto) {
+            const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
+            rewardDisplay = `
+                <span class="reward-amount" id="team-reward-merge-${packageIdForElements}">${(pkg.mergeBlockReward || 0).toFixed(mergeDecimals)}</span>
+                <span class="reward-symbol">${pkg.mergeCrypto}</span>
+                <span style="margin: 0 4px;">+</span>
+                <span class="reward-amount" id="team-reward-main-${packageIdForElements}">${(pkg.blockReward || 0).toFixed(4)}</span>
+                <span class="reward-symbol">${pkg.mainCrypto}</span>
+            `;
+        } else {
+            const decimals = teamCrypto === 'BTC' || teamCrypto === 'BCH' ? 4 : 2;
+            rewardDisplay = `
+                <span class="reward-amount" id="team-reward-${packageIdForElements}">${(pkg.blockReward || 0).toFixed(decimals)}</span>
+                <span class="reward-symbol">${teamCrypto}</span>
+            `;
+        }
+        rewardValueDisplay = `<span class="reward-fiat" id="team-reward-value-${packageIdForElements}">≈ $${formatNumber(rewardAUD)}</span>`;
+
+        // Countdown display for team section
+        let countdownDisplay = '';
+        if (pkg.lifeTimeTill) {
+            const startTime = new Date(pkg.lifeTimeTill);
+            const now = new Date();
+            const timeUntilStart = startTime - now;
+            if (timeUntilStart > 0 && participants >= 2) {
+                const hours = Math.floor(timeUntilStart / (1000 * 60 * 60));
+                const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+                countdownDisplay = `<span class="team-stat-value" id="countdown-buy-${pkg.id}" style="color: #ffa500;">${hours}h ${minutes}m</span>`;
+            } else if (participants < 2) {
+                countdownDisplay = `<span class="team-stat-value mining-lobby-fade" id="countdown-buy-${pkg.id}" style="color: #ffa500;">Lobby</span>`;
+            } else {
+                countdownDisplay = `<span class="team-stat-value" id="countdown-buy-${pkg.id}" style="color: #4CAF50;">Soon!</span>`;
+            }
+        } else if (participants < 2) {
+            countdownDisplay = `<span class="team-stat-value mining-lobby-fade" id="countdown-buy-${pkg.id}" style="color: #ffa500;">Lobby</span>`;
+        }
+
         card.innerHTML = `
+            ${staticBgIcon}
             ${robotHtml}
-            <h4>${pkg.name}${isRecommended ? ' ⭐' : ''}</h4>
-            <div class="buy-package-stats">
-                ${probabilityInfo}
-                <div class="buy-package-stat">
-                    <span>Duration:</span>
-                    <span id="duration-${packageIdForElements}">${pkg.duration}</span>
+            <div class="package-header">
+                <h4>👥 ${pkg.name}${isRecommended ? ' <span class="recommended-star">⭐</span>' : ''}</h4>
+            </div>
+            <div class="package-body">
+                <div class="package-section mining-info">
+                    <div class="team-stats-grid">
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                <line x1="12" y1="2" x2="12" y2="6"/>
+                                <line x1="12" y1="18" x2="12" y2="22"/>
+                                <line x1="2" y1="12" x2="6" y2="12"/>
+                                <line x1="18" y1="12" x2="22" y2="12"/>
+                            </svg>
+                            <span class="team-stat-value" id="team-probability-${packageIdForElements}">${pkg.probability || 'N/A'}</span>
+                        </div>
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            <span class="team-stat-value">${participants} <span class="stat-unit">miners</span></span>
+                        </div>
+                        ${countdownDisplay ? `
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12,6 12,12 16,14"/>
+                            </svg>
+                            ${countdownDisplay}
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
-                ${hashrateInfo}
-                ${sharesInfo}
-                ${rewardInfo}
-                <div class="buy-package-stat">
-                    <span>Price:</span>
-                    <span id="price-${packageId}">$${priceAUD} AUD</span>
+                <div class="package-section share-info">
+                    <div class="team-stats-grid three-col">
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                                <path d="M16 7V5a4 4 0 0 0-8 0v2"/>
+                                <circle cx="12" cy="14" r="2" fill="currentColor"/>
+                            </svg>
+                            <span class="team-stat-label">Available</span>
+                            <span class="team-stat-value highlight-green">${availableShares}</span>
+                        </div>
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                <path d="M2 17l10 5 10-5"/>
+                                <path d="M2 12l10 5 10-5"/>
+                            </svg>
+                            <span class="team-stat-label">Pool</span>
+                            <span class="team-stat-value">${totalBoughtShares}</span>
+                        </div>
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            <span class="team-stat-label">Mine</span>
+                            <span class="team-stat-value highlight-orange" id="team-my-shares-${packageIdForElements}">${myBoughtShares}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="package-section rewards-info">
+                    <div class="section-label">Block Reward</div>
+                    ${floatingIconsHtml}
+                    <div class="reward-display">
+                        <div class="reward-line">
+                            <img class="reward-crypto-icon" src="${floatingIconUrl}" alt="${teamCrypto}" onerror="this.style.display='none'">
+                            ${rewardDisplay}
+                            ${rewardValueDisplay}
+                        </div>
+                    </div>
+                </div>
+                <div class="package-section price-info team-price-section">
+                    <div class="team-price-grid">
+                        <div class="team-price-item">
+                            <svg class="team-stat-icon small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                            </svg>
+                            <span class="price-label">Per Share</span>
+                            <span class="price-value">$${pricePerShareAUD}</span>
+                        </div>
+                    </div>
+                    ${teamShareSelector}
+                    ${myBoughtShares > 0 ? `
+                    <div class="buy-button-row">
+                        <button class="buy-now-btn clear-shares-btn" onclick="clearTeamSharesManual('${pkg.apiData?.id || pkg.id}', '${pkg.name}')">
+                            Clear Shares
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
-            ${teamShareSelector}
-            ${pkg.isTeam && myBoughtShares > 0 ? `
-                <button class="buy-now-btn" style="background-color: #d32f2f; margin-top: 10px; width: 100%;" onclick="clearTeamSharesManual('${pkg.apiData?.id || pkg.id}', '${pkg.name}')">
-                    Clear Shares
-                </button>
-            ` : ''}
         `;
     }
 
