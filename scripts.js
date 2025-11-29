@@ -26562,7 +26562,9 @@ function stopAveragesPolling() {
  * Update the averages display with current data
  */
 function updateAveragesDisplay() {
+    console.log('📊 updateAveragesDisplay called');
     const history = getPackageMetricsHistory();
+    console.log('📊 Package metrics history:', Object.keys(history).length, 'packages');
 
     // Separate team and single packages
     const teamPackages = [];
@@ -26570,12 +26572,15 @@ function updateAveragesDisplay() {
 
     Object.keys(history).forEach(name => {
         const pkg = history[name];
+        console.log(`📊 Package: ${name}, isTeam: ${pkg.isTeam}, snapshots: ${pkg.snapshots?.length || 0}`);
         if (pkg.isTeam) {
             teamPackages.push({ name, ...pkg });
         } else {
             singlePackages.push({ name, ...pkg });
         }
     });
+
+    console.log(`📊 Team packages: ${teamPackages.length}, Single packages: ${singlePackages.length}`);
 
     // Update Team Packages section
     updateAveragesSection('team', teamPackages, history);
@@ -26588,14 +26593,23 @@ function updateAveragesDisplay() {
  * Update a specific averages section (team or single)
  */
 function updateAveragesSection(type, packages, allHistory) {
+    console.log(`📊 updateAveragesSection called for: ${type}`);
+
     const statsContainer = document.getElementById(`${type}-overall-stats`);
     const listContainer = document.getElementById(`${type}-averages-list`);
 
-    if (!statsContainer || !listContainer) return;
+    console.log(`📊 statsContainer (${type}-overall-stats):`, statsContainer ? 'found' : 'NOT FOUND');
+    console.log(`📊 listContainer (${type}-averages-list):`, listContainer ? 'found' : 'NOT FOUND');
+
+    if (!statsContainer || !listContainer) {
+        console.error(`📊 ERROR: Container not found for ${type} section!`);
+        return;
+    }
 
     const isTeam = type === 'team';
 
     if (packages.length === 0) {
+        console.log(`📊 No ${type} packages, showing "no data" message`);
         statsContainer.innerHTML = '';
         listContainer.innerHTML = `
             <div class="averages-no-data">
@@ -26700,7 +26714,7 @@ function updateAveragesSection(type, packages, allHistory) {
             : 'N/A';
 
         const avgHashrate = pkg.averages?.hashrate
-            ? formatHashrate(pkg.averages.hashrate)
+            ? formatHashrateForAverages(pkg.averages.hashrate)
             : 'N/A';
 
         const avgPriceBTC = pkg.averages?.priceBTC
@@ -26753,7 +26767,7 @@ function updateAveragesSection(type, packages, allHistory) {
         // Get latest snapshot for current values
         const latestSnapshot = pkg.snapshots?.[pkg.snapshots.length - 1];
         const currentProb = latestSnapshot?.probabilityRaw ? `1:${latestSnapshot.probabilityRaw}` : '';
-        const currentHashrate = latestSnapshot?.hashrateRaw ? formatHashrate(latestSnapshot.hashrateRaw) : '';
+        const currentHashrate = latestSnapshot?.hashrateRaw ? formatHashrateForAverages(latestSnapshot.hashrateRaw) : '';
 
         // Build stats row based on package type
         let statsRow = '';
@@ -26909,7 +26923,7 @@ function calculateOverallStats(packages, type) {
 
     // Best hashrate
     stats.bestHashrate = bestHashrate;
-    stats.bestHashrateValue = bestHashrate ? formatHashrate(bestHashrateVal) : '';
+    stats.bestHashrateValue = bestHashrate ? formatHashrateForAverages(bestHashrateVal) : '';
 
     // Most recorded
     stats.mostRecorded = mostRecorded;
@@ -26932,9 +26946,9 @@ function calculateOverallStats(packages, type) {
 }
 
 /**
- * Format hashrate value to human readable string
+ * Format hashrate value (in TH/s) to human readable string for averages display
  */
-function formatHashrate(thPerSec) {
+function formatHashrateForAverages(thPerSec) {
     if (!thPerSec || thPerSec === 0) return '0 H/s';
 
     if (thPerSec >= 1000) {
