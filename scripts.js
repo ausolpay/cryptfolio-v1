@@ -16750,6 +16750,20 @@ function createTeamPackageRecommendationCard(pkg) {
                         </svg>
                         <span class="team-stat-value">${pkg.duration || 'N/A'}</span>
                     </div>
+                    ${pkg.hashrate ? `
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        <span class="team-stat-value" id="alert-hashrate-${packageId}">${(() => {
+                            const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                            if (match) {
+                                return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+                            }
+                            return pkg.hashrate;
+                        })()}</span>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
             <div class="package-section share-info">
@@ -23270,7 +23284,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                             </svg>
-                            <span class="team-stat-value" id="team-hashrate-${packageIdForElements}">${pkg.hashrate}</span>
+                            <span class="team-stat-value" id="team-hashrate-${packageIdForElements}">${(() => {
+                                const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                                if (match) {
+                                    return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+                                }
+                                return pkg.hashrate;
+                            })()}</span>
                         </div>
                         ` : ''}
                     </div>
