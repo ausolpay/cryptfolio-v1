@@ -5933,6 +5933,17 @@ body.light-mode .team-package .share-input {
     font-size: 1.2em;
     font-weight: 600;
     letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.package-header-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: #ffa500;
 }
 
 .recommended-star {

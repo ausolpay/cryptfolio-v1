@@ -19724,7 +19724,7 @@ function createTeamPackageCard(pkg) {
     card.innerHTML = `
         ${staticBgIcon}
         <div class="package-header">
-            <h4>👥 ${packageName}</h4>
+            <h4><svg class="package-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ${packageName}</h4>
         </div>
         <div class="package-body">
             <div class="package-section mining-info">
@@ -19791,16 +19791,15 @@ function createTeamPackageCard(pkg) {
                 <div class="price-row">
                     <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                        <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span class="price-label">Per Share</span>
                     <span class="price-value">$${pricePerShareAUD}</span>
                 </div>
                 <div class="price-row" style="margin-bottom: 0;">
                     <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                        <path d="M2 17l10 5 10-5"/>
-                        <path d="M2 12l10 5 10-5"/>
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span class="price-label">Block Reward</span>
                     <span class="price-value">${blockReward} ${crypto}</span>
@@ -22785,7 +22784,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     <div class="price-row">
                         <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                            <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         <span class="price-label">Price</span>
                         <span class="price-value" id="price-${packageId}">$${priceAUD}</span>
@@ -22894,7 +22893,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             ${staticBgIcon}
             ${robotHtml}
             <div class="package-header">
-                <h4>👥 ${pkg.name}${isRecommended ? ' <span class="recommended-star">⭐</span>' : ''}</h4>
+                <h4><svg class="package-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ${pkg.name}${isRecommended ? ' <span class="recommended-star">⭐</span>' : ''}</h4>
             </div>
             <div class="package-body">
                 <div class="package-section mining-info">
@@ -22978,7 +22977,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     <div class="price-row">
                         <svg class="price-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 6v12M8 10h8M8 14h8" stroke-linecap="round"/>
+                            <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         <span class="price-label">Per Share</span>
                         <span class="price-value">$${pricePerShareAUD}</span>
