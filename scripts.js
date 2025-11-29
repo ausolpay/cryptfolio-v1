@@ -25904,7 +25904,8 @@ function stopBackgroundMetricsCapture() {
 }
 
 /**
- * Capture metrics in the background by loading buy packages data
+ * Capture metrics in the background without DOM rendering
+ * This fetches package data and stores metrics without updating the UI
  */
 async function captureBackgroundMetrics() {
     // Skip if already on Buy Packages page (it has its own polling)
@@ -25913,15 +25914,48 @@ async function captureBackgroundMetrics() {
         return;
     }
 
+    // Skip if already on Averages page (it has its own polling)
+    const averagesPage = document.getElementById('averages-page');
+    if (averagesPage && averagesPage.style.display !== 'none') {
+        return;
+    }
+
     try {
-        // Silently load and capture package data
-        await loadBuyPackagesDataOnPage();
-        console.log('📊 Background metrics captured');
-    } catch (error) {
-        // Silently fail - don't spam console with errors
-        if (Math.random() < 0.1) {
-            console.warn('⚠️ Background metrics capture failed:', error.message);
+        console.log('📊 Background metrics capture starting...');
+
+        // Fetch solo packages from API (or use mock data)
+        let singlePackages = await fetchNiceHashSoloPackages();
+        if (!singlePackages || singlePackages.length === 0) {
+            console.log('📦 Using mock solo package data for background capture');
+            singlePackages = [
+                { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+                { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+                { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
+                { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+                { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+                { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
+                { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
+                { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
+                { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
+            ];
         }
+
+        // Fetch team packages from API
+        let teamPackages = await fetchNiceHashTeamPackages();
+        console.log(`📊 Background: Fetched ${singlePackages.length} solo, ${teamPackages.length} team packages`);
+
+        const allPackages = [...singlePackages, ...teamPackages];
+
+        // Capture metrics (no DOM operations)
+        if (allPackages.length > 0) {
+            capturePackageMetrics(allPackages);
+            updatePackageMetricsAverages();
+            console.log('✅ Background metrics captured for', allPackages.length, 'packages');
+        } else {
+            console.warn('⚠️ No packages to capture metrics for');
+        }
+    } catch (error) {
+        console.error('❌ Background metrics capture failed:', error.message);
     }
 }
 
@@ -26803,6 +26837,7 @@ function showAveragesPage() {
     // Stop other polling
     stopBuyPackagesPolling();
     stopEasyMiningAlertsPolling();
+    stopEasyMiningPolling();
     stopAveragesPolling();
 
     // Hide all other pages
@@ -26820,6 +26855,9 @@ function showAveragesPage() {
     // Show averages page
     document.getElementById('averages-page').style.display = 'block';
 
+    // Immediately display any existing stored data
+    updateAveragesDisplay();
+
     // Fetch fresh data and update display
     fetchAndUpdateAverages();
 
@@ -26829,14 +26867,41 @@ function showAveragesPage() {
 
 /**
  * Fetch fresh package data and update the averages display
+ * This fetches data and captures metrics without rendering to Buy Packages page
  */
 async function fetchAndUpdateAverages() {
     console.log('📊 Fetching fresh data for Averages page...');
 
     try {
-        // Load fresh package data (this also captures metrics)
-        await loadBuyPackagesDataOnPage();
-        console.log('✅ Fresh data loaded for Averages');
+        // Fetch solo packages from API (or use mock data)
+        let singlePackages = await fetchNiceHashSoloPackages();
+        if (!singlePackages || singlePackages.length === 0) {
+            console.log('📦 Using mock solo package data for averages');
+            singlePackages = [
+                { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+                { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+                { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
+                { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
+                { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+                { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
+                { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
+                { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
+                { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
+            ];
+        }
+
+        // Fetch team packages from API
+        let teamPackages = await fetchNiceHashTeamPackages();
+        console.log(`📊 Averages: Fetched ${singlePackages.length} solo, ${teamPackages.length} team packages`);
+
+        const allPackages = [...singlePackages, ...teamPackages];
+
+        // Capture metrics (no DOM operations on Buy Packages page)
+        if (allPackages.length > 0) {
+            capturePackageMetrics(allPackages);
+            updatePackageMetricsAverages();
+            console.log('✅ Metrics captured for Averages page');
+        }
     } catch (error) {
         console.warn('⚠️ Could not fetch fresh data:', error.message);
     }
