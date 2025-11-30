@@ -1080,67 +1080,73 @@
 
     <!-- BTC Lightning Deposits Page -->
     <div id="deposits-page" class="container" style="display: none;">
-        <div class="header">
-            <div>
-                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v2</h1>
-                <p>Deposit BTC to NH Balance</p>
+        <div class="settings-page-content">
+            <div class="settings-page-header">
+                <h1>BTC Lightning Deposit</h1>
+                <p>Generate a Lightning Network deposit address with travel rule data</p>
             </div>
 
             <!-- Balance Section -->
             <div id="deposits-balance-section" style="margin-bottom: 20px;"></div>
 
-            <div class="easymining-settings-form">
-                <h3 style="margin-top: 0; color: #ffa500;">⚡ BTC Lightning Deposit</h3>
-                <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
-                    Generate a Lightning Network deposit address with travel rule data.
-                </p>
+            <div class="settings-section">
+                <div class="settings-card">
+                    <!-- Travel Rule Checkbox -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" class="team-alert-checkbox" id="deposit-travel-rule-checkbox" checked onchange="toggleTravelRuleOptions()">
+                                <span class="settings-row-label">I want to fill sender travel rule data</span>
+                            </label>
+                        </div>
+                    </div>
 
-                <!-- Travel Rule Checkbox -->
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                        <input type="checkbox" id="deposit-travel-rule-checkbox" checked onchange="toggleTravelRuleOptions()" style="cursor: pointer; width: 18px; height: 18px;">
-                        <span>I want to fill sender travel rule data</span>
-                    </label>
+                    <!-- Self-Custodial Checkbox (Hidden by default, shown when travel rule is checked) -->
+                    <div class="settings-row" id="deposit-self-custodial-group">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" class="team-alert-checkbox" id="deposit-self-custodial-checkbox" onchange="toggleSelfCustodialOptions()">
+                                <span class="settings-row-label">I'm using a self-custodial wallet</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Travel Data Dropdown (Shown when travel rule is checked and self-custodial is unchecked) -->
+                    <div class="settings-row" id="deposit-travel-data-group">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Select Saved Travel Data: *</span>
+                            <select id="deposit-travel-data-select" class="settings-input" style="margin-top: 8px;">
+                                <option value="">Select travel data...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Amount BTC -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Invoice Amount (BTC): *</span>
+                            <input type="number" id="deposit-amount-btc" class="settings-input" placeholder="0.00000000" step="0.00000001" min="0" oninput="convertBtcToAud()" style="margin-top: 8px;">
+                        </div>
+                    </div>
+
+                    <!-- Invoice Amount AUD -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Invoice Amount (AUD): *</span>
+                            <input type="number" id="deposit-amount-aud" class="settings-input" placeholder="0.00" step="0.01" min="0" oninput="convertAudToBtc()" style="margin-top: 8px;">
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="settings-row" style="justify-content: center; padding-top: 10px;">
+                        <button onclick="generateLightningAddress()" id="generate-deposit-btn" class="settings-action-btn" style="width: 100%;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>Generate Deposit Address</button>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Self-Custodial Checkbox (Hidden by default, shown when travel rule is checked) -->
-                <div class="input-group" id="deposit-self-custodial-group" style="margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                        <input type="checkbox" id="deposit-self-custodial-checkbox" onchange="toggleSelfCustodialOptions()" style="cursor: pointer; width: 18px; height: 18px;">
-                        <span>I'm using a self-custodial wallet</span>
-                    </label>
-                </div>
-
-                <!-- Travel Data Dropdown (Shown when travel rule is checked and self-custodial is unchecked) -->
-                <div class="input-group" id="deposit-travel-data-group">
-                    <label for="deposit-travel-data-select">Select Saved Travel Data: *</label>
-                    <select id="deposit-travel-data-select" style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%;">
-                        <option value="">Select travel data...</option>
-                    </select>
-                </div>
-
-                <!-- Invoice Amount BTC -->
-                <div class="input-group">
-                    <label for="deposit-amount-btc">Invoice Amount (BTC): *</label>
-                    <input type="number" id="deposit-amount-btc" placeholder="0.00000000" step="0.00000001" min="0" oninput="convertBtcToAud()">
-                </div>
-
-                <!-- Invoice Amount AUD -->
-                <div class="input-group">
-                    <label for="deposit-amount-aud">Invoice Amount (AUD): *</label>
-                    <input type="number" id="deposit-amount-aud" placeholder="0.00" step="0.01" min="0" oninput="convertAudToBtc()">
-                </div>
-
-                <!-- Generate Button -->
-                <div style="margin: 20px 0;">
-                    <button onclick="generateLightningAddress()" id="generate-deposit-btn" style="background-color: #4CAF50; width: 100%;">⚡ Generate Deposit Address</button>
-                </div>
-
-                <!-- Output Section (Hidden by default) -->
-                <div id="deposit-output-section" style="display: none;">
-                    <hr style="border: 1px solid #333; margin: 20px 0;">
-
+            <!-- Output Section (Hidden by default) -->
+            <div id="deposit-output-section" class="settings-section" style="display: none;">
+                <div class="settings-card">
                     <!-- QR Code Container -->
                     <div style="text-align: center; margin-bottom: 20px;">
                         <div id="qr-code-container" style="display: inline-block; background-color: #fff; padding: 20px; border-radius: 10px;">
@@ -1149,35 +1155,35 @@
                     </div>
 
                     <!-- Lightning Address Output -->
-                    <div class="input-group">
-                        <label for="deposit-address-output" style="display: flex; align-items: center; gap: 10px;">
-                            <span style="color: #ffa500; font-weight: bold;">LIGHTNING:</span>
-                            <span style="flex: 1;"></span>
-                        </label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" id="deposit-address-output" readonly style="flex: 1; background-color: #1a1a1a; color: #4CAF50; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #4CAF50; border-radius: 5px;">
-                            <button onclick="copyDepositAddress()" style="background-color: #2196F3; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; color: white; font-size: 16px;" title="Copy address to clipboard">
-                                📋
-                            </button>
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label" style="color: #ffa500;">LIGHTNING:</span>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px;">
+                                <input type="text" id="deposit-address-output" readonly class="settings-input" style="flex: 1; background-color: #1a1a1a; color: #4CAF50; font-family: monospace; font-size: 12px; border: 1px solid #4CAF50;">
+                                <button onclick="copyDepositAddress()" class="settings-action-btn" title="Copy address to clipboard">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="buttons">
-            <button onclick="showAppPage()">← Back to Portfolio</button>
-        </div>
+            <!-- Back Button -->
+            <div class="settings-page-footer">
+                <button class="settings-back-btn" onclick="showAppPage()">← Back to Portfolio</button>
+            </div>
 
-        <div class="app-footer">
-            <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
-            <span class="footer-separator"></span>
-            <div class="footer-text">
-                <span>CryptFolio v2 (Beta)</span>
-                <span class="footer-divider">|</span>
-                <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
-                <span class="footer-divider">|</span>
-                <span>Data by CoinGecko / MEXC</span>
+            <div class="settings-page-copyright app-footer">
+                <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+                <span class="footer-separator"></span>
+                <div class="footer-text">
+                    <span>CryptFolio v2 (Beta)</span>
+                    <span class="footer-divider">|</span>
+                    <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
+                    <span class="footer-divider">|</span>
+                    <span>Data by CoinGecko / MEXC</span>
+                </div>
             </div>
         </div>
     </div>
