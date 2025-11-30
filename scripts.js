@@ -17082,6 +17082,77 @@ function updateTeamAlertCardValues(pkg) {
 
     // ✅ Dynamically update Clear Shares button visibility
     updateClearSharesButtonVisibility(pkg.name, apiPackageId, myBoughtShares);
+
+    // ✅ Update buy button and + button state based on share availability
+    const totalAvailable = Math.round((pkg.fullAmount || 0) * 10000);
+    initializeAlertCardButtonStates(pkg.name, myBoughtShares, totalBoughtShares, totalAvailable);
+}
+
+/**
+ * Initialize buy button and + button states for alert cards
+ * Disables buttons when no shares available or user already owns max shares
+ */
+function initializeAlertCardButtonStates(packageName, myBoughtShares, totalBoughtShares, totalAvailableShares) {
+    const packageId = packageName.replace(/\s+/g, '-');
+
+    // Find the input element
+    const input = document.getElementById(`shares-${packageId}`);
+    if (!input) return;
+
+    const shares = parseInt(input.value) || 0;
+    const availableBalance = window.niceHashBalance?.available || 0;
+    const sharePrice = 0.0001;
+
+    // Calculate available shares remaining
+    const sharesRemaining = totalAvailableShares - totalBoughtShares;
+    const maxSharesICanOwn = myBoughtShares + sharesRemaining;
+
+    const newShares = shares - myBoughtShares;
+    const nextNewShares = (shares + 1) - myBoughtShares;
+    const currentShareCost = newShares * sharePrice;
+    const nextShareCost = nextNewShares * sharePrice;
+
+    // Find + button
+    const plusButton = document.getElementById(`plus-${packageId}`);
+    if (plusButton) {
+        if (shares >= maxSharesICanOwn) {
+            plusButton.disabled = true;
+            plusButton.style.opacity = '0.5';
+            plusButton.style.cursor = 'not-allowed';
+        } else if (availableBalance < nextShareCost) {
+            plusButton.disabled = true;
+            plusButton.style.opacity = '0.5';
+            plusButton.style.cursor = 'not-allowed';
+        } else {
+            plusButton.disabled = false;
+            plusButton.style.opacity = '1';
+            plusButton.style.cursor = 'pointer';
+        }
+    }
+
+    // Find Buy button in the share adjuster container
+    const shareAdjuster = input.closest('.share-adjuster');
+    const buyButton = shareAdjuster?.querySelector('.buy-now-btn:not(.clear-shares-btn)');
+
+    if (buyButton) {
+        if (newShares > sharesRemaining) {
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+        } else if (newShares > 0 && availableBalance < currentShareCost) {
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+        } else if (newShares <= 0) {
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+        } else {
+            buyButton.disabled = false;
+            buyButton.style.opacity = '1';
+            buyButton.style.cursor = 'pointer';
+        }
+    }
 }
 
 /**
@@ -21209,8 +21280,8 @@ function updateShareCost(cardId) {
     // Extract share price from the card (stored in the buy button's onclick)
     const card = input.closest('.buy-package-card');
     const buyButton = card.querySelector('.buy-package-button');
-    const onclickAttr = buyButton.getAttribute('onclick');
-    const sharePriceMatch = onclickAttr.match(/buyTeamPackage\('[^']+',\s*'[^']+',\s*([\d.]+)/);
+    const onclickAttr = buyButton ? buyButton.getAttribute('onclick') : null;
+    const sharePriceMatch = onclickAttr ? onclickAttr.match(/buyTeamPackage\('[^']+',\s*'[^']+',\s*([\d.]+)/) : null;
 
     // Calculate NEW shares to buy (input shows TOTAL shares I'll own)
     const newShares = shares - myBoughtShares;
@@ -21249,6 +21320,75 @@ function updateShareCost(cardId) {
         // Keep share distribution display (current state when no new shares)
         if (shareDistDisplay) {
             shareDistDisplay.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+        }
+    }
+
+    // ✅ Also update buy button and + button state on initial load
+    updateTeamPackageButtonStates(card, input, shares, myBoughtShares, totalBoughtShares, totalAvailableShares);
+}
+
+// Helper function to update buy button and + button states for team packages
+function updateTeamPackageButtonStates(card, input, shares, myBoughtShares, totalBoughtShares, totalAvailableShares) {
+    if (!card || !input) return;
+
+    const availableBalance = window.niceHashBalance?.available || 0;
+    const sharePrice = 0.0001; // Team packages: 0.0001 BTC per share
+
+    // Calculate available shares remaining
+    const sharesRemaining = totalAvailableShares - totalBoughtShares;
+    const maxSharesICanOwn = myBoughtShares + sharesRemaining;
+
+    const newShares = shares - myBoughtShares;
+    const nextNewShares = (shares + 1) - myBoughtShares;
+
+    const currentShareCost = newShares * sharePrice;
+    const nextShareCost = nextNewShares * sharePrice;
+
+    // Find + button
+    const plusButton = card.querySelector('.share-button:last-of-type') ||
+                       card.querySelector('button[onclick*="adjustShares"][onclick*=", 1"]');
+
+    // Update + button state
+    if (plusButton) {
+        if (shares >= maxSharesICanOwn) {
+            plusButton.disabled = true;
+            plusButton.style.opacity = '0.5';
+            plusButton.style.cursor = 'not-allowed';
+        } else if (availableBalance < nextShareCost) {
+            plusButton.disabled = true;
+            plusButton.style.opacity = '0.5';
+            plusButton.style.cursor = 'not-allowed';
+        } else {
+            plusButton.disabled = false;
+            plusButton.style.opacity = '1';
+            plusButton.style.cursor = 'pointer';
+        }
+    }
+
+    // Find Buy button (exclude Clear Shares button)
+    const buyButton = card.querySelector('.buy-now-btn:not(.clear-shares-btn), .team-buy-btn');
+
+    if (buyButton) {
+        if (newShares > sharesRemaining) {
+            // Trying to buy more than available
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+        } else if (newShares > 0 && availableBalance < currentShareCost) {
+            // Can't afford
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+        } else if (newShares <= 0) {
+            // No new shares to buy
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+        } else {
+            // Can afford and shares available
+            buyButton.disabled = false;
+            buyButton.style.opacity = '1';
+            buyButton.style.cursor = 'pointer';
         }
     }
 }
@@ -24880,26 +25020,51 @@ function adjustShares(packageName, delta, buttonElement) {
 
     // Get myBoughtShares from input data attribute (newValue is TOTAL shares I'll own)
     const myBoughtShares = parseInt(input.dataset?.myBought) || 0;
+    const totalBoughtShares = parseInt(input.dataset?.totalBought) || 0;
+    const totalAvailableShares = parseInt(input.dataset?.totalAvailable) || 9999;
+
+    // Calculate available shares remaining (shares not yet bought by anyone)
+    const sharesRemaining = totalAvailableShares - totalBoughtShares;
+    // Max shares I can own = my current shares + remaining available
+    const maxSharesICanOwn = myBoughtShares + sharesRemaining;
+
     const newShares = newValue - myBoughtShares; // NEW shares to buy
     const nextNewShares = (newValue + 1) - myBoughtShares; // NEW shares if I increase by 1
 
     const currentShareCost = newShares * sharePrice; // Cost for NEW shares
     const nextShareCost = nextNewShares * sharePrice; // Cost if I add 1 more share
 
+    console.log(`📊 Share availability check:`, {
+        myBoughtShares,
+        totalBoughtShares,
+        totalAvailableShares,
+        sharesRemaining,
+        maxSharesICanOwn,
+        currentInputValue: newValue,
+        newSharesToBuy: newShares
+    });
+
     // Update + button state
     if (plusButton) {
-        if (availableBalance < nextShareCost) {
-            // Disable + button if can't afford next share
+        // Disable if can't afford next share OR if no more shares available
+        if (newValue >= maxSharesICanOwn) {
+            // No more shares available to buy
+            plusButton.disabled = true;
+            plusButton.style.opacity = '0.5';
+            plusButton.style.cursor = 'not-allowed';
+            console.log(`➕ Plus button DISABLED - no more shares available (have: ${newValue}, max: ${maxSharesICanOwn})`);
+        } else if (availableBalance < nextShareCost) {
+            // Can't afford next share
             plusButton.disabled = true;
             plusButton.style.opacity = '0.5';
             plusButton.style.cursor = 'not-allowed';
             console.log(`➕ Plus button DISABLED - balance: ${availableBalance}, next share cost: ${nextShareCost}`);
         } else {
-            // Enable + button if can afford next share
+            // Enable + button if can afford next share and shares available
             plusButton.disabled = false;
             plusButton.style.opacity = '1';
             plusButton.style.cursor = 'pointer';
-            console.log(`➕ Plus button ENABLED - balance: ${availableBalance}, next share cost: ${nextShareCost}`);
+            console.log(`➕ Plus button ENABLED - balance: ${availableBalance}, next share cost: ${nextShareCost}, shares available: ${sharesRemaining}`);
         }
     }
 
@@ -24909,7 +25074,13 @@ function adjustShares(packageName, delta, buttonElement) {
     if (buyButton) {
         // Buy button disables if can't afford the NEW shares to purchase
         // newShares = current input value - already owned shares
-        if (newShares > 0 && availableBalance < currentShareCost) {
+        if (newShares > sharesRemaining) {
+            // Trying to buy more than available
+            buyButton.disabled = true;
+            buyButton.style.opacity = '0.5';
+            buyButton.style.cursor = 'not-allowed';
+            console.log(`🛒 Buy button DISABLED - trying to buy ${newShares} but only ${sharesRemaining} available`);
+        } else if (newShares > 0 && availableBalance < currentShareCost) {
             // Can't afford the new shares being requested
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
@@ -24922,11 +25093,11 @@ function adjustShares(packageName, delta, buttonElement) {
             buyButton.style.cursor = 'not-allowed';
             console.log(`🛒 Buy button DISABLED - no new shares to buy (input: ${newValue}, owned: ${myBoughtShares})`);
         } else {
-            // Can afford the new shares
+            // Can afford the new shares and shares are available
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
-            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance.toFixed(6)} >= cost: ${currentShareCost.toFixed(6)} (${newShares} new shares)`);
+            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance.toFixed(6)} >= cost: ${currentShareCost.toFixed(6)} (${newShares} new shares, ${sharesRemaining} available)`);
         }
     }
 }
