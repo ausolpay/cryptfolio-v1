@@ -14968,8 +14968,9 @@ function displayActivePackages() {
         card.className = pkg.blockFound ? 'package-card block-confirmed' : 'package-card';
         card.onclick = () => showPackageDetailModal(pkg);
 
-        const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : 2;
-        const secondaryRewardDecimals = (pkg.cryptoSecondary === 'RVN' || pkg.cryptoSecondary === 'DOGE') ? 0 : 2;
+        // BTC/BCH: 4 decimals, RVN/DOGE: 0 decimals, others: 2 decimals
+        const rewardDecimals = (pkg.crypto === 'RVN' || pkg.crypto === 'DOGE') ? 0 : (pkg.crypto === 'BTC' || pkg.crypto === 'BCH') ? 4 : 2;
+        const secondaryRewardDecimals = (pkg.cryptoSecondary === 'RVN' || pkg.cryptoSecondary === 'DOGE') ? 0 : (pkg.cryptoSecondary === 'BTC' || pkg.cryptoSecondary === 'BCH') ? 4 : 2;
         const priceAUD = convertBTCtoAUD(pkg.price || 0);
 
         // Calculate remaining price based on progress (decreases from start to 0 as package runs)
