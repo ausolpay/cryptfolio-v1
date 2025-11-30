@@ -15237,8 +15237,7 @@ function displayActivePackages() {
                 <h4>${pkg.name}${blockBadge}</h4>
             </div>
             <div class="package-body">
-                <!-- Mining Stats Section (Active packages only) -->
-                ${pkg.active ? `
+                <!-- Mining Stats Section (All packages - probability always shown) -->
                 <div class="package-section mining-info">
                     <div class="package-stat-grid">
                         ${pkg.probability ? `
@@ -15250,10 +15249,24 @@ function displayActivePackages() {
                                     <line x1="12" y1="2" x2="12" y2="6"/>
                                     <line x1="12" y1="18" x2="12" y2="22"/>
                                 </svg>
-                                ${pkg.cryptoSecondary ? `<span class="prob-label">${pkg.crypto}:</span> ` : ''}${pkg.probability}${pkg.mergeProbability ? `<br><span class="secondary-prob">${pkg.cryptoSecondary ? `<span class="prob-label">${pkg.cryptoSecondary}:</span> ` : ''}${pkg.mergeProbability}</span>` : ''}
+                                ${pkg.mergeProbability ? pkg.mergeProbability : pkg.probability}
+                            </span>
+                        </div>
+                        ${pkg.mergeProbability ? `
+                        <div class="stat-block">
+                            <span class="stat-value-medium">
+                                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                </svg>
+                                ${pkg.probability}
                             </span>
                         </div>
                         ` : ''}
+                        ` : ''}
+                        ${pkg.active ? `
                         <div class="stat-block">
                             <span class="stat-value-medium">
                                 <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -15286,15 +15299,15 @@ function displayActivePackages() {
                             </span>
                         </div>
                         ` : ''}
+                        ` : ''}
                     </div>
-                    ${pkg.isTeam && packageInitialValues[pkg.id]?.ready ? `
+                    ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.ready ? `
                     <div class="oas-stats">
                         ${packageInitialValues[pkg.id]?.hashrate ? `<span class="oas-stat">OAS: ${packageInitialValues[pkg.id].hashrate}</span>` : ''}
                         ${packageInitialValues[pkg.id]?.rigs !== undefined ? `<span class="oas-stat">Rigs: ${packageInitialValues[pkg.id].rigs}</span>` : ''}
                     </div>
                     ` : ''}
                 </div>
-                ` : ''}
 
                 <!-- Closest to Reward Progress (Active packages only) -->
                 ${pkg.active && rewardBarPercent > 0 ? `
@@ -16610,15 +16623,15 @@ function updateSoloAlertCardValues(pkg) {
 
     // Update probability values
     if (pkg.isDualCrypto) {
-        // Dual-crypto package: update both probabilities
+        // Dual-crypto package: update both probabilities (no crypto labels)
         const mergeProbElement = document.getElementById(`merge-probability-${packageIdForElements}`);
         const mainProbElement = document.getElementById(`main-probability-${packageIdForElements}`);
 
         if (mergeProbElement) {
-            mergeProbElement.textContent = `${pkg.mergeProbability} ${pkg.mergeCrypto}`;
+            mergeProbElement.textContent = pkg.mergeProbability;
         }
         if (mainProbElement) {
-            mainProbElement.textContent = `${pkg.mainProbability} ${pkg.mainCrypto}`;
+            mainProbElement.textContent = pkg.mainProbability;
         }
     } else if (pkg.probability) {
         // Single crypto package: update one probability
@@ -17041,14 +17054,14 @@ function createTeamPackageRecommendationCard(pkg) {
     // Probability section - handle dual-crypto packages
     let probabilityInfo = '';
     if (pkg.isDualCrypto) {
-        // For team dual-crypto packages, show on separate lines
+        // For team dual-crypto packages, show both probabilities (DOGE first, then LTC) with same icon
         probabilityInfo = `
             <div class="buy-package-stat">
-                <span>Probability ${pkg.mergeCrypto}:</span>
+                <span>Probability:</span>
                 <span id="alert-merge-probability-${packageId}">${pkg.mergeProbability}</span>
             </div>
             <div class="buy-package-stat">
-                <span>Probability ${pkg.mainCrypto}:</span>
+                <span>Probability:</span>
                 <span id="alert-main-probability-${packageId}">${pkg.mainProbability}</span>
             </div>
         `;
@@ -22278,15 +22291,15 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             probabilityEl.textContent = pkg.probability;
         }
 
-        // Update dual-crypto probabilities
+        // Update dual-crypto probabilities (no crypto labels)
         const mergeProbEl = card.querySelector(`#merge-probability-${packageIdForElements}`);
         if (mergeProbEl && pkg.mergeProbability) {
-            mergeProbEl.textContent = `${pkg.mergeProbability} ${pkg.mergeCrypto}`;
+            mergeProbEl.textContent = pkg.mergeProbability;
         }
 
         const mainProbEl = card.querySelector(`#main-probability-${packageIdForElements}`);
         if (mainProbEl && pkg.mainProbability) {
-            mainProbEl.textContent = `${pkg.mainProbability} ${pkg.mainCrypto}`;
+            mainProbEl.textContent = pkg.mainProbability;
         }
 
         // Update duration
@@ -23397,31 +23410,20 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         ${countdownInfo}
     ` : '';
 
-    // Probability section - handle dual-crypto packages
+    // Probability section - handle dual-crypto packages (no crypto labels, DOGE first then LTC)
     let probabilityInfo = '';
     if (pkg.isDualCrypto) {
-        // For solo dual-crypto packages (Palladium), show both probabilities on one line with separate spans for updates
-        if (!pkg.isTeam) {
-            probabilityInfo = `
-                <div class="buy-package-stat">
-                    <span>Probability:</span>
-                    <span id="merge-probability-${packageIdForElements}">${pkg.mergeProbability} ${pkg.mergeCrypto}</span>
-                    <span id="main-probability-${packageIdForElements}">${pkg.mainProbability} ${pkg.mainCrypto}</span>
-                </div>
-            `;
-        } else {
-            // For team dual-crypto packages, show on separate lines
-            probabilityInfo = `
-                <div class="buy-package-stat">
-                    <span>Probability ${pkg.mergeCrypto}:</span>
-                    <span id="merge-probability-${packageIdForElements}">${pkg.mergeProbability}</span>
-                </div>
-                <div class="buy-package-stat">
-                    <span>Probability ${pkg.mainCrypto}:</span>
-                    <span id="main-probability-${packageIdForElements}">${pkg.mainProbability}</span>
-                </div>
-            `;
-        }
+        // For dual-crypto packages (Palladium), show both probabilities on separate lines
+        probabilityInfo = `
+            <div class="buy-package-stat">
+                <span>Probability:</span>
+                <span id="merge-probability-${packageIdForElements}">${pkg.mergeProbability}</span>
+            </div>
+            <div class="buy-package-stat">
+                <span>Probability:</span>
+                <span id="main-probability-${packageIdForElements}">${pkg.mainProbability}</span>
+            </div>
+        `;
     } else if (pkg.probability) {
         // Single crypto package
         probabilityInfo = `
@@ -24138,8 +24140,21 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <line x1="2" y1="12" x2="6" y2="12"/>
                                 <line x1="18" y1="12" x2="22" y2="12"/>
                             </svg>
-                            <span class="team-stat-value" id="team-probability-${packageIdForElements}">${pkg.probability || 'N/A'}</span>
+                            <span class="team-stat-value" id="team-probability-${packageIdForElements}">${pkg.isDualCrypto && pkg.mergeProbability ? pkg.mergeProbability : (pkg.probability || 'N/A')}</span>
                         </div>
+                        ${pkg.isDualCrypto && pkg.mainProbability ? `
+                        <div class="team-stat-item">
+                            <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                <line x1="12" y1="2" x2="12" y2="6"/>
+                                <line x1="12" y1="18" x2="12" y2="22"/>
+                                <line x1="2" y1="12" x2="6" y2="12"/>
+                                <line x1="18" y1="12" x2="22" y2="12"/>
+                            </svg>
+                            <span class="team-stat-value" id="team-probability-main-${packageIdForElements}">${pkg.mainProbability}</span>
+                        </div>
+                        ` : ''}
                         <div class="team-stat-item">
                             <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"/>
