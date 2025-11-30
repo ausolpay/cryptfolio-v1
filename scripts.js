@@ -240,6 +240,7 @@ let easyMiningAlertsPollingInterval = null;
 let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
+let isAutoBuyInProgress = false; // Lock to pause package fetching during auto-buy purchases
 
 // Pending share purchases - holds user input for up to 10 seconds until API confirms
 // Structure: { packageId: { shares: number, timestamp: number } }
@@ -15893,10 +15894,15 @@ async function executeAutoBuySolo(recommendations) {
         console.log(`   Crypto: ${pkg.crypto}`);
         console.log(`   Price: ${pkg.price} BTC`);
 
+        // Set lock to pause other package fetches during purchase
+        isAutoBuyInProgress = true;
+        console.log('🔒 Auto-buy lock acquired (solo)');
+
         try {
             // Auto-buy: skip confirmation, call the purchase API directly
             if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
                 console.error('❌ EasyMining not configured');
+                isAutoBuyInProgress = false;
                 continue;
             }
 
@@ -16029,11 +16035,16 @@ async function executeAutoBuySolo(recommendations) {
             easyMiningData.todayStats.totalSpent += packagePrice * btcPrice;
             localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
 
-            // Refresh package data
-            await fetchEasyMiningData();
         } catch (error) {
             console.error(`❌ Auto-buy failed for ${pkg.name}:`, error.message, error);
+        } finally {
+            // Always release lock when done
+            isAutoBuyInProgress = false;
+            console.log('🔓 Auto-buy lock released (solo)');
         }
+
+        // Refresh package data AFTER lock is released (so updateRecommendations can fetch)
+        await fetchEasyMiningData();
     }
 }
 
@@ -16144,10 +16155,15 @@ async function executeAutoBuyTeam(recommendations) {
 
         console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (buying ${actualSharesToBuy} shares, total will be ${newTotalShares}, cost ${actualTotalAmount} BTC)`);
 
+        // Set lock to pause other package fetches during purchase
+        isAutoBuyInProgress = true;
+        console.log('🔒 Auto-buy lock acquired (team)');
+
         try {
             // Auto-buy: skip confirmation, call the purchase API directly
             if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
                 console.error('❌ EasyMining not configured');
+                isAutoBuyInProgress = false;
                 continue;
             }
 
@@ -16330,34 +16346,35 @@ async function executeAutoBuyTeam(recommendations) {
                 console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (${durationHours}hr duration + ${startingCountdownHours}hr starting countdown)`);
             }
 
-            // Refresh package data
-            await fetchEasyMiningData();
-
-            // Force UI refresh in both Buy Packages page and Team Alerts
-            console.log('🔄 Forcing UI refresh after auto-buy...');
-
-            // 1. Refresh Buy Packages modal if it's currently open
-            const buyPackagesModal = document.getElementById('buy-packages-modal');
-            if (buyPackagesModal && buyPackagesModal.style.display === 'block') {
-                console.log('📦 Refreshing Buy Packages modal...');
-                await loadBuyPackagesData();
-            }
-
-            // 1.5. Refresh Buy Packages page if visible
-            const buyPackagesPage = document.getElementById('buy-packages-page');
-            if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
-                console.log('📦 Refreshing Buy Packages page...');
-                await loadBuyPackagesDataOnPage();
-            }
-
-            // 2. Refresh Team Alerts in EasyMining section
-            console.log('📊 Refreshing team alerts in EasyMining section...');
-            await updateRecommendations();
-
-            console.log('✅ UI refresh complete - share counts updated everywhere');
         } catch (error) {
             console.error(`❌ Auto-buy failed for ${pkg.name}:`, error.message, error);
+        } finally {
+            // Always release lock when done
+            isAutoBuyInProgress = false;
+            console.log('🔓 Auto-buy lock released (team)');
         }
+
+        // Refresh package data AFTER lock is released (so updateRecommendations can fetch)
+        await fetchEasyMiningData();
+
+        // Force UI refresh in both Buy Packages page and Team Alerts
+        console.log('🔄 Forcing UI refresh after auto-buy...');
+
+        // 1. Refresh Buy Packages modal if it's currently open
+        const buyPackagesModal = document.getElementById('buy-packages-modal');
+        if (buyPackagesModal && buyPackagesModal.style.display === 'block') {
+            console.log('📦 Refreshing Buy Packages modal...');
+            await loadBuyPackagesData();
+        }
+
+        // 1.5. Refresh Buy Packages page if visible
+        const buyPackagesPage = document.getElementById('buy-packages-page');
+        if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+            console.log('📦 Refreshing Buy Packages page...');
+            await loadBuyPackagesDataOnPage();
+        }
+
+        console.log('✅ UI refresh complete - share counts updated everywhere');
     }
 }
 
@@ -21574,6 +21591,12 @@ function getRecommendedPackages() {
 
 // Fetch solo packages from NiceHash public API
 async function fetchNiceHashSoloPackages() {
+    // Skip fetch if auto-buy is in progress to avoid rate limiting
+    if (isAutoBuyInProgress) {
+        console.log('⏸️ Solo packages fetch paused - auto-buy in progress');
+        return null;
+    }
+
     console.log('🔄 Fetching solo packages from NiceHash API...');
 
     try {
@@ -21751,6 +21774,12 @@ async function fetchNiceHashSoloPackages() {
 
 // Fetch team packages from NiceHash API
 async function fetchNiceHashTeamPackages() {
+    // Skip fetch if auto-buy is in progress to avoid rate limiting
+    if (isAutoBuyInProgress) {
+        console.log('⏸️ Team packages fetch paused - auto-buy in progress');
+        return [];
+    }
+
     console.log('🔄 Fetching team packages from NiceHash API...');
 
     try {
