@@ -5857,21 +5857,41 @@ function calculateEntryPnL(entry) {
     return { unrealizedPnL, unrealizedPercent, realizedPnL, realizedPercent };
 }
 
-// Calculate total PnL for a crypto
+// Calculate total PnL for a crypto (or all cryptos if cryptoId not provided)
 function calculateTotalPnL(cryptoId) {
-    const entries = getHoldingsEntries(cryptoId);
     let totalUnrealized = 0;
     let totalRealized = 0;
 
-    entries.forEach(entry => {
-        const pnl = calculateEntryPnL(entry);
-        if (entry.status === 'active') {
-            totalUnrealized += pnl.unrealizedPnL;
+    // If no cryptoId provided, calculate across ALL cryptos in portfolio
+    if (!cryptoId) {
+        const user = users[loggedInUser];
+        if (!user || !user.cryptos) return { totalUnrealized: 0, totalRealized: 0 };
+
+        for (const crypto of user.cryptos) {
+            const entries = getHoldingsEntries(crypto.id);
+            entries.forEach(entry => {
+                const pnl = calculateEntryPnL(entry);
+                if (entry.status === 'active') {
+                    totalUnrealized += pnl.unrealizedPnL || 0;
+                }
+                if (pnl.realizedPnL !== null && pnl.realizedPnL !== undefined) {
+                    totalRealized += pnl.realizedPnL;
+                }
+            });
         }
-        if (pnl.realizedPnL !== null) {
-            totalRealized += pnl.realizedPnL;
-        }
-    });
+    } else {
+        // Calculate for specific crypto only
+        const entries = getHoldingsEntries(cryptoId);
+        entries.forEach(entry => {
+            const pnl = calculateEntryPnL(entry);
+            if (entry.status === 'active') {
+                totalUnrealized += pnl.unrealizedPnL || 0;
+            }
+            if (pnl.realizedPnL !== null && pnl.realizedPnL !== undefined) {
+                totalRealized += pnl.realizedPnL;
+            }
+        });
+    }
 
     return { totalUnrealized, totalRealized };
 }
