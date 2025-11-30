@@ -5966,7 +5966,9 @@ function trackNewBlock(blockData, livePrice) {
         addedToHoldings: false,
         holdingsEntryId: null,
         isConfirmed: blockData.isConfirmed,
-        isTeamPackage: blockData.isTeamPackage
+        isTeamPackage: blockData.isTeamPackage,
+        packagePriceAUD: blockData.packagePriceAUD || 0, // User's cost for this package (AUD)
+        totalPackageReward: blockData.totalPackageReward || 0 // Total reward from package
     };
 
     blocks[blockKey] = trackedBlock;
@@ -14457,7 +14459,9 @@ async function fetchNiceHashOrders() {
                         btcReward: parseFloat(reward.payoutRewardBtc || 0) * (pkg.isTeam && pkg.userSharePercentage ? pkg.userSharePercentage : 1),
                         timestamp: reward.createdTs || Date.now(),
                         isConfirmed: isConfirmed,
-                        isTeamPackage: pkg.isTeam
+                        isTeamPackage: pkg.isTeam,
+                        packagePriceAUD: pkg.price || 0, // User's cost for this package (AUD)
+                        totalPackageReward: pkg.reward || 0 // Total reward from package (for cost basis calc)
                     }, livePrice);
                 });
             }
@@ -17942,11 +17946,20 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                     continue;
                 }
 
-                // Use stored price at discovery, fall back to current live price
-                let boughtPrice = block.priceAtDiscovery;
-                if (!boughtPrice || boughtPrice <= 0) {
-                    boughtPrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
-                    console.log(`   ⚠️ Block ${block.blockHash}: Using fallback live price $${boughtPrice.toFixed(2)}`);
+                // Calculate cost basis price: packageCost / totalReward
+                // This gives the effective "buy price" based on what user spent on the package
+                let boughtPrice = 0;
+                const packageCost = parseFloat(block.packagePriceAUD) || 0;
+                const totalReward = parseFloat(block.totalPackageReward) || 0;
+
+                if (packageCost > 0 && totalReward > 0) {
+                    // Cost basis = what you paid / what you got
+                    boughtPrice = packageCost / totalReward;
+                    console.log(`   💵 Block ${block.blockHash.substring(0, 12)}... Cost basis: $${packageCost.toFixed(2)} / ${totalReward} = $${boughtPrice.toFixed(2)}/coin`);
+                } else {
+                    // Fallback to live price if cost basis can't be calculated
+                    boughtPrice = block.priceAtDiscovery || getPriceFromObject(cryptoPrices[cryptoId]) || 0;
+                    console.log(`   ⚠️ Block ${block.blockHash}: Using market price $${boughtPrice.toFixed(2)} (no cost basis data)`);
                 }
 
                 // Create holdings entry for this individual block
@@ -17982,7 +17995,7 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
                 console.log(`   💰 Added block ${block.blockHash.substring(0, 12)}...`);
                 console.log(`      Amount: ${amount} ${block.crypto}`);
-                console.log(`      Price @ discovery: $${boughtPrice.toFixed(2)} AUD`);
+                console.log(`      Cost basis price: $${boughtPrice.toFixed(2)} AUD`);
                 console.log(`      Package: ${block.packageName}`);
             }
 
