@@ -1264,19 +1264,21 @@ function hasUnsavedEasyMiningSettings() {
 }
 
 // Check for unsaved changes before navigating away from EasyMining settings
+// Returns true if user wants to stay (has unsaved changes and chose to stay)
 function checkUnsavedEasyMiningSettings() {
     if (hasUnsavedEasyMiningSettings()) {
-        alert('You have unsaved changes!\n\nClick "Activate" to save your EasyMining settings.');
-        return true; // Has unsaved changes
+        // Ask user if they want to continue without saving
+        const continueWithoutSaving = confirm('You have unsaved changes!\n\nClick "OK" to continue without saving.\nClick "Cancel" to go back and click "Activate" to save.');
+        return !continueWithoutSaving; // Return true (stay) if user clicked Cancel
     }
-    return false; // No unsaved changes
+    return false; // No unsaved changes, ok to leave
 }
 
 // Back button handler for EasyMining settings page
 function backFromEasyMiningSettings() {
     // Check for unsaved changes before navigating away
     if (checkUnsavedEasyMiningSettings()) {
-        return; // Don't navigate - user needs to save first
+        return; // User chose to stay and save
     }
 
     // Clear snapshot since we're leaving the page
