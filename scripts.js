@@ -16412,14 +16412,36 @@ async function updateRecommendations() {
     }
 
     // Pre-fetch packages once for all recommendation checks (avoids redundant API calls)
+    // Use cached packages if API fails to prevent card flashing
     let soloPackages = [];
     let teamPackages = [];
     try {
-        soloPackages = await fetchNiceHashSoloPackages() || [];
-        teamPackages = await fetchNiceHashTeamPackages() || [];
-        console.log(`📦 Fetched ${soloPackages.length} solo and ${teamPackages.length} team packages for recommendations`);
+        const fetchedSolo = await fetchNiceHashSoloPackages();
+        const fetchedTeam = await fetchNiceHashTeamPackages();
+
+        // Use fetched data if valid, otherwise fall back to cache
+        if (fetchedSolo && fetchedSolo.length > 0) {
+            soloPackages = fetchedSolo;
+            lastValidSoloPackages = fetchedSolo; // Update cache
+        } else if (lastValidSoloPackages && lastValidSoloPackages.length > 0) {
+            console.log('📦 Using cached solo packages for recommendations (API unavailable)');
+            soloPackages = lastValidSoloPackages;
+        }
+
+        if (fetchedTeam && fetchedTeam.length > 0) {
+            teamPackages = fetchedTeam;
+            lastValidTeamPackages = fetchedTeam; // Update cache
+        } else if (lastValidTeamPackages && lastValidTeamPackages.length > 0) {
+            console.log('👥 Using cached team packages for recommendations (API unavailable)');
+            teamPackages = lastValidTeamPackages;
+        }
+
+        console.log(`📦 Using ${soloPackages.length} solo and ${teamPackages.length} team packages for recommendations`);
     } catch (error) {
         console.error('❌ Failed to fetch packages for recommendations:', error);
+        // Fall back to cached packages on error
+        if (lastValidSoloPackages) soloPackages = lastValidSoloPackages;
+        if (lastValidTeamPackages) teamPackages = lastValidTeamPackages;
     }
 
     // Get recommended solo packages based on alert thresholds (pass pre-fetched data)
