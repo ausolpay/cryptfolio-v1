@@ -4830,6 +4830,12 @@ body.light-mode .package-card .stat-value-medium {
     color: #888;
 }
 
+.package-card .prob-label {
+    font-size: 0.8em;
+    color: #ff9800;
+    font-weight: 600;
+}
+
 /* Rocket Icon (SVG) */
 .package-card .rocket-icon svg {
     width: 20px;

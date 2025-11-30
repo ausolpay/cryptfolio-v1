@@ -14951,6 +14951,13 @@ function displayActivePackages() {
             }
         }
 
+        // Get closest-to-reward percentage from chart data store (populated when viewing package detail page)
+        // Falls back to time-based progress if chart data not available yet
+        const chartData = miningChartDataStore[pkg.id];
+        const closestToRewardPercent = chartData?.highestBar?.percentage || 0;
+        // Use chart data if available and > 0, otherwise fall back to time-based progress
+        const rewardBarPercent = closestToRewardPercent > 0 ? closestToRewardPercent : pkg.progress;
+
         const card = document.createElement('div');
         // Add 'block-confirmed' class to packages that found blocks (for orange glow)
         card.className = pkg.blockFound ? 'package-card block-confirmed' : 'package-card';
@@ -15238,7 +15245,7 @@ function displayActivePackages() {
                                     <line x1="12" y1="2" x2="12" y2="6"/>
                                     <line x1="12" y1="18" x2="12" y2="22"/>
                                 </svg>
-                                ${pkg.probability}${pkg.mergeProbability ? `<br><span class="secondary-prob">${pkg.mergeProbability}</span>` : ''}
+                                ${pkg.cryptoSecondary ? `<span class="prob-label">${pkg.crypto}:</span> ` : ''}${pkg.probability}${pkg.mergeProbability ? `<br><span class="secondary-prob">${pkg.cryptoSecondary ? `<span class="prob-label">${pkg.cryptoSecondary}:</span> ` : ''}${pkg.mergeProbability}</span>` : ''}
                             </span>
                         </div>
                         ` : ''}
@@ -15285,14 +15292,14 @@ function displayActivePackages() {
                 ` : ''}
 
                 <!-- Closest to Reward Progress (Active packages only) -->
-                ${pkg.active && pkg.progress > 0 ? `
+                ${pkg.active && rewardBarPercent > 0 ? `
                 <div class="package-section closest-reward-section">
                     <div class="closest-reward-bar">
-                        <div class="closest-reward-fill" style="width: ${Math.min(pkg.progress, 100)}%">
+                        <div class="closest-reward-fill" style="width: ${Math.min(rewardBarPercent, 100)}%">
                             <span class="closest-reward-indicator"></span>
                         </div>
                     </div>
-                    <div class="closest-reward-label">${pkg.progress.toFixed(1)}% to reward</div>
+                    <div class="closest-reward-label">${rewardBarPercent.toFixed(1)}% to reward</div>
                 </div>
                 ` : ''}
 
@@ -18503,6 +18510,21 @@ function collectChartDataPoint(pkg) {
 
     // Update metadata
     chartData.lastHashrate = hashrate;
+
+    // Calculate and update highestBar percentage based on hashrate ratio
+    // This enables the closest-to-reward bar on active package cards without visiting detail page
+    const hashrateRatio = speedLimit > 0 ? hashrate / speedLimit : 0;
+    // Calculate percentage similar to how chart bars work: ratio * 80 with some variance
+    const currentPercent = Math.min(95, Math.max(5, hashrateRatio * 80));
+
+    // Only update if this is higher than what we've stored
+    if (!chartData.highestBar || currentPercent > chartData.highestBar.percentage) {
+        chartData.highestBar = {
+            index: chartData.dataPoints.length - 1,
+            percentage: currentPercent
+        };
+        console.log(`📊 [${pkg.name}] Updated highestBar: ${currentPercent.toFixed(1)}%`);
+    }
 
     return chartData;
 }
