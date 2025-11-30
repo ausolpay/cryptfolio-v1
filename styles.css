@@ -9395,3 +9395,49 @@ body.light-mode .averages-stat-value {
         font-size: 10px;
     }
 }
+
+/* Team Alerts Custom Checkbox Styling */
+.team-alert-checkbox {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background-color: #2a2a2a;
+    border: 2px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.team-alert-checkbox:checked {
+    background-color: #2196F3;
+    border-color: #2196F3;
+}
+
+.team-alert-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.team-alert-checkbox:hover {
+    border-color: #2196F3;
+}
+
+/* Light mode */
+body.light-mode .team-alert-checkbox {
+    background-color: #fff;
+    border-color: #ccc;
+}
+
+body.light-mode .team-alert-checkbox:checked {
+    background-color: #2196F3;
+    border-color: #2196F3;
+}

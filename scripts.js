@@ -3877,13 +3877,13 @@ async function loadTeamAlerts() {
                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #1a1a1a; border-radius: 4px;">
                     <label style="color: #aaa; font-size: 14px; flex: 1;">🤖 Auto-Buy on Alert:</label>
                     <input type="checkbox"
+                           class="team-alert-checkbox"
                            id="team-autobuy-${pkg.name.replace(/\s+/g, '-')}"
                            data-package-name="${pkg.name}"
                            data-crypto="${isDualCrypto ? pkg.mainCrypto : pkg.crypto}"
                            ${isDualCrypto ? `data-merge-crypto="${pkg.mergeCrypto}"` : ''}
                            data-is-dual-crypto="${isDualCrypto}"
-                           ${autoBuyEnabled ? 'checked' : ''}
-                           style="width: 20px; height: 20px; cursor: pointer;">
+                           ${autoBuyEnabled ? 'checked' : ''}>
                     <span style="color: ${autoBuyEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
                         ${autoBuyEnabled ? '✓ Enabled' : 'Disabled'}
                     </span>
