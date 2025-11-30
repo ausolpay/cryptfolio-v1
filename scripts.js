@@ -22052,16 +22052,20 @@ async function fetchNiceHashSoloPackages() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
                 },
                 body: JSON.stringify({
                     endpoint: endpoint,
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache'
                     },
                     body: null
-                })
+                }),
+                cache: 'no-store'
             });
         } else {
             // Direct call to NiceHash API in development
@@ -22071,8 +22075,11 @@ async function fetchNiceHashSoloPackages() {
             response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json'
-                }
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                },
+                cache: 'no-store'
             });
         }
 
@@ -22235,16 +22242,20 @@ async function fetchNiceHashTeamPackages() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
                 },
                 body: JSON.stringify({
                     endpoint: endpoint,
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache'
                     },
                     body: null
-                })
+                }),
+                cache: 'no-store'
             });
         } else {
             // Direct call to NiceHash API in development
@@ -22254,8 +22265,11 @@ async function fetchNiceHashTeamPackages() {
             response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json'
-                }
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                },
+                cache: 'no-store'
             });
         }
 
