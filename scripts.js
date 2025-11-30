@@ -24198,9 +24198,15 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                             </svg>
                             <span class="team-stat-value" id="team-hashrate-${packageIdForElements}">${(() => {
+                                // Team packages have "current / max unit/s" format - only wrap the unit
+                                const teamMatch = pkg.hashrate.match(/^(.+?)\s+([\w.]+\/s)$/);
+                                if (teamMatch) {
+                                    return `${teamMatch[1]}<span class="hashrate-unit"> ${teamMatch[2]}</span>`;
+                                }
+                                // Fallback for simple "value unit" format
                                 const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
                                 if (match) {
-                                    return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+                                    return `${match[1]}<span class="hashrate-unit"> ${match[2]}</span>`;
                                 }
                                 return pkg.hashrate;
                             })()}</span>
