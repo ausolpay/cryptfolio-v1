@@ -11581,6 +11581,8 @@ let packageInitialValues = {};
 // Structure: { "packageId": { hashrate: "10 TH", hashrateNumeric: 10, rigs: 5, capturedAt: timestamp } }
 // Track packages that missed their 5-min capture window (won't be monitored for drops)
 let packagesMissedCaptureWindow = {};
+// Store package probabilities when active (for displaying on completed packages)
+let savedPackageProbabilities = {};
 
 // Note: easyMiningPollingInterval, easyMiningAlertsPollingInterval, buyPackagesPollingInterval,
 // buyPackagesPollingPaused, buyPackagesPauseTimer are declared at the top of the file
@@ -12810,6 +12812,10 @@ async function fetchEasyMiningData() {
 
         // Save easyMiningData to localStorage to persist balances
         setStorageItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        // Save package probabilities for displaying on completed packages
+        if (Object.keys(savedPackageProbabilities).length > 0) {
+            setStorageItem(`${loggedInUser}_savedPackageProbabilities`, JSON.stringify(savedPackageProbabilities));
+        }
         console.log(`💾 Saved EasyMining data to localStorage`);
 
         // Fetch public package data from NiceHash
@@ -13668,6 +13674,20 @@ async function fetchNiceHashOrders() {
     console.log(`📡📡📡 FETCHNICEHASHORDERS - Using Solo Mining Endpoint 📡📡📡`);
     console.log(`${'#'.repeat(80)}\n`);
 
+    // Load saved package probabilities from localStorage (for restoring on completed packages)
+    if (Object.keys(savedPackageProbabilities).length === 0 && loggedInUser) {
+        const storedProbs = getStorageItem(`${loggedInUser}_savedPackageProbabilities`);
+        if (storedProbs) {
+            try {
+                savedPackageProbabilities = JSON.parse(storedProbs);
+                console.log(`📂 Loaded ${Object.keys(savedPackageProbabilities).length} saved package probabilities from localStorage`);
+            } catch (e) {
+                console.warn('Failed to parse saved package probabilities:', e);
+                savedPackageProbabilities = {};
+            }
+        }
+    }
+
     try {
         // Fetch from TWO endpoints to get complete picture:
         // 1. Packages with rewards (blocks found) - includes active AND completed
@@ -14367,6 +14387,20 @@ async function fetchNiceHashOrders() {
                 console.log(`   🎲 Probability: ${pkg.probability}${pkg.mergeProbability ? ` / ${pkg.mergeProbability}` : ''}`);
             }
 
+            // Save probability when package is active (for displaying on completed packages later)
+            if (pkg.active && pkg.probability) {
+                savedPackageProbabilities[pkg.id] = {
+                    probability: pkg.probability,
+                    mergeProbability: pkg.mergeProbability || null
+                };
+            }
+            // Restore probability for completed packages that don't have it from API
+            if (!pkg.active && !pkg.probability && savedPackageProbabilities[pkg.id]) {
+                pkg.probability = savedPackageProbabilities[pkg.id].probability;
+                pkg.mergeProbability = savedPackageProbabilities[pkg.id].mergeProbability;
+                console.log(`   🎲 Restored probability from cache: ${pkg.probability}${pkg.mergeProbability ? ` / ${pkg.mergeProbability}` : ''}`);
+            }
+
             // ✅ BLOCK-LEVEL TRACKING: Track each individual block with its discovery price
             // This captures the live price when blocks are first discovered
             if (soloRewards.length > 0 && typeof trackNewBlock === 'function') {
@@ -14460,17 +14494,18 @@ function formatDateTime(timestamp) {
         date = new Date(parseInt(timestamp));
     }
 
-    // Format: "Jan 15, 2025 at 3:45 PM"
-    const options = {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    };
+    // Format: "DD/MM/YY H:MM AM/PM" (no leading zero on hour)
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
 
-    return date.toLocaleString('en-US', options);
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 should be 12
+
+    return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
 }
 
 /**
