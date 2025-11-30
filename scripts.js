@@ -1219,6 +1219,73 @@ function showAppPage() {
     }, 2000);
 }
 
+// Store original settings snapshot for unsaved changes detection
+let easyMiningSettingsSnapshot = null;
+
+// Get current form values as an object for comparison
+function getEasyMiningSettingsFromForm() {
+    return {
+        apiKey: document.getElementById('nicehash-api-key-page')?.value || '',
+        apiSecret: document.getElementById('nicehash-api-secret-page')?.value || '',
+        orgId: document.getElementById('nicehash-org-id-page')?.value || '',
+        multiDeviceEnabled: document.getElementById('multi-device-toggle-page')?.checked || false,
+        deviceCount: parseInt(document.getElementById('device-count-display')?.textContent) || 1,
+        autoUpdateHoldings: document.getElementById('auto-update-holdings-toggle-page')?.checked || false,
+        includeAvailableBTC: document.getElementById('include-available-btc-toggle-page')?.checked || false,
+        includePendingBTC: document.getElementById('include-pending-btc-toggle-page')?.checked || false,
+        autoBuyCooldown: document.getElementById('auto-buy-cooldown-toggle-page')?.checked || false,
+        autoClearTeamShares: document.getElementById('auto-clear-team-shares-toggle-page')?.checked || false,
+        autoClearExcludeTeamGold: document.getElementById('auto-clear-exclude-team-gold')?.checked || false,
+        autoBuyTgSafeHold: document.getElementById('auto-buy-tg-safe-hold-toggle-page')?.checked || false,
+        autoClearActiveShares: document.getElementById('autoClearActiveShares')?.checked || false,
+        autoClearThreshold: parseInt(document.getElementById('autoClearThreshold')?.value) || 50,
+        teamBailIncludeManual: document.getElementById('teamBailIncludeManual')?.checked || false,
+        rewardAndBail: document.getElementById('rewardAndBailToggle')?.checked || false,
+        rewardAndBailIncludeManual: document.getElementById('rewardAndBailIncludeManual')?.checked || false,
+        autoClearOnDrop: document.getElementById('autoClearOnDropToggle')?.checked || false,
+        autoClearDropThreshold: parseInt(document.getElementById('autoClearDropThreshold')?.value) || 50
+    };
+}
+
+// Check if EasyMining settings have unsaved changes
+function hasUnsavedEasyMiningSettings() {
+    if (!easyMiningSettingsSnapshot) return false;
+
+    const currentSettings = getEasyMiningSettingsFromForm();
+
+    // Compare each key
+    for (const key of Object.keys(easyMiningSettingsSnapshot)) {
+        if (easyMiningSettingsSnapshot[key] !== currentSettings[key]) {
+            console.log(`📝 Unsaved change detected: ${key} changed from "${easyMiningSettingsSnapshot[key]}" to "${currentSettings[key]}"`);
+            return true;
+        }
+    }
+    return false;
+}
+
+// Check for unsaved changes before navigating away from EasyMining settings
+function checkUnsavedEasyMiningSettings() {
+    if (hasUnsavedEasyMiningSettings()) {
+        alert('You have unsaved changes!\n\nClick "Activate" to save your EasyMining settings.');
+        return true; // Has unsaved changes
+    }
+    return false; // No unsaved changes
+}
+
+// Back button handler for EasyMining settings page
+function backFromEasyMiningSettings() {
+    // Check for unsaved changes before navigating away
+    if (checkUnsavedEasyMiningSettings()) {
+        return; // Don't navigate - user needs to save first
+    }
+
+    // Clear snapshot since we're leaving the page
+    easyMiningSettingsSnapshot = null;
+
+    // Navigate back to app page
+    showAppPage();
+}
+
 function showEasyMiningSettingsPage() {
     window.scrollTo(0, 0);
     console.log('Showing EasyMining Settings Page');
@@ -1302,6 +1369,10 @@ function showEasyMiningSettingsPage() {
     // Load Auto-Clear on Drop settings
     document.getElementById('autoClearOnDropToggle').checked = savedSettings.autoClearOnDrop || false; // Default OFF
     document.getElementById('autoClearDropThreshold').value = savedSettings.autoClearDropThreshold || 50; // Default 50%
+
+    // Take snapshot of current settings for unsaved changes detection
+    easyMiningSettingsSnapshot = getEasyMiningSettingsFromForm();
+    console.log('📸 EasyMining settings snapshot taken');
 }
 
 // Toggle function for "Exclude Team Gold from Auto-Clear" checkbox
@@ -11788,6 +11859,9 @@ function activateEasyMiningFromPage() {
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
+
+    // Clear unsaved changes snapshot (settings are now saved)
+    easyMiningSettingsSnapshot = null;
 
     console.log('EasyMining activated with credentials (from page)');
 
