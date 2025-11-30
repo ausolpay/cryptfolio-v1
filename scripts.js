@@ -16948,14 +16948,21 @@ function updateTeamAlertCardValues(pkg) {
         const maxSpeed = pkg.projectedSpeed.toFixed(4);
         // Use stored displayUnit or get it dynamically
         const unit = pkg.displayUnit || getPackageDisplayUnit(pkg);
-        hashrateEl.innerHTML = `${currentSpeed} / ${maxSpeed}<span class="hashrate-unit"> ${unit}/s</span>`;
+        // Style: current speed in white, " / max unit/s" in grey
+        hashrateEl.innerHTML = `${currentSpeed}<span class="hashrate-unit"> / ${maxSpeed} ${unit}/s</span>`;
     } else if (hashrateEl && pkg.hashrate) {
-        // Parse hashrate to separate value from unit for styling
-        const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
-        if (match) {
-            hashrateEl.innerHTML = `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+        // Team packages have "current / max unit/s" format
+        const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
+        if (teamMatch) {
+            hashrateEl.innerHTML = `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
         } else {
-            hashrateEl.textContent = pkg.hashrate;
+            // Fallback for simple "value unit" format
+            const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+            if (match) {
+                hashrateEl.innerHTML = `${match[1]}<span class="hashrate-unit"> ${match[2]}</span>`;
+            } else {
+                hashrateEl.textContent = pkg.hashrate;
+            }
         }
     }
 
@@ -17807,9 +17814,16 @@ function createTeamPackageRecommendationCard(pkg) {
                             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                         </svg>
                         <span class="team-stat-value" id="alert-hashrate-${packageId}">${(() => {
+                            // Team packages have "current / max unit/s" format
+                            // Style: current speed in white, " / max unit/s" in grey
+                            const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
+                            if (teamMatch) {
+                                return `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
+                            }
+                            // Fallback for simple "value unit" format
                             const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
                             if (match) {
-                                return `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+                                return `${match[1]}<span class="hashrate-unit"> ${match[2]}</span>`;
                             }
                             return pkg.hashrate;
                         })()}</span>
@@ -22746,11 +22760,19 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         const hashrateEl = card.querySelector(`#hashrate-${packageIdForElements}`) ||
                            card.querySelector(`#team-hashrate-${packageIdForElements}`);
         if (hashrateEl && pkg.hashrate) {
-            const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
-            if (match) {
-                hashrateEl.innerHTML = `${match[1]}<span class="hashrate-unit">${match[2]}</span>`;
+            // Team packages have "current / max unit/s" format
+            // Style: current speed in white, " / max unit/s" in grey
+            const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
+            if (teamMatch) {
+                hashrateEl.innerHTML = `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
             } else {
-                hashrateEl.textContent = pkg.hashrate;
+                // Fallback for simple "value unit" format
+                const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                if (match) {
+                    hashrateEl.innerHTML = `${match[1]}<span class="hashrate-unit"> ${match[2]}</span>`;
+                } else {
+                    hashrateEl.textContent = pkg.hashrate;
+                }
             }
         }
 
@@ -24602,10 +24624,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                             </svg>
                             <span class="team-stat-value" id="team-hashrate-${packageIdForElements}">${(() => {
-                                // Team packages have "current / max unit/s" format - only wrap the unit
-                                const teamMatch = pkg.hashrate.match(/^(.+?)\s+([\w.]+\/s)$/);
+                                // Team packages have "current / max unit/s" format
+                                // Style: current speed in white, " / max unit/s" in grey
+                                const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
                                 if (teamMatch) {
-                                    return `${teamMatch[1]}<span class="hashrate-unit"> ${teamMatch[2]}</span>`;
+                                    return `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
                                 }
                                 // Fallback for simple "value unit" format
                                 const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
