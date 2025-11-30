@@ -16944,17 +16944,24 @@ function updateTeamAlertCardValues(pkg) {
     if (hashrateEl && pkg.projectedSpeed) {
         // Recalculate live speed based on current fill percentage
         const fillPercentage = (pkg.addedAmount && pkg.fullAmount) ? (pkg.addedAmount / pkg.fullAmount) : 0;
-        const currentSpeed = (fillPercentage * pkg.projectedSpeed).toFixed(4);
-        const maxSpeed = pkg.projectedSpeed.toFixed(4);
         // Use stored displayUnit or get it dynamically
         const unit = pkg.displayUnit || getPackageDisplayUnit(pkg);
+        // TH/s units use 2 decimal places, others use 4
+        const decimals = unit === 'TH' ? 2 : 4;
+        const currentSpeed = (fillPercentage * pkg.projectedSpeed).toFixed(decimals);
+        const maxSpeed = pkg.projectedSpeed.toFixed(decimals);
         // Style: current speed in white, " / max unit/s" in grey
         hashrateEl.innerHTML = `${currentSpeed}<span class="hashrate-unit"> / ${maxSpeed} ${unit}/s</span>`;
     } else if (hashrateEl && pkg.hashrate) {
         // Team packages have "current / max unit/s" format
         const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
         if (teamMatch) {
-            hashrateEl.innerHTML = `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
+            // TH/s units use 2 decimal places, others use 4
+            const unit = teamMatch[3].replace('/s', '').trim();
+            const decimals = unit === 'TH' ? 2 : 4;
+            const current = parseFloat(teamMatch[1]).toFixed(decimals);
+            const max = parseFloat(teamMatch[2]).toFixed(decimals);
+            hashrateEl.innerHTML = `${current}<span class="hashrate-unit"> / ${max} ${teamMatch[3]}</span>`;
         } else {
             // Fallback for simple "value unit" format
             const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
@@ -17818,7 +17825,12 @@ function createTeamPackageRecommendationCard(pkg) {
                             // Style: current speed in white, " / max unit/s" in grey
                             const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
                             if (teamMatch) {
-                                return `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
+                                // TH/s units use 2 decimal places, others use 4
+                                const unit = teamMatch[3].replace('/s', '').trim();
+                                const decimals = unit === 'TH' ? 2 : 4;
+                                const current = parseFloat(teamMatch[1]).toFixed(decimals);
+                                const max = parseFloat(teamMatch[2]).toFixed(decimals);
+                                return `${current}<span class="hashrate-unit"> / ${max} ${teamMatch[3]}</span>`;
                             }
                             // Fallback for simple "value unit" format
                             const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
@@ -22764,7 +22776,12 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             // Style: current speed in white, " / max unit/s" in grey
             const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
             if (teamMatch) {
-                hashrateEl.innerHTML = `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
+                // TH/s units use 2 decimal places, others use 4
+                const unit = teamMatch[3].replace('/s', '').trim();
+                const decimals = unit === 'TH' ? 2 : 4;
+                const current = parseFloat(teamMatch[1]).toFixed(decimals);
+                const max = parseFloat(teamMatch[2]).toFixed(decimals);
+                hashrateEl.innerHTML = `${current}<span class="hashrate-unit"> / ${max} ${teamMatch[3]}</span>`;
             } else {
                 // Fallback for simple "value unit" format
                 const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
@@ -24628,7 +24645,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 // Style: current speed in white, " / max unit/s" in grey
                                 const teamMatch = pkg.hashrate.match(/^([\d.]+)\s*\/\s*([\d.]+)\s+(.+)$/);
                                 if (teamMatch) {
-                                    return `${teamMatch[1]}<span class="hashrate-unit"> / ${teamMatch[2]} ${teamMatch[3]}</span>`;
+                                    // TH/s units use 2 decimal places, others use 4
+                                    const unit = teamMatch[3].replace('/s', '').trim();
+                                    const decimals = unit === 'TH' ? 2 : 4;
+                                    const current = parseFloat(teamMatch[1]).toFixed(decimals);
+                                    const max = parseFloat(teamMatch[2]).toFixed(decimals);
+                                    return `${current}<span class="hashrate-unit"> / ${max} ${teamMatch[3]}</span>`;
                                 }
                                 // Fallback for simple "value unit" format
                                 const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
