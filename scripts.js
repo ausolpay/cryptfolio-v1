@@ -242,6 +242,10 @@ let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 let isAutoBuyInProgress = false; // Lock to pause package fetching during auto-buy purchases
 
+// Cache last valid API responses to prevent card flashing when API fails
+let lastValidSoloPackages = null;
+let lastValidTeamPackages = null;
+
 // Pending share purchases - holds user input for up to 10 seconds until API confirms
 // Structure: { packageId: { shares: number, timestamp: number } }
 const pendingSharePurchases = {};
@@ -22487,28 +22491,40 @@ async function loadBuyPackagesDataOnPage() {
         };
     }
 
-    // Try to fetch from API, fall back to mock data
+    // Try to fetch from API, use cache if unavailable
     let singlePackages = await fetchNiceHashSoloPackages();
 
-    // If API fails, use mock data
+    // If API fails or returns null/empty, use cached data to prevent card flashing
     if (!singlePackages || singlePackages.length === 0) {
-        console.log('📦 Using mock solo package data');
-        singlePackages = [
-            { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-            { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-            { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
-            { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-            { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-            { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
-            { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
-            { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
-            { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
-        ];
+        if (lastValidSoloPackages && lastValidSoloPackages.length > 0) {
+            console.log('📦 Using cached solo packages (API unavailable)');
+            singlePackages = lastValidSoloPackages;
+        } else {
+            console.log('📦 No cached solo data available, skipping update');
+            return; // Don't update UI if we have no valid data
+        }
+    } else {
+        // Cache valid response for future use
+        lastValidSoloPackages = singlePackages;
     }
 
-    // Fetch team packages from API
+    // Fetch team packages from API, use cache if unavailable
     let teamPackages = await fetchNiceHashTeamPackages();
-    console.log(`✅ Fetched ${teamPackages.length} team packages from API`);
+
+    // If API fails or returns null/empty, use cached data to prevent card flashing
+    if (!teamPackages || teamPackages.length === 0) {
+        if (lastValidTeamPackages && lastValidTeamPackages.length > 0) {
+            console.log('👥 Using cached team packages (API unavailable)');
+            teamPackages = lastValidTeamPackages;
+        } else {
+            console.log('👥 No cached team data available');
+            teamPackages = []; // Continue with empty to avoid breaking rest of function
+        }
+    } else {
+        // Cache valid response for future use
+        lastValidTeamPackages = teamPackages;
+    }
+    console.log(`✅ Using ${teamPackages.length} team packages`);
 
     // Fetch authenticated team shares (user's shares from members array)
     // This populates authenticatedTeamShares for share distribution display
@@ -24263,11 +24279,13 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             isDualCrypto: pkg.isDualCrypto
         };
 
-        // Initialize share value to 1
+        // Initialize share value only if not already set (preserve user input on re-render)
         if (!window.packageShareValues) {
             window.packageShareValues = {};
         }
-        window.packageShareValues[pkg.name] = 1;
+        if (window.packageShareValues[pkg.name] === undefined) {
+            window.packageShareValues[pkg.name] = 1;
+        }
     }
 
     return card;
