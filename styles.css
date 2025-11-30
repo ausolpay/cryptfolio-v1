@@ -5026,6 +5026,11 @@ body.light-mode .package-card .team-stat {
     text-transform: uppercase;
 }
 
+.package-card .completion-time {
+    color: #888 !important;
+    font-size: 0.85em;
+}
+
 /* Progress Bar */
 .package-card .package-progress-bar {
     width: 100%;

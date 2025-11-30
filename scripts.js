@@ -15267,6 +15267,17 @@ function displayActivePackages() {
                         </div>
                         ` : ''}
                         ` : ''}
+                        ${!pkg.active && pkg.endTime ? `
+                        <div class="stat-block">
+                            <span class="stat-value-medium completion-time">
+                                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12,6 12,12 16,14"/>
+                                </svg>
+                                ${formatDateTime(pkg.endTime)}
+                            </span>
+                        </div>
+                        ` : ''}
                         ${pkg.active ? `
                         <div class="stat-block">
                             <span class="stat-value-medium">
