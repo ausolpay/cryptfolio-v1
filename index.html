@@ -502,6 +502,27 @@
                     </div>
                     <div class="settings-row">
                         <div class="settings-row-info">
+                            <span class="settings-row-label">Multi-Device Mode</span>
+                            <span class="settings-row-desc">Reduce API calls when running on multiple devices</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="multi-device-toggle-page" onchange="toggleMultiDeviceInput()">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row" id="device-count-row" style="display: none;">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Number of Devices</span>
+                            <span class="settings-row-desc">Polling interval: <span id="polling-interval-display">5</span> seconds</span>
+                        </div>
+                        <div class="device-count-controls">
+                            <button class="device-count-btn" onclick="adjustDeviceCount(-1)">−</button>
+                            <span id="device-count-display" class="device-count-value">1</span>
+                            <button class="device-count-btn" onclick="adjustDeviceCount(1)">+</button>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
                             <span class="settings-row-label">Activate EasyMining</span>
                             <span class="settings-row-desc">Connect to NiceHash with your credentials</span>
                         </div>

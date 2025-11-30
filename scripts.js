@@ -1255,6 +1255,26 @@ function showEasyMiningSettingsPage() {
     document.getElementById('nicehash-api-secret-page').value = savedSettings.apiSecret || '';
     document.getElementById('nicehash-org-id-page').value = savedSettings.orgId || '';
 
+    // Load multi-device settings
+    const multiDeviceToggle = document.getElementById('multi-device-toggle-page');
+    const deviceCountRow = document.getElementById('device-count-row');
+    const deviceCountDisplay = document.getElementById('device-count-display');
+    const pollingIntervalDisplay = document.getElementById('polling-interval-display');
+
+    if (multiDeviceToggle) {
+        multiDeviceToggle.checked = savedSettings.multiDeviceEnabled || false;
+        if (deviceCountRow) {
+            deviceCountRow.style.display = savedSettings.multiDeviceEnabled ? 'flex' : 'none';
+        }
+    }
+    if (deviceCountDisplay) {
+        deviceCountDisplay.textContent = savedSettings.deviceCount || 1;
+    }
+    if (pollingIntervalDisplay) {
+        const interval = (savedSettings.deviceCount || 1) * 5;
+        pollingIntervalDisplay.textContent = interval;
+    }
+
     // Load toggle settings
     document.getElementById('auto-update-holdings-toggle-page').checked = savedSettings.autoUpdateHoldings || false;
     document.getElementById('include-available-btc-toggle-page').checked = savedSettings.includeAvailableBTC || false;
@@ -11576,7 +11596,9 @@ let easyMiningSettings = {
     enabled: false,
     autoUpdateHoldings: false,
     includeAvailableBTC: false,
-    includePendingBTC: false
+    includePendingBTC: false,
+    multiDeviceEnabled: false,
+    deviceCount: 1
 };
 
 let easyMiningData = {
@@ -11680,6 +11702,51 @@ function clearEasyMiningErrorAlert() {
 // EASYMINING SETTINGS MODAL FUNCTIONS
 // =============================================================================
 
+// Toggle multi-device input visibility
+function toggleMultiDeviceInput() {
+    const toggle = document.getElementById('multi-device-toggle-page');
+    const deviceCountRow = document.getElementById('device-count-row');
+
+    if (deviceCountRow) {
+        deviceCountRow.style.display = toggle?.checked ? 'flex' : 'none';
+    }
+
+    // If disabled, reset to 1 device
+    if (!toggle?.checked) {
+        const deviceCountDisplay = document.getElementById('device-count-display');
+        const pollingIntervalDisplay = document.getElementById('polling-interval-display');
+        if (deviceCountDisplay) deviceCountDisplay.textContent = '1';
+        if (pollingIntervalDisplay) pollingIntervalDisplay.textContent = '5';
+    }
+}
+
+// Adjust device count with + and - buttons (min: 1, max: 3)
+function adjustDeviceCount(delta) {
+    const deviceCountDisplay = document.getElementById('device-count-display');
+    const pollingIntervalDisplay = document.getElementById('polling-interval-display');
+
+    if (!deviceCountDisplay) return;
+
+    let currentCount = parseInt(deviceCountDisplay.textContent) || 1;
+    let newCount = currentCount + delta;
+
+    // Clamp between 1 and 3
+    newCount = Math.max(1, Math.min(3, newCount));
+
+    deviceCountDisplay.textContent = newCount;
+
+    // Update polling interval display
+    if (pollingIntervalDisplay) {
+        pollingIntervalDisplay.textContent = newCount * 5;
+    }
+}
+
+// Get the current polling interval based on device count
+function getPollingInterval() {
+    const deviceCount = easyMiningSettings.multiDeviceEnabled ? (easyMiningSettings.deviceCount || 1) : 1;
+    return 5000 * deviceCount; // Base 5 seconds * device count
+}
+
 // Page-based version of activateEasyMining
 function activateEasyMiningFromPage() {
     // Get API credentials from page inputs
@@ -11714,6 +11781,10 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.rewardAndBailIncludeManual = document.getElementById('rewardAndBailIncludeManual')?.checked || false;
     easyMiningSettings.autoClearOnDrop = document.getElementById('autoClearOnDropToggle')?.checked || false;
     easyMiningSettings.autoClearDropThreshold = parseInt(document.getElementById('autoClearDropThreshold')?.value) || 50;
+
+    // Save multi-device settings
+    easyMiningSettings.multiDeviceEnabled = document.getElementById('multi-device-toggle-page')?.checked || false;
+    easyMiningSettings.deviceCount = parseInt(document.getElementById('device-count-display')?.textContent) || 1;
 
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
@@ -26468,11 +26539,13 @@ function startEasyMiningPolling() {
     fetchEasyMiningData();
     lastEasyMiningPollTime = Date.now();
 
-    // Poll every 5 seconds (NiceHash rate limit: 300 calls/min, we use ~48 calls/min)
+    // Poll based on device count (default 5s, increases with more devices)
+    const pollingInterval = getPollingInterval();
+    console.log(`📊 EasyMining polling interval: ${pollingInterval / 1000} seconds (${easyMiningSettings.deviceCount || 1} device(s))`);
     easyMiningPollingInterval = setInterval(() => {
         fetchEasyMiningData();
         lastEasyMiningPollTime = Date.now();
-    }, 5000);
+    }, pollingInterval);
 
     // Start background metrics capture every 30 seconds (captures package data for Averages page)
     startBackgroundMetricsCapture();
@@ -28284,10 +28357,12 @@ function startPollingWatchdog() {
     // Check every 30 seconds if polling is still running
     pollingWatchdogInterval = setInterval(() => {
         const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
+        const pollingInterval = getPollingInterval();
+        const staleThreshold = pollingInterval * 3; // 3x polling interval = stale
 
-        // If more than 15 seconds since last poll, restart
-        if (timeSinceLastPoll > 15000 && easyMiningSettings.enabled) {
-            console.warn(`⚠️ Polling watchdog detected stalled polling (${Math.round(timeSinceLastPoll / 1000)}s since last poll)`);
+        // If more than 3x polling interval since last poll, restart
+        if (timeSinceLastPoll > staleThreshold && easyMiningSettings.enabled) {
+            console.warn(`⚠️ Polling watchdog detected stalled polling (${Math.round(timeSinceLastPoll / 1000)}s since last poll, threshold: ${staleThreshold / 1000}s)`);
             console.log('🔄 Restarting EasyMining polling...');
             startEasyMiningPolling();
         }
@@ -28302,9 +28377,11 @@ if (!visibilityChangeListenerAdded) {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && easyMiningSettings.enabled && easyMiningPollingInterval) {
             const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
+            const pollingInterval = getPollingInterval();
+            const resumeThreshold = pollingInterval * 2; // 2x polling interval = refetch on visible
 
-            // If more than 10 seconds since last poll, fetch immediately
-            if (timeSinceLastPoll > 10000) {
+            // If more than 2x polling interval since last poll, fetch immediately
+            if (timeSinceLastPoll > resumeThreshold) {
                 console.log(`👁️ Page visible again - fetching fresh data...`);
                 fetchEasyMiningData();
                 lastEasyMiningPollTime = Date.now();

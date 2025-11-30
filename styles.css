@@ -588,6 +588,61 @@ body.light-mode .settings-action-btn:hover {
     background-color: #d0d0d0;
 }
 
+/* Device Count Controls */
+.device-count-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.device-count-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: #333;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.device-count-btn:hover {
+    background-color: #4CAF50;
+}
+
+.device-count-btn:disabled {
+    background-color: #555;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.device-count-value {
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 24px;
+    text-align: center;
+}
+
+body.light-mode .device-count-btn {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+body.light-mode .device-count-btn:hover {
+    background-color: #4CAF50;
+    color: #fff;
+}
+
+body.light-mode .device-count-btn:disabled {
+    background-color: #f0f0f0;
+    color: #aaa;
+}
+
 /* Country Dropdown */
 .country-dropdown {
     position: absolute;
