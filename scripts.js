@@ -15283,7 +15283,14 @@ function displayActivePackages() {
                                 <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2" fill="currentColor"/>
                                 </svg>
-                                ${pkg.hashrate}
+                                ${(() => {
+                                    const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                                    if (match) {
+                                        const num = parseFloat(match[1]);
+                                        return `${num.toFixed(4)} ${match[2]}`;
+                                    }
+                                    return pkg.hashrate;
+                                })()}
                             </span>
                         </div>
                         ` : ''}
