@@ -4087,7 +4087,7 @@ function clearTeamAlerts() {
     loadTeamAlerts();
 }
 
-async function checkPackageRecommendations() {
+async function checkPackageRecommendations(soloPackages = null) {
     console.log('🔔 Checking solo package recommendations based on probability alerts...');
 
     // Get saved alerts
@@ -4098,8 +4098,8 @@ async function checkPackageRecommendations() {
         return [];
     }
 
-    // Fetch current packages from API
-    const packages = await fetchNiceHashSoloPackages();
+    // Use passed packages or fetch from API (avoids redundant API calls)
+    const packages = soloPackages || await fetchNiceHashSoloPackages();
 
     if (!packages || packages.length === 0) {
         console.log('No packages available');
@@ -4178,7 +4178,7 @@ async function checkPackageRecommendations() {
     return recommendations;
 }
 
-async function checkTeamRecommendations() {
+async function checkTeamRecommendations(teamPackages = null, soloPackagesParam = null) {
     console.log('🔔 Checking team package recommendations based on alert thresholds...');
 
     // Get saved team alerts
@@ -4189,17 +4189,17 @@ async function checkTeamRecommendations() {
         return [];
     }
 
-    // Fetch current team packages from API
-    const packages = await fetchNiceHashTeamPackages();
+    // Use passed packages or fetch from API (avoids redundant API calls)
+    const packages = teamPackages || await fetchNiceHashTeamPackages();
 
     if (!packages || packages.length === 0) {
         console.log('No team packages available');
         return [];
     }
 
-    // Fetch solo/small packages (for checking small package probability thresholds)
-    const soloPackages = await fetchNiceHashSoloPackages();
-    console.log(`📦 Fetched ${soloPackages?.length || 0} solo/small packages for threshold checking`);
+    // Use passed solo packages or fetch from API (for checking small package probability thresholds)
+    const soloPackages = soloPackagesParam || await fetchNiceHashSoloPackages();
+    console.log(`📦 Using ${soloPackages?.length || 0} solo/small packages for threshold checking`);
 
     const recommendations = [];
 
@@ -16370,11 +16370,22 @@ async function updateRecommendations() {
         window.niceHashBalance = { available: 0, pending: 0 };
     }
 
-    // Get recommended solo packages based on alert thresholds
-    const recommendations = await checkPackageRecommendations();
+    // Pre-fetch packages once for all recommendation checks (avoids redundant API calls)
+    let soloPackages = [];
+    let teamPackages = [];
+    try {
+        soloPackages = await fetchNiceHashSoloPackages() || [];
+        teamPackages = await fetchNiceHashTeamPackages() || [];
+        console.log(`📦 Fetched ${soloPackages.length} solo and ${teamPackages.length} team packages for recommendations`);
+    } catch (error) {
+        console.error('❌ Failed to fetch packages for recommendations:', error);
+    }
 
-    // Get recommended team packages based on alert thresholds
-    const teamRecommendations = await checkTeamRecommendations();
+    // Get recommended solo packages based on alert thresholds (pass pre-fetched data)
+    const recommendations = await checkPackageRecommendations(soloPackages);
+
+    // Get recommended team packages based on alert thresholds (pass pre-fetched data)
+    const teamRecommendations = await checkTeamRecommendations(teamPackages, soloPackages);
 
     // Execute auto-buy for any new recommendations (with cooldown check)
     await executeAutoBuySolo(recommendations);
@@ -22481,22 +22492,22 @@ async function loadBuyPackagesDataOnPage() {
         console.error('❌ Error updating package metrics averages:', error);
     }
 
-    // Load solo recommendations to highlight packages
+    // Load solo recommendations to highlight packages (pass pre-fetched data to avoid redundant API calls)
     let soloRecommendedNames = [];
     try {
         console.log('🔔 Loading solo recommendations for package highlighting...');
-        const soloRecommendations = await checkPackageRecommendations();
+        const soloRecommendations = await checkPackageRecommendations(singlePackages);
         soloRecommendedNames = soloRecommendations.map(pkg => pkg.name);
         console.log(`✅ Found ${soloRecommendedNames.length} recommended solo package(s) for highlighting`);
     } catch (error) {
         console.error('❌ Error loading solo recommendations:', error);
     }
 
-    // Load team recommendations to highlight packages
+    // Load team recommendations to highlight packages (pass pre-fetched data to avoid redundant API calls)
     let teamRecommendedNames = [];
     try {
         console.log('🔔 Loading team recommendations for package highlighting...');
-        const teamRecommendations = await checkTeamRecommendations();
+        const teamRecommendations = await checkTeamRecommendations(teamPackages, singlePackages);
         teamRecommendedNames = teamRecommendations.map(pkg => pkg.name);
         console.log(`✅ Found ${teamRecommendedNames.length} recommended team package(s) for highlighting`);
     } catch (error) {
@@ -26302,15 +26313,15 @@ let backgroundMetricsInterval = null;
 function startBackgroundMetricsCapture() {
     stopBackgroundMetricsCapture();
 
-    console.log('📊 Starting background metrics capture (30s interval)...');
+    console.log('📊 Starting background metrics capture (2 min interval)...');
 
     // Capture immediately on start
     captureBackgroundMetrics();
 
-    // Then capture every 30 seconds
+    // Then capture every 2 minutes (reduced from 30s to avoid rate limiting)
     backgroundMetricsInterval = setInterval(() => {
         captureBackgroundMetrics();
-    }, 30000);
+    }, 120000);
 }
 
 function stopBackgroundMetricsCapture() {
@@ -27243,12 +27254,12 @@ function startPackageMetricsAveraging() {
     // Stop any existing interval
     stopPackageMetricsAveraging();
 
-    // Update averages every 5 seconds
+    // Update averages every 30 seconds (reduced from 5s - averaging is local calculation, no API calls)
     packageMetricsAverageInterval = setInterval(() => {
         updatePackageMetricsAverages();
-    }, 5000);
+    }, 30000);
 
-    console.log('📊 Started package metrics averaging (5s interval)');
+    console.log('📊 Started package metrics averaging (30s interval)');
 }
 
 /**
@@ -27444,11 +27455,12 @@ async function fetchAndUpdateAverages() {
 function startAveragesPolling() {
     stopAveragesPolling();
 
+    // Poll every 3 minutes (reduced from 30s - averages don't need rapid updates)
     averagesPollingInterval = setInterval(() => {
         fetchAndUpdateAverages();
-    }, 30000);
+    }, 180000);
 
-    console.log('📊 Started averages polling (30s interval)');
+    console.log('📊 Started averages polling (3 min interval)');
 }
 
 /**
