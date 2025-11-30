@@ -9412,8 +9412,8 @@ body.light-mode .averages-stat-value {
 }
 
 .team-alert-checkbox:checked {
-    background-color: #2196F3;
-    border-color: #2196F3;
+    background-color: #444;
+    border-color: #444;
 }
 
 .team-alert-checkbox:checked::after {
@@ -9428,7 +9428,7 @@ body.light-mode .averages-stat-value {
 }
 
 .team-alert-checkbox:hover {
-    border-color: #2196F3;
+    border-color: #666;
 }
 
 /* Light mode */
@@ -9438,6 +9438,6 @@ body.light-mode .team-alert-checkbox {
 }
 
 body.light-mode .team-alert-checkbox:checked {
-    background-color: #2196F3;
-    border-color: #2196F3;
+    background-color: #666;
+    border-color: #666;
 }
