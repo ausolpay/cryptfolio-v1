@@ -1190,113 +1190,126 @@
 
     <!-- BTC Withdraw Page -->
     <div id="withdraw-page" class="container" style="display: none;">
-        <div class="header">
-            <div>
-                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v2</h1>
-                <p>Withdraw BTC from NH Balance</p>
+        <div class="settings-page-content">
+            <div class="settings-page-header">
+                <h1>BTC Withdrawal</h1>
+                <p>Withdraw Bitcoin from your NiceHash available balance to your saved withdrawal address</p>
             </div>
 
-            <div class="easymining-settings-form">
-                <h3 style="margin-top: 0; color: #ffa500;">💸 BTC Withdrawal</h3>
-                <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">
-                    Withdraw Bitcoin from your NiceHash available balance to your saved withdrawal address.
-                </p>
+            <div class="settings-section">
+                <div class="settings-card">
+                    <!-- Available Balance Display -->
+                    <div class="settings-row" style="background-color: rgba(76, 175, 80, 0.1); border-radius: 5px; padding: 15px;">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label" style="color: #4CAF50;">Available Balance:</span>
+                            <div style="font-size: 24px; color: #4CAF50; font-family: monospace; margin-top: 5px;">
+                                <span id="withdraw-available-balance">0.00000000</span> BTC
+                            </div>
+                        </div>
+                    </div>
 
-                <!-- Available Balance Display -->
-                <div class="input-group" style="background-color: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                    <label style="color: #4CAF50; font-weight: bold;">Available Balance:</label>
-                    <div style="font-size: 24px; color: #4CAF50; font-family: monospace;">
-                        <span id="withdraw-available-balance">0.00000000</span> BTC
+                    <!-- Withdrawal Address Dropdown -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Withdrawal Address: *</span>
+                            <select id="withdraw-address-select" class="settings-input" style="margin-top: 8px;">
+                                <option value="">Select withdrawal address...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Withdraw Amount BTC -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Withdraw Amount (BTC): *</span>
+                            <input type="number" id="withdraw-amount-btc" class="settings-input" placeholder="0.00000000" step="0.00000001" min="0" oninput="convertBtcToAudWithdraw()" style="margin-top: 8px;">
+                        </div>
+                    </div>
+
+                    <!-- Withdraw Amount AUD -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Withdraw Amount (AUD): *</span>
+                            <input type="number" id="withdraw-amount-aud" class="settings-input" placeholder="0.00" step="0.01" min="0" oninput="convertAudToBtcWithdraw()" style="margin-top: 8px;">
+                        </div>
+                    </div>
+
+                    <!-- Fee Display -->
+                    <div class="settings-row" style="background-color: rgba(255, 165, 0, 0.1); border-radius: 5px; border-left: 3px solid #ffa500;">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <p style="margin: 0; color: #ffa500; font-size: 13px;">
+                                <strong>Transaction Fee:</strong> 0.0001 BTC (<span id="fee-aud-display">$0.00</span>)
+                            </p>
+                            <p style="margin: 5px 0 0 0; color: #888; font-size: 12px;">
+                                Minimum withdrawal: 0.0005 BTC
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Fee Included Checkbox -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" class="team-alert-checkbox" id="fee-included-checkbox">
+                                <span class="settings-row-label">Fee included in withdraw amount</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Add Max Amount Button -->
+                    <div class="settings-row">
+                        <button onclick="addMaxAmountWithdraw()" class="settings-action-btn" style="width: 100%;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Add Max Amount (includes fee)</button>
+                    </div>
+
+                    <!-- Note Input -->
+                    <div class="settings-row">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <span class="settings-row-label">Add Note (Optional):</span>
+                            <input type="text" id="withdraw-note" class="settings-input" placeholder="Optional note for this withdrawal" maxlength="200" style="margin-top: 8px;">
+                        </div>
+                    </div>
+
+                    <!-- Execute Withdrawal Button -->
+                    <div class="settings-row" style="justify-content: center; padding-top: 10px;">
+                        <button onclick="executeWithdrawal()" id="execute-withdraw-btn" class="settings-danger-btn" style="width: 100%;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>Execute Withdrawal</button>
+                    </div>
+
+                    <!-- Warning Notice -->
+                    <div class="settings-row" style="background-color: rgba(255, 87, 34, 0.1); border-radius: 5px; border-left: 4px solid #FF5722;">
+                        <div class="settings-row-info" style="flex: 1;">
+                            <p style="margin: 0; color: #FF5722; font-size: 14px;">
+                                <strong>⚠️ Warning:</strong> Double-check the withdrawal address before confirming. Cryptocurrency transactions cannot be reversed.
+                            </p>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Withdrawal Address Dropdown -->
-                <div class="input-group">
-                    <label for="withdraw-address-select">Withdrawal Address: *</label>
-                    <select id="withdraw-address-select" style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%; font-size: 14px;">
-                        <option value="">Select withdrawal address...</option>
-                    </select>
-                </div>
-
-                <!-- Withdraw Amount BTC -->
-                <div class="input-group">
-                    <label for="withdraw-amount-btc">Withdraw Amount (BTC): *</label>
-                    <input type="number" id="withdraw-amount-btc" placeholder="0.00000000" step="0.00000001" min="0" oninput="convertBtcToAudWithdraw()">
-                </div>
-
-                <!-- Withdraw Amount AUD -->
-                <div class="input-group">
-                    <label for="withdraw-amount-aud">Withdraw Amount (AUD): *</label>
-                    <input type="number" id="withdraw-amount-aud" placeholder="0.00" step="0.01" min="0" oninput="convertAudToBtcWithdraw()">
-                </div>
-
-                <!-- Fee Display -->
-                <div style="margin: 10px 0; padding: 10px; background-color: rgba(255, 165, 0, 0.1); border-radius: 5px; border-left: 3px solid #ffa500;">
-                    <p style="margin: 0; color: #ffa500; font-size: 13px;">
-                        <strong>Transaction Fee:</strong> 0.0001 BTC (<span id="fee-aud-display">$0.00</span>)
-                    </p>
-                    <p style="margin: 5px 0 0 0; color: #888; font-size: 12px;">
-                        Minimum withdrawal: 0.0005 BTC
-                    </p>
-                </div>
-
-                <!-- Fee Included Checkbox -->
-                <div style="margin: 10px 0;">
-                    <label style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="checkbox" id="fee-included-checkbox" style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">
-                        <span style="color: #fff; font-size: 14px;">Fee included in withdraw amount</span>
-                    </label>
-                </div>
-
-                <!-- Add Max Amount Button -->
-                <div style="margin: 10px 0;">
-                    <button onclick="addMaxAmountWithdraw()" style="background-color: #2196F3; width: 100%; padding: 8px; font-size: 14px;">➕ Add Max Amount (includes fee)</button>
-                </div>
-
-                <!-- Note Input -->
-                <div class="input-group">
-                    <label for="withdraw-note">Add Note (Optional):</label>
-                    <input type="text" id="withdraw-note" placeholder="Optional note for this withdrawal" maxlength="200" style="background-color: #2a2a2a; color: #fff; padding: 10px; border: 1px solid #444; border-radius: 5px; width: 100%;">
-                </div>
-
-                <!-- Execute Withdrawal Button -->
-                <div style="margin: 20px 0;">
-                    <button onclick="executeWithdrawal()" id="execute-withdraw-btn" style="background-color: #FF5722; width: 100%;">💸 Execute Withdrawal</button>
-                </div>
-
-                <!-- Warning Notice -->
-                <div style="background-color: rgba(255, 87, 34, 0.1); padding: 15px; border-radius: 5px; border-left: 4px solid #FF5722;">
-                    <p style="margin: 0; color: #FF5722; font-size: 14px;">
-                        <strong>⚠️ Warning:</strong> Double-check the withdrawal address before confirming. Cryptocurrency transactions cannot be reversed.
-                    </p>
-                </div>
-
-                <!-- Output Section (Hidden by default) -->
-                <div id="withdraw-output-section" style="display: none;">
-                    <hr style="border: 1px solid #333; margin: 20px 0;">
-
+            <!-- Output Section (Hidden by default) -->
+            <div id="withdraw-output-section" class="settings-section" style="display: none;">
+                <div class="settings-card">
                     <!-- Transaction Result -->
                     <div id="withdraw-transaction-result">
                         <!-- Success/error message will be inserted here -->
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="buttons">
-            <button onclick="showAppPage()">← Back to Portfolio</button>
-        </div>
+            <!-- Back Button -->
+            <div class="settings-page-footer">
+                <button class="settings-back-btn" onclick="showAppPage()">← Back to Portfolio</button>
+            </div>
 
-        <div class="app-footer">
-            <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
-            <span class="footer-separator"></span>
-            <div class="footer-text">
-                <span>CryptFolio v2 (Beta)</span>
-                <span class="footer-divider">|</span>
-                <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
-                <span class="footer-divider">|</span>
-                <span>Data by CoinGecko / MEXC</span>
+            <div class="settings-page-copyright app-footer">
+                <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+                <span class="footer-separator"></span>
+                <div class="footer-text">
+                    <span>CryptFolio v2 (Beta)</span>
+                    <span class="footer-divider">|</span>
+                    <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
+                    <span class="footer-divider">|</span>
+                    <span>Data by CoinGecko / MEXC</span>
+                </div>
             </div>
         </div>
     </div>
