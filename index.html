@@ -1902,11 +1902,10 @@
 
     <!-- Buy Packages Page -->
     <div id="buy-packages-page" class="container" style="display: none;">
-        <div class="header">
-            <div>
-                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v2</h1>
-                <p>Buy EasyMining Packages</p>
+        <div class="settings-page-content">
+            <div class="settings-page-header">
+                <h1>Buy EasyMining Packages</h1>
+                <p>Purchase solo or team mining packages with your NiceHash balance</p>
             </div>
 
             <!-- Recommendations Section (Hidden - recommendations show in EasyMining section only) -->
@@ -1926,21 +1925,22 @@
                 <div id="buy-single-packages-page" class="buy-packages-container-page"></div>
                 <div id="buy-team-packages-page" class="buy-packages-container-page" style="display: none;"></div>
             </div>
-        </div>
 
-        <div class="buttons">
-            <button onclick="showAppPage()">← Back</button>
-        </div>
+            <!-- Back Button -->
+            <div class="settings-page-footer">
+                <button class="settings-back-btn" onclick="showAppPage()">← Back</button>
+            </div>
 
-        <div class="app-footer">
-            <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
-            <span class="footer-separator"></span>
-            <div class="footer-text">
-                <span>CryptFolio v2 (Beta)</span>
-                <span class="footer-divider">|</span>
-                <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
-                <span class="footer-divider">|</span>
-                <span>Data by CoinGecko / MEXC</span>
+            <div class="settings-page-copyright app-footer">
+                <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+                <span class="footer-separator"></span>
+                <div class="footer-text">
+                    <span>CryptFolio v2 (Beta)</span>
+                    <span class="footer-divider">|</span>
+                    <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
+                    <span class="footer-divider">|</span>
+                    <span>Data by CoinGecko / MEXC</span>
+                </div>
             </div>
         </div>
     </div>
