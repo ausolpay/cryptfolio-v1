@@ -16314,55 +16314,79 @@ async function executeAutoBuyTeam(recommendations) {
         // Get package ID for tracking
         const packageId = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
 
+        // ✅ Check if we currently have shares in this package
+        // This is the source of truth - if shares were cleared, we can buy again
+        const currentSharesInPackage = getMyTeamShares(packageId) || 0;
+
         // ✅ Smart Cooldown Toggle Logic
         if (!smartCooldownsEnabled) {
             // When smart cooldowns are OFF: Track by package ID (one buy per package ID)
+            // BUT allow buying if shares were cleared (currentShares === 0)
             const boughtPackageIds = JSON.parse(localStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
 
-            if (boughtPackageIds[packageId]) {
-                console.log(`⏸️ ${pkg.name}: Already bought this package ID (${packageId}), skipping (smart cooldowns OFF)`);
+            if (boughtPackageIds[packageId] && currentSharesInPackage > 0) {
+                console.log(`⏸️ ${pkg.name}: Already bought this package ID (${packageId}) and have ${currentSharesInPackage} shares, skipping (smart cooldowns OFF)`);
                 continue;
+            } else if (boughtPackageIds[packageId] && currentSharesInPackage === 0) {
+                // Shares were cleared - remove the bought record so we can buy again
+                delete boughtPackageIds[packageId];
+                localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
+                console.log(`🔄 ${pkg.name}: Shares were cleared, removed bought record - can buy again`);
             }
         } else {
             // When smart cooldowns are ON: Use duration + starting countdown logic
             // ✅ FIX: Team package cooldown = packageDuration + startingCountdown (or +1hr if no starting countdown)
-            // packageDuration is in seconds, convert to milliseconds
-            const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
+            // BUT: If shares were cleared (currentShares === 0), bypass cooldown and allow buying again
 
-            // Calculate time until package starts (starting countdown)
-            let startingCountdownMs = 0;
-            if (pkg.lifeTimeTill) {
-                const startTime = new Date(pkg.lifeTimeTill);
-                const now = new Date();
-                const timeUntilStart = startTime - now;
-
-                if (timeUntilStart > 0) {
-                    // Package hasn't started yet - use actual countdown time
-                    startingCountdownMs = timeUntilStart;
-                    console.log(`📅 ${pkg.name}: Starting in ${Math.ceil(timeUntilStart / 60000)} minutes`);
-                } else {
-                    // Package already started or no countdown - use 1hr fallback
-                    startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
-                    console.log(`📅 ${pkg.name}: Already started or no countdown, using 1hr fallback`);
+            // If shares were cleared, reset lastBuyTime to allow buying again
+            if (currentSharesInPackage === 0 && autoBuy.lastBuyTime) {
+                console.log(`🔄 ${pkg.name}: Shares were cleared (0 shares), bypassing cooldown - can buy again`);
+                // Clear the lastBuyTime so cooldown is bypassed
+                const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+                if (teamAutoBuy[pkg.name]) {
+                    delete teamAutoBuy[pkg.name].lastBuyTime;
+                    localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(teamAutoBuy));
                 }
-            } else {
-                // No lifeTimeTill field - use 1hr fallback
-                startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
-                console.log(`📅 ${pkg.name}: No starting countdown available, using 1hr fallback`);
-            }
+            } else if (currentSharesInPackage > 0) {
+                // Only apply cooldown if we currently have shares
+                // packageDuration is in seconds, convert to milliseconds
+                const packageDurationMs = (pkg.packageDuration || 3600) * 1000; // Default to 1 hour if not available
 
-            // Total cooldown = package duration + starting countdown (or fallback)
-            const cooldownMs = packageDurationMs + startingCountdownMs;
+                // Calculate time until package starts (starting countdown)
+                let startingCountdownMs = 0;
+                if (pkg.lifeTimeTill) {
+                    const startTime = new Date(pkg.lifeTimeTill);
+                    const now = new Date();
+                    const timeUntilStart = startTime - now;
 
-            // Check cooldown
-            if (autoBuy.lastBuyTime) {
-                const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
-                if (timeSinceLastBuy < cooldownMs) {
-                    const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
-                    const cooldownHours = (cooldownMs / 3600000).toFixed(1);
-                    const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
-                    console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr total cooldown = duration + ${startingCountdownHours}hr starting countdown)`);
-                    continue;
+                    if (timeUntilStart > 0) {
+                        // Package hasn't started yet - use actual countdown time
+                        startingCountdownMs = timeUntilStart;
+                        console.log(`📅 ${pkg.name}: Starting in ${Math.ceil(timeUntilStart / 60000)} minutes`);
+                    } else {
+                        // Package already started or no countdown - use 1hr fallback
+                        startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
+                        console.log(`📅 ${pkg.name}: Already started or no countdown, using 1hr fallback`);
+                    }
+                } else {
+                    // No lifeTimeTill field - use 1hr fallback
+                    startingCountdownMs = 60 * 60 * 1000; // 1 hour fallback
+                    console.log(`📅 ${pkg.name}: No starting countdown available, using 1hr fallback`);
+                }
+
+                // Total cooldown = package duration + starting countdown (or fallback)
+                const cooldownMs = packageDurationMs + startingCountdownMs;
+
+                // Check cooldown
+                if (autoBuy.lastBuyTime) {
+                    const timeSinceLastBuy = Date.now() - autoBuy.lastBuyTime;
+                    if (timeSinceLastBuy < cooldownMs) {
+                        const remainingMinutes = Math.ceil((cooldownMs - timeSinceLastBuy) / 60000);
+                        const cooldownHours = (cooldownMs / 3600000).toFixed(1);
+                        const startingCountdownHours = (startingCountdownMs / 3600000).toFixed(1);
+                        console.log(`⏳ ${pkg.name}: Cooldown active (${remainingMinutes} minutes remaining of ${cooldownHours}hr total cooldown = duration + ${startingCountdownHours}hr starting countdown), have ${currentSharesInPackage} shares`);
+                        continue;
+                    }
                 }
             }
         }
@@ -26151,6 +26175,22 @@ async function autoClearTeamShares(packageId, packageName) {
         if (removedEntries > 0) {
             localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
             console.log(`✅ Removed ${removedEntries} auto-buy tracking entries for ${packageName}`);
+        }
+
+        // ✅ Also clear teamBoughtPackageIds entry so auto-buy can trigger again
+        const boughtPackageIds = JSON.parse(localStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
+        if (boughtPackageIds[packageId]) {
+            delete boughtPackageIds[packageId];
+            localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
+            console.log(`🗑️ Removed teamBoughtPackageIds entry for ${packageId} - auto-buy can trigger again`);
+        }
+
+        // ✅ Also clear lastBuyTime from teamAutoBuy so smart cooldown is reset
+        const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+        if (teamAutoBuy[packageName] && teamAutoBuy[packageName].lastBuyTime) {
+            delete teamAutoBuy[packageName].lastBuyTime;
+            localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(teamAutoBuy));
+            console.log(`🗑️ Cleared lastBuyTime for ${packageName} - smart cooldown reset`);
         }
 
         console.log(`✅ Auto-cleared shares for ${packageName}`);
