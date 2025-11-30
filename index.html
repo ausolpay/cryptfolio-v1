@@ -809,71 +809,93 @@
 
     <!-- Package Alerts Page -->
     <div id="package-alerts-page" class="container" style="display: none;">
-        <div class="header">
-            <div>
-                <img src="ausolpay-logo.png" alt="Ausolpay Logo" class="app-logo">
-                <h1 class="app-title">CRYPTFOLIO v2</h1>
-                <p>Package Alert Settings</p>
+        <div class="settings-page-content">
+            <div class="settings-page-header">
+                <h1>Package Alert Settings</h1>
+                <p>Configure probability thresholds for package recommendations</p>
             </div>
 
-            <div class="easymining-settings-form">
-                <h3 style="margin-top: 0; color: #ffa500;">🔔 Package Alert Settings</h3>
+            <!-- Tabs for Solo and Team alerts -->
+            <div class="buy-packages-tabs" style="margin-bottom: 20px;">
+                <button class="tab-button active" onclick="showAlertTab('solo')">Solo Alerts</button>
+                <button class="tab-button" onclick="showAlertTab('team')">Team Alerts</button>
+            </div>
 
-                <!-- Tabs for Solo and Team alerts -->
-                <div class="buy-packages-tabs" style="margin-bottom: 20px;">
-                    <button class="tab-button active" onclick="showAlertTab('solo')">Solo Alerts</button>
-                    <button class="tab-button" onclick="showAlertTab('team')">Team Alerts</button>
+            <!-- Solo Alerts Tab -->
+            <div id="solo-alerts-tab" class="alert-tab-content">
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Solo Package Alerts</h3>
+                    <div class="settings-card">
+                        <div class="settings-row" style="flex-direction: column; align-items: flex-start;">
+                            <span class="settings-row-desc" style="margin-bottom: 8px;">
+                                Set probability thresholds for solo packages. When a package's probability falls to or below your set value, it will appear in recommendations.
+                            </span>
+                            <span class="settings-row-desc" style="color: #4CAF50;">
+                                💡 Example: Set "130" for Silver S means it will be recommended when probability is 1:130 or better (like 1:120, 1:100, etc.)
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Solo Alerts Tab -->
-                <div id="solo-alerts-tab" class="alert-tab-content">
-                    <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
-                        Set probability thresholds for solo packages. When a package's probability falls to or below your set value, it will appear in recommendations.
-                    </p>
-                    <p style="color: #4CAF50; font-size: 13px; margin-bottom: 15px;">
-                        💡 Example: Set "130" for Silver S means it will be recommended when probability is 1:130 or better (like 1:120, 1:100, etc.)
-                    </p>
-
-                    <div id="solo-alerts-list" style="max-height: 500px; overflow-y: auto;">
-                        <!-- Solo alert settings populated by JavaScript -->
+                <div class="settings-section">
+                    <div class="settings-card">
+                        <div id="solo-alerts-list" style="max-height: 500px; overflow-y: auto;">
+                            <!-- Solo alert settings populated by JavaScript -->
+                        </div>
                     </div>
-
-                    <button onclick="saveSoloAlerts()" style="background-color: #4CAF50; margin-top: 20px;">💾 Save Solo Alerts</button>
-                    <button onclick="clearSoloAlerts()" class="delete-button" style="margin-top: 10px;">Clear Solo Alerts</button>
                 </div>
 
-                <!-- Team Alerts Tab -->
-                <div id="team-alerts-tab" class="alert-tab-content" style="display: none;">
-                    <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
-                        Set thresholds for team packages. Packages meeting ANY threshold will appear in recommendations.
-                    </p>
-                    <p style="color: #4CAF50; font-size: 13px; margin-bottom: 15px;">
-                        💡 Set probability, minimum shares, or minimum participants. Leave blank to ignore that criterion.
-                    </p>
-
-                    <div id="team-alerts-list" style="max-height: 500px; overflow-y: auto;">
-                        <!-- Team alert settings populated by JavaScript -->
-                    </div>
-
-                    <button onclick="saveTeamAlerts()" style="background-color: #4CAF50; margin-top: 20px;">💾 Save Team Alerts</button>
-                    <button onclick="clearTeamAlerts()" class="delete-button" style="margin-top: 10px;">Clear Team Alerts</button>
+                <div class="settings-section" style="display: flex; gap: 10px;">
+                    <button class="settings-action-btn" onclick="saveSoloAlerts()" style="background-color: #4CAF50;">💾 Save Solo Alerts</button>
+                    <button class="settings-danger-btn" onclick="clearSoloAlerts()">Clear Solo Alerts</button>
                 </div>
             </div>
-        </div>
 
-        <div class="buttons">
-            <button onclick="showBuyPackagesPage()">← Back to Buy Packages</button>
-        </div>
+            <!-- Team Alerts Tab -->
+            <div id="team-alerts-tab" class="alert-tab-content" style="display: none;">
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Team Package Alerts</h3>
+                    <div class="settings-card">
+                        <div class="settings-row" style="flex-direction: column; align-items: flex-start;">
+                            <span class="settings-row-desc" style="margin-bottom: 8px;">
+                                Set thresholds for team packages. Packages meeting ANY threshold will appear in recommendations.
+                            </span>
+                            <span class="settings-row-desc" style="color: #4CAF50;">
+                                💡 Set probability, minimum shares, or minimum participants. Leave blank to ignore that criterion.
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="app-footer">
-            <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
-            <span class="footer-separator"></span>
-            <div class="footer-text">
-                <span>CryptFolio v2 (Beta)</span>
-                <span class="footer-divider">|</span>
-                <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
-                <span class="footer-divider">|</span>
-                <span>Data by CoinGecko / MEXC</span>
+                <div class="settings-section">
+                    <div class="settings-card">
+                        <div id="team-alerts-list" style="max-height: 500px; overflow-y: auto;">
+                            <!-- Team alert settings populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section" style="display: flex; gap: 10px;">
+                    <button class="settings-action-btn" onclick="saveTeamAlerts()" style="background-color: #4CAF50;">💾 Save Team Alerts</button>
+                    <button class="settings-danger-btn" onclick="clearTeamAlerts()">Clear Team Alerts</button>
+                </div>
+            </div>
+
+            <!-- Back Button -->
+            <div class="settings-page-footer">
+                <button class="settings-back-btn" onclick="showBuyPackagesPage()">← Back to Buy Packages</button>
+            </div>
+
+            <div class="settings-page-copyright app-footer">
+                <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+                <span class="footer-separator"></span>
+                <div class="footer-text">
+                    <span>CryptFolio v2 (Beta)</span>
+                    <span class="footer-divider">|</span>
+                    <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> © <span class="current-year"></span></span>
+                    <span class="footer-divider">|</span>
+                    <span>Data by CoinGecko / MEXC</span>
+                </div>
             </div>
         </div>
     </div>
