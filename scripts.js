@@ -1,7 +1,11 @@
-// CryptFolio v2 - Main Application Script - Stable 18 - CLEAN STABLE VERSION
+// CryptFolio v2 - Main Application Script - Stable 19 - Performance Optimized
 // MEXC BTC prices, close-to-reward persistence, multiple reward support
-// stable build - 2025-11-30
+// stable build - 2025-12-01
 // Note: CoinGecko API base URLs are now dynamically determined by getApiBaseUrl() based on paid/free tier
+
+// Debug logging flag - set to true to enable verbose console output
+const DEBUG_LOGGING = false;
+
 let apiKeys = []; // User must configure their own API keys
 let currentApiKeyIndex = 0;
 
