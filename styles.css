@@ -1188,7 +1188,7 @@ body.light-mode .header-subtitle a {
     overflow: hidden;
     position: relative;
     height: 50px;
-    margin: 0 20px;
+    margin: 0 5px 0 20px;
 }
 
 .ticker-track {
