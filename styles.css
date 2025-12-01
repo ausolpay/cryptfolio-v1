@@ -8890,6 +8890,111 @@ body.light-mode .api-hub-button .api-desc {
     box-shadow: 0 4px 12px rgba(255, 165, 0, 0.2);
 }
 
+/* Entry Header - Icon + Amount */
+.entry-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.entry-crypto-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.entry-amount {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffa500;
+}
+
+/* Entry Meta - Badge + DateTime */
+.entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.entry-source-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.entry-source-badge.source-manual {
+    background: rgba(100, 100, 255, 0.2);
+    color: #8888ff;
+}
+
+.entry-source-badge.source-easymining {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+}
+
+.entry-datetime {
+    font-size: 11px;
+    color: #888;
+}
+
+/* Entry AUD Value */
+.entry-aud-value {
+    font-size: 14px;
+    color: #4CAF50;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+/* Entry Actions */
+.entry-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.update-entry-btn {
+    background: #555;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.update-entry-btn:hover {
+    background: #666;
+}
+
+.sell-entry-btn {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sell-entry-btn:hover {
+    background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+}
+
+/* Entry PnL */
+.entry-pnl {
+    background: rgba(30, 30, 30, 0.6);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+}
+
 .holdings-entry-header {
     display: flex;
     justify-content: space-between;

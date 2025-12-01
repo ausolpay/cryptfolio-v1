@@ -6634,12 +6634,11 @@ function displayHoldingsEntries(cryptoId) {
 
     // Get crypto info for display
     const crypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
-    const symbol = crypto?.symbol?.toUpperCase() || cryptoId.toUpperCase();
 
     // Render cards
     container.innerHTML = pageEntries.length === 0
         ? '<div class="no-holdings-message">No holdings entries yet. Add holdings from the crypto card to track your P&L.</div>'
-        : pageEntries.map(entry => renderHoldingsEntryCard(entry, symbol)).join('');
+        : pageEntries.map(entry => renderHoldingsEntryCard(entry, crypto)).join('');
 
     // Update pagination controls
     updateHoldingsPagination(activeEntries.length, cardsPerPage, totalPages);
@@ -6649,17 +6648,29 @@ function displayHoldingsEntries(cryptoId) {
 }
 
 // Render a single holdings entry card
-function renderHoldingsEntryCard(entry, symbol) {
+function renderHoldingsEntryCard(entry, crypto) {
     const pnl = calculateEntryPnL(entry);
-    const dateAdded = new Date(entry.dateAdded).toLocaleDateString('en-AU', {
-        day: 'numeric', month: 'short', year: 'numeric'
-    });
+
+    // Format date as DD/MM/YY and time as h:mm AM/PM
+    const dateObj = new Date(entry.dateAdded);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = String(dateObj.getFullYear()).slice(-2);
+    const hours = dateObj.getHours();
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    const dateFormatted = `${day}/${month}/${year}`;
+    const timeFormatted = `${hour12}:${minutes} ${ampm}`;
 
     const unrealizedClass = pnl.unrealizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative';
     const unrealizedSign = pnl.unrealizedPnL >= 0 ? '+' : '-';
 
     const sourceLabel = entry.source === 'easymining-reward' ? 'EasyMining' : 'Manual';
     const sourceClass = entry.source === 'easymining-reward' ? 'source-easymining' : 'source-manual';
+
+    // Get crypto icon
+    const iconUrl = crypto?.thumb ? crypto.thumb.replace('/thumb/', '/small/') : '';
 
     // Use live price as fallback if boughtPrice is 0, and save the fix
     let displayBoughtPrice = entry.boughtPrice || 0;
@@ -6696,11 +6707,14 @@ function renderHoldingsEntryCard(entry, symbol) {
     return `
         <div class="holdings-entry-card" data-entry-id="${entry.id}">
             <div class="entry-header">
-                <span class="entry-amount">${entry.amount.toFixed(6)} ${symbol}</span>
-                <span class="entry-source ${sourceClass}">${sourceLabel}</span>
+                ${iconUrl ? `<img src="${iconUrl}" alt="" class="entry-crypto-icon">` : ''}
+                <span class="entry-amount">${entry.amount.toFixed(6)}</span>
             </div>
-            <div class="entry-date">Added: ${dateAdded}</div>
-            <div class="entry-aud-value">Value at Add: $${formatNumber(displayAudValue.toFixed(2))}</div>
+            <div class="entry-meta">
+                <span class="entry-source-badge ${sourceClass}">${sourceLabel}</span>
+                <span class="entry-datetime">${dateFormatted} ${timeFormatted}</span>
+            </div>
+            <div class="entry-aud-value">$${formatNumber(displayAudValue.toFixed(2))}</div>
 
             <div class="entry-prices">
                 <div class="price-input-group">
@@ -6714,7 +6728,6 @@ function renderHoldingsEntryCard(entry, symbol) {
                     <div class="sold-price-wrapper">
                         <input type="number" class="sold-price-input" id="sold-price-${entry.id}"
                             value="${entry.soldPrice ? entry.soldPrice.toFixed(2) : ''}" step="0.01" placeholder="Not sold">
-                        <button class="live-price-btn" onclick="autoFillSoldPrice('${entry.cryptoId}', '${entry.id}')" title="Use current live price">Live</button>
                     </div>
                 </div>
             </div>
@@ -6736,7 +6749,8 @@ function renderHoldingsEntryCard(entry, symbol) {
 
             <div class="entry-actions">
                 <button class="update-entry-btn" onclick="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">Update</button>
-                <button class="delete-entry-btn" onclick="deleteHoldingsEntryUI('${entry.cryptoId}', '${entry.id}')" title="Remove holding (requires sold price)">✕</button>
+                <button class="live-price-btn" onclick="autoFillSoldPrice('${entry.cryptoId}', '${entry.id}')" title="Use current live price">Live</button>
+                <button class="sell-entry-btn" onclick="deleteHoldingsEntryUI('${entry.cryptoId}', '${entry.id}')" title="Mark as sold">Sell</button>
             </div>
         </div>
     `;
