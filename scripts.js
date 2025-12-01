@@ -7448,20 +7448,25 @@ function showSettingsPage() {
 // Populate the clear specific crypto dropdown with user's holdings
 function populateClearCryptoDropdown() {
     const select = document.getElementById('clear-crypto-select');
-    if (!select) return;
+    const resetSelect = document.getElementById('reset-entry-crypto-select');
 
-    // Clear existing options except the first one
-    select.innerHTML = '<option value="">Select...</option>';
+    // Populate both dropdowns with the same crypto list
+    [select, resetSelect].forEach(sel => {
+        if (!sel) return;
 
-    // Get user's cryptos
-    if (users[loggedInUser] && users[loggedInUser].cryptos) {
-        users[loggedInUser].cryptos.forEach(crypto => {
-            const option = document.createElement('option');
-            option.value = crypto.id;
-            option.textContent = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
-            select.appendChild(option);
-        });
-    }
+        // Clear existing options except the first one
+        sel.innerHTML = '<option value="">Select...</option>';
+
+        // Get user's cryptos
+        if (users[loggedInUser] && users[loggedInUser].cryptos) {
+            users[loggedInUser].cryptos.forEach(crypto => {
+                const option = document.createElement('option');
+                option.value = crypto.id;
+                option.textContent = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
+                sel.appendChild(option);
+            });
+        }
+    });
 }
 
 // Clear a specific crypto's holdings and history (keeps crypto box in UI)
@@ -7520,6 +7525,91 @@ function clearSpecificCrypto() {
 
     alert(`All data for ${cryptoName} has been cleared.\nThe crypto remains in your portfolio.`);
     console.log(`✅ Successfully cleared data for ${cryptoName}`);
+}
+
+// Clear all entry prices (boughtPrice and audValueAtAdd) for ALL cryptos
+function clearAllEntryPrices() {
+    if (!loggedInUser) {
+        alert('No user logged in.');
+        return;
+    }
+
+    if (!confirm('Reset ALL entry prices?\n\nThis will set boughtPrice and audValueAtAdd to $0 for ALL holdings entries across ALL cryptocurrencies.\n\nThe holdings amounts will NOT be affected.\n\nThis action cannot be undone.')) {
+        return;
+    }
+
+    console.log('🗑️ Resetting all entry prices...');
+
+    let totalEntriesReset = 0;
+    let cryptosProcessed = 0;
+
+    if (users[loggedInUser] && users[loggedInUser].cryptos) {
+        users[loggedInUser].cryptos.forEach(crypto => {
+            const entries = getHoldingsEntries(crypto.id);
+            if (entries.length > 0) {
+                entries.forEach(entry => {
+                    entry.boughtPrice = 0;
+                    entry.audValueAtAdd = 0;
+                    totalEntriesReset++;
+                });
+                saveHoldingsEntries(crypto.id, entries);
+                cryptosProcessed++;
+                console.log(`   ✓ Reset ${entries.length} entries for ${crypto.id}`);
+            }
+        });
+    }
+
+    // Recalculate Added Today since values changed
+    recalculateAddedToday();
+
+    alert(`Entry prices reset!\n\n${totalEntriesReset} entries across ${cryptosProcessed} cryptos have been reset to $0.`);
+    console.log(`✅ Reset ${totalEntriesReset} entries across ${cryptosProcessed} cryptos`);
+}
+
+// Clear entry prices (boughtPrice and audValueAtAdd) for a specific crypto
+function clearCryptoEntryPrices() {
+    const select = document.getElementById('reset-entry-crypto-select');
+    if (!select || !select.value) {
+        alert('Please select a cryptocurrency to reset.');
+        return;
+    }
+
+    const cryptoId = select.value;
+    const crypto = users[loggedInUser].cryptos.find(c => c.id === cryptoId);
+
+    if (!crypto) {
+        alert('Cryptocurrency not found.');
+        return;
+    }
+
+    const cryptoName = `${crypto.symbol.toUpperCase()} (${crypto.name})`;
+
+    if (!confirm(`Reset entry prices for ${cryptoName}?\n\nThis will set boughtPrice and audValueAtAdd to $0 for all holdings entries of this crypto.\n\nThe holdings amount will NOT be affected.\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    console.log(`🗑️ Resetting entry prices for ${cryptoName}...`);
+
+    const entries = getHoldingsEntries(cryptoId);
+    if (entries.length === 0) {
+        alert(`No holdings entries found for ${cryptoName}.`);
+        return;
+    }
+
+    entries.forEach(entry => {
+        entry.boughtPrice = 0;
+        entry.audValueAtAdd = 0;
+    });
+    saveHoldingsEntries(cryptoId, entries);
+
+    // Recalculate Added Today since values changed
+    recalculateAddedToday();
+
+    // Reset dropdown selection
+    select.value = '';
+
+    alert(`Entry prices reset for ${cryptoName}!\n\n${entries.length} entries have been reset to $0.`);
+    console.log(`✅ Reset ${entries.length} entries for ${cryptoName}`);
 }
 
 function closeSettingsPage() {

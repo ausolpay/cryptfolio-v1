@@ -2222,6 +2222,25 @@
                             <button class="settings-danger-btn" onclick="clearSpecificCrypto()">Clear</button>
                         </div>
                     </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Reset All Entry Prices</span>
+                            <span class="settings-row-desc">Reset boughtPrice and valueAtAdd to $0 for all entries</span>
+                        </div>
+                        <button class="settings-danger-btn" onclick="clearAllEntryPrices()">Reset</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Reset Crypto Entry Prices</span>
+                            <span class="settings-row-desc">Reset boughtPrice and valueAtAdd for one crypto</span>
+                        </div>
+                        <div class="settings-row-controls" style="display: flex; gap: 10px; align-items: center;">
+                            <select id="reset-entry-crypto-select" class="settings-select" style="min-width: 120px;">
+                                <option value="">Select...</option>
+                            </select>
+                            <button class="settings-danger-btn" onclick="clearCryptoEntryPrices()">Reset</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
