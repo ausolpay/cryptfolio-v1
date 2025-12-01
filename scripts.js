@@ -5205,7 +5205,7 @@ function updateAddedTodayDisplay() {
     const addedEl = document.getElementById('added-today');
     if (!addedEl) return;
 
-    const sign = dailyAddedValue >= 0 ? '+' : '';
+    const sign = dailyAddedValue >= 0 ? '+' : '-';
     addedEl.textContent = `${sign}$${formatNumber(Math.abs(dailyAddedValue).toFixed(2))}`;
     addedEl.className = `stat-value ${dailyAddedValue >= 0 ? 'positive' : 'negative'}`;
 }
@@ -5219,13 +5219,13 @@ function updateStripPnL() {
     const realizedEl = document.getElementById('strip-realized-pnl');
 
     if (unrealizedEl) {
-        const sign = pnl.totalUnrealized >= 0 ? '+' : '';
+        const sign = pnl.totalUnrealized >= 0 ? '+' : '-';
         unrealizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalUnrealized).toFixed(2))}`;
         unrealizedEl.className = `pnl-value ${pnl.totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
 
     if (realizedEl) {
-        const sign = pnl.totalRealized >= 0 ? '+' : '';
+        const sign = pnl.totalRealized >= 0 ? '+' : '-';
         realizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalRealized).toFixed(2))}`;
         realizedEl.className = `pnl-value ${pnl.totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
@@ -6656,7 +6656,7 @@ function renderHoldingsEntryCard(entry, symbol) {
     });
 
     const unrealizedClass = pnl.unrealizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative';
-    const unrealizedSign = pnl.unrealizedPnL >= 0 ? '+' : '';
+    const unrealizedSign = pnl.unrealizedPnL >= 0 ? '+' : '-';
 
     const sourceLabel = entry.source === 'easymining-reward' ? 'EasyMining' : 'Manual';
     const sourceClass = entry.source === 'easymining-reward' ? 'source-easymining' : 'source-manual';
@@ -6728,7 +6728,7 @@ function renderHoldingsEntryCard(entry, symbol) {
                     <span class="pnl-label">Realized:</span>
                     <span class="${pnl.realizedPnL !== null ? (pnl.realizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative') : 'pnl-na'}">
                         ${pnl.realizedPnL !== null
-                            ? `${pnl.realizedPnL >= 0 ? '+' : ''}$${formatNumber(Math.abs(pnl.realizedPnL).toFixed(2))} (${pnl.realizedPnL >= 0 ? '+' : ''}${pnl.realizedPercent.toFixed(2)}%)`
+                            ? `${pnl.realizedPnL >= 0 ? '+' : '-'}$${formatNumber(Math.abs(pnl.realizedPnL).toFixed(2))} (${pnl.realizedPnL >= 0 ? '+' : '-'}${Math.abs(pnl.realizedPercent).toFixed(2)}%)`
                             : '-- (not sold)'}
                     </span>
                 </div>
@@ -6972,13 +6972,13 @@ function updateTotalPnLDisplay(cryptoId) {
     const realizedEl = document.getElementById('total-realized-pnl');
 
     if (unrealizedEl) {
-        const sign = pnl.totalUnrealized >= 0 ? '+' : '';
+        const sign = pnl.totalUnrealized >= 0 ? '+' : '-';
         unrealizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalUnrealized).toFixed(2))}`;
         unrealizedEl.className = `pnl-value ${pnl.totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
 
     if (realizedEl) {
-        const sign = pnl.totalRealized >= 0 ? '+' : '';
+        const sign = pnl.totalRealized >= 0 ? '+' : '-';
         realizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalRealized).toFixed(2))}`;
         realizedEl.className = `pnl-value ${pnl.totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
