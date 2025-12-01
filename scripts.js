@@ -23746,11 +23746,13 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             shareInput.dataset.totalAvailable = totalAvailableShares;
             shareInput.dataset.myBought = myBoughtShares;
 
-            // If user hasn't modified the input, sync with API shares
-            if (myBoughtShares > 0 && parseInt(shareInput.value) < myBoughtShares) {
-                shareInput.value = myBoughtShares;
-                shareInput.min = 1;
+            // Always sync input to my bought shares (minimum 1 for display)
+            const displayValue = myBoughtShares > 0 ? myBoughtShares : 1;
+            if (parseInt(shareInput.value) !== displayValue) {
+                shareInput.value = displayValue;
+                console.log(`   ✅ Synced input to ${displayValue} shares`);
             }
+            shareInput.min = 1;
         }
 
         // DO NOT touch countdown element - updateTeamPackageCountdowns() handles it every second
