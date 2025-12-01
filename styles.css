@@ -7993,18 +7993,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
     width: fit-content; /* Section width fits the boxes exactly */
 }
 
-/* Wide Tablet - Match EasyMining 1040px width */
+/* Wide Tablet */
 @media (max-width: 1200px) {
     #buy-packages-page .buy-packages-tabs {
         width: calc(100% - 20px);
-        max-width: 1040px;
+        max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
         width: calc(100% - 20px);
-        max-width: 1040px;
+        max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
@@ -8028,7 +8028,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         padding: 20px 0;
         margin: 0 auto;
         width: calc(100% - 20px);
-        max-width: 1040px;
+        max-width: 100%;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
@@ -8060,18 +8060,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 }
 
-/* Narrow Tablet - Match EasyMining 700px width */
+/* Narrow Tablet */
 @media (max-width: 1040px) {
     #buy-packages-page .buy-packages-tabs {
         width: calc(100% - 20px);
-        max-width: 700px;
+        max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
         width: calc(100% - 20px);
-        max-width: 700px;
+        max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
@@ -8095,7 +8095,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         padding: 20px 0;
         margin: 0 auto;
         width: calc(100% - 20px);
-        max-width: 700px;
+        max-width: 100%;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
