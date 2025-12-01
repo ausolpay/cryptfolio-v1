@@ -3372,8 +3372,7 @@ async function loadSoloAlerts() {
     console.log('Loading solo package alerts...');
 
     // Fetch packages from API
-    const fetchResult = await fetchNiceHashSoloPackages();
-    const packages = fetchResult?.packages || null;
+    const packages = await fetchNiceHashSoloPackages();
 
     if (!packages || packages.length === 0) {
         console.error('No solo packages available to set alerts for');
@@ -3609,8 +3608,7 @@ async function loadTeamAlerts() {
     console.log('Loading team package alerts...');
 
     // Fetch team packages from API
-    const teamFetchResult = await fetchNiceHashTeamPackages();
-    const packages = teamFetchResult?.packages || null;
+    const packages = await fetchNiceHashTeamPackages();
 
     if (!packages || packages.length === 0) {
         console.error('No team packages available to set alerts for');
@@ -3619,8 +3617,7 @@ async function loadTeamAlerts() {
     }
 
     // Fetch solo packages to get current small package probabilities
-    const soloFetchResult = await fetchNiceHashSoloPackages();
-    const soloPackages = soloFetchResult?.packages || null;
+    const soloPackages = await fetchNiceHashSoloPackages();
     console.log(`📦 Fetched ${soloPackages?.length || 0} solo packages for current probability display`);
 
     // Get saved team alerts
@@ -4202,8 +4199,7 @@ async function checkPackageRecommendations(soloPackages = null) {
     // Use passed packages or fetch from API (avoids redundant API calls)
     let packages = soloPackages;
     if (!packages) {
-        const fetchResult = await fetchNiceHashSoloPackages();
-        packages = fetchResult?.packages || null;
+        packages = await fetchNiceHashSoloPackages();
     }
 
     if (!packages || packages.length === 0) {
@@ -4297,8 +4293,7 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
     // Use passed packages or fetch from API (avoids redundant API calls)
     let packages = teamPackages;
     if (!packages) {
-        const fetchResult = await fetchNiceHashTeamPackages();
-        packages = fetchResult?.packages || null;
+        packages = await fetchNiceHashTeamPackages();
     }
 
     if (!packages || packages.length === 0) {
@@ -4309,8 +4304,7 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
     // Use passed solo packages or fetch from API (for checking small package probability thresholds)
     let soloPackages = soloPackagesParam;
     if (!soloPackages) {
-        const soloFetchResult = await fetchNiceHashSoloPackages();
-        soloPackages = soloFetchResult?.packages || null;
+        soloPackages = await fetchNiceHashSoloPackages();
     }
     console.log(`📦 Using ${soloPackages?.length || 0} solo/small packages for threshold checking`);
 
@@ -16680,10 +16674,8 @@ async function updateRecommendations() {
     let soloPackages = [];
     let teamPackages = [];
     try {
-        const soloResult = await fetchNiceHashSoloPackages();
-        const teamResult = await fetchNiceHashTeamPackages();
-        const fetchedSolo = soloResult?.packages || null;
-        const fetchedTeam = teamResult?.packages || null;
+        const fetchedSolo = await fetchNiceHashSoloPackages();
+        const fetchedTeam = await fetchNiceHashTeamPackages();
 
         // Use fetched data if valid, otherwise fall back to cache
         if (fetchedSolo && fetchedSolo.length > 0) {
@@ -22070,11 +22062,12 @@ function getRecommendedPackages() {
 }
 
 // Fetch solo packages from NiceHash public API
+// Returns: { packages: array|null, success: boolean }
 async function fetchNiceHashSoloPackages() {
     // Skip fetch if auto-buy is in progress to avoid rate limiting
     if (isAutoBuyInProgress) {
         console.log('⏸️ Solo packages fetch paused - auto-buy in progress');
-        return { packages: null, success: false };
+        return null;
     }
 
     console.log('🔄 Fetching solo packages from NiceHash API...');
@@ -22249,13 +22242,13 @@ async function fetchNiceHashSoloPackages() {
 
         console.log(`✅ Transformed ${transformedPackages.length} packages`);
         console.log('✅ API DATA IS BEING USED!');
-        return { packages: transformedPackages, success: true };
+        return transformedPackages;
 
     } catch (error) {
         console.error('❌ Error fetching solo packages from API:', error);
         console.error('❌ Error details:', error.message);
         console.log('📦 Falling back to mock data');
-        return { packages: null, success: false }; // Return success: false to signal API failure
+        return null;
     }
 }
 
@@ -22264,7 +22257,7 @@ async function fetchNiceHashTeamPackages() {
     // Skip fetch if auto-buy is in progress to avoid rate limiting
     if (isAutoBuyInProgress) {
         console.log('⏸️ Team packages fetch paused - auto-buy in progress');
-        return { packages: [], success: false };
+        return [];
     }
 
     console.log('🔄 Fetching team packages from NiceHash API...');
@@ -22444,12 +22437,12 @@ async function fetchNiceHashTeamPackages() {
             });
 
         console.log(`✅ Transformed ${transformedPackages.length} team packages`);
-        return { packages: transformedPackages, success: true };
+        return transformedPackages;
 
     } catch (error) {
         console.error('❌ Error fetching team packages from API:', error);
         console.error('❌ Error details:', error.message);
-        return { packages: [], success: false };
+        return [];
     }
 }
 
@@ -22995,9 +22988,8 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     // Try to fetch from API, use cache if unavailable
-    const soloResult = await fetchNiceHashSoloPackages();
-    let singlePackages = soloResult?.packages || [];
-    const soloApiSuccess = soloResult?.success === true;
+    let singlePackages = await fetchNiceHashSoloPackages();
+    const soloApiSuccess = singlePackages !== null;
 
     // If API fails, use cached data silently (no unavailable banner)
     // If API succeeds but fewer packages, mark missing ones as unavailable
@@ -23028,9 +23020,8 @@ async function loadBuyPackagesDataOnPage() {
     }
 
     // Fetch team packages from API, use cache if unavailable
-    const teamResult = await fetchNiceHashTeamPackages();
-    let teamPackages = teamResult?.packages || [];
-    const teamApiSuccess = teamResult?.success === true;
+    let teamPackages = await fetchNiceHashTeamPackages();
+    const teamApiSuccess = teamPackages !== null && teamPackages.length >= 0;
 
     // If API fails, use cached data silently (no unavailable banner)
     // If API succeeds but fewer packages, mark missing ones as unavailable
@@ -27028,8 +27019,7 @@ async function captureBackgroundMetrics() {
         console.log('📊 Background metrics capture starting...');
 
         // Fetch solo packages from API (or use mock data)
-        const soloResult = await fetchNiceHashSoloPackages();
-        let singlePackages = soloResult?.packages || [];
+        let singlePackages = await fetchNiceHashSoloPackages();
         if (!singlePackages || singlePackages.length === 0) {
             console.log('📦 Using mock solo package data for background capture');
             singlePackages = [
@@ -27046,9 +27036,8 @@ async function captureBackgroundMetrics() {
         }
 
         // Fetch team packages from API
-        const teamResult = await fetchNiceHashTeamPackages();
-        let teamPackages = teamResult?.packages || [];
-        console.log(`📊 Background: Fetched ${singlePackages.length} solo, ${teamPackages.length} team packages`);
+        let teamPackages = await fetchNiceHashTeamPackages();
+        console.log(`📊 Background: Fetched ${singlePackages.length} solo, ${teamPackages?.length || 0} team packages`);
 
         const allPackages = [...singlePackages, ...teamPackages];
 
@@ -28090,8 +28079,7 @@ async function fetchAndUpdateAverages() {
 
     try {
         // Fetch solo packages from API (or use mock data)
-        const soloResult = await fetchNiceHashSoloPackages();
-        let singlePackages = soloResult?.packages || [];
+        let singlePackages = await fetchNiceHashSoloPackages();
         if (!singlePackages || singlePackages.length === 0) {
             console.log('📦 Using mock solo package data for averages');
             singlePackages = [
@@ -28108,9 +28096,8 @@ async function fetchAndUpdateAverages() {
         }
 
         // Fetch team packages from API
-        const teamResult = await fetchNiceHashTeamPackages();
-        let teamPackages = teamResult?.packages || [];
-        console.log(`📊 Averages: Fetched ${singlePackages.length} solo, ${teamPackages.length} team packages`);
+        let teamPackages = await fetchNiceHashTeamPackages();
+        console.log(`📊 Averages: Fetched ${singlePackages.length} solo, ${teamPackages?.length || 0} team packages`);
 
         const allPackages = [...singlePackages, ...teamPackages];
 
