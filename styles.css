@@ -1866,6 +1866,13 @@ body.light-mode .performer-name {
         display: none;
     }
 
+    /* Ticker same width as sections underneath */
+    .crypto-ticker {
+        width: 340px;
+        max-width: 340px;
+        flex: 0 0 auto;
+    }
+
     .header-row .app-logo {
         margin-top: 15px;
     }
