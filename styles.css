@@ -8047,16 +8047,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 330px;
+        width: calc(50% - 8px); /* 2 cards fit adaptively */
         min-height: 280px;
         height: auto;
         font-size: 13px;
+        box-sizing: border-box;
     }
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 330px;
+        width: calc(50% - 8px);
         min-height: 280px;
+        box-sizing: border-box;
     }
 }
 
