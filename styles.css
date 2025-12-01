@@ -8307,10 +8307,11 @@ body.light-mode .easymining-settings-form input[type="number"] {
 @media (max-width: 700px) {
     .buy-packages-form {
         margin: 0 auto 15px auto;
-        width: calc(100% - 6px);
+        width: calc(100% - 16px);
         max-width: 100%;
         box-sizing: border-box;
-        padding: 10px 3px;
+        padding: 10px 8px;
+        overflow: hidden;
     }
 }
 
