@@ -1787,8 +1787,8 @@ body.light-mode .performer-name {
     }
 
     .header-row .add-crypto {
-        flex: 1;
-        max-width: none;
+        flex: 0 0 auto;
+        max-width: 250px;
     }
 
     .portfolio-strip {
@@ -1850,14 +1850,10 @@ body.light-mode .performer-name {
         gap: 10px;
     }
 
-    .header-separator {
-        width: 40px;
-        height: 1px;
-    }
-
+    /* Hide text and separator on mobile */
+    .header-separator,
     .header-text {
-        align-items: center;
-        text-align: center;
+        display: none;
     }
 
     .header-row .app-logo {
