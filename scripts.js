@@ -912,6 +912,9 @@ function initializeApp() {
         // Initialize autocomplete for crypto search
         initializeAutocomplete();
 
+        // Initialize the top 10 crypto ticker
+        initCryptoTicker();
+
         // Start sentiment refresh for holdings box bull/bear icons
         startSentimentRefresh();
 
@@ -8999,6 +9002,149 @@ function stopMEXCBTCPricePolling() {
     if (mexcBTCPriceInterval) {
         clearInterval(mexcBTCPriceInterval);
         mexcBTCPriceInterval = null;
+    }
+}
+
+// ==============================================
+// TOP 10 CRYPTO TICKER
+// ==============================================
+let tickerCoins = [];
+let tickerPrices = {};
+let tickerPollingInterval = null;
+
+// Top 10 cryptos by market cap (hardcoded for reliability)
+const TOP_10_CRYPTOS = [
+    { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', image: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
+    { id: 'ethereum', symbol: 'ETH', name: 'Ethereum', image: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
+    { id: 'tether', symbol: 'USDT', name: 'Tether', image: 'https://assets.coingecko.com/coins/images/325/small/Tether.png' },
+    { id: 'binancecoin', symbol: 'BNB', name: 'BNB', image: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png' },
+    { id: 'solana', symbol: 'SOL', name: 'Solana', image: 'https://assets.coingecko.com/coins/images/4128/small/solana.png' },
+    { id: 'ripple', symbol: 'XRP', name: 'XRP', image: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png' },
+    { id: 'usd-coin', symbol: 'USDC', name: 'USDC', image: 'https://assets.coingecko.com/coins/images/6319/small/usdc.png' },
+    { id: 'cardano', symbol: 'ADA', name: 'Cardano', image: 'https://assets.coingecko.com/coins/images/975/small/cardano.png' },
+    { id: 'dogecoin', symbol: 'DOGE', name: 'Dogecoin', image: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png' },
+    { id: 'avalanche-2', symbol: 'AVAX', name: 'Avalanche', image: 'https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png' }
+];
+
+/**
+ * Initialize the crypto ticker
+ */
+function initCryptoTicker() {
+    tickerCoins = TOP_10_CRYPTOS;
+    renderTickerItems();
+    startTickerPolling();
+    console.log('📊 Crypto ticker initialized with top 10 coins');
+}
+
+/**
+ * Render ticker items in the track (duplicated for seamless loop)
+ */
+function renderTickerItems() {
+    const track = document.querySelector('.ticker-track');
+    if (!track) return;
+
+    // Create items HTML
+    const itemsHtml = tickerCoins.map(coin => `
+        <div class="ticker-item" data-symbol="${coin.symbol}">
+            <img src="${coin.image}" alt="${coin.name}">
+            <div class="ticker-item-info">
+                <span class="ticker-item-name">${coin.symbol}</span>
+                <span class="ticker-item-price" data-symbol="${coin.symbol}">--</span>
+            </div>
+        </div>
+    `).join('');
+
+    // Duplicate for seamless infinite scroll
+    track.innerHTML = itemsHtml + itemsHtml;
+}
+
+/**
+ * Start polling MEXC for ticker prices
+ */
+function startTickerPolling() {
+    if (tickerPollingInterval) {
+        clearInterval(tickerPollingInterval);
+    }
+
+    const updateTickerPrices = async () => {
+        for (const coin of tickerCoins) {
+            try {
+                // Skip stablecoins (they don't change much)
+                if (coin.symbol === 'USDT' || coin.symbol === 'USDC') {
+                    updateTickerPrice(coin.symbol, 1.00);
+                    continue;
+                }
+
+                const symbol = `${coin.symbol}USDT`;
+                const url = USE_VERCEL_PROXY
+                    ? `/api/mexc?endpoint=ticker/price&symbol=${symbol}`
+                    : `https://api.mexc.com/api/v3/ticker/price?symbol=${symbol}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.price) {
+                    const price = parseFloat(data.price);
+                    updateTickerPrice(coin.symbol, price);
+                }
+            } catch (error) {
+                // Silent fail for ticker
+            }
+        }
+    };
+
+    // Update immediately, then every 2 seconds
+    updateTickerPrices();
+    tickerPollingInterval = setInterval(updateTickerPrices, 2000);
+}
+
+/**
+ * Update a single ticker price with flash effect
+ */
+function updateTickerPrice(symbol, newPrice) {
+    const oldPrice = tickerPrices[symbol];
+    tickerPrices[symbol] = newPrice;
+
+    // Format price
+    let formattedPrice;
+    if (newPrice >= 1000) {
+        formattedPrice = `$${newPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    } else if (newPrice >= 1) {
+        formattedPrice = `$${newPrice.toFixed(2)}`;
+    } else {
+        formattedPrice = `$${newPrice.toFixed(4)}`;
+    }
+
+    // Update all price elements for this symbol (there are 2 due to duplication)
+    const priceElements = document.querySelectorAll(`.ticker-item-price[data-symbol="${symbol}"]`);
+    priceElements.forEach(el => {
+        el.textContent = formattedPrice;
+
+        // Flash effect if price changed
+        if (oldPrice !== undefined && oldPrice !== newPrice) {
+            el.classList.remove('flash-green', 'flash-red');
+
+            if (newPrice > oldPrice) {
+                el.classList.add('flash-green');
+            } else if (newPrice < oldPrice) {
+                el.classList.add('flash-red');
+            }
+
+            // Remove flash after animation
+            setTimeout(() => {
+                el.classList.remove('flash-green', 'flash-red');
+            }, 500);
+        }
+    });
+}
+
+/**
+ * Stop ticker polling
+ */
+function stopTickerPolling() {
+    if (tickerPollingInterval) {
+        clearInterval(tickerPollingInterval);
+        tickerPollingInterval = null;
     }
 }
 
