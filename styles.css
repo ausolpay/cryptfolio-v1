@@ -1121,7 +1121,8 @@ body.light-mode .settings-page-copyright {
     display: flex;
     align-items: center;
     gap: 15px;
-    margin-top: 0;
+    margin: 0 20px 0 0;
+    height: 50px;
 }
 
 /* Logo - larger size */
@@ -1272,7 +1273,8 @@ body.light-mode .ticker-item-price {
     gap: 5px;
     flex: 1;
     max-width: 400px;
-    margin: 0;
+    margin: 0 20px;
+    height: 50px;
     justify-content: flex-end;
 }
 
