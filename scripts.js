@@ -19049,42 +19049,10 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                     continue;
                 }
 
-                // Calculate cost basis price: packageCost / totalReward
-                // This gives the effective "buy price" based on what user spent on the package
-                // Example: Package cost $26, won 0.01 BCH -> Cost basis = $26/0.01 = $2600/BCH
-                let boughtPrice = 0;
-                const packageCost = parseFloat(block.packagePriceAUD) || 0;
-                const totalReward = parseFloat(block.totalPackageReward) || 0;
-
-                // Get live price as fallback
+                // Use live price as the bought price for EasyMining rewards
                 const livePrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
-
-                // Debug: Log all the values we're working with
-                console.log(`   📊 COST BASIS DEBUG for ${block.blockHash.substring(0, 12)}...`);
-                console.log(`      block.packagePriceAUD: ${block.packagePriceAUD} (parsed: ${packageCost})`);
-                console.log(`      block.totalPackageReward: ${block.totalPackageReward} (parsed: ${totalReward})`);
-                console.log(`      block.packagePriceBTC: ${block.packagePriceBTC}`);
-                console.log(`      block.priceAtDiscovery: ${block.priceAtDiscovery}`);
-                console.log(`      livePrice: ${livePrice}`);
-                console.log(`      block.amount: ${amount}`);
-
-                if (packageCost > 0 && totalReward > 0) {
-                    // Cost basis = what you paid / what you got
-                    // This treats the package cost as if it were the "live price" at time of purchase
-                    boughtPrice = packageCost / totalReward;
-                    console.log(`   ✅ COST BASIS: $${packageCost.toFixed(2)} / ${totalReward} = $${boughtPrice.toFixed(2)}/coin`);
-                } else if (block.priceAtDiscovery && block.priceAtDiscovery > 0) {
-                    // Use price at discovery if available
-                    boughtPrice = block.priceAtDiscovery;
-                    console.log(`   ⚠️ Using price at discovery (no cost basis): $${boughtPrice.toFixed(2)}`);
-                } else if (livePrice > 0) {
-                    // Fallback to current live price
-                    boughtPrice = livePrice;
-                    console.log(`   ⚠️ Using live price (no cost basis or discovery price): $${boughtPrice.toFixed(2)}`);
-                } else {
-                    // Last resort - log warning but continue
-                    console.warn(`   ❌ Block ${block.blockHash.substring(0, 12)}... No price available! boughtPrice will be $0`);
-                }
+                const boughtPrice = livePrice;
+                console.log(`   💵 Block ${block.blockHash.substring(0, 12)}... Using live price: $${boughtPrice.toFixed(2)}/coin`);
 
                 // Create holdings entry for this individual block
                 const entryId = uuidv4();
