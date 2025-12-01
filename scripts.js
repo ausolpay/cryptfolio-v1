@@ -5137,6 +5137,7 @@ function recalculateAddedToday() {
         const entries = getHoldingsEntries(crypto.id);
         console.log(`   📦 ${crypto.id}: ${entries.length} total entries`);
 
+        let entriesNeedSave = false;
         entries.forEach((entry, idx) => {
             totalEntriesScanned++;
             const entryDate = entry.dateAdded ? new Date(entry.dateAdded).toLocaleString() : 'NO DATE';
@@ -5144,6 +5145,17 @@ function recalculateAddedToday() {
 
             // Log ALL entries to see what we have
             console.log(`      Entry ${idx + 1}: amount=${entry.amount}, dateAdded=${entry.dateAdded} (${entryDate}), isToday=${isToday}, status=${entry.status}`);
+
+            // Auto-fix entries with $0 boughtPrice - use live price
+            if (!entry.boughtPrice || entry.boughtPrice === 0) {
+                const livePrice = getPriceFromObject(cryptoPrices[crypto.id]) || 0;
+                if (livePrice > 0) {
+                    entry.boughtPrice = livePrice;
+                    entry.audValueAtAdd = entry.amount * livePrice;
+                    entriesNeedSave = true;
+                    console.log(`      🔧 AUTO-FIX: Set boughtPrice=$${livePrice.toFixed(2)}, audValueAtAdd=$${entry.audValueAtAdd.toFixed(2)}`);
+                }
+            }
 
             // Check if entry was ADDED today (dateAdded >= today's midnight)
             // Count both active AND sold entries - if you added it today, it counts
@@ -5167,6 +5179,12 @@ function recalculateAddedToday() {
                 console.log(`      ❌ SOLD TODAY (added earlier): -$${soldValue.toFixed(2)}`);
             }
         });
+
+        // Save entries if any were auto-fixed
+        if (entriesNeedSave) {
+            saveHoldingsEntries(crypto.id, entries);
+            console.log(`   💾 Saved auto-fixed entries for ${crypto.id}`);
+        }
     }
 
     dailyAddedValue = totalAddedToday;
