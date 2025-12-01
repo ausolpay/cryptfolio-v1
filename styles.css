@@ -1873,26 +1873,40 @@ body.light-mode .performer-name {
         font-size: 32px;
     }
 
-    .portfolio-stats-grid {
-        grid-template-columns: 1fr 1fr;
+    /* Use parent as single grid on mobile too */
+    .portfolio-details {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
-        margin-bottom: 10px;
     }
 
-    .portfolio-stats-grid .stat-item {
-        margin: 0;
-    }
-
+    .portfolio-stats-grid,
     .portfolio-pnl-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
+        display: contents;
     }
 
+    /* Ensure no extra margins on all items */
+    .portfolio-stats-grid .stat-item,
     .portfolio-pnl-grid .pnl-item,
     .portfolio-pnl-grid .best-performer-item {
         margin: 0;
-        grid-column: span 1;
     }
+
+    /* Row 1: Record High | Record Low (side by side) */
+    .portfolio-stats-grid .stat-item:nth-child(2) { order: 1; grid-column: span 1; } /* Record High */
+    .portfolio-stats-grid .stat-item:nth-child(3) { order: 2; grid-column: span 1; } /* Record Low */
+
+    /* Row 2-4: Target, Cryptos, Added Today (stacked, full width) */
+    .portfolio-stats-grid .stat-item:nth-child(1) { order: 3; grid-column: span 2; } /* Target */
+    .portfolio-stats-grid .stat-item:nth-child(4) { order: 4; grid-column: span 2; } /* Cryptos */
+    .portfolio-pnl-grid .pnl-item:nth-child(1) { order: 5; grid-column: span 2; } /* Added Today */
+
+    /* Row 5-6: Unrealized, Realized (stacked, full width) */
+    .portfolio-pnl-grid .pnl-item:nth-child(2) { order: 6; grid-column: span 2; } /* Unrealized PnL */
+    .portfolio-pnl-grid .pnl-item:nth-child(3) { order: 7; grid-column: span 2; } /* Realized PnL */
+
+    /* Row 7: Best Performer (full width) */
+    .portfolio-pnl-grid .best-performer-item { order: 8; grid-column: span 2; } /* Best Performer */
 }
 
 button {
