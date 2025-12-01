@@ -1,6 +1,7 @@
-// CryptFolio v2 - Main Application Script - Stable 18 - CLEAN STABLE VERSION
+// CryptFolio v2 - Main Application Script - Stable 18.1 - Reverted from failed optimization
 // MEXC BTC prices, close-to-reward persistence, multiple reward support
-// stable build - 2025-11-30
+// stable build - 2025-12-01
+// Note: Reverted performance optimization changes that caused CORS/API issues
 // Note: CoinGecko API base URLs are now dynamically determined by getApiBaseUrl() based on paid/free tier
 let apiKeys = []; // User must configure their own API keys
 let currentApiKeyIndex = 0;
@@ -23732,8 +23733,6 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         // ✅ Sync share input to myBoughtShares from API
         const shareInput = card.querySelector(`#shares-${packageIdForElements}`) ||
                            card.querySelector('.share-adjuster-input');
-        const currentInputValue = shareInput ? parseInt(shareInput.value, 10) || 1 : 1;
-
         if (shareInput) {
             // Update data attributes with latest API values
             shareInput.dataset.totalBought = totalBoughtShares;
@@ -23748,67 +23747,6 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
                 console.log(`   ✅ Synced input: ${currentValue} → ${displayValue} shares`);
             }
             shareInput.min = 1;
-
-            // Set max to remaining available shares (what's left to buy)
-            const remainingShares = totalAvailableShares - totalBoughtShares + myBoughtShares;
-            shareInput.max = remainingShares > 0 ? remainingShares : 1;
-        }
-
-        // ✅ Update + button state (disabled ONLY when input >= max available shares)
-        const plusButton = card.querySelector(`#plus-${packageIdForElements}`) ||
-                           card.querySelector('.share-adjuster-btn:last-of-type');
-        if (plusButton && plusButton.textContent.trim() === '+') {
-            // Max shares user can own = my current shares + remaining available
-            const sharesRemaining = totalAvailableShares - totalBoughtShares;
-            const maxSharesICanOwn = myBoughtShares + sharesRemaining;
-            const inputValue = shareInput ? parseInt(shareInput.value, 10) || 1 : 1;
-
-            if (inputValue >= maxSharesICanOwn) {
-                plusButton.disabled = true;
-                plusButton.style.opacity = '0.5';
-                plusButton.style.cursor = 'not-allowed';
-            } else {
-                plusButton.disabled = false;
-                plusButton.style.opacity = '1';
-                plusButton.style.cursor = 'pointer';
-            }
-        }
-
-        // ✅ Update Buy button state (disabled when not enough funds for NEW shares)
-        const buyButton = card.querySelector('.buy-now-btn:not(.clear-shares-btn)');
-        if (buyButton) {
-            const availableBalance = window.niceHashBalance?.available || 0;
-            const sharePrice = 0.0001; // BTC per share
-            const inputValue = shareInput ? parseInt(shareInput.value, 10) || 1 : 1;
-            const newSharesToBuy = inputValue - myBoughtShares; // Only NEW shares cost money
-            const sharesRemaining = totalAvailableShares - totalBoughtShares;
-            const costForNewShares = newSharesToBuy * sharePrice;
-
-            if (newSharesToBuy <= 0) {
-                // No new shares to buy (input equals or less than owned)
-                buyButton.disabled = true;
-                buyButton.style.opacity = '0.5';
-                buyButton.style.cursor = 'not-allowed';
-                buyButton.title = 'No new shares to buy';
-            } else if (newSharesToBuy > sharesRemaining) {
-                // Trying to buy more than available
-                buyButton.disabled = true;
-                buyButton.style.opacity = '0.5';
-                buyButton.style.cursor = 'not-allowed';
-                buyButton.title = `Only ${sharesRemaining} shares available`;
-            } else if (availableBalance < costForNewShares) {
-                // Can't afford the new shares
-                buyButton.disabled = true;
-                buyButton.style.opacity = '0.5';
-                buyButton.style.cursor = 'not-allowed';
-                buyButton.title = `Insufficient funds (need ${costForNewShares.toFixed(4)} BTC for ${newSharesToBuy} shares)`;
-            } else {
-                // Can afford the new shares
-                buyButton.disabled = false;
-                buyButton.style.opacity = '1';
-                buyButton.style.cursor = 'pointer';
-                buyButton.title = `Buy ${newSharesToBuy} new share(s) for ${costForNewShares.toFixed(4)} BTC`;
-            }
         }
 
         // DO NOT touch countdown element - updateTeamPackageCountdowns() handles it every second
@@ -26152,20 +26090,27 @@ function adjustShares(packageName, delta, buttonElement) {
         newSharesToBuy: newShares
     });
 
-    // Update + button state - ONLY disable when no more shares available (not based on balance)
+    // Update + button state
     if (plusButton) {
+        // Disable if can't afford next share OR if no more shares available
         if (newValue >= maxSharesICanOwn) {
             // No more shares available to buy
             plusButton.disabled = true;
             plusButton.style.opacity = '0.5';
             plusButton.style.cursor = 'not-allowed';
             console.log(`➕ Plus button DISABLED - no more shares available (have: ${newValue}, max: ${maxSharesICanOwn})`);
+        } else if (availableBalance < nextShareCost) {
+            // Can't afford next share
+            plusButton.disabled = true;
+            plusButton.style.opacity = '0.5';
+            plusButton.style.cursor = 'not-allowed';
+            console.log(`➕ Plus button DISABLED - balance: ${availableBalance}, next share cost: ${nextShareCost}`);
         } else {
-            // Enable + button as long as shares are available (regardless of balance)
+            // Enable + button if can afford next share and shares available
             plusButton.disabled = false;
             plusButton.style.opacity = '1';
             plusButton.style.cursor = 'pointer';
-            console.log(`➕ Plus button ENABLED - shares available: ${maxSharesICanOwn - newValue} remaining`);
+            console.log(`➕ Plus button ENABLED - balance: ${availableBalance}, next share cost: ${nextShareCost}, shares available: ${sharesRemaining}`);
         }
     }
 
