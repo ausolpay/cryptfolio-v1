@@ -1610,7 +1610,7 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
 /* Stats Grid */
 .portfolio-stats-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     margin-bottom: 8px;
 }
@@ -1685,7 +1685,7 @@ body.light-mode .stat-value.highlight-green {
 /* PnL Grid */
 .portfolio-pnl-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1.5fr;
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
 }
 
