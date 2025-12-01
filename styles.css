@@ -7996,15 +7996,17 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Narrow Tablet - Horizontal slider */
 @media (max-width: 1040px) {
     #buy-packages-page .buy-packages-tabs {
-        width: 100%; /* Full width on tablet */
-        max-width: 100%;
-        padding: 0 20px;
+        width: calc(100% - 40px);
+        max-width: 660px;
+        margin: 0 auto 20px auto;
+        padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: 100%; /* Full width on tablet */
-        max-width: 100%;
-        padding: 0 20px;
+        width: calc(100% - 40px);
+        max-width: 660px;
+        margin: 0 auto 20px auto;
+        padding: 0;
     }
 
     #buy-packages-balance-section .easymining-balance-card {
@@ -8023,13 +8025,14 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
         padding: 20px;
         margin: 0 auto;
-        width: 100%;
-        max-width: 700px;
+        width: calc(100% - 40px);
+        max-width: 660px;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
         -ms-overflow-style: none;
         scrollbar-width: none;
+        justify-content: flex-start;
     }
 
     .buy-packages-container-page::-webkit-scrollbar {
