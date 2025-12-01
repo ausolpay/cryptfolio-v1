@@ -1786,6 +1786,15 @@ body.light-mode .performer-name {
         flex: 1;
     }
 
+    /* Smaller header text on tablet */
+    .header-tagline {
+        font-size: 12px;
+    }
+
+    .header-subtitle {
+        font-size: 10px;
+    }
+
     .header-row .add-crypto {
         flex: 0 0 auto;
         max-width: 250px;
