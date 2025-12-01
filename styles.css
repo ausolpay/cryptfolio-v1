@@ -1637,6 +1637,10 @@ body.light-mode .stat-item {
     font-weight: 600;
     color: #fff;
     margin-bottom: 2px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .stat-value.highlight-orange {
