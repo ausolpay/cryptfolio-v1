@@ -5159,24 +5159,13 @@ function recalculateAddedToday() {
 
             // Check if entry was ADDED today (dateAdded >= today's midnight)
             // Count both active AND sold entries - if you added it today, it counts
+            // "Added Today" = total value of entries created today, regardless of sold status
             if (isToday) {
-                // Use the AUD value at time of add (amount * boughtPrice = cost basis value)
+                // Use the AUD value at time of add (amount * boughtPrice)
                 const entryValue = entry.audValueAtAdd || (entry.amount * (entry.boughtPrice || 0)) || 0;
                 totalAddedToday += entryValue;
                 entriesAddedToday++;
                 console.log(`      ✅ ADDED TODAY (${entry.status}): +$${entryValue.toFixed(2)} (audValueAtAdd=${entry.audValueAtAdd}, boughtPrice=${entry.boughtPrice})`);
-
-                // If this entry was also SOLD today, subtract the sold value
-                if (entry.dateSold && entry.dateSold >= todayMidnight && entry.status === 'sold') {
-                    const soldValue = entry.amount * (entry.soldPrice || 0);
-                    totalAddedToday -= soldValue;
-                    console.log(`      ❌ ALSO SOLD TODAY: -$${soldValue.toFixed(2)} (soldPrice=${entry.soldPrice})`);
-                }
-            } else if (entry.dateSold && entry.dateSold >= todayMidnight && entry.status === 'sold') {
-                // Entry was added before today but SOLD today - subtract sold value
-                const soldValue = entry.amount * (entry.soldPrice || 0);
-                totalAddedToday -= soldValue;
-                console.log(`      ❌ SOLD TODAY (added earlier): -$${soldValue.toFixed(2)}`);
             }
         });
 
