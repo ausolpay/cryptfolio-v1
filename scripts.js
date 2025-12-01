@@ -23597,19 +23597,36 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         const packageIdForElements = pkg.name.replace(/\s+/g, '-');
         const packageId = pkg.apiData?.id || pkg.id;
 
-        // Update participants count
-        const participantsSpan = card.querySelector('.buy-package-stat span[style*="color: #4CAF50"]');
-        if (participantsSpan && participantsSpan.previousElementSibling?.textContent === 'Participants:') {
-            participantsSpan.textContent = pkg.numberOfParticipants || 0;
+        // Update participants count (find the green highlighted stat value)
+        const participantsEl = card.querySelector('.team-stat-value.highlight-green');
+        if (participantsEl) {
+            participantsEl.textContent = pkg.numberOfParticipants || 0;
+            console.log(`   ✅ Updated participants: ${pkg.numberOfParticipants}`);
         }
 
-        // Update share distribution (myBought/totalBought/totalAvailable)
-        const shareDistSpan = card.querySelector('.buy-package-stat span[style*="color: #ffa500"]');
-        if (shareDistSpan && shareDistSpan.previousElementSibling?.textContent === 'Share Distribution:') {
+        // Update share distribution using the proper ID
+        const sharesEl = card.querySelector(`#team-shares-${packageIdForElements}`);
+        if (sharesEl) {
             const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
             const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
             const myBoughtShares = getMyTeamShares(packageId) || 0;
-            shareDistSpan.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+            sharesEl.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
+            console.log(`   ✅ Updated shares: (${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`);
+        }
+
+        // Update progress bar
+        const progressEl = card.querySelector(`#team-progress-${packageIdForElements}`);
+        if (progressEl) {
+            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+            const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
+            const progressPercent = totalAvailableShares > 0 ? ((totalBoughtShares / totalAvailableShares) * 100).toFixed(1) : 0;
+            progressEl.style.width = `${progressPercent}%`;
+        }
+
+        // Update duration using proper ID
+        const durationEl = card.querySelector(`#team-duration-${packageIdForElements}`);
+        if (durationEl && pkg.duration) {
+            durationEl.textContent = pkg.duration;
         }
 
         // Update recommended status (star)
@@ -23666,10 +23683,12 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             }
         }
 
-        // Update probability (single crypto)
-        const probabilityEl = card.querySelector(`#probability-${packageIdForElements}`);
+        // Update probability (single crypto) - try both team and old ID formats
+        const probabilityEl = card.querySelector(`#team-probability-${packageIdForElements}`) ||
+                              card.querySelector(`#probability-${packageIdForElements}`);
         if (probabilityEl && pkg.probability) {
             probabilityEl.textContent = pkg.probability;
+            console.log(`   ✅ Updated probability: ${pkg.probability}`);
         }
 
         // Update dual-crypto probabilities (no crypto labels)
@@ -23683,15 +23702,9 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             mainProbEl.textContent = pkg.mainProbability;
         }
 
-        // Update duration
-        const durationEl = card.querySelector(`#duration-${packageIdForElements}`);
-        if (durationEl && pkg.duration) {
-            durationEl.textContent = pkg.duration;
-        }
-
-        // Update hashrate - preserve hashrate-unit styling
-        const hashrateEl = card.querySelector(`#hashrate-${packageIdForElements}`) ||
-                           card.querySelector(`#team-hashrate-${packageIdForElements}`);
+        // Update hashrate - use team-hashrate ID for team cards
+        const hashrateEl = card.querySelector(`#team-hashrate-${packageIdForElements}`) ||
+                           card.querySelector(`#hashrate-${packageIdForElements}`);
         if (hashrateEl && pkg.hashrate) {
             // Team packages have "current / max unit/s" format
             // Style: current speed in white, " / max unit/s" in grey
@@ -23722,7 +23735,8 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         updateBuyPageRobotIcon(card, pkg, myBoughtShares);
 
         // ✅ Sync share input values and data attributes
-        const shareInput = card.querySelector(`#team-${packageId}-shares, #shares-${packageIdForElements}`);
+        const shareInput = card.querySelector(`#shares-${packageIdForElements}`) ||
+                           card.querySelector('.share-adjuster-input');
         if (shareInput) {
             const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
             const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
