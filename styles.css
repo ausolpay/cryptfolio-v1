@@ -7638,8 +7638,7 @@ body.light-mode .share-adjuster-btn:hover {
 
 /* Share Adjuster Input */
 .share-adjuster-input {
-    width: 70px;
-    min-width: 70px;
+    width: 60px;
     text-align: center;
     padding: 5px;
     background-color: #333;
