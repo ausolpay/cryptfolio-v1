@@ -1776,9 +1776,19 @@ body.light-mode .performer-name {
     /* Ticker on its own row at top */
     .crypto-ticker {
         order: -1;
-        width: 100%;
+        flex: 0 0 100%;
         max-width: 100%;
         margin: 0 0 10px 0;
+    }
+
+    /* Header content on second row */
+    .header-left {
+        flex: 1;
+    }
+
+    .header-row .add-crypto {
+        flex: 1;
+        max-width: none;
     }
 
     .portfolio-strip {
