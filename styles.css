@@ -1278,19 +1278,19 @@ a {
     }
 }
 
-/* EasyMining BTC floating icon with orange ring */
-/* Same opacity and properties as other icons, just adds thin orange ring */
-.strip-floating-icon.easymining-btc,
-.floating-crypto-icon.easymining-btc {
-    box-shadow: 0 0 0 var(--ring-size, 2px) #ffa500;
+/* EasyMining floating icon - solid orange circle with white rocket */
+.strip-floating-icon.easymining-icon,
+.floating-crypto-icon.easymining-icon {
+    background: #ffa500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.strip-floating-icon.easymining-btc img,
-.floating-crypto-icon.easymining-btc img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
+.strip-floating-icon.easymining-icon svg,
+.floating-crypto-icon.easymining-icon svg {
+    width: 60%;
+    height: 60%;
 }
 
 body.light-mode .portfolio-strip {
