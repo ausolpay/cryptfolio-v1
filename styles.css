@@ -8013,57 +8013,46 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-packages-container-page {
-        display: flex; /* Change from grid to flex for horizontal scrolling */
+        display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
-        overflow-x: auto; /* Enable horizontal scrolling */
+        overflow-x: auto;
         overflow-y: hidden;
-        scroll-snap-type: x mandatory; /* Snap to cards when scrolling */
+        scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
         gap: 15px;
-        padding: 20px 0 20px 20px; /* Left padding only, right gap added via ::after */
-        margin: 0;
+        padding: 20px;
+        margin: 0 auto;
         width: 100%;
-        max-width: 100%;
-        cursor: grab; /* Show grab cursor for drag scrolling */
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-        box-sizing: border-box; /* Include padding in width calculation */
+        max-width: 700px;
+        box-sizing: border-box;
+        cursor: grab;
+        -webkit-overflow-scrolling: touch;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
 
-    /* Add space after last card to match left gap */
-    .buy-packages-container-page::after {
-        content: '';
-        display: block;
-        min-width: 20px; /* Match left padding */
-        height: 1px;
+    .buy-packages-container-page::-webkit-scrollbar {
+        display: none;
     }
 
     .buy-packages-container-page:active {
-        cursor: grabbing; /* Show grabbing cursor when dragging */
-    }
-
-    /* Hide scrollbar but keep functionality */
-    .buy-packages-container-page::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Edge */
-    }
-
-    .buy-packages-container-page {
-        -ms-overflow-style: none; /* IE and Edge */
-        scrollbar-width: none; /* Firefox */
+        cursor: grabbing;
     }
 
     .buy-package-card {
-        flex-shrink: 0; /* Prevent cards from shrinking */
-        scroll-snap-align: start; /* Snap to start of each card */
+        flex-shrink: 0;
+        scroll-snap-align: start;
         width: 300px;
-        min-height: 300px; /* Minimum height, allows content to expand */
-        height: auto; /* Responsive height based on content */
-        font-size: 13px; /* Slightly smaller font for smaller boxes */
+        min-height: 280px;
+        height: auto;
+        font-size: 13px;
     }
 
     .buy-package-card.team-package {
-        min-height: 300px; /* Minimum height matches solo packages */
-        width: 320px; /* Fit tablet width */
+        flex-shrink: 0;
+        width: 320px;
+        min-height: 280px;
     }
 
     /* Scale down team package background icons on tablet */
@@ -8098,50 +8087,47 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-packages-container-page {
-        display: flex; /* Change from grid to flex for horizontal scrolling */
+        display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
-        overflow-x: auto; /* Enable horizontal scrolling */
+        overflow-x: auto;
         overflow-y: hidden;
-        scroll-snap-type: x mandatory; /* Snap to cards when scrolling */
+        scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
         gap: 10px;
         padding: 10px;
-        margin: 0;
+        margin: 0 auto;
         width: 100%;
-        max-width: 100%;
-        cursor: grab; /* Show grab cursor for drag scrolling */
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        max-width: 340px;
+        box-sizing: border-box;
+        cursor: grab;
+        -webkit-overflow-scrolling: touch;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .buy-packages-container-page::-webkit-scrollbar {
+        display: none;
     }
 
     .buy-packages-container-page:active {
-        cursor: grabbing; /* Show grabbing cursor when dragging */
-    }
-
-    /* Hide scrollbar but keep functionality */
-    .buy-packages-container-page::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Edge */
-    }
-
-    .buy-packages-container-page {
-        -ms-overflow-style: none; /* IE and Edge */
-        scrollbar-width: none; /* Firefox */
+        cursor: grabbing;
     }
 
     .buy-package-card {
-        flex-shrink: 0; /* Prevent cards from shrinking */
-        scroll-snap-align: start; /* Snap to start of each card */
+        flex-shrink: 0;
+        scroll-snap-align: start;
         width: 280px;
-        min-height: 280px; /* Minimum height, allows content to expand */
-        height: auto; /* Responsive height based on content */
-        font-size: 12px; /* Smaller font for mobile boxes */
+        min-height: 260px;
+        height: auto;
+        font-size: 12px;
         padding: 12px;
     }
 
     .buy-package-card.team-package {
-        min-height: 280px; /* Minimum height matches solo packages */
-        width: 100%; /* Full width on mobile */
-        max-width: 320px; /* Max width for readability */
+        flex-shrink: 0;
+        width: 300px;
+        min-height: 280px;
     }
 
     /* Hide seconds in countdown when hours are shown on mobile */
