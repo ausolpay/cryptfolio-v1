@@ -1685,7 +1685,7 @@ body.light-mode .stat-value.highlight-green {
 /* PnL Grid */
 .portfolio-pnl-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1.5fr;
+    grid-template-columns: 1fr 1fr 1fr 1.5fr;
     gap: 8px;
 }
 
