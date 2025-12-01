@@ -8114,7 +8114,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 330px;
+        width: 342px; /* 2 cards fit: (700px - 15px gap) / 2 */
         min-height: 280px;
         height: auto;
         font-size: 13px;
@@ -8122,7 +8122,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 330px;
+        width: 342px;
         min-height: 280px;
     }
 
@@ -8190,17 +8190,19 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 320px;
+        width: 340px; /* 1 card fills container width */
         min-height: 260px;
         height: auto;
         font-size: 12px;
         padding: 12px;
+        box-sizing: border-box;
     }
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 320px;
+        width: 340px;
         min-height: 280px;
+        box-sizing: border-box;
     }
 
     /* Hide seconds in countdown when hours are shown on mobile */
