@@ -8185,7 +8185,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         width: calc(100% - 6px);
         max-width: 100%;
         margin: 0 auto 20px auto;
-        padding: 0 3px;
+        padding: 0;
         box-sizing: border-box;
         overflow: hidden;
     }
@@ -8500,6 +8500,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
     /* Buttons horizontal on mobile, underneath balances */
     .balance-card-buttons {
         flex-direction: row;
+        justify-content: center;
+        width: 100%;
     }
 
     .easymining-action-buttons {
@@ -8615,19 +8617,24 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .balance-card-buttons {
         flex-direction: column;
+        align-items: center;
         gap: 8px;
+        width: 100%;
     }
 
     .balance-card-btn {
         width: 100%;
+        max-width: 200px;
     }
 
     .easymining-action-buttons {
         flex-direction: column;
+        align-items: center;
     }
 
     .easymining-action-buttons .action-btn {
         width: 100%;
+        max-width: 200px;
         margin: 0;
     }
 }
