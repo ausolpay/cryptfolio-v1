@@ -8353,6 +8353,9 @@ function initFloatingIcons() {
         container.appendChild(icon);
     });
 
+    // Add EasyMining BTC icon with orange ring if there's available balance
+    addEasyMiningBtcIcon(container, 'modal');
+
     console.log(`🎨 Initialized ${cryptoData.length} floating icons in Total Holdings modal`);
 }
 
@@ -8526,6 +8529,8 @@ function refreshFloatingIcons() {
     }
     // Also refresh strip icons
     refreshStripFloatingIcons();
+    // Update EasyMining BTC icons (adds/removes based on balance)
+    updateEasyMiningBtcIcons();
 }
 
 /**
@@ -8645,6 +8650,9 @@ function initStripFloatingIcons() {
         container.appendChild(icon);
     });
 
+    // Add EasyMining BTC icon with orange ring if there's available balance
+    addEasyMiningBtcIcon(container, 'strip');
+
     console.log(`🎨 Initialized ${cryptoData.length} floating icons in portfolio strip`);
 }
 
@@ -8680,6 +8688,112 @@ function refreshStripFloatingIcons() {
         initStripFloatingIcons();
     }
     // Otherwise, leave animations running - don't update size/position to preserve animation
+}
+
+/**
+ * Add EasyMining BTC floating icon with orange ring to a container
+ * Only shows when there's available balance in EasyMining
+ * Ring size scales with available balance
+ * @param {HTMLElement} container - The floating icons container
+ * @param {string} type - 'modal' or 'strip' for different sizing
+ */
+function addEasyMiningBtcIcon(container, type = 'strip') {
+    if (!container) return;
+
+    // Check if EasyMining is enabled and has available balance
+    const availableBalance = window.niceHashBalance?.available || 0;
+
+    // Remove existing EasyMining BTC icon if present
+    const existingIcon = container.querySelector('.easymining-btc');
+    if (existingIcon) {
+        if (availableBalance <= 0) {
+            existingIcon.remove();
+            console.log('🎨 Removed EasyMining BTC icon (no balance)');
+            return;
+        }
+    }
+
+    // Don't add if no balance
+    if (availableBalance <= 0) return;
+
+    // Calculate ring size based on balance (3px base + scaled by balance)
+    // Balance of 0.001 BTC = 5px ring, 0.01 BTC = 10px ring, 0.1 BTC = 15px ring
+    const ringSize = Math.min(3 + Math.log10(availableBalance * 10000 + 1) * 4, 20);
+
+    // Calculate icon size based on balance (smaller for strip, larger for modal)
+    const baseSize = type === 'modal' ? 60 : 30;
+    const maxSize = type === 'modal' ? 120 : 55;
+    const balanceSize = Math.min(baseSize + Math.log10(availableBalance * 10000 + 1) * 15, maxSize);
+
+    // Speed - EasyMining BTC floats at medium pace
+    const speed = 15;
+
+    // If icon already exists, just update size
+    if (existingIcon) {
+        existingIcon.style.setProperty('--ring-size', `${ringSize}px`);
+        existingIcon.style.width = `${balanceSize}px`;
+        existingIcon.style.height = `${balanceSize}px`;
+        return;
+    }
+
+    // Create new icon
+    const icon = document.createElement('div');
+    icon.className = type === 'modal' ? 'floating-crypto-icon easymining-btc' : 'strip-floating-icon easymining-btc';
+    icon.dataset.cryptoId = 'easymining-btc';
+
+    // Random starting position
+    const startX = Math.random() * 70 + 15; // 15-85%
+    const startY = Math.random() * 60 + 20; // 20-80%
+
+    // Float animation parameters
+    const floatX = 25 + Math.random() * 35;
+    const floatYUp = -30 - Math.random() * 25;
+    const floatYDown = 30 + Math.random() * 25;
+    const rotateAmount = -8 + Math.random() * 16;
+    const delay = Math.random() * 5;
+
+    icon.style.cssText = `
+        width: ${balanceSize}px;
+        height: ${balanceSize}px;
+        left: ${startX}%;
+        top: ${startY}%;
+        z-index: 100;
+        --float-speed: ${speed}s;
+        --float-delay: ${delay}s;
+        --float-x: ${floatX}px;
+        --float-y-up: ${floatYUp}px;
+        --float-y-down: ${floatYDown}px;
+        --rotate-amount: ${rotateAmount}deg;
+        --ring-size: ${ringSize}px;
+    `;
+
+    // Add BTC image
+    const img = document.createElement('img');
+    img.src = 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png';
+    img.alt = 'EasyMining BTC';
+    img.onerror = () => icon.remove();
+    icon.appendChild(img);
+
+    container.appendChild(icon);
+    console.log(`🎨 Added EasyMining BTC icon (balance: ${availableBalance.toFixed(8)} BTC, ring: ${ringSize.toFixed(1)}px)`);
+}
+
+/**
+ * Update EasyMining BTC icons in both strip and modal containers
+ */
+function updateEasyMiningBtcIcons() {
+    // Update strip icon
+    const stripContainer = document.getElementById('strip-floating-icons-container');
+    if (stripContainer) {
+        addEasyMiningBtcIcon(stripContainer, 'strip');
+    }
+
+    // Update modal icon if modal is open
+    const modalContainer = document.getElementById('floating-icons-container');
+    const modal = document.getElementById('total-holdings-modal');
+    if (modalContainer && modal && modal.style.display !== 'none') {
+        addEasyMiningBtcIcon(modalContainer, 'modal');
+    }
 }
 
 // =============================================================================
