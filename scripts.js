@@ -23747,10 +23747,12 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             shareInput.dataset.myBought = myBoughtShares;
 
             // Always sync input to my bought shares (minimum 1 for display)
-            const displayValue = myBoughtShares > 0 ? myBoughtShares : 1;
-            if (parseInt(shareInput.value) !== displayValue) {
-                shareInput.value = displayValue;
-                console.log(`   ✅ Synced input to ${displayValue} shares`);
+            // Ensure we're comparing and setting as proper integers
+            const displayValue = myBoughtShares > 0 ? parseInt(myBoughtShares, 10) : 1;
+            const currentValue = parseInt(shareInput.value, 10) || 0;
+            if (currentValue !== displayValue) {
+                shareInput.value = String(displayValue); // Explicitly set as string
+                console.log(`   ✅ Synced input: ${currentValue} → ${displayValue} shares`);
             }
             shareInput.min = 1;
         }
