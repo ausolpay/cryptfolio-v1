@@ -8063,15 +8063,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Narrow Tablet - Horizontal slider ~2 cards wide */
 @media (max-width: 1040px) {
     #buy-packages-page .buy-packages-tabs {
-        width: 100%;
-        max-width: 630px;
+        width: calc(100% - 40px);
+        max-width: 590px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: 100%;
-        max-width: 630px;
+        width: calc(100% - 40px);
+        max-width: 590px;
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
@@ -8092,10 +8092,10 @@ body.light-mode .easymining-settings-form input[type="number"] {
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
         gap: 15px;
-        padding: 20px;
+        padding: 20px 0;
         margin: 0 auto;
-        width: 100%;
-        max-width: 630px;
+        width: calc(100% - 40px);
+        max-width: 590px;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
@@ -8114,7 +8114,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 300px;
+        width: 280px;
         min-height: 280px;
         height: auto;
         font-size: 13px;
@@ -8122,7 +8122,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 320px;
+        width: 280px;
         min-height: 280px;
     }
 
