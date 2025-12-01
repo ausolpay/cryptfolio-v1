@@ -8188,9 +8188,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-package-card {
-        flex-shrink: 0;
+        flex: 0 0 100%; /* 1 card fills container width */
         scroll-snap-align: start;
-        width: 100%; /* 1 card fills container width */
         min-height: 260px;
         height: auto;
         font-size: 12px;
@@ -8199,8 +8198,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-package-card.team-package {
-        flex-shrink: 0;
-        width: 100%;
+        flex: 0 0 100%;
         min-height: 280px;
         box-sizing: border-box;
     }
