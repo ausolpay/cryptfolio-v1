@@ -8000,6 +8000,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
+        box-sizing: border-box;
     }
 
     #buy-packages-balance-section {
@@ -8008,12 +8009,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
+        overflow: hidden;
     }
 
     #buy-packages-balance-section .easymining-balance-card {
         width: 100%;
         max-width: 100%;
         margin: 0;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     .buy-packages-container-page {
@@ -8067,6 +8071,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
+        box-sizing: border-box;
     }
 
     #buy-packages-balance-section {
@@ -8075,12 +8080,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
+        overflow: hidden;
     }
 
     #buy-packages-balance-section .easymining-balance-card {
         width: 100%;
         max-width: 100%;
         margin: 0;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     .buy-packages-container-page {
@@ -8152,11 +8160,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
         max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     #buy-packages-balance-section .easymining-balance-card {
         width: 100%;
         max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     .buy-packages-container-page {
