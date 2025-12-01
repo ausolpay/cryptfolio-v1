@@ -8114,16 +8114,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 342px; /* 2 cards fit: (700px - 15px gap) / 2 */
+        width: calc(50% - 8px); /* 2 cards fit adaptively */
         min-height: 280px;
         height: auto;
         font-size: 13px;
+        box-sizing: border-box;
     }
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 342px;
+        width: calc(50% - 8px);
         min-height: 280px;
+        box-sizing: border-box;
     }
 
     /* Scale down team package background icons on tablet */
@@ -8190,7 +8192,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 340px; /* 1 card fills container width */
+        width: 100%; /* 1 card fills container width */
         min-height: 260px;
         height: auto;
         font-size: 12px;
@@ -8200,7 +8202,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 340px;
+        width: 100%;
         min-height: 280px;
         box-sizing: border-box;
     }
