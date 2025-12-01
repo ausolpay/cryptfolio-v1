@@ -8894,6 +8894,7 @@ body.light-mode .api-hub-button .api-desc {
 .entry-header {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     margin-bottom: 6px;
 }
@@ -8914,6 +8915,7 @@ body.light-mode .api-hub-button .api-desc {
 .entry-meta {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     margin-bottom: 6px;
 }
@@ -8947,6 +8949,7 @@ body.light-mode .api-hub-button .api-desc {
     color: #4CAF50;
     font-weight: 500;
     margin-bottom: 10px;
+    text-align: center;
 }
 
 /* Entry Actions */
