@@ -7993,18 +7993,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
     width: fit-content; /* Section width fits the boxes exactly */
 }
 
-/* Narrow Tablet - Horizontal slider */
-@media (max-width: 1040px) {
+/* Wide Tablet - Horizontal slider ~2.5 cards wide */
+@media (max-width: 1200px) {
     #buy-packages-page .buy-packages-tabs {
         width: 100%;
-        max-width: 700px;
+        max-width: 770px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
         width: 100%;
-        max-width: 700px;
+        max-width: 770px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
@@ -8026,13 +8026,77 @@ body.light-mode .easymining-settings-form input[type="number"] {
         padding: 20px 0;
         margin: 0 auto;
         width: 100%;
-        max-width: 700px;
+        max-width: 770px;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
         -ms-overflow-style: none;
         scrollbar-width: none;
-        justify-content: center;
+    }
+
+    .buy-packages-container-page::-webkit-scrollbar {
+        display: none;
+    }
+
+    .buy-packages-container-page:active {
+        cursor: grabbing;
+    }
+
+    .buy-package-card {
+        flex-shrink: 0;
+        scroll-snap-align: start;
+        width: 300px;
+        min-height: 280px;
+        height: auto;
+        font-size: 13px;
+    }
+
+    .buy-package-card.team-package {
+        flex-shrink: 0;
+        width: 320px;
+        min-height: 280px;
+    }
+}
+
+/* Narrow Tablet - Horizontal slider ~2 cards wide */
+@media (max-width: 1040px) {
+    #buy-packages-page .buy-packages-tabs {
+        width: 100%;
+        max-width: 630px;
+        margin: 0 auto 20px auto;
+        padding: 0;
+    }
+
+    #buy-packages-balance-section {
+        width: 100%;
+        max-width: 630px;
+        margin: 0 auto 20px auto;
+        padding: 0;
+    }
+
+    #buy-packages-balance-section .easymining-balance-card {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .buy-packages-container-page {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        gap: 15px;
+        padding: 20px 0;
+        margin: 0 auto;
+        width: 100%;
+        max-width: 630px;
+        box-sizing: border-box;
+        cursor: grab;
+        -webkit-overflow-scrolling: touch;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
 
     .buy-packages-container-page::-webkit-scrollbar {
