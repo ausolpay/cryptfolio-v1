@@ -6805,13 +6805,13 @@ body.light-mode .buy-package-card {
 /* Desktop: Reduce buy package card width */
 @media (min-width: 769px) {
     .buy-package-card {
-        width: 351px;
-        min-height: 351px;
+        width: 369px;
+        min-height: 369px;
     }
 
     .buy-package-card.team-package {
-        width: 347px;
-        min-height: 365px;
+        width: 364px;
+        min-height: 380px;
     }
 }
 
