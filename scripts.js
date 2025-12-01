@@ -8693,7 +8693,8 @@ function refreshStripFloatingIcons() {
 /**
  * Add EasyMining BTC floating icon with orange ring to a container
  * Only shows when there's available balance in EasyMining
- * Ring size scales with available balance
+ * Uses IDENTICAL sizing/animation logic as other portfolio icons
+ * Just adds a thin orange ring to distinguish from regular BTC holdings
  * @param {HTMLElement} container - The floating icons container
  * @param {string} type - 'modal' or 'strip' for different sizing
  */
@@ -8716,24 +8717,73 @@ function addEasyMiningBtcIcon(container, type = 'strip') {
     // Don't add if no balance
     if (availableBalance <= 0) return;
 
-    // Calculate ring size based on balance (3px base + scaled by balance)
-    // Balance of 0.001 BTC = 5px ring, 0.01 BTC = 10px ring, 0.1 BTC = 15px ring
-    const ringSize = Math.min(3 + Math.log10(availableBalance * 10000 + 1) * 4, 20);
+    // Get BTC price to calculate value (SAME as other icons)
+    const btcPrice = cryptoPrices['bitcoin']?.aud || 0;
+    const easyMiningValue = availableBalance * btcPrice;
 
-    // Calculate icon size based on balance (smaller for strip, larger for modal)
-    const baseSize = type === 'modal' ? 60 : 30;
-    const maxSize = type === 'modal' ? 120 : 55;
-    const balanceSize = Math.min(baseSize + Math.log10(availableBalance * 10000 + 1) * 15, maxSize);
+    // Calculate total portfolio value for size ratio (SAME logic as other icons)
+    let totalValue = easyMiningValue;
+    if (loggedInUser && users[loggedInUser]?.cryptos) {
+        users[loggedInUser].cryptos.forEach(crypto => {
+            const price = cryptoPrices[crypto.id]?.aud || 0;
+            const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+            totalValue += price * holdings;
+        });
+    }
 
-    // Speed - EasyMining BTC floats at medium pace
-    const speed = 15;
+    // Get Bitcoin's 24h change for speed (SAME as regular BTC icon would use)
+    const btcChange24h = Math.abs(cryptoPriceChanges['bitcoin'] || 0);
+    const allChanges = Object.values(cryptoPriceChanges).map(c => Math.abs(c || 0));
+    const maxChange = Math.max(...allChanges, btcChange24h, 1);
 
-    // If icon already exists, just update size
+    // Get Bitcoin sentiment for vertical bias (SAME as regular BTC icon)
+    const btcSentiment = getStoredSentiment('bitcoin') || 50;
+
+    // Calculate size based on value ratio (IDENTICAL formula as other icons)
+    const valueRatio = totalValue > 0 ? easyMiningValue / totalValue : 0;
+    let size;
+    if (type === 'modal') {
+        size = 40 + (valueRatio * 80); // 40-120px for modal (same as initFloatingIcons)
+    } else {
+        size = 20 + (valueRatio * 30); // 20-50px for strip (same as initStripFloatingIcons)
+    }
+
+    // Speed based on 24h change (IDENTICAL formula as other icons)
+    const changeRatio = btcChange24h / maxChange;
+    const speed = 20 - (changeRatio * 12); // 8-20s
+
+    // Thin orange ring (2px)
+    const ringSize = 2;
+
+    // If icon already exists, just update size (preserve animation)
     if (existingIcon) {
-        existingIcon.style.setProperty('--ring-size', `${ringSize}px`);
-        existingIcon.style.width = `${balanceSize}px`;
-        existingIcon.style.height = `${balanceSize}px`;
+        existingIcon.style.width = `${size}px`;
+        existingIcon.style.height = `${size}px`;
         return;
+    }
+
+    // Vertical bias based on sentiment (IDENTICAL logic as other icons)
+    let floatYUp, floatYDown;
+    if (type === 'modal') {
+        floatYUp = -40 - Math.random() * 30;
+        floatYDown = 40 + Math.random() * 30;
+        if (btcSentiment > 55) {
+            floatYUp = -60 - Math.random() * 40;
+            floatYDown = 20 + Math.random() * 20;
+        } else if (btcSentiment < 45) {
+            floatYUp = -20 - Math.random() * 20;
+            floatYDown = 60 + Math.random() * 40;
+        }
+    } else {
+        floatYUp = -25 - Math.random() * 20;
+        floatYDown = 25 + Math.random() * 20;
+        if (btcSentiment > 55) {
+            floatYUp = -40 - Math.random() * 25;
+            floatYDown = 15 + Math.random() * 15;
+        } else if (btcSentiment < 45) {
+            floatYUp = -15 - Math.random() * 15;
+            floatYDown = 40 + Math.random() * 25;
+        }
     }
 
     // Create new icon
@@ -8741,23 +8791,24 @@ function addEasyMiningBtcIcon(container, type = 'strip') {
     icon.className = type === 'modal' ? 'floating-crypto-icon easymining-btc' : 'strip-floating-icon easymining-btc';
     icon.dataset.cryptoId = 'easymining-btc';
 
-    // Random starting position
-    const startX = Math.random() * 70 + 15; // 15-85%
-    const startY = Math.random() * 60 + 20; // 20-80%
+    // Random starting position (SAME ranges as other icons)
+    const startX = Math.random() * 80 + 10; // 10-90%
+    const startY = type === 'modal' ? (Math.random() * 80 + 10) : (Math.random() * 60 + 20);
 
-    // Float animation parameters
-    const floatX = 25 + Math.random() * 35;
-    const floatYUp = -30 - Math.random() * 25;
-    const floatYDown = 30 + Math.random() * 25;
-    const rotateAmount = -8 + Math.random() * 16;
+    // Float animation parameters (IDENTICAL as other icons)
+    const floatX = 20 + Math.random() * 40;
+    const rotateAmount = -10 + Math.random() * 20;
     const delay = Math.random() * 5;
 
+    // z-index based on value ratio (SAME as other icons)
+    const zIndex = Math.max(1, Math.floor(valueRatio * 10));
+
     icon.style.cssText = `
-        width: ${balanceSize}px;
-        height: ${balanceSize}px;
+        width: ${size}px;
+        height: ${size}px;
         left: ${startX}%;
         top: ${startY}%;
-        z-index: 100;
+        z-index: ${zIndex};
         --float-speed: ${speed}s;
         --float-delay: ${delay}s;
         --float-x: ${floatX}px;
@@ -8767,15 +8818,17 @@ function addEasyMiningBtcIcon(container, type = 'strip') {
         --ring-size: ${ringSize}px;
     `;
 
-    // Add BTC image
+    // Add BTC image (use appropriate size like other icons)
     const img = document.createElement('img');
-    img.src = 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png';
+    img.src = type === 'modal'
+        ? 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png'
+        : 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png';
     img.alt = 'EasyMining BTC';
     img.onerror = () => icon.remove();
     icon.appendChild(img);
 
     container.appendChild(icon);
-    console.log(`🎨 Added EasyMining BTC icon (balance: ${availableBalance.toFixed(8)} BTC, ring: ${ringSize.toFixed(1)}px)`);
+    console.log(`🎨 Added EasyMining BTC icon (value: $${easyMiningValue.toFixed(2)}, size: ${size.toFixed(1)}px)`);
 }
 
 /**
