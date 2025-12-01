@@ -5145,20 +5145,26 @@ function recalculateAddedToday() {
             // Log ALL entries to see what we have
             console.log(`      Entry ${idx + 1}: amount=${entry.amount}, dateAdded=${entry.dateAdded} (${entryDate}), isToday=${isToday}, status=${entry.status}`);
 
-            // Check if entry was added today (dateAdded >= today's midnight)
-            if (isToday && entry.status === 'active') {
-                // Use the AUD value at time of add (amount * boughtPrice)
-                const entryValue = entry.audValueAtAdd || (entry.amount * entry.boughtPrice) || 0;
+            // Check if entry was ADDED today (dateAdded >= today's midnight)
+            // Count both active AND sold entries - if you added it today, it counts
+            if (isToday) {
+                // Use the AUD value at time of add (amount * boughtPrice = cost basis value)
+                const entryValue = entry.audValueAtAdd || (entry.amount * (entry.boughtPrice || 0)) || 0;
                 totalAddedToday += entryValue;
                 entriesAddedToday++;
-                console.log(`      ✅ COUNTED: $${entryValue.toFixed(2)} (audValueAtAdd=${entry.audValueAtAdd}, amount*price=${(entry.amount * entry.boughtPrice).toFixed(2)})`);
-            }
+                console.log(`      ✅ ADDED TODAY (${entry.status}): +$${entryValue.toFixed(2)} (audValueAtAdd=${entry.audValueAtAdd}, boughtPrice=${entry.boughtPrice})`);
 
-            // Also check if entry was SOLD today (subtract from daily total)
-            if (entry.dateSold && entry.dateSold >= todayMidnight && entry.status === 'sold') {
+                // If this entry was also SOLD today, subtract the sold value
+                if (entry.dateSold && entry.dateSold >= todayMidnight && entry.status === 'sold') {
+                    const soldValue = entry.amount * (entry.soldPrice || 0);
+                    totalAddedToday -= soldValue;
+                    console.log(`      ❌ ALSO SOLD TODAY: -$${soldValue.toFixed(2)} (soldPrice=${entry.soldPrice})`);
+                }
+            } else if (entry.dateSold && entry.dateSold >= todayMidnight && entry.status === 'sold') {
+                // Entry was added before today but SOLD today - subtract sold value
                 const soldValue = entry.amount * (entry.soldPrice || 0);
                 totalAddedToday -= soldValue;
-                console.log(`      ❌ SOLD TODAY: -$${soldValue.toFixed(2)}`);
+                console.log(`      ❌ SOLD TODAY (added earlier): -$${soldValue.toFixed(2)}`);
             }
         });
     }
@@ -8290,10 +8296,15 @@ function clearPortfolio24HStats() {
     setStorageItem(`${loggedInUser}_dailyAddedValue`, '0');
     console.log('   ✓ Cleared daily added value');
 
-    // Reset midnight tracking
-    lastMidnightReset = new Date().toDateString();
-    setStorageItem(`${loggedInUser}_lastMidnightReset`, lastMidnightReset);
+    // Reset midnight tracking to now (as timestamp)
+    const now = new Date();
+    lastMidnightReset = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    setStorageItem(`${loggedInUser}_lastMidnightReset`, lastMidnightReset.toString());
     console.log('   ✓ Reset midnight tracking');
+
+    // Remove any old clearedAt values from previous code versions
+    removeStorageItem(`${loggedInUser}_addedTodayClearedAt`);
+    console.log('   ✓ Cleared any legacy clearedAt timestamp');
 
     // Update display
     updateAddedTodayDisplay();
