@@ -1797,7 +1797,7 @@ body.light-mode .performer-name {
 
     .header-row .add-crypto {
         flex: 0 0 auto;
-        max-width: 300px;
+        max-width: 280px;
         margin-left: -10px;
     }
 
