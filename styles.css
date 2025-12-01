@@ -8003,8 +8003,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     #buy-packages-balance-section {
-        width: calc(100% - 40px);
-        max-width: 730px;
+        width: 100%;
+        max-width: 770px;
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
@@ -8070,8 +8070,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     #buy-packages-balance-section {
-        width: calc(100% - 40px);
-        max-width: 590px;
+        width: 100%;
+        max-width: 630px;
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
