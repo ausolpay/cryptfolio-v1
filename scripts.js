@@ -9101,7 +9101,11 @@ function startTickerPolling() {
 /**
  * Update a single ticker price with flash effect
  */
-function updateTickerPrice(symbol, newPrice) {
+function updateTickerPrice(symbol, newPriceUSD) {
+    // Convert USD to local currency (AUD) using the global conversion rate
+    const conversionRate = lastConversionRate || 1.52;
+    const newPrice = newPriceUSD * conversionRate;
+
     const oldPrice = tickerPrices[symbol];
     tickerPrices[symbol] = newPrice;
 
