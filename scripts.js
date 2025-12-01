@@ -23597,28 +23597,27 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         const packageIdForElements = pkg.name.replace(/\s+/g, '-');
         const packageId = pkg.apiData?.id || pkg.id;
 
+        // Calculate share counts ONCE from API data and reuse throughout
+        const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
+        const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
+        const myBoughtShares = getMyTeamShares(packageId) || 0;
+        console.log(`📊 ${pkg.name}: myBoughtShares=${myBoughtShares}, totalBought=${totalBoughtShares}, totalAvailable=${totalAvailableShares}`);
+
         // Update participants count (find the green highlighted stat value)
         const participantsEl = card.querySelector('.team-stat-value.highlight-green');
         if (participantsEl) {
             participantsEl.textContent = pkg.numberOfParticipants || 0;
-            console.log(`   ✅ Updated participants: ${pkg.numberOfParticipants}`);
         }
 
         // Update share distribution using the proper ID
         const sharesEl = card.querySelector(`#team-shares-${packageIdForElements}`);
         if (sharesEl) {
-            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
-            const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
-            const myBoughtShares = getMyTeamShares(packageId) || 0;
             sharesEl.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`;
-            console.log(`   ✅ Updated shares: (${myBoughtShares}/${totalBoughtShares}/${totalAvailableShares})`);
         }
 
         // Update progress bar
         const progressEl = card.querySelector(`#team-progress-${packageIdForElements}`);
         if (progressEl) {
-            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
-            const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
             const progressPercent = totalAvailableShares > 0 ? ((totalBoughtShares / totalAvailableShares) * 100).toFixed(1) : 0;
             progressEl.style.width = `${progressPercent}%`;
         }
@@ -23667,13 +23666,10 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             }
         }
 
-        // Update reward value display
+        // Update reward value display (use myBoughtShares calculated at top)
         const rewardValueEl = card.querySelector(`#reward-value-${packageIdForElements}`);
         if (rewardValueEl && rewardAUD > 0) {
-            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
-            const myBoughtShares = getMyTeamShares(packageId) || 0;
-            const inputEl = card.querySelector(`#shares-${packageIdForElements}`);
-            const myShares = inputEl ? parseInt(inputEl.value) || 1 : 1;
+            const myShares = myBoughtShares > 0 ? myBoughtShares : 1; // Use owned shares or 1 for preview
             const othersBought = totalBoughtShares - myBoughtShares;
             const totalShares = othersBought + myShares;
 
@@ -23727,31 +23723,26 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             }
         }
 
-        // ✅ Update Clear Shares button visibility based on current shares
-        const myBoughtShares = getMyTeamShares(packageId) || 0;
+        // ✅ Update Clear Shares button visibility (uses myBoughtShares from top)
         updateClearSharesButtonVisibility(pkg.name, packageId, myBoughtShares);
 
         // ✅ Update robot icon state (solid when shares owned, spinning when waiting)
         updateBuyPageRobotIcon(card, pkg, myBoughtShares);
 
-        // ✅ Sync share input values and data attributes
+        // ✅ Sync share input to myBoughtShares from API
         const shareInput = card.querySelector(`#shares-${packageIdForElements}`) ||
                            card.querySelector('.share-adjuster-input');
         if (shareInput) {
-            const totalBoughtShares = pkg.addedAmount ? Math.round(pkg.addedAmount * 10000) : 0;
-            const totalAvailableShares = pkg.fullAmount ? Math.round(pkg.fullAmount * 10000) : 0;
-
             // Update data attributes with latest API values
             shareInput.dataset.totalBought = totalBoughtShares;
             shareInput.dataset.totalAvailable = totalAvailableShares;
             shareInput.dataset.myBought = myBoughtShares;
 
             // Always sync input to my bought shares (minimum 1 for display)
-            // Ensure we're comparing and setting as proper integers
-            const displayValue = myBoughtShares > 0 ? parseInt(myBoughtShares, 10) : 1;
+            const displayValue = myBoughtShares > 0 ? myBoughtShares : 1;
             const currentValue = parseInt(shareInput.value, 10) || 0;
             if (currentValue !== displayValue) {
-                shareInput.value = String(displayValue); // Explicitly set as string
+                shareInput.value = displayValue;
                 console.log(`   ✅ Synced input: ${currentValue} → ${displayValue} shares`);
             }
             shareInput.min = 1;
