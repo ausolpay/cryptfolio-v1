@@ -1778,40 +1778,40 @@ body.light-mode .performer-name {
         max-width: 700px;
     }
 
-    .portfolio-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+    /* Use parent as single grid, children use display: contents */
+    .portfolio-details {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
         gap: 8px;
-        margin-bottom: 8px;
     }
 
-    /* Ensure no extra margins on stat items */
-    .portfolio-stats-grid .stat-item {
-        margin: 0;
-    }
-
-    /* Reorder stats: Record High, Record Low, Target (full), Cryptos (full) */
-    .portfolio-stats-grid .stat-item:nth-child(1) { order: 3; grid-column: span 2; } /* Target - full width */
-    .portfolio-stats-grid .stat-item:nth-child(2) { order: 1; } /* Record High */
-    .portfolio-stats-grid .stat-item:nth-child(3) { order: 2; } /* Record Low */
-    .portfolio-stats-grid .stat-item:nth-child(4) { order: 4; grid-column: span 2; } /* Cryptos - full width */
-
+    .portfolio-stats-grid,
     .portfolio-pnl-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-top: 0;
+        display: contents;
     }
 
-    /* Ensure no extra margins on pnl items */
+    /* Ensure no extra margins on all items */
+    .portfolio-stats-grid .stat-item,
     .portfolio-pnl-grid .pnl-item,
     .portfolio-pnl-grid .best-performer-item {
         margin: 0;
     }
 
-    /* Reorder PnL: Added Today (full), Unrealized, Realized, Best Performer (full) */
-    .portfolio-pnl-grid .pnl-item:nth-child(1) { order: 1; grid-column: span 2; } /* Added Today - full width */
-    .portfolio-pnl-grid .pnl-item:nth-child(2) { order: 2; } /* Unrealized PnL */
-    .portfolio-pnl-grid .pnl-item:nth-child(3) { order: 3; } /* Realized PnL */
-    .portfolio-pnl-grid .best-performer-item { order: 4; grid-column: span 2; } /* Best Performer - full width */
+    /* Row 1: Record High (span 3) | Record Low (span 3) */
+    .portfolio-stats-grid .stat-item:nth-child(2) { order: 1; grid-column: span 3; } /* Record High */
+    .portfolio-stats-grid .stat-item:nth-child(3) { order: 2; grid-column: span 3; } /* Record Low */
+
+    /* Row 2: Target (span 2) | Cryptos (span 2) | Added Today (span 2) */
+    .portfolio-stats-grid .stat-item:nth-child(1) { order: 3; grid-column: span 2; } /* Target */
+    .portfolio-stats-grid .stat-item:nth-child(4) { order: 4; grid-column: span 2; } /* Cryptos */
+    .portfolio-pnl-grid .pnl-item:nth-child(1) { order: 5; grid-column: span 2; } /* Added Today */
+
+    /* Row 3: Unrealized (span 3) | Realized (span 3) */
+    .portfolio-pnl-grid .pnl-item:nth-child(2) { order: 6; grid-column: span 3; } /* Unrealized PnL */
+    .portfolio-pnl-grid .pnl-item:nth-child(3) { order: 7; grid-column: span 3; } /* Realized PnL */
+
+    /* Row 4: Best Performer (full width) */
+    .portfolio-pnl-grid .best-performer-item { order: 8; grid-column: span 6; } /* Best Performer */
 }
 
 /* Mobile - 1 crypto box wide */
