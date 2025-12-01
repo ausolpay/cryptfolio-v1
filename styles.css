@@ -8185,7 +8185,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         width: calc(100% - 10px);
         max-width: 100%;
         margin: 0 auto 20px auto;
-        padding: 0;
+        padding: 0 5px;
         box-sizing: border-box;
         overflow: hidden;
     }
