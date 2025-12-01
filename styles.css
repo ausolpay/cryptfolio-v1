@@ -7996,14 +7996,14 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Wide Tablet - Match EasyMining 1040px width */
 @media (max-width: 1200px) {
     #buy-packages-page .buy-packages-tabs {
-        width: 1040px;
+        width: calc(100% - 40px);
         max-width: 1040px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: 1040px;
+        width: calc(100% - 40px);
         max-width: 1040px;
         margin: 0 auto 20px auto;
         padding: 0;
@@ -8027,7 +8027,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
         padding: 20px 0;
         margin: 0 auto;
-        width: 1040px;
+        width: calc(100% - 40px);
         max-width: 1040px;
         box-sizing: border-box;
         cursor: grab;
@@ -8045,9 +8045,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-package-card {
-        flex-shrink: 0;
+        flex: 0 0 calc(50% - 8px); /* 2 cards fit, won't grow or shrink */
         scroll-snap-align: start;
-        width: calc(50% - 8px); /* 2 cards fit adaptively */
         min-height: 280px;
         height: auto;
         font-size: 13px;
@@ -8055,8 +8054,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-package-card.team-package {
-        flex-shrink: 0;
-        width: calc(50% - 8px);
+        flex: 0 0 calc(50% - 8px);
         min-height: 280px;
         box-sizing: border-box;
     }
@@ -8065,14 +8063,14 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Narrow Tablet - Match EasyMining 700px width */
 @media (max-width: 1040px) {
     #buy-packages-page .buy-packages-tabs {
-        width: 700px;
+        width: calc(100% - 40px);
         max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: 700px;
+        width: calc(100% - 40px);
         max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
@@ -8096,7 +8094,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
         padding: 20px 0;
         margin: 0 auto;
-        width: 700px;
+        width: calc(100% - 40px);
         max-width: 700px;
         box-sizing: border-box;
         cursor: grab;
@@ -8114,9 +8112,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-package-card {
-        flex-shrink: 0;
+        flex: 0 0 calc(50% - 8px); /* 2 cards fit, won't grow or shrink */
         scroll-snap-align: start;
-        width: calc(50% - 8px); /* 2 cards fit adaptively */
         min-height: 280px;
         height: auto;
         font-size: 13px;
@@ -8124,8 +8121,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .buy-package-card.team-package {
-        flex-shrink: 0;
-        width: calc(50% - 8px);
+        flex: 0 0 calc(50% - 8px);
         min-height: 280px;
         box-sizing: border-box;
     }
