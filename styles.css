@@ -1619,7 +1619,8 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 7px 8px;
+    justify-content: center;
+    padding: 10px 8px;
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
@@ -1669,18 +1670,6 @@ body.light-mode .stat-value.highlight-green {
     letter-spacing: 0.5px;
 }
 
-/* Adjust spacing for first 4 stat cards */
-.stat-item:not(:last-child) .stat-value {
-    padding-top: 5px;
-}
-
-.stat-item:not(:last-child) .stat-label {
-    padding-bottom: 5px;
-}
-
-.stat-item:last-child {
-    padding-bottom: 10px;
-}
 
 /* PnL Grid */
 .portfolio-pnl-grid {
@@ -1693,7 +1682,8 @@ body.light-mode .stat-value.highlight-green {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px;
+    justify-content: center;
+    padding: 10px 8px;
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
