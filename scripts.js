@@ -3373,7 +3373,7 @@ async function loadSoloAlerts() {
 
     // Fetch packages from API
     const fetchResult = await fetchNiceHashSoloPackages();
-    const packages = fetchResult?.packages || fetchResult; // Handle both new and legacy format
+    const packages = fetchResult?.packages || null;
 
     if (!packages || packages.length === 0) {
         console.error('No solo packages available to set alerts for');
@@ -3610,7 +3610,7 @@ async function loadTeamAlerts() {
 
     // Fetch team packages from API
     const teamFetchResult = await fetchNiceHashTeamPackages();
-    const packages = teamFetchResult?.packages || teamFetchResult; // Handle both new and legacy format
+    const packages = teamFetchResult?.packages || null;
 
     if (!packages || packages.length === 0) {
         console.error('No team packages available to set alerts for');
@@ -3620,7 +3620,7 @@ async function loadTeamAlerts() {
 
     // Fetch solo packages to get current small package probabilities
     const soloFetchResult = await fetchNiceHashSoloPackages();
-    const soloPackages = soloFetchResult?.packages || soloFetchResult; // Handle both new and legacy format
+    const soloPackages = soloFetchResult?.packages || null;
     console.log(`📦 Fetched ${soloPackages?.length || 0} solo packages for current probability display`);
 
     // Get saved team alerts
@@ -4203,7 +4203,7 @@ async function checkPackageRecommendations(soloPackages = null) {
     let packages = soloPackages;
     if (!packages) {
         const fetchResult = await fetchNiceHashSoloPackages();
-        packages = fetchResult?.packages || fetchResult;
+        packages = fetchResult?.packages || null;
     }
 
     if (!packages || packages.length === 0) {
@@ -4298,7 +4298,7 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
     let packages = teamPackages;
     if (!packages) {
         const fetchResult = await fetchNiceHashTeamPackages();
-        packages = fetchResult?.packages || fetchResult;
+        packages = fetchResult?.packages || null;
     }
 
     if (!packages || packages.length === 0) {
@@ -4310,7 +4310,7 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
     let soloPackages = soloPackagesParam;
     if (!soloPackages) {
         const soloFetchResult = await fetchNiceHashSoloPackages();
-        soloPackages = soloFetchResult?.packages || soloFetchResult;
+        soloPackages = soloFetchResult?.packages || null;
     }
     console.log(`📦 Using ${soloPackages?.length || 0} solo/small packages for threshold checking`);
 
@@ -16682,8 +16682,8 @@ async function updateRecommendations() {
     try {
         const soloResult = await fetchNiceHashSoloPackages();
         const teamResult = await fetchNiceHashTeamPackages();
-        const fetchedSolo = soloResult?.packages || soloResult;
-        const fetchedTeam = teamResult?.packages || teamResult;
+        const fetchedSolo = soloResult?.packages || null;
+        const fetchedTeam = teamResult?.packages || null;
 
         // Use fetched data if valid, otherwise fall back to cache
         if (fetchedSolo && fetchedSolo.length > 0) {
