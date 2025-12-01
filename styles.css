@@ -8237,12 +8237,25 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 }
 
-/* Narrow Tablet - 2 packages wide */
+/* Wide Tablet - ~2.5 packages wide */
+@media (max-width: 1200px) {
+    .buy-packages-form {
+        margin: 0 auto 15px auto;
+        width: 100%;
+        max-width: 770px;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+}
+
+/* Narrow Tablet - ~2 packages wide */
 @media (max-width: 1040px) {
     .buy-packages-form {
         margin: 0 auto 15px auto;
-        width: 700px; /* Match 2 crypto boxes width with gaps */
-        max-width: 700px;
+        width: 100%;
+        max-width: 630px;
+        padding: 20px;
+        box-sizing: border-box;
     }
 }
 
@@ -8250,8 +8263,9 @@ body.light-mode .easymining-settings-form input[type="number"] {
 @media (max-width: 700px) {
     .buy-packages-form {
         margin: 0 auto 15px auto;
-        width: 300px; /* Match 1 crypto box width */
-        box-sizing: content-box;
+        width: 100%;
+        max-width: 340px;
+        box-sizing: border-box;
         padding: 20px;
     }
 }
