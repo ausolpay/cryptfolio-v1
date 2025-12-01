@@ -1034,6 +1034,12 @@ function initializeApp() {
 
         // Load portfolio strip daily tracking
         lastMidnightReset = parseInt(getStorageItem(`${loggedInUser}_lastMidnightReset`)) || null;
+
+        // Migrate any legacy holdings to the new entry system
+        migrateAllLegacyHoldings();
+
+        // Note: fixMissingBoughtPrices() is called in fetchPrices() after prices are loaded
+
         // Always recalculate "Added Today" from actual entries on page load
         recalculateAddedToday();
 
@@ -4941,6 +4947,10 @@ async function fetchPrices() {
         } else {
             console.log('NO PRICE UPDATES');
         }
+
+        // Fix any holdings entries with missing bought prices (now that we have live prices)
+        fixMissingBoughtPrices();
+
     } catch (error) {
         console.error('All price fetching methods failed:', error);
     }
@@ -6281,6 +6291,165 @@ function migrateExistingHoldings(cryptoId) {
     }
 }
 
+// Migrate all cryptos with legacy holdings to the new entry system
+function migrateAllLegacyHoldings() {
+    const user = users[loggedInUser];
+    if (!user || !user.cryptos) return;
+
+    console.log('🔄 Checking for legacy holdings to migrate...');
+    let migratedCount = 0;
+
+    for (const crypto of user.cryptos) {
+        const entries = getHoldingsEntries(crypto.id);
+        if (entries.length === 0) {
+            const legacyHoldings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+            if (legacyHoldings > 0) {
+                migrateExistingHoldings(crypto.id);
+                migratedCount++;
+            }
+        }
+    }
+
+    if (migratedCount > 0) {
+        console.log(`✅ Migrated ${migratedCount} cryptos from legacy holdings`);
+    } else {
+        console.log('✅ No legacy holdings to migrate');
+    }
+}
+
+// Scan and fix holdings entries with missing or zero boughtPrice
+function fixMissingBoughtPrices() {
+    const user = users[loggedInUser];
+    if (!user || !user.cryptos) return;
+
+    console.log('🔧 ========== SCANNING FOR ENTRIES WITH MISSING BOUGHT PRICES ==========');
+    let fixedCount = 0;
+
+    for (const crypto of user.cryptos) {
+        const entries = getHoldingsEntries(crypto.id);
+        let entriesUpdated = false;
+
+        entries.forEach((entry, idx) => {
+            // Only fix entries with missing or zero boughtPrice
+            if (!entry.boughtPrice || entry.boughtPrice === 0) {
+                console.log(`   🔍 Found entry with $0 boughtPrice: ${crypto.id} entry ${idx + 1}`);
+                console.log(`      Amount: ${entry.amount}, Source: ${entry.source}, Date: ${new Date(entry.dateAdded).toLocaleString()}`);
+
+                let newBoughtPrice = 0;
+                let priceSource = '';
+
+                // 1. Try to find cost basis from completed packages (for easymining rewards)
+                if (entry.source === 'easymining-reward' && entry.packageId) {
+                    const costBasis = findCostBasisForEntry(entry);
+                    if (costBasis > 0) {
+                        newBoughtPrice = costBasis;
+                        priceSource = 'cost basis from package';
+                    }
+                }
+
+                // 2. Try price at discovery (stored in entry)
+                if (newBoughtPrice === 0 && entry.priceAtDiscovery && entry.priceAtDiscovery > 0) {
+                    newBoughtPrice = entry.priceAtDiscovery;
+                    priceSource = 'price at discovery';
+                }
+
+                // 3. Try block discovery price (stored in entry)
+                if (newBoughtPrice === 0 && entry.blockDiscoveredAt) {
+                    // Check if we have historical price data
+                    const discoveryPrice = entry.priceAtDiscovery || 0;
+                    if (discoveryPrice > 0) {
+                        newBoughtPrice = discoveryPrice;
+                        priceSource = 'block discovery price';
+                    }
+                }
+
+                // 4. Fall back to current live price
+                if (newBoughtPrice === 0) {
+                    const livePrice = getPriceFromObject(cryptoPrices[crypto.id]) || 0;
+                    if (livePrice > 0) {
+                        newBoughtPrice = livePrice;
+                        priceSource = 'current live price';
+                    }
+                }
+
+                // Update the entry if we found a price
+                if (newBoughtPrice > 0) {
+                    entry.boughtPrice = newBoughtPrice;
+                    entry.audValueAtAdd = entry.amount * newBoughtPrice;
+                    entriesUpdated = true;
+                    fixedCount++;
+                    console.log(`      ✅ Fixed: boughtPrice = $${newBoughtPrice.toFixed(2)} (${priceSource}), audValueAtAdd = $${entry.audValueAtAdd.toFixed(2)}`);
+                } else {
+                    console.warn(`      ❌ Could not find price for entry - boughtPrice remains $0`);
+                }
+            }
+        });
+
+        // Save updated entries
+        if (entriesUpdated) {
+            saveHoldingsEntries(crypto.id, entries);
+            console.log(`   💾 Saved updated entries for ${crypto.id}`);
+        }
+    }
+
+    console.log('🔧 ========== SCAN COMPLETE ==========');
+    console.log(`   Fixed ${fixedCount} entries with missing bought prices`);
+
+    // Recalculate Added Today after fixing prices
+    if (fixedCount > 0) {
+        recalculateAddedToday();
+    }
+}
+
+// Find cost basis for an EasyMining reward entry by matching with completed packages
+function findCostBasisForEntry(entry) {
+    if (!easyMiningData || !easyMiningData.completedPackages) return 0;
+
+    // Try to find the package by ID
+    const pkg = easyMiningData.completedPackages.find(p => p.id === entry.packageId);
+    if (!pkg) {
+        console.log(`      📦 Package ${entry.packageId} not found in completed packages`);
+        return 0;
+    }
+
+    // Calculate cost basis: package price / total reward
+    const packageCost = parseFloat(pkg.price) || parseFloat(pkg.priceAUD) || 0;
+    const totalReward = parseFloat(pkg.reward) || parseFloat(pkg.totalReward) || 0;
+
+    if (packageCost > 0 && totalReward > 0) {
+        const costBasis = packageCost / totalReward;
+        console.log(`      📦 Found package: ${pkg.name}, cost=$${packageCost.toFixed(2)}, reward=${totalReward}, costBasis=$${costBasis.toFixed(2)}/coin`);
+        return costBasis;
+    }
+
+    // Try to match by timestamp and amount in package blocks
+    if (pkg.blocks && Array.isArray(pkg.blocks)) {
+        for (const block of pkg.blocks) {
+            // Match by blockHash if available
+            if (entry.blockHash && block.blockHash === entry.blockHash) {
+                if (block.packagePriceAUD && block.totalPackageReward) {
+                    const costBasis = block.packagePriceAUD / block.totalPackageReward;
+                    console.log(`      📦 Matched by blockHash: costBasis=$${costBasis.toFixed(2)}/coin`);
+                    return costBasis;
+                }
+            }
+            // Match by timestamp (within 1 minute)
+            if (entry.dateAdded && block.discoveredAt) {
+                const timeDiff = Math.abs(entry.dateAdded - block.discoveredAt);
+                if (timeDiff < 60000 && Math.abs(entry.amount - block.amount) < 0.0001) {
+                    if (block.packagePriceAUD && block.totalPackageReward) {
+                        const costBasis = block.packagePriceAUD / block.totalPackageReward;
+                        console.log(`      📦 Matched by timestamp/amount: costBasis=$${costBasis.toFixed(2)}/coin`);
+                        return costBasis;
+                    }
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
 // =============================================================================
 // HOLDINGS TRACKING UI (Chart Modal)
 // =============================================================================
@@ -6405,6 +6574,38 @@ function renderHoldingsEntryCard(entry, symbol) {
     const sourceLabel = entry.source === 'easymining-reward' ? 'EasyMining' : 'Manual';
     const sourceClass = entry.source === 'easymining-reward' ? 'source-easymining' : 'source-manual';
 
+    // Use live price as fallback if boughtPrice is 0, and save the fix
+    let displayBoughtPrice = entry.boughtPrice || 0;
+    let needsSave = false;
+    if (displayBoughtPrice === 0) {
+        displayBoughtPrice = getPriceFromObject(cryptoPrices[entry.cryptoId]) || 0;
+        if (displayBoughtPrice > 0) {
+            // Update the entry with the live price
+            entry.boughtPrice = displayBoughtPrice;
+            entry.audValueAtAdd = entry.amount * displayBoughtPrice;
+            needsSave = true;
+        }
+    }
+
+    // Calculate audValueAtAdd using the display price if original is 0
+    let displayAudValue = entry.audValueAtAdd || entry.localValueAtAdd || 0;
+    if (displayAudValue === 0 && displayBoughtPrice > 0) {
+        displayAudValue = entry.amount * displayBoughtPrice;
+        entry.audValueAtAdd = displayAudValue;
+        needsSave = true;
+    }
+
+    // Save the updated entry if we made changes
+    if (needsSave) {
+        const entries = getHoldingsEntries(entry.cryptoId);
+        const idx = entries.findIndex(e => e.id === entry.id);
+        if (idx !== -1) {
+            entries[idx] = entry;
+            saveHoldingsEntries(entry.cryptoId, entries);
+            console.log(`💾 Auto-fixed entry ${entry.id}: boughtPrice=$${displayBoughtPrice.toFixed(2)}, audValueAtAdd=$${displayAudValue.toFixed(2)}`);
+        }
+    }
+
     return `
         <div class="holdings-entry-card" data-entry-id="${entry.id}">
             <div class="entry-header">
@@ -6412,13 +6613,14 @@ function renderHoldingsEntryCard(entry, symbol) {
                 <span class="entry-source ${sourceClass}">${sourceLabel}</span>
             </div>
             <div class="entry-date">Added: ${dateAdded}</div>
-            <div class="entry-aud-value">Value at Add: $${formatNumber((entry.audValueAtAdd || entry.localValueAtAdd || 0).toFixed(2))}</div>
+            <div class="entry-aud-value">Value at Add: $${formatNumber(displayAudValue.toFixed(2))}</div>
 
             <div class="entry-prices">
                 <div class="price-input-group">
                     <label>Bought Price:</label>
                     <input type="number" class="bought-price-input" id="bought-price-${entry.id}"
-                        value="${entry.boughtPrice.toFixed(2)}" step="0.01" placeholder="0.00">
+                        value="${(displayBoughtPrice || 0).toFixed(2)}" step="0.01" placeholder="0.00"
+                        onchange="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">
                 </div>
                 <div class="price-input-group">
                     <label>Sold Price:</label>
@@ -13458,6 +13660,10 @@ async function fetchEasyMiningData() {
         // Update BTC holdings if toggles are enabled
         updateBTCHoldings();
 
+        // Fix any holdings entries with missing bought prices (now that we have EasyMining data)
+        fixMissingBoughtPrices();
+        recalculateAddedToday();
+
         // Complete loading (only on first load)
         // Loading bar will automatically hide when it reaches 100%
         if (isFirstEasyMiningLoad) {
@@ -18650,14 +18856,24 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 const packageCost = parseFloat(block.packagePriceAUD) || 0;
                 const totalReward = parseFloat(block.totalPackageReward) || 0;
 
+                // Get live price as fallback
+                const livePrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
+
                 if (packageCost > 0 && totalReward > 0) {
                     // Cost basis = what you paid / what you got
                     boughtPrice = packageCost / totalReward;
                     console.log(`   💵 Block ${block.blockHash.substring(0, 12)}... Cost basis: $${packageCost.toFixed(2)} / ${totalReward} = $${boughtPrice.toFixed(2)}/coin`);
+                } else if (block.priceAtDiscovery && block.priceAtDiscovery > 0) {
+                    // Use price at discovery if available
+                    boughtPrice = block.priceAtDiscovery;
+                    console.log(`   💵 Block ${block.blockHash.substring(0, 12)}... Using price at discovery: $${boughtPrice.toFixed(2)}`);
+                } else if (livePrice > 0) {
+                    // Fallback to current live price
+                    boughtPrice = livePrice;
+                    console.log(`   ⚠️ Block ${block.blockHash.substring(0, 12)}... Using current market price: $${boughtPrice.toFixed(2)} (no cost basis or discovery price)`);
                 } else {
-                    // Fallback to live price if cost basis can't be calculated
-                    boughtPrice = block.priceAtDiscovery || getPriceFromObject(cryptoPrices[cryptoId]) || 0;
-                    console.log(`   ⚠️ Block ${block.blockHash}: Using market price $${boughtPrice.toFixed(2)} (no cost basis data)`);
+                    // Last resort - log warning but continue
+                    console.warn(`   ❌ Block ${block.blockHash.substring(0, 12)}... No price available! boughtPrice will be $0`);
                 }
 
                 // Create holdings entry for this individual block
@@ -18669,7 +18885,8 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                     audValueAtAdd: amount * boughtPrice,
                     boughtPrice: boughtPrice,
                     soldPrice: null,
-                    dateAdded: block.discoveredAt || Date.now(),
+                    dateAdded: Date.now(), // Always use current time for "Added Today" tracking
+                    blockDiscoveredAt: block.discoveredAt, // Store original discovery time separately
                     dateSold: null,
                     source: 'easymining-reward',
                     status: 'active',
