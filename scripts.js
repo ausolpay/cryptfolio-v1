@@ -6324,52 +6324,54 @@ function fixMissingBoughtPrices() {
 
     console.log('🔧 ========== SCANNING FOR ENTRIES WITH MISSING BOUGHT PRICES ==========');
     let fixedCount = 0;
+    let skippedCount = 0;
 
     for (const crypto of user.cryptos) {
         const entries = getHoldingsEntries(crypto.id);
         let entriesUpdated = false;
 
-        entries.forEach((entry, idx) => {
-            // Only fix entries with missing or zero boughtPrice
-            if (!entry.boughtPrice || entry.boughtPrice === 0) {
-                console.log(`   🔍 Found entry with $0 boughtPrice: ${crypto.id} entry ${idx + 1}`);
-                console.log(`      Amount: ${entry.amount}, Source: ${entry.source}, Date: ${new Date(entry.dateAdded).toLocaleString()}`);
+        // Get live price once for this crypto
+        const livePrice = getPriceFromObject(cryptoPrices[crypto.id]) || 0;
+        console.log(`   📦 ${crypto.id}: ${entries.length} entries, livePrice=$${livePrice.toFixed(2)}`);
 
-                let newBoughtPrice = 0;
+        entries.forEach((entry, idx) => {
+            // Check for missing/zero boughtPrice OR missing/zero audValueAtAdd
+            const hasMissingPrice = !entry.boughtPrice || entry.boughtPrice === 0 || entry.boughtPrice === null || entry.boughtPrice === undefined;
+            const hasMissingValue = !entry.audValueAtAdd || entry.audValueAtAdd === 0 || entry.audValueAtAdd === null || entry.audValueAtAdd === undefined;
+
+            if (hasMissingPrice || hasMissingValue) {
+                console.log(`   🔍 Entry ${idx + 1} needs fix: boughtPrice=${entry.boughtPrice}, audValueAtAdd=${entry.audValueAtAdd}`);
+                console.log(`      Amount: ${entry.amount}, Source: ${entry.source || 'unknown'}, PackageId: ${entry.packageId || 'none'}, PackageName: ${entry.packageName || 'none'}`);
+
+                let newBoughtPrice = entry.boughtPrice || 0;
                 let priceSource = '';
 
-                // 1. Try to find cost basis from completed packages (for easymining rewards)
-                if (entry.source === 'easymining-reward' && entry.packageId) {
-                    const costBasis = findCostBasisForEntry(entry);
-                    if (costBasis > 0) {
-                        newBoughtPrice = costBasis;
-                        priceSource = 'cost basis from package';
+                // Only look for new price if current one is missing/zero
+                if (hasMissingPrice) {
+                    // 1. Try to find cost basis from packages (for easymining rewards)
+                    if (entry.source === 'easymining-reward' && (entry.packageId || entry.packageName)) {
+                        const costBasis = findCostBasisForEntry(entry);
+                        if (costBasis > 0) {
+                            newBoughtPrice = costBasis;
+                            priceSource = 'cost basis from package';
+                        }
                     }
-                }
 
-                // 2. Try price at discovery (stored in entry)
-                if (newBoughtPrice === 0 && entry.priceAtDiscovery && entry.priceAtDiscovery > 0) {
-                    newBoughtPrice = entry.priceAtDiscovery;
-                    priceSource = 'price at discovery';
-                }
-
-                // 3. Try block discovery price (stored in entry)
-                if (newBoughtPrice === 0 && entry.blockDiscoveredAt) {
-                    // Check if we have historical price data
-                    const discoveryPrice = entry.priceAtDiscovery || 0;
-                    if (discoveryPrice > 0) {
-                        newBoughtPrice = discoveryPrice;
-                        priceSource = 'block discovery price';
+                    // 2. Try price at discovery (stored in entry)
+                    if (newBoughtPrice === 0 && entry.priceAtDiscovery && entry.priceAtDiscovery > 0) {
+                        newBoughtPrice = entry.priceAtDiscovery;
+                        priceSource = 'price at discovery';
                     }
-                }
 
-                // 4. Fall back to current live price
-                if (newBoughtPrice === 0) {
-                    const livePrice = getPriceFromObject(cryptoPrices[crypto.id]) || 0;
-                    if (livePrice > 0) {
+                    // 3. Fall back to current live price - ALWAYS use this if available
+                    if (newBoughtPrice === 0 && livePrice > 0) {
                         newBoughtPrice = livePrice;
                         priceSource = 'current live price';
                     }
+                } else {
+                    // boughtPrice exists, just need to recalculate audValueAtAdd
+                    newBoughtPrice = entry.boughtPrice;
+                    priceSource = 'existing boughtPrice';
                 }
 
                 // Update the entry if we found a price
@@ -6378,9 +6380,10 @@ function fixMissingBoughtPrices() {
                     entry.audValueAtAdd = entry.amount * newBoughtPrice;
                     entriesUpdated = true;
                     fixedCount++;
-                    console.log(`      ✅ Fixed: boughtPrice = $${newBoughtPrice.toFixed(2)} (${priceSource}), audValueAtAdd = $${entry.audValueAtAdd.toFixed(2)}`);
+                    console.log(`      ✅ Fixed: boughtPrice=$${newBoughtPrice.toFixed(2)} (${priceSource}), audValueAtAdd=$${entry.audValueAtAdd.toFixed(2)}`);
                 } else {
-                    console.warn(`      ❌ Could not find price for entry - boughtPrice remains $0`);
+                    skippedCount++;
+                    console.warn(`      ❌ No price available for ${crypto.id} - entry remains unfixed (livePrice=${livePrice})`);
                 }
             }
         });
@@ -6393,7 +6396,8 @@ function fixMissingBoughtPrices() {
     }
 
     console.log('🔧 ========== SCAN COMPLETE ==========');
-    console.log(`   Fixed ${fixedCount} entries with missing bought prices`);
+    console.log(`   Fixed: ${fixedCount} entries`);
+    console.log(`   Skipped (no price): ${skippedCount} entries`);
 
     // Recalculate Added Today after fixing prices
     if (fixedCount > 0) {
@@ -6401,24 +6405,43 @@ function fixMissingBoughtPrices() {
     }
 }
 
-// Find cost basis for an EasyMining reward entry by matching with completed packages
+// Find cost basis for an EasyMining reward entry by matching with packages
 function findCostBasisForEntry(entry) {
-    if (!easyMiningData || !easyMiningData.completedPackages) return 0;
+    if (!easyMiningData) return 0;
+
+    // Search in both completed AND active packages
+    const allPackages = [
+        ...(easyMiningData.completedPackages || []),
+        ...(easyMiningData.activePackages || [])
+    ];
+
+    if (allPackages.length === 0) {
+        console.log(`      📦 No packages available to search`);
+        return 0;
+    }
 
     // Try to find the package by ID
-    const pkg = easyMiningData.completedPackages.find(p => p.id === entry.packageId);
+    let pkg = allPackages.find(p => p.id === entry.packageId);
+
+    // Also try matching by package name if ID doesn't match
+    if (!pkg && entry.packageName) {
+        pkg = allPackages.find(p => p.name === entry.packageName);
+    }
+
     if (!pkg) {
-        console.log(`      📦 Package ${entry.packageId} not found in completed packages`);
+        console.log(`      📦 Package ${entry.packageId || entry.packageName} not found in ${allPackages.length} packages`);
         return 0;
     }
 
     // Calculate cost basis: package price / total reward
-    const packageCost = parseFloat(pkg.price) || parseFloat(pkg.priceAUD) || 0;
-    const totalReward = parseFloat(pkg.reward) || parseFloat(pkg.totalReward) || 0;
+    const packageCost = parseFloat(pkg.price) || parseFloat(pkg.priceAUD) || parseFloat(pkg.packagePriceAUD) || 0;
+    const totalReward = parseFloat(pkg.reward) || parseFloat(pkg.totalReward) || parseFloat(pkg.totalPackageReward) || 0;
+
+    console.log(`      📦 Found package: ${pkg.name}, cost=${packageCost}, reward=${totalReward}`);
 
     if (packageCost > 0 && totalReward > 0) {
         const costBasis = packageCost / totalReward;
-        console.log(`      📦 Found package: ${pkg.name}, cost=$${packageCost.toFixed(2)}, reward=${totalReward}, costBasis=$${costBasis.toFixed(2)}/coin`);
+        console.log(`      📦 Calculated costBasis=$${costBasis.toFixed(2)}/coin`);
         return costBasis;
     }
 
@@ -6427,8 +6450,10 @@ function findCostBasisForEntry(entry) {
         for (const block of pkg.blocks) {
             // Match by blockHash if available
             if (entry.blockHash && block.blockHash === entry.blockHash) {
-                if (block.packagePriceAUD && block.totalPackageReward) {
-                    const costBasis = block.packagePriceAUD / block.totalPackageReward;
+                const blockCost = block.packagePriceAUD || packageCost || 0;
+                const blockReward = block.totalPackageReward || totalReward || 0;
+                if (blockCost > 0 && blockReward > 0) {
+                    const costBasis = blockCost / blockReward;
                     console.log(`      📦 Matched by blockHash: costBasis=$${costBasis.toFixed(2)}/coin`);
                     return costBasis;
                 }
@@ -6437,8 +6462,10 @@ function findCostBasisForEntry(entry) {
             if (entry.dateAdded && block.discoveredAt) {
                 const timeDiff = Math.abs(entry.dateAdded - block.discoveredAt);
                 if (timeDiff < 60000 && Math.abs(entry.amount - block.amount) < 0.0001) {
-                    if (block.packagePriceAUD && block.totalPackageReward) {
-                        const costBasis = block.packagePriceAUD / block.totalPackageReward;
+                    const blockCost = block.packagePriceAUD || packageCost || 0;
+                    const blockReward = block.totalPackageReward || totalReward || 0;
+                    if (blockCost > 0 && blockReward > 0) {
+                        const costBasis = blockCost / blockReward;
                         console.log(`      📦 Matched by timestamp/amount: costBasis=$${costBasis.toFixed(2)}/coin`);
                         return costBasis;
                     }
@@ -6447,6 +6474,7 @@ function findCostBasisForEntry(entry) {
         }
     }
 
+    console.log(`      📦 Could not calculate cost basis for package ${pkg.name}`);
     return 0;
 }
 
