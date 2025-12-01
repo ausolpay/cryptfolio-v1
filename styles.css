@@ -3124,8 +3124,7 @@ body::-webkit-scrollbar, html::-webkit-scrollbar {
 
 /* Add styles for the new milestone display */
 #daily-milestone {
-    margin-top: 10px;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 /* Add styles for the new button in settings */
