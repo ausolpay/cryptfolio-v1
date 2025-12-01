@@ -1778,7 +1778,7 @@ body.light-mode .performer-name {
         order: -1;
         flex: 0 0 100%;
         max-width: 100%;
-        margin: 0 0 10px 0;
+        margin: 0;
     }
 
     /* Header content on second row */
