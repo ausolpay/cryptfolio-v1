@@ -1064,6 +1064,13 @@ body.light-mode .settings-page-copyright {
         width: 700px;
         max-width: 700px;
     }
+
+    /* Buy packages page needs full width */
+    #buy-packages-page .settings-page-content {
+        width: 100%;
+        max-width: 100%;
+        padding: 20px 0;
+    }
 }
 
 @media (max-width: 700px) {
@@ -1072,6 +1079,14 @@ body.light-mode .settings-page-copyright {
         max-width: 300px;
         padding: 15px 20px;
         box-sizing: content-box;
+    }
+
+    /* Buy packages page needs full width */
+    #buy-packages-page .settings-page-content {
+        width: 100%;
+        max-width: 100%;
+        padding: 15px 0;
+        box-sizing: border-box;
     }
 
     .settings-page-header h1 {
