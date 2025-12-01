@@ -6802,16 +6802,16 @@ body.light-mode .buy-package-card {
     line-height: 1.2;
 }
 
-/* Desktop: Reduce buy package card width by 30% */
+/* Desktop: Reduce buy package card width */
 @media (min-width: 769px) {
     .buy-package-card {
-        width: 305px;
-        min-height: 305px;
+        width: 351px;
+        min-height: 351px;
     }
 
     .buy-package-card.team-package {
-        width: 302px;
-        min-height: 320px;
+        width: 347px;
+        min-height: 365px;
     }
 }
 
