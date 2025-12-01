@@ -1782,6 +1782,11 @@ body.light-mode .performer-name {
         margin-bottom: 8px;
     }
 
+    /* Ensure no extra margins on stat items */
+    .portfolio-stats-grid .stat-item {
+        margin: 0;
+    }
+
     /* Reorder stats: Record High, Record Low, Target (full), Cryptos (full) */
     .portfolio-stats-grid .stat-item:nth-child(1) { order: 3; grid-column: span 2; } /* Target - full width */
     .portfolio-stats-grid .stat-item:nth-child(2) { order: 1; } /* Record High */
@@ -1791,6 +1796,13 @@ body.light-mode .performer-name {
     .portfolio-pnl-grid {
         grid-template-columns: 1fr 1fr;
         gap: 8px;
+        margin-top: 0;
+    }
+
+    /* Ensure no extra margins on pnl items */
+    .portfolio-pnl-grid .pnl-item,
+    .portfolio-pnl-grid .best-performer-item {
+        margin: 0;
     }
 
     /* Reorder PnL: Added Today (full), Unrealized, Realized, Best Performer (full) */
