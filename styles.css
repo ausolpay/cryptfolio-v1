@@ -7993,18 +7993,18 @@ body.light-mode .easymining-settings-form input[type="number"] {
     width: fit-content; /* Section width fits the boxes exactly */
 }
 
-/* Wide Tablet - Horizontal slider ~2.5 cards wide */
+/* Wide Tablet - Match EasyMining 1040px width */
 @media (max-width: 1200px) {
     #buy-packages-page .buy-packages-tabs {
-        width: 100%;
-        max-width: 770px;
+        width: 1040px;
+        max-width: 1040px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: 100%;
-        max-width: 770px;
+        width: 1040px;
+        max-width: 1040px;
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
@@ -8027,8 +8027,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
         padding: 20px 0;
         margin: 0 auto;
-        width: 100%;
-        max-width: 770px;
+        width: 1040px;
+        max-width: 1040px;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
@@ -8047,7 +8047,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 300px;
+        width: 330px;
         min-height: 280px;
         height: auto;
         font-size: 13px;
@@ -8055,23 +8055,23 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 320px;
+        width: 330px;
         min-height: 280px;
     }
 }
 
-/* Narrow Tablet - Horizontal slider ~2 cards wide */
+/* Narrow Tablet - Match EasyMining 700px width */
 @media (max-width: 1040px) {
     #buy-packages-page .buy-packages-tabs {
-        width: calc(100% - 40px);
-        max-width: 590px;
+        width: 700px;
+        max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: calc(100% - 40px);
-        max-width: 590px;
+        width: 700px;
+        max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
         box-sizing: border-box;
@@ -8094,8 +8094,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
         padding: 20px 0;
         margin: 0 auto;
-        width: calc(100% - 40px);
-        max-width: 590px;
+        width: 700px;
+        max-width: 700px;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
@@ -8114,7 +8114,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 280px;
+        width: 330px;
         min-height: 280px;
         height: auto;
         font-size: 13px;
@@ -8122,7 +8122,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 280px;
+        width: 330px;
         min-height: 280px;
     }
 
