@@ -8406,12 +8406,17 @@ function updateFloatingIcons() {
     const newIds = new Set(cryptoData.map(c => c.id));
 
     // Remove icons for cryptos no longer in portfolio or with 0 value
+    // (but keep special icons like easymining)
     Array.from(container.children).forEach(icon => {
-        if (!newIds.has(icon.dataset.cryptoId)) {
+        const cryptoId = icon.dataset.cryptoId;
+        if (cryptoId !== 'easymining' && !newIds.has(cryptoId)) {
             icon.remove();
-            console.log(`🎨 Removed floating icon for ${icon.dataset.cryptoId}`);
+            console.log(`🎨 Removed floating icon for ${cryptoId}`);
         }
     });
+
+    // Update EasyMining icon (add/update/remove based on balance)
+    addEasyMiningBtcIcon(container, 'modal');
 
     // Update existing icons and add new ones
     cryptoData.forEach((crypto, index) => {
@@ -8674,8 +8679,10 @@ function refreshStripFloatingIcons() {
         return { id: crypto.id, thumb: crypto.thumb, value };
     }).filter(c => c.thumb && c.value > 0);
 
-    // Get existing and new icon IDs
-    const existingIds = new Set(Array.from(container.children).map(el => el.dataset.cryptoId));
+    // Get existing and new icon IDs (exclude special icons like easymining from comparison)
+    const existingIds = new Set(Array.from(container.children)
+        .map(el => el.dataset.cryptoId)
+        .filter(id => id !== 'easymining'));
     const newIds = new Set(cryptoData.map(c => c.id));
 
     // Check if any icons need to be added or removed
@@ -8686,8 +8693,10 @@ function refreshStripFloatingIcons() {
     if (needsAdd || needsRemove) {
         console.log('🎨 Strip icons: crypto list changed, reinitializing...');
         initStripFloatingIcons();
+    } else {
+        // Just update the EasyMining icon (add/update/remove based on balance)
+        addEasyMiningBtcIcon(container, 'strip');
     }
-    // Otherwise, leave animations running - don't update size/position to preserve animation
 }
 
 /**
