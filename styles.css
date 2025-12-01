@@ -1621,6 +1621,7 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
     align-items: center;
     justify-content: center;
     padding: 10px 8px;
+    margin: 0;
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
@@ -1688,6 +1689,7 @@ body.light-mode .stat-value.highlight-green {
     align-items: center;
     justify-content: center;
     padding: 10px 8px;
+    margin: 0;
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
@@ -1877,12 +1879,18 @@ body.light-mode .performer-name {
         margin-bottom: 10px;
     }
 
+    .portfolio-stats-grid .stat-item {
+        margin: 0;
+    }
+
     .portfolio-pnl-grid {
         grid-template-columns: 1fr;
         gap: 10px;
     }
 
-    .pnl-item, .best-performer-item {
+    .portfolio-pnl-grid .pnl-item,
+    .portfolio-pnl-grid .best-performer-item {
+        margin: 0;
         grid-column: span 1;
     }
 }
