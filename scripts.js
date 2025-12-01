@@ -23454,29 +23454,43 @@ async function loadBuyPackagesDataOnPage() {
     const borderColor = availableBalance < minShareCost ? '#f44336' : '#4CAF50';
 
     balanceSection.innerHTML = `
-        <div id="balance-section-container" style="padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor}; max-width: 1040px; min-width: 300px; margin: 0 auto;">
-            <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
-                <div style="flex: 0 1 auto; text-align: center;">
-                    <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+        <div class="easymining-balance-card" style="border-left: 4px solid ${borderColor}; border-right: 4px solid ${borderColor};">
+            <div class="balance-card-content">
+                <div class="balance-card-item available">
+                    <div class="balance-card-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
                             <path d="M12 6v2m0 8v2M9 10c0-1 1-2 3-2s3 1 3 2-1 2-3 2-3 1-3 2 1 2 3 2 3-1 3-2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        Available Balance
                     </div>
-                    <div style="color: #4CAF50; font-size: 20px; font-weight: bold;">$${availableAUD}</div>
-                    <div style="color: #888; font-size: 13px;">${availableBalance.toFixed(8)} BTC</div>
+                    <div class="balance-card-value available">$${availableAUD}</div>
+                    <div class="balance-card-btc">${availableBalance.toFixed(8)} BTC</div>
                 </div>
-                <div style="flex: 0 1 auto; text-align: center;">
-                    <div style="color: #888; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                <div class="balance-card-item pending">
+                    <div class="balance-card-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
                             <polyline points="12,6 12,12 16,14"/>
                         </svg>
-                        Pending Balance
                     </div>
-                    <div style="color: #FFA500; font-size: 20px; font-weight: bold;">$${pendingAUD}</div>
-                    <div style="color: #888; font-size: 13px;">${pendingBalance.toFixed(8)} BTC</div>
+                    <div class="balance-card-value pending">$${pendingAUD}</div>
+                    <div class="balance-card-btc">${pendingBalance.toFixed(8)} BTC</div>
+                </div>
+                <div class="balance-card-buttons">
+                    <button onclick="showDepositsPage()" class="balance-card-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v12m0 0l-4-4m4 4l4-4"/>
+                            <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                        </svg>
+                        Deposit
+                    </button>
+                    <button onclick="showWithdrawPage()" class="balance-card-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 21V9m0 0l4 4m-4-4l-4 4"/>
+                            <path d="M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2"/>
+                        </svg>
+                        Withdraw
+                    </button>
                 </div>
             </div>
         </div>
