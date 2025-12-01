@@ -8141,15 +8141,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Mobile - Horizontal slider */
 @media (max-width: 700px) {
     #buy-packages-page .buy-packages-tabs {
-        width: 100%;
-        max-width: 320px;
+        width: calc(100% - 30px);
+        max-width: 340px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: 100%;
-        max-width: 320px;
+        width: calc(100% - 30px);
+        max-width: 340px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
@@ -8170,8 +8170,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 10px;
         padding: 10px 0;
         margin: 0 auto;
-        width: 100%;
-        max-width: 320px;
+        width: calc(100% - 30px);
+        max-width: 340px;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
@@ -8190,7 +8190,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     .buy-package-card {
         flex-shrink: 0;
         scroll-snap-align: start;
-        width: 300px;
+        width: 320px;
         min-height: 260px;
         height: auto;
         font-size: 12px;
@@ -8199,7 +8199,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
 
     .buy-package-card.team-package {
         flex-shrink: 0;
-        width: 300px;
+        width: 320px;
         min-height: 280px;
     }
 
