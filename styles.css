@@ -5680,10 +5680,21 @@ body.light-mode .stat-label {
     }
 
     .recommendations-container {
-        grid-template-columns: repeat(auto-fit, 300px); /* Auto-fit: max 2 cards on tablet */
-        max-width: 650px; /* Max width for 2 cards (300px * 2) + gap */
+        grid-template-columns: repeat(2, 1fr); /* 2 adaptive columns */
+        max-width: 100%;
+        width: 100%;
+        padding: 0 10px;
+        gap: 15px;
         justify-content: center;
         justify-items: center;
+        box-sizing: border-box;
+    }
+
+    .recommendations-container .buy-package-card,
+    .recommendations-container .buy-package-card.team-package {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 }
 
