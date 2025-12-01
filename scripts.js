@@ -6180,13 +6180,17 @@ function trackNewBlock(blockData, livePrice) {
         holdingsEntryId: null,
         isConfirmed: blockData.isConfirmed,
         isTeamPackage: blockData.isTeamPackage,
+        packagePriceBTC: blockData.packagePriceBTC || 0, // Original package price in BTC
         packagePriceAUD: blockData.packagePriceAUD || 0, // User's cost for this package (AUD)
-        totalPackageReward: blockData.totalPackageReward || 0 // Total reward from package
+        totalPackageReward: blockData.totalPackageReward || 0 // Total reward from package (for cost basis)
     };
 
     blocks[blockKey] = trackedBlock;
     saveTrackedBlocks(blocks);
-    console.log(`   ✅ NEW BLOCK TRACKED: ${blockKey} - ${blockData.amount} ${blockData.crypto} @ $${livePrice.toFixed(2)}`);
+    const costBasis = (trackedBlock.packagePriceAUD > 0 && trackedBlock.totalPackageReward > 0)
+        ? (trackedBlock.packagePriceAUD / trackedBlock.totalPackageReward).toFixed(2)
+        : 'N/A';
+    console.log(`   ✅ NEW BLOCK TRACKED: ${blockKey} - ${blockData.amount} ${blockData.crypto} @ $${livePrice.toFixed(2)} (cost basis: $${costBasis})`);
     return trackedBlock;
 }
 
@@ -15330,6 +15334,13 @@ async function fetchNiceHashOrders() {
                     'KAS': 'kaspa'
                 };
 
+                // ✅ COST BASIS FIX: Convert package price from BTC to AUD
+                // pkg.price is in BTC, we need to convert to AUD for cost basis calculation
+                const btcPriceAUD = getPriceFromObject(cryptoPrices['bitcoin']) || 0;
+                const packagePriceBTC = pkg.price || 0;
+                const packagePriceAUD = packagePriceBTC * btcPriceAUD;
+                console.log(`   💵 COST BASIS: Package price ${packagePriceBTC.toFixed(8)} BTC × ${btcPriceAUD.toFixed(2)} AUD/BTC = ${packagePriceAUD.toFixed(2)} AUD`);
+
                 soloRewards.forEach((reward, idx) => {
                     const rewardCoin = reward.coin;
                     const cryptoId = cryptoMappingForTracking[rewardCoin] || rewardCoin.toLowerCase();
@@ -15360,6 +15371,22 @@ async function fetchNiceHashOrders() {
                     // Create unique block identifier
                     const blockHash = reward.blockHash || `${order.id}_${reward.createdTs || idx}_${rewardCoin}`;
 
+                    // ✅ COST BASIS FIX: Get correct total reward for THIS crypto type
+                    // For dual-mining packages (e.g., Palladium DOGE+LTC), use the specific crypto's total
+                    // pkg.reward = primary crypto total, pkg.rewardSecondary = secondary crypto total
+                    let totalRewardForCrypto = 0;
+                    if (rewardCoin === pkg.crypto) {
+                        // Primary crypto (e.g., DOGE for Palladium, BCH for Silver)
+                        totalRewardForCrypto = pkg.reward || 0;
+                    } else if (rewardCoin === pkg.cryptoSecondary) {
+                        // Secondary crypto (e.g., LTC for Palladium)
+                        totalRewardForCrypto = pkg.rewardSecondary || 0;
+                    } else {
+                        // Fallback: use the block reward amount itself
+                        totalRewardForCrypto = userBlockReward;
+                    }
+                    console.log(`      📊 Block ${idx + 1} (${rewardCoin}): totalRewardForCrypto = ${totalRewardForCrypto}`);
+
                     // Track the block (won't overwrite if already tracked)
                     trackNewBlock({
                         blockHash: blockHash,
@@ -15372,8 +15399,9 @@ async function fetchNiceHashOrders() {
                         timestamp: reward.createdTs || Date.now(),
                         isConfirmed: isConfirmed,
                         isTeamPackage: pkg.isTeam,
-                        packagePriceAUD: pkg.price || 0, // User's cost for this package (AUD)
-                        totalPackageReward: pkg.reward || 0 // Total reward from package (for cost basis calc)
+                        packagePriceBTC: packagePriceBTC, // Original price in BTC (for reference)
+                        packagePriceAUD: packagePriceAUD, // ✅ FIXED: Now actually in AUD
+                        totalPackageReward: totalRewardForCrypto // ✅ FIXED: Use correct crypto's total reward
                     }, livePrice);
                 });
             }
