@@ -2295,6 +2295,22 @@ body.light-mode .negative {
     color: #ff0000;
 }
 
+.pnl-positive {
+    color: #22c55e !important;
+}
+
+.pnl-negative {
+    color: #ef4444 !important;
+}
+
+body.light-mode .pnl-positive {
+    color: #16a34a !important;
+}
+
+body.light-mode .pnl-negative {
+    color: #dc2626 !important;
+}
+
 .error-message {
     color: red;
     margin: 10px 0;
