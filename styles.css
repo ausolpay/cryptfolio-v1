@@ -4393,8 +4393,7 @@ body.light-mode .balance-label {
     padding: 20px;
     border-left: 4px solid #4CAF50;
     border-right: 4px solid #4CAF50;
-    max-width: 600px;
-    margin: 0 auto 15px auto;
+    margin: 0 0 15px 0;
 }
 
 body.light-mode .easymining-balance-card {
