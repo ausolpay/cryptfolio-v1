@@ -7996,15 +7996,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Narrow Tablet - Horizontal slider */
 @media (max-width: 1040px) {
     #buy-packages-page .buy-packages-tabs {
-        width: calc(100% - 40px);
-        max-width: 660px;
+        width: 100%;
+        max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: calc(100% - 40px);
-        max-width: 660px;
+        width: 100%;
+        max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
@@ -8023,16 +8023,16 @@ body.light-mode .easymining-settings-form input[type="number"] {
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
         gap: 15px;
-        padding: 20px;
+        padding: 20px 0;
         margin: 0 auto;
-        width: calc(100% - 40px);
-        max-width: 660px;
+        width: 100%;
+        max-width: 700px;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
         -ms-overflow-style: none;
         scrollbar-width: none;
-        justify-content: flex-start;
+        justify-content: center;
     }
 
     .buy-packages-container-page::-webkit-scrollbar {
