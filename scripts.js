@@ -6160,10 +6160,27 @@ function trackNewBlock(blockData, livePrice) {
     const blocks = getTrackedBlocks();
     const blockKey = blockData.blockHash || `${blockData.packageId}_${blockData.timestamp}_${blockData.coin}`;
 
-    // If already tracked, don't overwrite (preserve original price)
+    // If already tracked, UPDATE cost basis data if we have better values now
     if (blocks[blockKey]) {
-        console.log(`   ⏭️ Block already tracked: ${blockKey}`);
-        return blocks[blockKey];
+        const existingBlock = blocks[blockKey];
+        const newPackagePriceAUD = blockData.packagePriceAUD || 0;
+        const newTotalReward = blockData.totalPackageReward || 0;
+
+        // Update cost basis if we now have valid data but existing block doesn't
+        const existingHasValidCostBasis = existingBlock.packagePriceAUD > 0 && existingBlock.totalPackageReward > 0;
+        const newHasValidCostBasis = newPackagePriceAUD > 0 && newTotalReward > 0;
+
+        if (newHasValidCostBasis && !existingHasValidCostBasis) {
+            existingBlock.packagePriceBTC = blockData.packagePriceBTC || existingBlock.packagePriceBTC || 0;
+            existingBlock.packagePriceAUD = newPackagePriceAUD;
+            existingBlock.totalPackageReward = newTotalReward;
+            saveTrackedBlocks(blocks);
+            const costBasis = (newPackagePriceAUD / newTotalReward).toFixed(2);
+            console.log(`   🔄 UPDATED COST BASIS for ${blockKey}: $${newPackagePriceAUD.toFixed(2)} / ${newTotalReward} = $${costBasis}/coin`);
+        } else {
+            console.log(`   ⏭️ Block already tracked: ${blockKey}`);
+        }
+        return existingBlock;
     }
 
     const trackedBlock = {
@@ -6415,8 +6432,20 @@ function fixMissingBoughtPrices() {
     }
 }
 
-// Find cost basis for an EasyMining reward entry by matching with packages
+// Find cost basis for an EasyMining reward entry by matching with packages or tracked blocks
 function findCostBasisForEntry(entry) {
+    // PRIORITY 1: Check tracked blocks first (most reliable - has correct AUD values)
+    if (entry.blockHash) {
+        const trackedBlocks = getTrackedBlocks();
+        const trackedBlock = trackedBlocks[entry.blockHash];
+        if (trackedBlock && trackedBlock.packagePriceAUD > 0 && trackedBlock.totalPackageReward > 0) {
+            const costBasis = trackedBlock.packagePriceAUD / trackedBlock.totalPackageReward;
+            console.log(`      📦 Found in tracked blocks: $${trackedBlock.packagePriceAUD.toFixed(2)} / ${trackedBlock.totalPackageReward} = $${costBasis.toFixed(2)}/coin`);
+            return costBasis;
+        }
+    }
+
+    // PRIORITY 2: Search in EasyMining packages
     if (!easyMiningData) return 0;
 
     // Search in both completed AND active packages
@@ -6444,13 +6473,26 @@ function findCostBasisForEntry(entry) {
     }
 
     // Calculate cost basis: package price / total reward
-    const packageCost = parseFloat(pkg.price) || parseFloat(pkg.priceAUD) || parseFloat(pkg.packagePriceAUD) || 0;
+    // NOTE: pkg.price is in BTC, need to convert to AUD
+    let packageCostAUD = 0;
+    const packageCostBTC = parseFloat(pkg.price) || 0;
+
+    if (packageCostBTC > 0) {
+        // Convert BTC to AUD
+        const btcPriceAUD = getPriceFromObject(cryptoPrices['bitcoin']) || 0;
+        packageCostAUD = packageCostBTC * btcPriceAUD;
+        console.log(`      📦 Package cost: ${packageCostBTC.toFixed(8)} BTC × $${btcPriceAUD.toFixed(2)} = $${packageCostAUD.toFixed(2)} AUD`);
+    } else {
+        // Try other AUD fields
+        packageCostAUD = parseFloat(pkg.priceAUD) || parseFloat(pkg.packagePriceAUD) || 0;
+    }
+
     const totalReward = parseFloat(pkg.reward) || parseFloat(pkg.totalReward) || parseFloat(pkg.totalPackageReward) || 0;
 
-    console.log(`      📦 Found package: ${pkg.name}, cost=${packageCost}, reward=${totalReward}`);
+    console.log(`      📦 Found package: ${pkg.name}, cost=$${packageCostAUD.toFixed(2)} AUD, reward=${totalReward}`);
 
-    if (packageCost > 0 && totalReward > 0) {
-        const costBasis = packageCost / totalReward;
+    if (packageCostAUD > 0 && totalReward > 0) {
+        const costBasis = packageCostAUD / totalReward;
         console.log(`      📦 Calculated costBasis=$${costBasis.toFixed(2)}/coin`);
         return costBasis;
     }
@@ -6460,7 +6502,7 @@ function findCostBasisForEntry(entry) {
         for (const block of pkg.blocks) {
             // Match by blockHash if available
             if (entry.blockHash && block.blockHash === entry.blockHash) {
-                const blockCost = block.packagePriceAUD || packageCost || 0;
+                const blockCost = block.packagePriceAUD || packageCostAUD || 0;
                 const blockReward = block.totalPackageReward || totalReward || 0;
                 if (blockCost > 0 && blockReward > 0) {
                     const costBasis = blockCost / blockReward;
@@ -6472,7 +6514,7 @@ function findCostBasisForEntry(entry) {
             if (entry.dateAdded && block.discoveredAt) {
                 const timeDiff = Math.abs(entry.dateAdded - block.discoveredAt);
                 if (timeDiff < 60000 && Math.abs(entry.amount - block.amount) < 0.0001) {
-                    const blockCost = block.packagePriceAUD || packageCost || 0;
+                    const blockCost = block.packagePriceAUD || packageCostAUD || 0;
                     const blockReward = block.totalPackageReward || totalReward || 0;
                     if (blockCost > 0 && blockReward > 0) {
                         const costBasis = blockCost / blockReward;
@@ -19009,6 +19051,7 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
                 // Calculate cost basis price: packageCost / totalReward
                 // This gives the effective "buy price" based on what user spent on the package
+                // Example: Package cost $26, won 0.01 BCH -> Cost basis = $26/0.01 = $2600/BCH
                 let boughtPrice = 0;
                 const packageCost = parseFloat(block.packagePriceAUD) || 0;
                 const totalReward = parseFloat(block.totalPackageReward) || 0;
@@ -19016,18 +19059,28 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 // Get live price as fallback
                 const livePrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
 
+                // Debug: Log all the values we're working with
+                console.log(`   📊 COST BASIS DEBUG for ${block.blockHash.substring(0, 12)}...`);
+                console.log(`      block.packagePriceAUD: ${block.packagePriceAUD} (parsed: ${packageCost})`);
+                console.log(`      block.totalPackageReward: ${block.totalPackageReward} (parsed: ${totalReward})`);
+                console.log(`      block.packagePriceBTC: ${block.packagePriceBTC}`);
+                console.log(`      block.priceAtDiscovery: ${block.priceAtDiscovery}`);
+                console.log(`      livePrice: ${livePrice}`);
+                console.log(`      block.amount: ${amount}`);
+
                 if (packageCost > 0 && totalReward > 0) {
                     // Cost basis = what you paid / what you got
+                    // This treats the package cost as if it were the "live price" at time of purchase
                     boughtPrice = packageCost / totalReward;
-                    console.log(`   💵 Block ${block.blockHash.substring(0, 12)}... Cost basis: $${packageCost.toFixed(2)} / ${totalReward} = $${boughtPrice.toFixed(2)}/coin`);
+                    console.log(`   ✅ COST BASIS: $${packageCost.toFixed(2)} / ${totalReward} = $${boughtPrice.toFixed(2)}/coin`);
                 } else if (block.priceAtDiscovery && block.priceAtDiscovery > 0) {
                     // Use price at discovery if available
                     boughtPrice = block.priceAtDiscovery;
-                    console.log(`   💵 Block ${block.blockHash.substring(0, 12)}... Using price at discovery: $${boughtPrice.toFixed(2)}`);
+                    console.log(`   ⚠️ Using price at discovery (no cost basis): $${boughtPrice.toFixed(2)}`);
                 } else if (livePrice > 0) {
                     // Fallback to current live price
                     boughtPrice = livePrice;
-                    console.log(`   ⚠️ Block ${block.blockHash.substring(0, 12)}... Using current market price: $${boughtPrice.toFixed(2)} (no cost basis or discovery price)`);
+                    console.log(`   ⚠️ Using live price (no cost basis or discovery price): $${boughtPrice.toFixed(2)}`);
                 } else {
                     // Last resort - log warning but continue
                     console.warn(`   ❌ Block ${block.blockHash.substring(0, 12)}... No price available! boughtPrice will be $0`);
