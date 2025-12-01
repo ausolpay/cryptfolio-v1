@@ -17960,6 +17960,97 @@ function updateTeamAlertCardValues(pkg) {
     // ✅ Update buy button and + button state based on share availability
     const totalAvailable = Math.round((pkg.fullAmount || 0) * 10000);
     initializeAlertCardButtonStates(pkg.name, myBoughtShares, totalBoughtShares, totalAvailable);
+
+    // ✅ Update robot icon state based on share ownership and auto-buy status
+    updateAlertCardRobotIcon(pkg, myBoughtShares);
+}
+
+/**
+ * Update robot icon on alert card based on share ownership and auto-buy status
+ * - No shares + auto-buy active = spinning (waiting)
+ * - Has shares + auto-buy active = solid (owned)
+ * - No auto-buy = no robot
+ */
+function updateAlertCardRobotIcon(pkg, myBoughtShares) {
+    const packageId = pkg.name.replace(/\s+/g, '-');
+
+    // Find the alert card - look for team alert cards in EasyMining section
+    const card = document.querySelector(`.buy-package-card[data-package-name="${pkg.name}"]`) ||
+                 document.querySelector(`#alert-countdown-${packageId}`)?.closest('.buy-package-card');
+
+    if (!card) return;
+
+    // Check if auto-buy is active for this package
+    const isAutoBuyActive = (() => {
+        if (pkg.isTeam) {
+            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            return teamAutoBuy[pkg.name]?.enabled === true;
+        } else {
+            const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+            return soloAutoBuy[pkg.name]?.enabled === true;
+        }
+    })();
+
+    // Check if this is a countdown package
+    const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
+
+    // Find existing robot icon
+    const existingRobot = card.querySelector('.auto-buy-robot');
+
+    if (!isAutoBuyActive) {
+        // No auto-buy = remove robot if exists
+        if (existingRobot) {
+            existingRobot.remove();
+            console.log(`🤖 Removed robot icon from ${pkg.name} - auto-buy disabled`);
+        }
+        return;
+    }
+
+    // Auto-buy is active - determine correct state
+    if (myBoughtShares > 0) {
+        // Has shares - robot should be solid (not spinning)
+        if (existingRobot) {
+            existingRobot.classList.remove('waiting', 'flashing');
+            if (isCountdown) {
+                existingRobot.classList.add('countdown');
+                existingRobot.title = 'Auto-buy active (starting soon)';
+            } else {
+                existingRobot.classList.remove('countdown');
+                existingRobot.title = 'Auto-buy active (shares owned)';
+            }
+            console.log(`🤖 Updated robot icon to solid for ${pkg.name} - ${myBoughtShares} shares owned`);
+        } else {
+            // Add solid robot icon
+            const robotDiv = document.createElement('div');
+            robotDiv.className = `block-found-indicator auto-buy-robot${isCountdown ? ' countdown' : ''}`;
+            robotDiv.title = isCountdown ? 'Auto-buy active (starting soon)' : 'Auto-buy active (shares owned)';
+            robotDiv.textContent = '🤖';
+            const titleDiv = card.querySelector('.buy-package-title');
+            if (titleDiv) {
+                titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
+                console.log(`🤖 Added solid robot icon to ${pkg.name} - ${myBoughtShares} shares owned`);
+            }
+        }
+    } else {
+        // No shares yet - robot should be spinning (waiting)
+        if (existingRobot) {
+            existingRobot.classList.remove('countdown', 'flashing');
+            existingRobot.classList.add('waiting');
+            existingRobot.title = 'Auto-buy active (waiting)';
+            console.log(`🤖 Updated robot icon to spinning for ${pkg.name} - waiting for shares`);
+        } else {
+            // Add spinning robot icon
+            const robotDiv = document.createElement('div');
+            robotDiv.className = 'block-found-indicator auto-buy-robot waiting';
+            robotDiv.title = 'Auto-buy active (waiting)';
+            robotDiv.textContent = '🤖';
+            const titleDiv = card.querySelector('.buy-package-title');
+            if (titleDiv) {
+                titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
+                console.log(`🤖 Added spinning robot icon to ${pkg.name} - waiting for shares`);
+            }
+        }
+    }
 }
 
 /**
@@ -23627,6 +23718,9 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         const myBoughtShares = getMyTeamShares(packageId) || 0;
         updateClearSharesButtonVisibility(pkg.name, packageId, myBoughtShares);
 
+        // ✅ Update robot icon state (solid when shares owned, spinning when waiting)
+        updateBuyPageRobotIcon(card, pkg, myBoughtShares);
+
         // ✅ Sync share input values and data attributes
         const shareInput = card.querySelector(`#team-${packageId}-shares, #shares-${packageIdForElements}`);
         if (shareInput) {
@@ -23652,6 +23746,75 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
 
     // Update window.currentTeamPackages with latest data for countdown function
     window.currentTeamPackages = teamPackages;
+}
+
+/**
+ * Update robot icon on Buy Packages page team cards
+ * - No shares + auto-buy active = spinning (waiting)
+ * - Has shares + auto-buy active = solid (owned)
+ * - No auto-buy = no robot
+ */
+function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
+    // Check if auto-buy is active for this team package
+    const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const isAutoBuyActive = teamAutoBuy[pkg.name]?.enabled === true;
+
+    // Check if this is a countdown package
+    const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
+
+    // Find existing robot icon
+    const existingRobot = card.querySelector('.auto-buy-robot');
+
+    if (!isAutoBuyActive) {
+        // No auto-buy = remove robot if exists
+        if (existingRobot) {
+            existingRobot.remove();
+            console.log(`🤖 [Buy Page] Removed robot icon from ${pkg.name} - auto-buy disabled`);
+        }
+        return;
+    }
+
+    // Auto-buy is active - determine correct state
+    if (myBoughtShares > 0) {
+        // Has shares - robot should be solid (not spinning)
+        if (existingRobot) {
+            existingRobot.classList.remove('waiting', 'flashing');
+            if (isCountdown) {
+                existingRobot.classList.add('countdown');
+                existingRobot.title = 'Auto-buy active (starting soon)';
+            } else {
+                existingRobot.classList.remove('countdown');
+                existingRobot.title = 'Auto-buy active (shares owned)';
+            }
+        } else {
+            // Add solid robot icon
+            const robotDiv = document.createElement('div');
+            robotDiv.className = `block-found-indicator auto-buy-robot${isCountdown ? ' countdown' : ''}`;
+            robotDiv.title = isCountdown ? 'Auto-buy active (starting soon)' : 'Auto-buy active (shares owned)';
+            robotDiv.textContent = '🤖';
+            const titleDiv = card.querySelector('.buy-package-title');
+            if (titleDiv) {
+                titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
+            }
+        }
+    } else {
+        // No shares yet - robot should be spinning (waiting)
+        if (existingRobot) {
+            existingRobot.classList.remove('countdown', 'flashing');
+            existingRobot.classList.add('waiting');
+            existingRobot.title = 'Auto-buy active (waiting)';
+        } else {
+            // Add spinning robot icon
+            const robotDiv = document.createElement('div');
+            robotDiv.className = 'block-found-indicator auto-buy-robot waiting';
+            robotDiv.title = 'Auto-buy active (waiting)';
+            robotDiv.textContent = '🤖';
+            const titleDiv = card.querySelector('.buy-package-title');
+            if (titleDiv) {
+                titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
+            }
+        }
+    }
 }
 
 /**
