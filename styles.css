@@ -7996,14 +7996,14 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Wide Tablet - Match EasyMining 1040px width */
 @media (max-width: 1200px) {
     #buy-packages-page .buy-packages-tabs {
-        width: calc(100% - 40px);
+        width: calc(100% - 20px);
         max-width: 1040px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: calc(100% - 40px);
+        width: calc(100% - 20px);
         max-width: 1040px;
         margin: 0 auto 20px auto;
         padding: 0;
@@ -8027,7 +8027,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
         padding: 20px 0;
         margin: 0 auto;
-        width: calc(100% - 40px);
+        width: calc(100% - 20px);
         max-width: 1040px;
         box-sizing: border-box;
         cursor: grab;
@@ -8063,14 +8063,14 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Narrow Tablet - Match EasyMining 700px width */
 @media (max-width: 1040px) {
     #buy-packages-page .buy-packages-tabs {
-        width: calc(100% - 40px);
+        width: calc(100% - 20px);
         max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: calc(100% - 40px);
+        width: calc(100% - 20px);
         max-width: 700px;
         margin: 0 auto 20px auto;
         padding: 0;
@@ -8094,7 +8094,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 15px;
         padding: 20px 0;
         margin: 0 auto;
-        width: calc(100% - 40px);
+        width: calc(100% - 20px);
         max-width: 700px;
         box-sizing: border-box;
         cursor: grab;
@@ -8141,15 +8141,15 @@ body.light-mode .easymining-settings-form input[type="number"] {
 /* Mobile - Horizontal slider */
 @media (max-width: 700px) {
     #buy-packages-page .buy-packages-tabs {
-        width: calc(100% - 30px);
-        max-width: 340px;
+        width: calc(100% - 20px);
+        max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
     }
 
     #buy-packages-balance-section {
-        width: calc(100% - 30px);
-        max-width: 340px;
+        width: calc(100% - 20px);
+        max-width: 100%;
         margin: 0 auto 20px auto;
         padding: 0;
     }
@@ -8170,8 +8170,8 @@ body.light-mode .easymining-settings-form input[type="number"] {
         gap: 10px;
         padding: 10px 0;
         margin: 0 auto;
-        width: calc(100% - 30px);
-        max-width: 340px;
+        width: calc(100% - 20px);
+        max-width: 100%;
         box-sizing: border-box;
         cursor: grab;
         -webkit-overflow-scrolling: touch;
