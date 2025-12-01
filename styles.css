@@ -8494,7 +8494,7 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     .balance-card-content {
-        gap: 15px;
+        gap: 10px;
     }
 
     /* Buttons horizontal on mobile, underneath balances */

@@ -1033,9 +1033,9 @@ function initializeApp() {
         totalHoldings24hAgo = parseFloat(getStorageItem(`${loggedInUser}_totalHoldings24hAgo`)) || null;
 
         // Load portfolio strip daily tracking
-        dailyAddedValue = parseFloat(getStorageItem(`${loggedInUser}_dailyAddedValue`)) || 0;
         lastMidnightReset = parseInt(getStorageItem(`${loggedInUser}_lastMidnightReset`)) || null;
-        checkMidnightReset(); // Check if we need to reset daily tracking
+        // Always recalculate "Added Today" from actual entries on page load
+        recalculateAddedToday();
 
         updateTotalHoldings();
         updatePercentageChange(previousTotalHoldings);
@@ -4743,6 +4743,9 @@ function updateHoldings(crypto) {
         // Track for "Added Today" metric
         trackHoldingsChange(crypto, 0, amountToAdd, livePrice);
 
+        // Update PnL displays after adding holdings
+        updateStripPnL();
+
         // Refresh floating icons in Total Holdings modal
         refreshFloatingIcons();
 
@@ -5091,22 +5094,67 @@ function checkMidnightReset() {
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
     if (!lastMidnightReset || lastMidnightReset < todayMidnight) {
-        // Reset daily tracking
-        dailyAddedValue = 0;
+        // Reset daily tracking and recalculate from entries
         lastMidnightReset = todayMidnight;
-        setStorageItem(`${loggedInUser}_dailyAddedValue`, '0');
         setStorageItem(`${loggedInUser}_lastMidnightReset`, todayMidnight.toString());
-        console.log('📅 Daily tracking reset at midnight');
+        console.log('📅 Daily tracking reset at midnight - recalculating from entries');
+        recalculateAddedToday();
     }
+}
+
+// Scan all holdings entries and recalculate "Added Today" from entries added today
+function recalculateAddedToday() {
+    const user = users[loggedInUser];
+    if (!user || !user.cryptos) {
+        dailyAddedValue = 0;
+        setStorageItem(`${loggedInUser}_dailyAddedValue`, '0');
+        return;
+    }
+
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    let totalAddedToday = 0;
+    console.log('🔍 Scanning all holdings entries for today\'s additions...');
+
+    for (const crypto of user.cryptos) {
+        const entries = getHoldingsEntries(crypto.id);
+        entries.forEach(entry => {
+            // Check if entry was added today (dateAdded >= today's midnight)
+            if (entry.dateAdded && entry.dateAdded >= todayMidnight) {
+                // Use the AUD value at time of add (amount * boughtPrice)
+                const entryValue = entry.audValueAtAdd || (entry.amount * entry.boughtPrice) || 0;
+                totalAddedToday += entryValue;
+                console.log(`   Found: ${crypto.id} - ${entry.amount} added at $${entry.boughtPrice?.toFixed(2) || '?'} = $${entryValue.toFixed(2)}`);
+            }
+
+            // Also check if entry was SOLD today (subtract from daily total)
+            if (entry.dateSold && entry.dateSold >= todayMidnight && entry.status === 'sold') {
+                const soldValue = entry.amount * (entry.soldPrice || 0);
+                totalAddedToday -= soldValue;
+                console.log(`   Found SOLD: ${crypto.id} - ${entry.amount} sold at $${entry.soldPrice?.toFixed(2) || '?'} = -$${soldValue.toFixed(2)}`);
+            }
+        });
+    }
+
+    dailyAddedValue = totalAddedToday;
+    setStorageItem(`${loggedInUser}_dailyAddedValue`, dailyAddedValue.toString());
+    console.log(`📊 Recalculated Added Today: $${dailyAddedValue.toFixed(2)}`);
+    updateAddedTodayDisplay();
 }
 
 // Track holdings changes for "Added Today" metric
 function trackHoldingsChange(cryptoId, oldAmount, newAmount, priceAud) {
     checkMidnightReset(); // Always check before tracking
+    const previousTotal = dailyAddedValue;
     const delta = (newAmount - oldAmount) * priceAud;
     dailyAddedValue += delta;
     setStorageItem(`${loggedInUser}_dailyAddedValue`, dailyAddedValue.toString());
-    console.log(`📊 Holdings change tracked: ${cryptoId} delta = $${delta.toFixed(2)}, daily total = $${dailyAddedValue.toFixed(2)}`);
+    console.log(`📊 Holdings change tracked: ${cryptoId}`);
+    console.log(`   Previous daily total: $${previousTotal.toFixed(2)}`);
+    console.log(`   Delta added: $${delta.toFixed(2)}`);
+    console.log(`   New daily total: $${dailyAddedValue.toFixed(2)}`);
+    console.log(`   Stored value: ${getStorageItem(`${loggedInUser}_dailyAddedValue`)}`);
     updateAddedTodayDisplay();
 }
 
@@ -5898,9 +5946,10 @@ function saveHoldingsEntries(cryptoId, entries) {
 // Add a new holdings entry
 function addHoldingsEntry(cryptoId, entry) {
     const entries = getHoldingsEntries(cryptoId);
+    console.log(`📦 Existing entries for ${cryptoId} BEFORE add:`, entries.length, entries);
     entries.push(entry);
     saveHoldingsEntries(cryptoId, entries);
-    console.log(`✅ Added holdings entry for ${cryptoId}:`, entry);
+    console.log(`✅ Added holdings entry for ${cryptoId}. Total entries now: ${entries.length}`, entry);
 }
 
 // Get a specific holdings entry by ID
@@ -5972,10 +6021,13 @@ function calculateTotalPnL(cryptoId) {
         const user = users[loggedInUser];
         if (!user || !user.cryptos) return { totalUnrealized: 0, totalRealized: 0 };
 
+        console.log(`📈 Calculating total PnL across ${user.cryptos.length} cryptos`);
         for (const crypto of user.cryptos) {
             const entries = getHoldingsEntries(crypto.id);
-            entries.forEach(entry => {
+            console.log(`   ${crypto.id}: ${entries.length} entries`);
+            entries.forEach((entry, idx) => {
                 const pnl = calculateEntryPnL(entry);
+                console.log(`      Entry ${idx + 1}: amount=${entry.amount}, status=${entry.status}, unrealized=$${(pnl.unrealizedPnL || 0).toFixed(2)}`);
                 if (entry.status === 'active') {
                     totalUnrealized += pnl.unrealizedPnL || 0;
                 }
@@ -5984,6 +6036,7 @@ function calculateTotalPnL(cryptoId) {
                 }
             });
         }
+        console.log(`   TOTAL: unrealized=$${totalUnrealized.toFixed(2)}, realized=$${totalRealized.toFixed(2)}`);
     } else {
         // Calculate for specific crypto only
         const entries = getHoldingsEntries(cryptoId);
@@ -6560,6 +6613,9 @@ function updateHoldingsEntryPrices(cryptoId, entryId) {
     // Add to history
     addToHoldingsHistory('update', { ...entry, ...updates });
 
+    // Update PnL displays after updating holdings
+    updateStripPnL();
+
     // Refresh display
     displayHoldingsEntries(cryptoId);
 
@@ -6588,6 +6644,9 @@ function deleteHoldingsEntryUI(cryptoId, entryId) {
 
         // Track for "Added Today" metric (negative since holdings removed)
         trackHoldingsChange(cryptoId, entry.amount, 0, soldPrice);
+
+        // Update PnL displays after removing holdings
+        updateStripPnL();
 
         // Update displays
         displayHoldingsEntries(cryptoId);
@@ -18609,6 +18668,9 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
                 // Track for "Added Today" metric
                 trackHoldingsChange(cryptoId, 0, amount, boughtPrice);
+
+                // Update PnL displays after adding holdings
+                updateStripPnL();
 
                 // Mark block as added to holdings
                 markBlockAddedToHoldings(block.blockHash, entryId);
