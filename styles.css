@@ -8003,16 +8003,17 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     #buy-packages-balance-section {
-        width: 100%;
-        max-width: 770px;
+        width: calc(100% - 40px);
+        max-width: 730px;
         margin: 0 auto 20px auto;
-        padding: 0 20px;
+        padding: 0;
         box-sizing: border-box;
     }
 
     #buy-packages-balance-section .easymining-balance-card {
         width: 100%;
         max-width: 100%;
+        margin: 0;
     }
 
     .buy-packages-container-page {
@@ -8069,16 +8070,17 @@ body.light-mode .easymining-settings-form input[type="number"] {
     }
 
     #buy-packages-balance-section {
-        width: 100%;
-        max-width: 630px;
+        width: calc(100% - 40px);
+        max-width: 590px;
         margin: 0 auto 20px auto;
-        padding: 0 20px;
+        padding: 0;
         box-sizing: border-box;
     }
 
     #buy-packages-balance-section .easymining-balance-card {
         width: 100%;
         max-width: 100%;
+        margin: 0;
     }
 
     .buy-packages-container-page {
