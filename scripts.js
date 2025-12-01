@@ -24275,99 +24275,8 @@ async function loadBuyPackagesDataOnPage() {
     // Initialize drag scrolling for horizontal sliders on tablet/mobile
     initializeDragScrolling();
 
-    // Restore saved share values after packages are populated
-    if (window.packageShareValues && Object.keys(window.packageShareValues).length > 0) {
-        console.log('🔄 Restoring share values:', window.packageShareValues);
-        for (const [packageName, value] of Object.entries(window.packageShareValues)) {
-            if (value > 0) {
-                const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
-
-                // CRITICAL FIX: Find elements within Buy Packages page containers only (not EasyMining alerts)
-                // Try team container first, then single container
-                let input = teamContainer.querySelector(`#${inputId}`);
-                if (!input) {
-                    input = singleContainer.querySelector(`#${inputId}`);
-                }
-
-                if (input) {
-                    input.value = value;
-                    console.log(`✅ Restored ${packageName} = ${value}`);
-
-                    // Update reward and price displays based on restored value
-                    const packageId = packageName.replace(/\s+/g, '-');
-
-                    // CRITICAL: Find elements in the same container as the input
-                    const container = input.closest('.buy-package-card');
-                    const rewardValueElement = container ? container.querySelector(`#reward-value-${packageId}`) : null;
-                    const priceElement = container ? container.querySelector(`#price-${packageId}`) : null;
-                    const mainRewardElement = container ? container.querySelector(`#main-reward-${packageId}`) : null;
-                    const mergeRewardElement = container ? container.querySelector(`#merge-reward-${packageId}`) : null;
-
-                    if (window.packageBaseValues && window.packageBaseValues[packageName]) {
-                        const baseValues = window.packageBaseValues[packageName];
-
-                        // Price increases linearly
-                        const newPriceAUD = (baseValues.priceAUD * value).toFixed(2);
-
-                        // CORRECT FORMULA: blockReward ÷ ((totalBought - myBought) + myShares) × myShares
-                        const totalBoughtShares = baseValues.totalBoughtShares || 0;
-                        const myBoughtShares = baseValues.myBoughtShares || 0;
-                        const myShares = value;
-                        const othersBought = totalBoughtShares - myBoughtShares;
-                        const totalShares = othersBought + myShares;
-
-                        const totalRewardAUD = baseValues.totalRewardAUD || 0;
-                        const totalMainReward = baseValues.totalMainReward || 0;
-                        const totalMergeReward = baseValues.totalMergeReward || 0;
-
-                        const rewardPerShareAUD = totalShares > 0 ? totalRewardAUD / totalShares : 0;
-                        const myRewardAUD = (rewardPerShareAUD * myShares).toFixed(2);
-
-                        if (rewardValueElement) {
-                            rewardValueElement.textContent = `$${formatNumber(myRewardAUD)}`;
-                        }
-                        if (priceElement) {
-                            priceElement.textContent = `$${newPriceAUD}`;
-                        }
-
-                        // Update crypto reward amounts with CORRECT formula
-                        if (mainRewardElement && totalMainReward) {
-                            const rewardPerShare = totalShares > 0 ? totalMainReward / totalShares : 0;
-                            const myMainReward = rewardPerShare * myShares;
-                            const decimals = baseValues.mainCrypto === 'BTC' || baseValues.mainCrypto === 'BCH' ? 4 : 0;
-                            mainRewardElement.textContent = `${myMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`;
-                        }
-
-                        if (mergeRewardElement && totalMergeReward && baseValues.isDualCrypto) {
-                            const rewardPerShare = totalShares > 0 ? totalMergeReward / totalShares : 0;
-                            const myMergeReward = rewardPerShare * myShares;
-                            const mergeDecimals = baseValues.mergeCrypto === 'LTC' ? 2 : 0;
-                            mergeRewardElement.textContent = `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`;
-                        }
-                    }
-
-                    // Update + button state based on restored value
-                    const availableBalance = window.niceHashBalance?.available || 0;
-                    const sharePrice = 0.0001;
-                    const nextShareCost = (value + 1) * sharePrice;
-                    const plusButtonId = `plus-${packageName.replace(/\s+/g, '-')}`;
-                    const plusButton = document.getElementById(plusButtonId);
-
-                    if (plusButton) {
-                        if (availableBalance < nextShareCost) {
-                            plusButton.disabled = true;
-                            plusButton.style.opacity = '0.5';
-                            plusButton.style.cursor = 'not-allowed';
-                        } else {
-                            plusButton.disabled = false;
-                            plusButton.style.opacity = '1';
-                            plusButton.style.cursor = 'pointer';
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // NOTE: Share input values are now synced directly from API data via updateTeamPackageCardsInPlace()
+    // No need to restore cached values - always use fresh myBoughtShares from API
 
     // Validate and fix auto-buy robot icons after page load
     // The function handles missing containers gracefully
@@ -25833,13 +25742,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             isDualCrypto: pkg.isDualCrypto
         };
 
-        // Initialize share value only if not already set (preserve user input on re-render)
+        // Initialize share value from API data (myBoughtShares), default to 1 if no shares owned
         if (!window.packageShareValues) {
             window.packageShareValues = {};
         }
-        if (window.packageShareValues[pkg.name] === undefined) {
-            window.packageShareValues[pkg.name] = 1;
-        }
+        // Always use API myBoughtShares, or 1 if no shares owned yet
+        window.packageShareValues[pkg.name] = myBoughtShares > 0 ? myBoughtShares : 1;
     }
 
     return card;
