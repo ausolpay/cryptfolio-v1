@@ -5106,6 +5106,7 @@ function checkMidnightReset() {
 function recalculateAddedToday() {
     const user = users[loggedInUser];
     if (!user || !user.cryptos) {
+        console.log('🔍 No user or cryptos found - setting Added Today to $0');
         dailyAddedValue = 0;
         setStorageItem(`${loggedInUser}_dailyAddedValue`, '0');
         return;
@@ -5115,31 +5116,49 @@ function recalculateAddedToday() {
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
     let totalAddedToday = 0;
-    console.log('🔍 Scanning all holdings entries for today\'s additions...');
+    let totalEntriesScanned = 0;
+    let entriesAddedToday = 0;
+
+    console.log('🔍 ========== SCANNING ALL HOLDINGS FOR TODAY\'S ADDITIONS ==========');
+    console.log(`   Today's midnight timestamp: ${todayMidnight} (${new Date(todayMidnight).toLocaleString()})`);
+    console.log(`   Cryptos in portfolio: ${user.cryptos.length}`);
 
     for (const crypto of user.cryptos) {
         const entries = getHoldingsEntries(crypto.id);
-        entries.forEach(entry => {
+        console.log(`   📦 ${crypto.id}: ${entries.length} total entries`);
+
+        entries.forEach((entry, idx) => {
+            totalEntriesScanned++;
+            const entryDate = entry.dateAdded ? new Date(entry.dateAdded).toLocaleString() : 'NO DATE';
+            const isToday = entry.dateAdded && entry.dateAdded >= todayMidnight;
+
+            // Log ALL entries to see what we have
+            console.log(`      Entry ${idx + 1}: amount=${entry.amount}, dateAdded=${entry.dateAdded} (${entryDate}), isToday=${isToday}, status=${entry.status}`);
+
             // Check if entry was added today (dateAdded >= today's midnight)
-            if (entry.dateAdded && entry.dateAdded >= todayMidnight) {
+            if (isToday && entry.status === 'active') {
                 // Use the AUD value at time of add (amount * boughtPrice)
                 const entryValue = entry.audValueAtAdd || (entry.amount * entry.boughtPrice) || 0;
                 totalAddedToday += entryValue;
-                console.log(`   Found: ${crypto.id} - ${entry.amount} added at $${entry.boughtPrice?.toFixed(2) || '?'} = $${entryValue.toFixed(2)}`);
+                entriesAddedToday++;
+                console.log(`      ✅ COUNTED: $${entryValue.toFixed(2)} (audValueAtAdd=${entry.audValueAtAdd}, amount*price=${(entry.amount * entry.boughtPrice).toFixed(2)})`);
             }
 
             // Also check if entry was SOLD today (subtract from daily total)
             if (entry.dateSold && entry.dateSold >= todayMidnight && entry.status === 'sold') {
                 const soldValue = entry.amount * (entry.soldPrice || 0);
                 totalAddedToday -= soldValue;
-                console.log(`   Found SOLD: ${crypto.id} - ${entry.amount} sold at $${entry.soldPrice?.toFixed(2) || '?'} = -$${soldValue.toFixed(2)}`);
+                console.log(`      ❌ SOLD TODAY: -$${soldValue.toFixed(2)}`);
             }
         });
     }
 
     dailyAddedValue = totalAddedToday;
     setStorageItem(`${loggedInUser}_dailyAddedValue`, dailyAddedValue.toString());
-    console.log(`📊 Recalculated Added Today: $${dailyAddedValue.toFixed(2)}`);
+    console.log('🔍 ========== SCAN COMPLETE ==========');
+    console.log(`   Total entries scanned: ${totalEntriesScanned}`);
+    console.log(`   Entries added today: ${entriesAddedToday}`);
+    console.log(`   📊 ADDED TODAY TOTAL: $${dailyAddedValue.toFixed(2)}`);
     updateAddedTodayDisplay();
 }
 
