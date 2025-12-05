@@ -1210,11 +1210,17 @@ body.light-mode .header-subtitle a {
     display: flex;
     gap: 30px;
     animation: tickerScroll 30s linear infinite;
+    animation-play-state: running;
     width: max-content;
 }
 
-.ticker-track:hover {
+.ticker-track:hover,
+.crypto-ticker:hover .ticker-track {
     animation-play-state: paused;
+}
+
+.crypto-ticker:not(:hover) .ticker-track {
+    animation-play-state: running;
 }
 
 @keyframes tickerScroll {
