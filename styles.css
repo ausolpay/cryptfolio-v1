@@ -9335,8 +9335,7 @@ body.light-mode .api-hub-button .api-desc {
 /* Entry Prices Container */
 .entry-prices {
     display: flex;
-    justify-content: center;
-    padding: 0 10px;
+    padding: 0 25px 0 10px;
     margin-bottom: 8px;
 }
 
@@ -9345,7 +9344,6 @@ body.light-mode .api-hub-button .api-desc {
     flex-direction: column;
     gap: 4px;
     width: 100%;
-    max-width: 180px;
 }
 
 .price-input-group label {
