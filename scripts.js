@@ -7309,7 +7309,7 @@ function submitBuyEntry() {
     console.log(`✅ Added buy entry: ${amount} ${cryptoId.toUpperCase()} at $${boughtPrice.toFixed(2)}`);
 }
 
-// Submit a new sell entry (goes directly to history)
+// Submit a new sell entry (goes directly to history and reduces holdings)
 function submitSellEntry() {
     if (!currentHoldingsCryptoId) {
         alert('No crypto selected.');
@@ -7335,7 +7335,33 @@ function submitSellEntry() {
     const cryptoId = currentHoldingsCryptoId;
     const audValue = amount * soldPrice;
 
-    // Create sell entry for history (marked as sold immediately)
+    // Reduce holdings from active buy entries (FIFO)
+    let remainingToSell = amount;
+    const entries = getHoldingsEntries(cryptoId);
+    const activeEntries = entries.filter(e => e.status === 'active').sort((a, b) => a.dateAdded - b.dateAdded);
+
+    for (const entry of activeEntries) {
+        if (remainingToSell <= 0) break;
+
+        if (entry.amount <= remainingToSell) {
+            // Sell entire entry
+            remainingToSell -= entry.amount;
+            entry.amount = 0;
+            entry.status = 'sold';
+            entry.soldPrice = soldPrice;
+            entry.dateSold = Date.now();
+        } else {
+            // Partial sell - reduce entry amount
+            entry.amount -= remainingToSell;
+            entry.audValueAtAdd = entry.amount * (entry.boughtPrice || 0);
+            remainingToSell = 0;
+        }
+    }
+
+    // Save updated entries
+    saveHoldingsEntries(cryptoId, entries);
+
+    // Create sell entry for history
     const sellEntry = {
         id: uuidv4(),
         cryptoId: cryptoId,
@@ -7353,14 +7379,18 @@ function submitSellEntry() {
     // Add directly to history with 'sell' action
     addToHoldingsHistory('sell', sellEntry);
 
-    // Update displays
+    // Update all displays
+    displayHoldingsEntries(cryptoId);
     displayHistoryEntries(cryptoId);
+    updateHoldingsDisplayFromEntries(cryptoId);
     updateHoldingsTrackerPnL(cryptoId);
+    updateTotalHoldings();
+    updateStripPnL();
 
     // Hide form and clear inputs
     hideAddSellForm();
 
-    console.log(`✅ Added sell entry: ${amount} ${cryptoId.toUpperCase()} at $${soldPrice.toFixed(2)}`);
+    console.log(`✅ Added sell entry: ${amount} ${cryptoId.toUpperCase()} at $${formatPrice(soldPrice)}`);
 }
 
 // Update total PnL display (legacy - calls new function)
