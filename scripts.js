@@ -112,6 +112,47 @@ function getApiBaseUrl() {
 }
 
 /**
+ * Format crypto amount with appropriate decimal places
+ * Shows more decimals for smaller amounts, fewer for larger
+ * Trims trailing zeros for cleaner display
+ * @param {number} amount - The crypto amount to format
+ * @returns {string} Formatted amount string
+ */
+function formatCryptoAmount(amount) {
+    if (amount === 0) return '0';
+
+    const absAmount = Math.abs(amount);
+    let decimals;
+
+    // Determine decimals based on amount size
+    if (absAmount >= 1000) {
+        decimals = 2;
+    } else if (absAmount >= 1) {
+        decimals = 4;
+    } else if (absAmount >= 0.0001) {
+        decimals = 6;
+    } else if (absAmount >= 0.00000001) {
+        decimals = 8;
+    } else {
+        decimals = 10;
+    }
+
+    // Format with decimals and trim trailing zeros
+    let formatted = amount.toFixed(decimals);
+
+    // Remove trailing zeros after decimal point, but keep at least 2 decimals for readability
+    if (formatted.includes('.')) {
+        formatted = formatted.replace(/\.?0+$/, '');
+        // Ensure at least some decimal places for very small numbers
+        if (!formatted.includes('.') && absAmount < 1) {
+            formatted = amount.toFixed(2);
+        }
+    }
+
+    return formatted;
+}
+
+/**
  * Calculate optimal polling intervals based on crypto count and API tier
  * Ensures we never exceed rate limits while maximizing responsiveness
  */
@@ -6712,7 +6753,7 @@ function renderHoldingsEntryCard(entry, crypto) {
         <div class="holdings-entry-card" data-entry-id="${entry.id}">
             <div class="entry-header">
                 ${iconUrl ? `<img src="${iconUrl}" alt="" class="entry-crypto-icon">` : ''}
-                <span class="entry-amount">${entry.amount.toFixed(6)}</span>
+                <span class="entry-amount">${formatCryptoAmount(entry.amount)}</span>
             </div>
             <div class="entry-meta">
                 <span class="entry-source-badge ${sourceClass}">${sourceLabel}</span>
@@ -6862,7 +6903,7 @@ function renderHistoryCard(historyEntry, symbol) {
                 <span class="history-action">${actionLabels[historyEntry.action] || historyEntry.action}</span>
                 <span class="history-date">${date}</span>
             </div>
-            <div class="history-amount">${historyEntry.amount.toFixed(6)} ${symbol}</div>
+            <div class="history-amount">${formatCryptoAmount(historyEntry.amount)} ${symbol}</div>
             <div class="history-details">
                 ${!isSellEntry && historyEntry.boughtPrice ? `<div>Bought at: $${formatNumber(historyEntry.boughtPrice.toFixed(2))}</div>` : ''}
                 ${historyEntry.soldPrice ? `<div>Sold at: $${formatNumber(historyEntry.soldPrice.toFixed(2))}</div>` : ''}
@@ -6905,7 +6946,7 @@ function renderSellCard(sellEntry, crypto) {
         <div class="sell-entry-card" data-entry-id="${sellEntry.id}">
             <div class="entry-header">
                 ${iconUrl ? `<img src="${iconUrl}" alt="" class="entry-crypto-icon">` : ''}
-                <span class="entry-amount">${sellEntry.amount.toFixed(6)}</span>
+                <span class="entry-amount">${formatCryptoAmount(sellEntry.amount)}</span>
             </div>
             <div class="entry-meta">
                 <span class="entry-source-badge source-sell">Sold</span>
@@ -7095,7 +7136,7 @@ function deleteBuyEntry(cryptoId, entryId) {
     const entry = getHoldingsEntryById(cryptoId, entryId);
     if (!entry) return;
 
-    if (!confirm(`Are you sure you want to delete this buy entry?\n\nAmount: ${entry.amount.toFixed(6)}\nBuy Price: $${(entry.boughtPrice || 0).toFixed(2)}`)) {
+    if (!confirm(`Are you sure you want to delete this buy entry?\n\nAmount: ${formatCryptoAmount(entry.amount)}\nBuy Price: $${(entry.boughtPrice || 0).toFixed(2)}`)) {
         return;
     }
 
