@@ -8826,6 +8826,189 @@ body.light-mode .api-hub-button .api-desc {
     padding: 15px;
 }
 
+/* Add Buy / Add Sell Action Buttons */
+.holdings-action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.add-buy-btn,
+.add-sell-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.add-buy-btn {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+}
+
+.add-buy-btn:hover {
+    background: linear-gradient(135deg, #27ae60, #1e8449);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+.add-sell-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.add-sell-btn:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+/* Add Buy/Sell Forms */
+.holdings-add-form {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.add-form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #fff;
+    font-size: 14px;
+}
+
+.close-form-btn {
+    background: transparent;
+    border: none;
+    color: #aaa;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.close-form-btn:hover {
+    color: #fff;
+}
+
+.add-form-inputs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 12px;
+}
+
+.form-input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-input-group label {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.form-input-group input {
+    padding: 8px 10px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 14px;
+}
+
+.form-input-group input:focus {
+    outline: none;
+    border-color: #ffa500;
+}
+
+.price-with-live {
+    display: flex;
+    gap: 8px;
+}
+
+.price-with-live input {
+    flex: 1;
+}
+
+.live-btn-small {
+    padding: 8px 12px;
+    background: rgba(255, 165, 0, 0.2);
+    border: 1px solid #ffa500;
+    border-radius: 6px;
+    color: #ffa500;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.live-btn-small:hover {
+    background: rgba(255, 165, 0, 0.4);
+}
+
+.submit-form-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.submit-form-btn:hover {
+    background: linear-gradient(135deg, #27ae60, #1e8449);
+}
+
+.submit-form-btn.sell-submit {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.submit-form-btn.sell-submit:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+}
+
+/* History Sell Entry Styles */
+.history-entry-card.action-sell {
+    border-left: 3px solid #e74c3c;
+}
+
+.history-entry-card.action-sell .history-action {
+    color: #e74c3c;
+}
+
+.history-pnl {
+    margin-top: 8px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.history-pnl.pnl-positive {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+}
+
+.history-pnl.pnl-negative {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+}
+
 /* Holdings Tabs */
 .holdings-tabs {
     display: flex;
@@ -9362,6 +9545,52 @@ body.light-mode .holdings-pnl-summary {
     background: rgba(245, 245, 245, 0.8);
 }
 
+/* Light Mode - Add Buy/Sell Forms */
+body.light-mode .holdings-add-form {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #ddd;
+}
+
+body.light-mode .add-form-header {
+    color: #333;
+}
+
+body.light-mode .close-form-btn {
+    color: #666;
+}
+
+body.light-mode .close-form-btn:hover {
+    color: #333;
+}
+
+body.light-mode .form-input-group label {
+    color: #666;
+}
+
+body.light-mode .form-input-group input {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #ddd;
+    color: #333;
+}
+
+body.light-mode .live-btn-small {
+    background: rgba(255, 165, 0, 0.1);
+    border-color: #ff8c00;
+    color: #ff8c00;
+}
+
+body.light-mode .live-btn-small:hover {
+    background: rgba(255, 165, 0, 0.25);
+}
+
+body.light-mode .history-pnl.pnl-positive {
+    background: rgba(46, 204, 113, 0.12);
+}
+
+body.light-mode .history-pnl.pnl-negative {
+    background: rgba(231, 76, 60, 0.12);
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 600px) {
     .holdings-entries-container,
@@ -9391,6 +9620,26 @@ body.light-mode .holdings-pnl-summary {
     .holdings-entry-header {
         flex-direction: column;
         gap: 4px;
+    }
+
+    /* Mobile - Add Buy/Sell Forms */
+    .holdings-action-buttons {
+        gap: 8px;
+    }
+
+    .add-buy-btn,
+    .add-sell-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .add-form-inputs {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .add-form-header span {
+        font-size: 13px;
     }
 }
 

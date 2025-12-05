@@ -6641,7 +6641,7 @@ function displayHoldingsEntries(cryptoId) {
 
     // Render cards
     container.innerHTML = pageEntries.length === 0
-        ? '<div class="no-holdings-message">No holdings entries yet. Add holdings from the crypto card to track your P&L.</div>'
+        ? '<div class="no-holdings-message">No buy entries yet. Click "+ Add Buy" to track your purchases.</div>'
         : pageEntries.map(entry => renderHoldingsEntryCard(entry, crypto)).join('');
 
     // Update pagination controls
@@ -6830,7 +6830,7 @@ function displayHistoryEntries(cryptoId) {
 
     // Render cards
     container.innerHTML = pageHistory.length === 0
-        ? '<div class="no-holdings-message">No history yet.</div>'
+        ? '<div class="no-holdings-message">No transaction history yet. Buys and sells will appear here.</div>'
         : pageHistory.map(h => renderHistoryCard(h, symbol)).join('');
 
     // Update pagination controls
@@ -6844,29 +6844,45 @@ function renderHistoryCard(historyEntry, symbol) {
     });
 
     const actionLabels = {
-        'add': 'Added',
+        'add': 'Bought',
         'update': 'Updated',
-        'remove': 'Sold/Removed'
+        'remove': 'Sold (from Buy)',
+        'sell': 'Sold'
     };
 
     const actionClasses = {
         'add': 'action-add',
         'update': 'action-update',
-        'remove': 'action-remove'
+        'remove': 'action-remove',
+        'sell': 'action-sell'
     };
 
+    // Determine if this is a direct sell entry (no buy price)
+    const isSellEntry = historyEntry.action === 'sell';
+
+    // Calculate P&L if both buy and sell prices exist
+    let pnlHtml = '';
+    if (historyEntry.boughtPrice && historyEntry.soldPrice) {
+        const pnl = (historyEntry.soldPrice - historyEntry.boughtPrice) * historyEntry.amount;
+        const pnlPercent = ((historyEntry.soldPrice - historyEntry.boughtPrice) / historyEntry.boughtPrice) * 100;
+        const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+        const pnlSign = pnl >= 0 ? '+' : '-';
+        pnlHtml = `<div class="history-pnl ${pnlClass}">${pnlSign}$${formatNumber(Math.abs(pnl).toFixed(2))} (${pnlSign}${Math.abs(pnlPercent).toFixed(2)}%)</div>`;
+    }
+
     return `
-        <div class="history-entry-card ${actionClasses[historyEntry.action]}">
+        <div class="history-entry-card ${actionClasses[historyEntry.action] || ''}">
             <div class="history-header">
                 <span class="history-action">${actionLabels[historyEntry.action] || historyEntry.action}</span>
                 <span class="history-date">${date}</span>
             </div>
             <div class="history-amount">${historyEntry.amount.toFixed(6)} ${symbol}</div>
             <div class="history-details">
-                <div>Bought: $${formatNumber(historyEntry.boughtPrice?.toFixed(2) || '0.00')}</div>
-                ${historyEntry.soldPrice ? `<div>Sold: $${formatNumber(historyEntry.soldPrice.toFixed(2))}</div>` : ''}
+                ${!isSellEntry && historyEntry.boughtPrice ? `<div>Bought at: $${formatNumber(historyEntry.boughtPrice.toFixed(2))}</div>` : ''}
+                ${historyEntry.soldPrice ? `<div>Sold at: $${formatNumber(historyEntry.soldPrice.toFixed(2))}</div>` : ''}
                 <div>Value: $${formatNumber(historyEntry.audValue?.toFixed(2) || '0.00')}</div>
             </div>
+            ${pnlHtml}
             ${historyEntry.details?.note ? `<div class="history-note">${historyEntry.details.note}</div>` : ''}
         </div>
     `;
@@ -6982,6 +6998,191 @@ function deleteHoldingsEntryUI(cryptoId, entryId) {
     }
 }
 
+// =============================================================================
+// ADD BUY / ADD SELL FORM FUNCTIONS
+// =============================================================================
+
+// Show the Add Buy form
+function showAddBuyForm() {
+    const form = document.getElementById('add-buy-form');
+    const sellForm = document.getElementById('add-sell-form');
+    if (form) {
+        form.style.display = 'block';
+        if (sellForm) sellForm.style.display = 'none';
+        // Clear inputs
+        document.getElementById('buy-amount-input').value = '';
+        document.getElementById('buy-price-input').value = '';
+        // Focus on amount input
+        document.getElementById('buy-amount-input').focus();
+    }
+}
+
+// Hide the Add Buy form
+function hideAddBuyForm() {
+    const form = document.getElementById('add-buy-form');
+    if (form) form.style.display = 'none';
+}
+
+// Show the Add Sell form
+function showAddSellForm() {
+    const form = document.getElementById('add-sell-form');
+    const buyForm = document.getElementById('add-buy-form');
+    if (form) {
+        form.style.display = 'block';
+        if (buyForm) buyForm.style.display = 'none';
+        // Clear inputs
+        document.getElementById('sell-amount-input').value = '';
+        document.getElementById('sell-price-input').value = '';
+        // Focus on amount input
+        document.getElementById('sell-amount-input').focus();
+    }
+}
+
+// Hide the Add Sell form
+function hideAddSellForm() {
+    const form = document.getElementById('add-sell-form');
+    if (form) form.style.display = 'none';
+}
+
+// Fill live price into buy price input
+function fillLiveBuyPrice() {
+    if (!currentHoldingsCryptoId) return;
+    const livePrice = getPriceFromObject(cryptoPrices[currentHoldingsCryptoId]);
+    const input = document.getElementById('buy-price-input');
+    if (input && livePrice) {
+        input.value = livePrice.toFixed(2);
+    }
+}
+
+// Fill live price into sell price input
+function fillLiveSellPrice() {
+    if (!currentHoldingsCryptoId) return;
+    const livePrice = getPriceFromObject(cryptoPrices[currentHoldingsCryptoId]);
+    const input = document.getElementById('sell-price-input');
+    if (input && livePrice) {
+        input.value = livePrice.toFixed(2);
+    }
+}
+
+// Submit a new buy entry
+function submitBuyEntry() {
+    if (!currentHoldingsCryptoId) {
+        alert('No crypto selected.');
+        return;
+    }
+
+    const amountInput = document.getElementById('buy-amount-input');
+    const priceInput = document.getElementById('buy-price-input');
+
+    const amount = parseFloat(amountInput?.value);
+    const boughtPrice = parseFloat(priceInput?.value);
+
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid amount.');
+        return;
+    }
+
+    if (!boughtPrice || boughtPrice <= 0) {
+        alert('Please enter a valid buy price.');
+        return;
+    }
+
+    const cryptoId = currentHoldingsCryptoId;
+    const audValue = amount * boughtPrice;
+
+    // Create new buy entry
+    const entry = {
+        id: uuidv4(),
+        cryptoId: cryptoId,
+        amount: amount,
+        audValueAtAdd: audValue,
+        boughtPrice: boughtPrice,
+        soldPrice: null,
+        dateAdded: Date.now(),
+        dateSold: null,
+        source: 'manual',
+        status: 'active',
+        entryType: 'buy'
+    };
+
+    // Save the entry
+    addHoldingsEntry(cryptoId, entry);
+
+    // Add to history
+    addToHoldingsHistory('add', entry);
+
+    // Update displays
+    updateHoldingsDisplayFromEntries(cryptoId);
+    displayHoldingsEntries(cryptoId);
+    updateTotalPnLDisplay(cryptoId);
+    updateTotalHoldings();
+    updateStripPnL();
+
+    // Hide form and clear inputs
+    hideAddBuyForm();
+
+    console.log(`✅ Added buy entry: ${amount} ${cryptoId.toUpperCase()} at $${boughtPrice.toFixed(2)}`);
+}
+
+// Submit a new sell entry (goes directly to history)
+function submitSellEntry() {
+    if (!currentHoldingsCryptoId) {
+        alert('No crypto selected.');
+        return;
+    }
+
+    const amountInput = document.getElementById('sell-amount-input');
+    const priceInput = document.getElementById('sell-price-input');
+
+    const amount = parseFloat(amountInput?.value);
+    const soldPrice = parseFloat(priceInput?.value);
+
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid amount.');
+        return;
+    }
+
+    if (!soldPrice || soldPrice <= 0) {
+        alert('Please enter a valid sell price.');
+        return;
+    }
+
+    const cryptoId = currentHoldingsCryptoId;
+    const audValue = amount * soldPrice;
+
+    // Create sell entry for history (marked as sold immediately)
+    const sellEntry = {
+        id: uuidv4(),
+        cryptoId: cryptoId,
+        amount: amount,
+        audValueAtAdd: audValue,
+        boughtPrice: null, // No buy price for direct sell entries
+        soldPrice: soldPrice,
+        dateAdded: Date.now(),
+        dateSold: Date.now(),
+        source: 'manual',
+        status: 'sold',
+        entryType: 'sell'
+    };
+
+    // Add directly to history with 'sell' action
+    addToHoldingsHistory('sell', sellEntry);
+
+    // Update displays
+    displayHistoryEntries(cryptoId);
+    updateTotalPnLDisplay(cryptoId);
+
+    // Update history tab count
+    const history = getHoldingsHistoryByCrypto(cryptoId);
+    const historyCountEl = document.getElementById('history-tab-count');
+    if (historyCountEl) historyCountEl.textContent = history.length;
+
+    // Hide form and clear inputs
+    hideAddSellForm();
+
+    console.log(`✅ Added sell entry: ${amount} ${cryptoId.toUpperCase()} at $${soldPrice.toFixed(2)}`);
+}
+
 // Update total PnL display
 function updateTotalPnLDisplay(cryptoId) {
     const pnl = calculateTotalPnL(cryptoId);
@@ -7015,6 +7216,12 @@ function initHoldingsTracking(cryptoId) {
     });
     document.getElementById('holdings-tab-content').style.display = 'block';
     document.getElementById('history-tab-content').style.display = 'none';
+
+    // Hide add buy/sell forms
+    const buyForm = document.getElementById('add-buy-form');
+    const sellForm = document.getElementById('add-sell-form');
+    if (buyForm) buyForm.style.display = 'none';
+    if (sellForm) sellForm.style.display = 'none';
 
     // Collapse by default
     document.getElementById('holdings-tracking-content').style.display = 'none';

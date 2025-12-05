@@ -2620,10 +2620,60 @@
                     </div>
 
                     <div class="holdings-tracking-content" id="holdings-tracking-content" style="display: none;">
+                        <!-- Add Buy / Add Sell Buttons -->
+                        <div class="holdings-action-buttons">
+                            <button class="add-buy-btn" onclick="showAddBuyForm()">+ Add Buy</button>
+                            <button class="add-sell-btn" onclick="showAddSellForm()">+ Add Sell</button>
+                        </div>
+
+                        <!-- Add Buy Form (hidden by default) -->
+                        <div id="add-buy-form" class="holdings-add-form" style="display: none;">
+                            <div class="add-form-header">
+                                <span>Add Buy Entry</span>
+                                <button class="close-form-btn" onclick="hideAddBuyForm()">×</button>
+                            </div>
+                            <div class="add-form-inputs">
+                                <div class="form-input-group">
+                                    <label>Amount:</label>
+                                    <input type="number" id="buy-amount-input" step="any" placeholder="0.00">
+                                </div>
+                                <div class="form-input-group">
+                                    <label>Buy Price (per unit):</label>
+                                    <div class="price-with-live">
+                                        <input type="number" id="buy-price-input" step="0.01" placeholder="0.00">
+                                        <button class="live-btn-small" onclick="fillLiveBuyPrice()">Live</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="submit-form-btn" onclick="submitBuyEntry()">Add Buy</button>
+                        </div>
+
+                        <!-- Add Sell Form (hidden by default) -->
+                        <div id="add-sell-form" class="holdings-add-form" style="display: none;">
+                            <div class="add-form-header">
+                                <span>Add Sell Entry</span>
+                                <button class="close-form-btn" onclick="hideAddSellForm()">×</button>
+                            </div>
+                            <div class="add-form-inputs">
+                                <div class="form-input-group">
+                                    <label>Amount Sold:</label>
+                                    <input type="number" id="sell-amount-input" step="any" placeholder="0.00">
+                                </div>
+                                <div class="form-input-group">
+                                    <label>Sell Price (per unit):</label>
+                                    <div class="price-with-live">
+                                        <input type="number" id="sell-price-input" step="0.01" placeholder="0.00">
+                                        <button class="live-btn-small" onclick="fillLiveSellPrice()">Live</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="submit-form-btn sell-submit" onclick="submitSellEntry()">Add Sell</button>
+                        </div>
+
                         <!-- Tabs -->
                         <div class="holdings-tabs">
                             <button class="holdings-tab active" onclick="switchHoldingsTab('holdings')">
-                                Holdings <span id="holdings-tab-count" class="tab-count">0</span>
+                                Buys <span id="holdings-tab-count" class="tab-count">0</span>
                             </button>
                             <button class="holdings-tab" onclick="switchHoldingsTab('history')">
                                 History <span id="history-tab-count" class="tab-count">0</span>
