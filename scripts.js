@@ -7660,6 +7660,35 @@ function updateModalPnL(cryptoId) {
     if (modalDcaEl) {
         modalDcaEl.textContent = `DCA: $${formatPrice(dca)}`;
     }
+
+    // Also update modal holdings display
+    updateModalHoldings(cryptoId);
+}
+
+// Update holdings display in the chart modal
+function updateModalHoldings(cryptoId) {
+    const holdingsElement = document.getElementById('holdings-info');
+    if (!holdingsElement) return;
+
+    // Get total holdings using the new calculation (buys - sells)
+    const totalHoldings = getTotalActiveHoldings(cryptoId);
+    const livePrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
+    const holdingsValueAud = totalHoldings * livePrice;
+
+    // Get crypto symbol
+    const crypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
+    const symbol = crypto?.symbol?.toUpperCase() || cryptoId.toUpperCase();
+
+    // Format holdings with full decimal precision, AUD value with 2 decimals
+    const formattedHoldings = formatCryptoAmount(totalHoldings);
+    const formattedAudValue = holdingsValueAud.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    holdingsElement.innerHTML = `
+        <span><strong>${formattedHoldings}</strong> ${symbol} = <strong>$${formattedAudValue}</strong></span>
+    `;
 }
 
 // Initialize holdings tracking when chart modal opens
@@ -12792,22 +12821,11 @@ async function openCandlestickModal(cryptoId) {
         cryptoIconElement.alt = `${crypto.name} Icon`;
         cryptoNameElement.textContent = `${crypto.name} (${crypto.symbol.toUpperCase()})`;
 
-        // Display holdings and holdings value
-        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
-        const priceInAud = parseFloat(document.getElementById(`${cryptoId}-price-aud`).textContent.replace(/,/g, '').replace('$', '')) || 0;
-        const holdingsValueAud = holdings * priceInAud;
-        const holdingsElement = document.getElementById('holdings-info');
+        // Display holdings and holdings value using new calculation (buys - sells)
+        updateModalHoldings(cryptoId);
 
-        // Format holdings with full decimal precision, AUD value with 2 decimals
-        const formattedHoldings = formatHoldingsWithFullDecimals(holdings);
-        const formattedAudValue = holdingsValueAud.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-
-        holdingsElement.innerHTML = `
-            <span><strong>${formattedHoldings}</strong> ${crypto.symbol.toUpperCase()} = <strong>$${formattedAudValue}</strong></span>
-        `;
+        // Get price for conversion calculator
+        const priceInAud = parseFloat(document.getElementById(`${cryptoId}-price-aud`)?.textContent.replace(/,/g, '').replace('$', '')) || 0;
 
         // Initialize conversion calculator with current price
         if (priceInAud > 0) {
