@@ -4847,7 +4847,13 @@ function updateHoldings(crypto) {
 
         for (const entry of activeEntries) {
             if (tempRemaining <= 0) break;
-            const buyPrice = entry.boughtPrice || 0;
+            // Get buy price - fallback to calculated from audValueAtAdd if boughtPrice is missing
+            let buyPrice = entry.boughtPrice;
+            if (!buyPrice && entry.audValueAtAdd && entry.amount) {
+                buyPrice = entry.audValueAtAdd / entry.amount;
+            }
+            buyPrice = buyPrice || 0;
+
             if (entry.amount <= tempRemaining) {
                 totalCost += entry.amount * buyPrice;
                 totalAmount += entry.amount;
@@ -7442,7 +7448,13 @@ function submitSellEntry() {
 
     for (const entry of activeEntries) {
         if (tempRemaining <= 0) break;
-        const buyPrice = entry.boughtPrice || 0;
+        // Get buy price - fallback to calculated from audValueAtAdd if boughtPrice is missing
+        let buyPrice = entry.boughtPrice;
+        if (!buyPrice && entry.audValueAtAdd && entry.amount) {
+            buyPrice = entry.audValueAtAdd / entry.amount;
+        }
+        buyPrice = buyPrice || 0;
+
         if (entry.amount <= tempRemaining) {
             totalCost += entry.amount * buyPrice;
             totalAmount += entry.amount;
