@@ -6877,6 +6877,12 @@ function renderHoldingsEntryCard(entry, crypto) {
 
             <div class="entry-prices">
                 <div class="price-input-group">
+                    <label>Amount:</label>
+                    <input type="number" class="amount-input" id="amount-${entry.id}"
+                        value="${entry.amount}" step="any" placeholder="0"
+                        onchange="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">
+                </div>
+                <div class="price-input-group">
                     <label>Buy Price:</label>
                     <input type="number" class="bought-price-input" id="bought-price-${entry.id}"
                         value="${formatPrice(displayBoughtPrice || 0)}" step="any" placeholder="0.00"
@@ -6897,6 +6903,7 @@ function renderHoldingsEntryCard(entry, crypto) {
                     ? `<button class="sell-entry-btn" disabled title="Already sold">Sold</button>`
                     : `<button class="sell-entry-btn" onclick="sellBuyEntry('${entry.cryptoId}', '${entry.id}', ${entry.amount})" title="Sell at live price">Sell</button>`
                 }
+                <button class="delete-entry-btn" onclick="deleteBuyEntry('${entry.cryptoId}', '${entry.id}', ${entry.amount})" title="Delete this entry">Delete</button>
             </div>
         </div>
     `;
@@ -7136,7 +7143,7 @@ function deleteSellEntry(cryptoId, entryId) {
     const history = getHoldingsHistory();
     const sellEntry = history.find(h => h.id === entryId);
     const amountRestored = sellEntry ? sellEntry.amount : 0;
-    const linkedBuyEntryId = sellEntry?.linkedBuyEntryId;
+    const linkedBuyEntryId = sellEntry?.details?.linkedBuyEntryId;
 
     // Log holdings BEFORE delete
     const totalBefore = getTotalActiveHoldings(cryptoId);
@@ -7218,17 +7225,23 @@ function autoFillSoldPrice(cryptoId, entryId) {
 
 // Update holdings entry prices
 function updateHoldingsEntryPrices(cryptoId, entryId) {
+    const amountInput = document.getElementById(`amount-${entryId}`);
     const boughtInput = document.getElementById(`bought-price-${entryId}`);
     const soldInput = document.getElementById(`sold-price-${entryId}`);
 
+    const newAmount = parseFloat(amountInput?.value) || 0;
     const boughtPrice = parseFloat(boughtInput?.value) || 0;
     const soldPrice = parseFloat(soldInput?.value) || null;
 
     const entry = getHoldingsEntryById(cryptoId, entryId);
     if (!entry) return;
 
-    // Update entry
-    const updates = { boughtPrice };
+    // Update entry with amount and prices
+    const updates = {
+        amount: newAmount,
+        boughtPrice,
+        audValueAtAdd: newAmount * boughtPrice
+    };
     if (soldPrice !== null && soldPrice > 0) {
         updates.soldPrice = soldPrice;
     }
@@ -7240,11 +7253,13 @@ function updateHoldingsEntryPrices(cryptoId, entryId) {
 
     // Update PnL displays after updating holdings
     updateStripPnL();
+    updateModalPnL(cryptoId);
+    updateModalHoldings(cryptoId);
 
     // Refresh display
     displayHoldingsEntries(cryptoId);
 
-    console.log(`✅ Updated entry ${entryId}: bought=$${boughtPrice}, sold=$${soldPrice || 'n/a'}`);
+    console.log(`✅ Updated entry ${entryId}: amount=${newAmount}, bought=$${boughtPrice}, sold=$${soldPrice || 'n/a'}`);
 }
 
 // Delete holdings entry (requires sold price)
@@ -7424,8 +7439,8 @@ function sellBuyEntry(cryptoId, entryId, amount) {
         linkedBuyEntryId: entryId // Link to the original buy entry
     };
 
-    // Add to history as a sell
-    addToHoldingsHistory('sell', sellEntry);
+    // Add to history as a sell (pass linkedBuyEntryId in details)
+    addToHoldingsHistory('sell', sellEntry, { linkedBuyEntryId: entryId });
 
     // Update all displays
     displayHoldingsEntries(cryptoId);
@@ -7436,6 +7451,58 @@ function sellBuyEntry(cryptoId, entryId, amount) {
     updateStripPnL();
 
     console.log(`✅ Sold ${formatCryptoAmount(amount)} ${cryptoId.toUpperCase()} at $${formatPrice(livePrice)}`);
+}
+
+// Delete a buy entry with warning about potential negative holdings
+function deleteBuyEntry(cryptoId, entryId, entryAmount) {
+    // Calculate current holdings and total sells
+    const entries = getHoldingsEntries(cryptoId);
+    const totalBuys = entries.reduce((sum, e) => sum + e.amount, 0);
+    const history = getHoldingsHistoryByCrypto(cryptoId);
+    const totalSells = history
+        .filter(h => h.action === 'sell')
+        .reduce((sum, h) => sum + h.amount, 0);
+
+    const currentHoldings = totalBuys - totalSells;
+    const holdingsAfterDelete = currentHoldings - entryAmount;
+
+    // Check if this entry has linked sell entries
+    const linkedSells = history.filter(h => h.action === 'sell' && h.details?.linkedBuyEntryId === entryId);
+    const linkedSellCount = linkedSells.length;
+
+    let warningMessage = `Delete this buy entry of ${formatCryptoAmount(entryAmount)}?\n\n`;
+
+    if (holdingsAfterDelete < 0) {
+        warningMessage += `⚠️ WARNING: This will result in negative holdings!\n\n`;
+        warningMessage += `Current holdings: ${formatCryptoAmount(currentHoldings)}\n`;
+        warningMessage += `After deletion: ${formatCryptoAmount(holdingsAfterDelete)}\n\n`;
+        warningMessage += `Consider deleting sell entries first to avoid negative holdings.\n`;
+    }
+
+    if (linkedSellCount > 0) {
+        warningMessage += `\nNote: This entry has ${linkedSellCount} linked sell record(s).`;
+    }
+
+    warningMessage += `\n\nThis action cannot be undone.`;
+
+    if (!confirm(warningMessage)) {
+        return;
+    }
+
+    // Remove the entry from holdings entries
+    const updatedEntries = entries.filter(e => e.id !== entryId);
+    saveHoldingsEntries(cryptoId, updatedEntries);
+
+    // Update all displays
+    displayHoldingsEntries(cryptoId);
+    updateHoldingsDisplayFromEntries(cryptoId);
+    updateHoldingsTrackerPnL(cryptoId);
+    updateTotalHoldings();
+    updateStripPnL();
+    updateModalPnL(cryptoId);
+    updateModalHoldings(cryptoId);
+
+    console.log(`🗑️ Deleted buy entry ${entryId}: ${formatCryptoAmount(entryAmount)} ${cryptoId.toUpperCase()}`);
 }
 
 // Submit a new buy entry
@@ -8299,6 +8366,14 @@ function clearSpecificCrypto() {
     // Clear holdings entries array (new entry-based system)
     removeStorageItem(`${loggedInUser}_${cryptoId}_holdingsEntries`);
     console.log(`   ✓ Cleared holdings entries for ${cryptoId}`);
+
+    // Also clear sell entries from holdingsHistory for this crypto
+    // This is important because holdings = buys - sells
+    const allHistory = getHoldingsHistory();
+    const filteredHistory = allHistory.filter(h => h.cryptoId !== cryptoId);
+    localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
+    const removedCount = allHistory.length - filteredHistory.length;
+    console.log(`   ✓ Cleared ${removedCount} history entries for ${cryptoId}`);
 
     // Note: We intentionally do NOT clear tracked blocks or EasyMining reward records here
     // Those track which rewards have been added to prevent duplicates
