@@ -6917,7 +6917,7 @@ function renderSellCard(sellEntry, crypto) {
                 <div class="price-input-group">
                     <label>Sell Price:</label>
                     <input type="number" class="sold-price-input" id="sell-price-display-${sellEntry.id}"
-                        value="${soldPrice.toFixed(2)}" step="0.01" readonly>
+                        value="${soldPrice.toFixed(2)}" step="0.01" placeholder="0.00">
                 </div>
             </div>
 
@@ -6929,10 +6929,37 @@ function renderSellCard(sellEntry, crypto) {
             </div>
 
             <div class="entry-actions">
+                <button class="update-entry-btn" onclick="updateSellEntryPrice('${sellEntry.cryptoId}', '${sellEntry.id}')" title="Update sell price">Update</button>
                 <button class="delete-entry-btn" onclick="deleteSellEntry('${sellEntry.cryptoId}', '${sellEntry.id}')" title="Delete this entry">Delete</button>
             </div>
         </div>
     `;
+}
+
+// Update a sell entry price
+function updateSellEntryPrice(cryptoId, entryId) {
+    const priceInput = document.getElementById(`sell-price-display-${entryId}`);
+    const newPrice = parseFloat(priceInput?.value);
+
+    if (!newPrice || newPrice <= 0) {
+        alert('Please enter a valid sell price.');
+        return;
+    }
+
+    // Update the entry in history
+    const history = getHoldingsHistory();
+    const entryIndex = history.findIndex(h => h.id === entryId);
+    if (entryIndex !== -1) {
+        history[entryIndex].soldPrice = newPrice;
+        history[entryIndex].audValue = history[entryIndex].amount * newPrice;
+        localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(history));
+
+        // Update displays
+        displayHistoryEntries(cryptoId);
+        updateHoldingsTrackerPnL(cryptoId);
+
+        console.log(`✅ Updated sell entry ${entryId} price to $${newPrice.toFixed(2)}`);
+    }
 }
 
 // Delete a sell entry

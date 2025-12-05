@@ -8965,6 +8965,8 @@ body.light-mode .api-hub-button .api-desc {
     background: rgba(0, 0, 0, 0.3);
     color: #fff;
     font-size: 14px;
+    height: 36px;
+    box-sizing: border-box;
 }
 
 .form-input-group input:focus {
@@ -8975,7 +8977,7 @@ body.light-mode .api-hub-button .api-desc {
 .price-with-live {
     display: flex;
     gap: 8px;
-    align-items: stretch;
+    align-items: center;
 }
 
 .price-with-live input {
@@ -8983,7 +8985,9 @@ body.light-mode .api-hub-button .api-desc {
 }
 
 .live-btn-small {
-    padding: 0 12px;
+    padding: 8px 12px;
+    height: 36px;
+    box-sizing: border-box;
     background: rgba(255, 165, 0, 0.2);
     border: 1px solid #ffa500;
     border-radius: 6px;
@@ -9328,10 +9332,20 @@ body.light-mode .api-hub-button .api-desc {
     margin-bottom: 10px;
 }
 
+/* Entry Prices Container */
+.entry-prices {
+    display: flex;
+    justify-content: center;
+    padding: 0 10px;
+    margin-bottom: 8px;
+}
+
 .price-input-group {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    width: 100%;
+    max-width: 180px;
 }
 
 .price-input-group label {
