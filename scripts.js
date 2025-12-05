@@ -4788,7 +4788,7 @@ function updateHoldings(crypto) {
     const amountToAdd = parseFloat(input.value);
 
     if (!isNaN(amountToAdd) && amountToAdd > 0) {
-        // Get current live price
+        // POSITIVE: Create a buy entry
         const livePrice = getPriceFromObject(cryptoPrices[crypto]);
         const localValue = amountToAdd * livePrice;
 
@@ -4829,6 +4829,70 @@ function updateHoldings(crypto) {
         refreshFloatingIcons();
 
         console.log(`✅ Added ${amountToAdd} ${crypto.toUpperCase()} at $${livePrice.toFixed(2)} AUD`);
+    } else if (!isNaN(amountToAdd) && amountToAdd < 0) {
+        // NEGATIVE: Create a sell entry
+        const sellAmount = Math.abs(amountToAdd);
+        const livePrice = getPriceFromObject(cryptoPrices[crypto]);
+        const audValue = sellAmount * livePrice;
+
+        // Reduce holdings from active buy entries (FIFO)
+        let remainingToSell = sellAmount;
+        const entries = getHoldingsEntries(crypto);
+        const activeEntries = entries.filter(e => e.status === 'active').sort((a, b) => a.dateAdded - b.dateAdded);
+
+        for (const entry of activeEntries) {
+            if (remainingToSell <= 0) break;
+
+            if (entry.amount <= remainingToSell) {
+                // Sell entire entry
+                remainingToSell -= entry.amount;
+                entry.amount = 0;
+                entry.status = 'sold';
+                entry.soldPrice = livePrice;
+                entry.dateSold = Date.now();
+            } else {
+                // Partial sell - reduce entry amount
+                entry.amount -= remainingToSell;
+                entry.audValueAtAdd = entry.amount * (entry.boughtPrice || 0);
+                remainingToSell = 0;
+            }
+        }
+
+        // Save updated entries
+        saveHoldingsEntries(crypto, entries);
+
+        // Create sell entry for history
+        const sellEntry = {
+            id: uuidv4(),
+            cryptoId: crypto,
+            amount: sellAmount,
+            audValueAtAdd: audValue,
+            boughtPrice: null,
+            soldPrice: livePrice,
+            dateAdded: Date.now(),
+            dateSold: Date.now(),
+            source: 'manual',
+            status: 'sold',
+            entryType: 'sell'
+        };
+
+        // Add to history as a sell
+        addToHoldingsHistory('sell', sellEntry);
+
+        // Update holdings display
+        updateHoldingsDisplayFromEntries(crypto);
+
+        // Clear input
+        input.value = '';
+        input.blur();
+
+        // Update PnL displays
+        updateStripPnL();
+
+        // Refresh floating icons
+        refreshFloatingIcons();
+
+        console.log(`✅ Sold ${sellAmount} ${crypto.toUpperCase()} at $${livePrice.toFixed(2)} AUD`);
     } else if (!isNaN(amountToAdd) && amountToAdd === 0) {
         // Clear input if 0 entered
         input.value = '';
