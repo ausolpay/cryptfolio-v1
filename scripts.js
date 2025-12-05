@@ -153,6 +153,34 @@ function formatCryptoAmount(amount) {
 }
 
 /**
+ * Format price with appropriate decimal places for inputs
+ * Shows more decimals for lower prices (e.g., small altcoins)
+ * @param {number} price - The price to format
+ * @returns {string} Formatted price string
+ */
+function formatPrice(price) {
+    if (!price || price === 0) return '0.00';
+
+    const absPrice = Math.abs(price);
+    let decimals;
+
+    // Determine decimals based on price
+    if (absPrice >= 100) {
+        decimals = 2;
+    } else if (absPrice >= 1) {
+        decimals = 4;
+    } else if (absPrice >= 0.01) {
+        decimals = 6;
+    } else if (absPrice >= 0.0001) {
+        decimals = 8;
+    } else {
+        decimals = 10;
+    }
+
+    return price.toFixed(decimals);
+}
+
+/**
  * Calculate optimal polling intervals based on crypto count and API tier
  * Ensures we never exceed rate limits while maximizing responsiveness
  */
@@ -6765,7 +6793,7 @@ function renderHoldingsEntryCard(entry, crypto) {
                 <div class="price-input-group">
                     <label>Buy Price:</label>
                     <input type="number" class="bought-price-input" id="bought-price-${entry.id}"
-                        value="${(displayBoughtPrice || 0).toFixed(2)}" step="0.01" placeholder="0.00"
+                        value="${formatPrice(displayBoughtPrice || 0)}" step="any" placeholder="0.00"
                         onchange="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">
                 </div>
             </div>
@@ -6958,7 +6986,7 @@ function renderSellCard(sellEntry, crypto) {
                 <div class="price-input-group">
                     <label>Sell Price:</label>
                     <input type="number" class="sold-price-input" id="sell-price-display-${sellEntry.id}"
-                        value="${soldPrice.toFixed(2)}" step="0.01" placeholder="0.00">
+                        value="${formatPrice(soldPrice)}" step="any" placeholder="0.00">
                 </div>
             </div>
 
