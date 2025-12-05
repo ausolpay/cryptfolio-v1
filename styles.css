@@ -1214,13 +1214,16 @@ body.light-mode .header-subtitle a {
     width: max-content;
 }
 
-.ticker-track:hover,
-.crypto-ticker:hover .ticker-track {
-    animation-play-state: paused;
-}
+/* Only pause on hover for non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+    .ticker-track:hover,
+    .crypto-ticker:hover .ticker-track {
+        animation-play-state: paused;
+    }
 
-.crypto-ticker:not(:hover) .ticker-track {
-    animation-play-state: running;
+    .crypto-ticker:not(:hover) .ticker-track {
+        animation-play-state: running;
+    }
 }
 
 @keyframes tickerScroll {
