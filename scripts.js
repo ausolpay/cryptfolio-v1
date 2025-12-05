@@ -7589,6 +7589,21 @@ function updateModalPnL(cryptoId) {
         modalRealizedEl.textContent = `Realized: ${sign}$${formatNumber(Math.abs(totalRealized).toFixed(2))}`;
         modalRealizedEl.className = `modal-pnl-value ${totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
+
+    // Calculate and update DCA (Dollar Cost Average)
+    let totalCost = 0;
+    let totalBought = 0;
+    entries.forEach(entry => {
+        const buyPrice = entry.boughtPrice || (entry.audValueAtAdd / entry.amount) || 0;
+        totalCost += entry.amount * buyPrice;
+        totalBought += entry.amount;
+    });
+    const dca = totalBought > 0 ? totalCost / totalBought : 0;
+
+    const modalDcaEl = document.getElementById('modal-dca');
+    if (modalDcaEl) {
+        modalDcaEl.textContent = `DCA: $${formatPrice(dca)}`;
+    }
 }
 
 // Initialize holdings tracking when chart modal opens
