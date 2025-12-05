@@ -6893,7 +6893,10 @@ function renderHoldingsEntryCard(entry, crypto) {
 
             <div class="entry-actions">
                 <button class="update-entry-btn" onclick="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">Update</button>
-                <button class="sell-entry-btn" onclick="sellBuyEntry('${entry.cryptoId}', '${entry.id}', ${entry.amount})" title="Sell at live price">Sell</button>
+                ${entry.status === 'sold'
+                    ? `<button class="sell-entry-btn" disabled title="Already sold">Sold</button>`
+                    : `<button class="sell-entry-btn" onclick="sellBuyEntry('${entry.cryptoId}', '${entry.id}', ${entry.amount})" title="Sell at live price">Sell</button>`
+                }
             </div>
         </div>
     `;
@@ -7378,8 +7381,18 @@ function sellBuyEntry(cryptoId, entryId, amount) {
 
     // Get buy entries to calculate average buy cost for this specific entry
     const entries = getHoldingsEntries(cryptoId);
-    const entry = entries.find(e => e.id === entryId);
-    const avgBuyCost = entry ? (entry.boughtPrice || (entry.audValueAtAdd / entry.amount) || 0) : 0;
+    const entryIndex = entries.findIndex(e => e.id === entryId);
+    if (entryIndex === -1) {
+        alert('Entry not found.');
+        return;
+    }
+    const entry = entries[entryIndex];
+    const avgBuyCost = entry.boughtPrice || (entry.audValueAtAdd / entry.amount) || 0;
+
+    // Mark the buy entry as sold so the button gets disabled
+    entries[entryIndex].status = 'sold';
+    entries[entryIndex].dateSold = Date.now();
+    saveHoldingsEntries(cryptoId, entries);
 
     // Create sell entry for history
     const sellEntry = {
@@ -7393,7 +7406,8 @@ function sellBuyEntry(cryptoId, entryId, amount) {
         dateSold: Date.now(),
         source: 'manual',
         status: 'sold',
-        entryType: 'sell'
+        entryType: 'sell',
+        linkedBuyEntryId: entryId // Link to the original buy entry
     };
 
     // Add to history as a sell
