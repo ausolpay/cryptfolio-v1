@@ -7132,22 +7132,32 @@ function updateSellEntryPrice(cryptoId, entryId) {
     }
 }
 
-// Delete a sell entry
+// Delete a sell entry (only removes from history, does NOT affect holdings)
 function deleteSellEntry(cryptoId, entryId) {
     if (!confirm('Are you sure you want to delete this sell entry?')) {
         return;
     }
 
-    // Remove the entry from history
+    // Log holdings BEFORE delete
+    const entriesBefore = getHoldingsEntries(cryptoId);
+    const totalBefore = entriesBefore.filter(e => e.status === 'active').reduce((sum, e) => sum + e.amount, 0);
+    console.log(`📊 Holdings BEFORE delete: ${totalBefore}`);
+
+    // Remove the entry from history ONLY (not from holdings entries)
     const history = getHoldingsHistory();
     const filteredHistory = history.filter(h => h.id !== entryId);
     localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
+
+    // Log holdings AFTER delete
+    const entriesAfter = getHoldingsEntries(cryptoId);
+    const totalAfter = entriesAfter.filter(e => e.status === 'active').reduce((sum, e) => sum + e.amount, 0);
+    console.log(`📊 Holdings AFTER delete: ${totalAfter}`);
 
     // Update displays
     displayHistoryEntries(cryptoId);
     updateHoldingsTrackerPnL(cryptoId);
 
-    console.log(`🗑️ Deleted sell entry ${entryId}`);
+    console.log(`🗑️ Deleted sell entry ${entryId} - holdings unchanged`);
 }
 
 // Update pagination controls for history
