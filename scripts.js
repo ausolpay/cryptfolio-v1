@@ -4835,11 +4835,33 @@ function updateHoldings(crypto) {
         const livePrice = getPriceFromObject(cryptoPrices[crypto]);
         const audValue = sellAmount * livePrice;
 
-        // Reduce holdings from active buy entries (FIFO)
+        // Calculate average buy cost from active entries (FIFO) before reducing
         let remainingToSell = sellAmount;
         const entries = getHoldingsEntries(crypto);
         const activeEntries = entries.filter(e => e.status === 'active').sort((a, b) => a.dateAdded - b.dateAdded);
 
+        // Calculate weighted average buy cost for the amount being sold
+        let totalCost = 0;
+        let totalAmount = 0;
+        let tempRemaining = sellAmount;
+
+        for (const entry of activeEntries) {
+            if (tempRemaining <= 0) break;
+            const buyPrice = entry.boughtPrice || 0;
+            if (entry.amount <= tempRemaining) {
+                totalCost += entry.amount * buyPrice;
+                totalAmount += entry.amount;
+                tempRemaining -= entry.amount;
+            } else {
+                totalCost += tempRemaining * buyPrice;
+                totalAmount += tempRemaining;
+                tempRemaining = 0;
+            }
+        }
+
+        const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
+
+        // Now reduce holdings from active buy entries (FIFO)
         for (const entry of activeEntries) {
             if (remainingToSell <= 0) break;
 
@@ -4861,13 +4883,13 @@ function updateHoldings(crypto) {
         // Save updated entries
         saveHoldingsEntries(crypto, entries);
 
-        // Create sell entry for history
+        // Create sell entry for history with average buy cost
         const sellEntry = {
             id: uuidv4(),
             cryptoId: crypto,
             amount: sellAmount,
             audValueAtAdd: audValue,
-            boughtPrice: null,
+            boughtPrice: avgBuyCost, // Store average buy cost for P&L calculation
             soldPrice: livePrice,
             dateAdded: Date.now(),
             dateSold: Date.now(),
@@ -7027,10 +7049,10 @@ function renderSellCard(sellEntry, crypto) {
     const soldPrice = sellEntry.soldPrice || 0;
     const audValue = sellEntry.audValue || (sellEntry.amount * soldPrice);
 
-    // Calculate realized P&L (sell value vs current value if we had held)
-    const livePrice = getPriceFromObject(cryptoPrices[sellEntry.cryptoId]) || soldPrice;
-    const realizedPnL = (soldPrice - livePrice) * sellEntry.amount;
-    const realizedPercent = livePrice > 0 ? ((soldPrice - livePrice) / livePrice) * 100 : 0;
+    // Calculate realized P&L (sell price vs average buy cost)
+    const avgBuyCost = sellEntry.boughtPrice || 0; // boughtPrice stores avg buy cost for sell entries
+    const realizedPnL = (soldPrice - avgBuyCost) * sellEntry.amount;
+    const realizedPercent = avgBuyCost > 0 ? ((soldPrice - avgBuyCost) / avgBuyCost) * 100 : 0;
     const realizedClass = realizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative';
     const realizedSign = realizedPnL >= 0 ? '+' : '-';
 
@@ -7399,11 +7421,33 @@ function submitSellEntry() {
     const cryptoId = currentHoldingsCryptoId;
     const audValue = amount * soldPrice;
 
-    // Reduce holdings from active buy entries (FIFO)
+    // Calculate average buy cost from active entries (FIFO) before reducing
     let remainingToSell = amount;
     const entries = getHoldingsEntries(cryptoId);
     const activeEntries = entries.filter(e => e.status === 'active').sort((a, b) => a.dateAdded - b.dateAdded);
 
+    // Calculate weighted average buy cost for the amount being sold
+    let totalCost = 0;
+    let totalAmount = 0;
+    let tempRemaining = amount;
+
+    for (const entry of activeEntries) {
+        if (tempRemaining <= 0) break;
+        const buyPrice = entry.boughtPrice || 0;
+        if (entry.amount <= tempRemaining) {
+            totalCost += entry.amount * buyPrice;
+            totalAmount += entry.amount;
+            tempRemaining -= entry.amount;
+        } else {
+            totalCost += tempRemaining * buyPrice;
+            totalAmount += tempRemaining;
+            tempRemaining = 0;
+        }
+    }
+
+    const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
+
+    // Now reduce holdings from active buy entries (FIFO)
     for (const entry of activeEntries) {
         if (remainingToSell <= 0) break;
 
@@ -7425,13 +7469,13 @@ function submitSellEntry() {
     // Save updated entries
     saveHoldingsEntries(cryptoId, entries);
 
-    // Create sell entry for history
+    // Create sell entry for history with average buy cost
     const sellEntry = {
         id: uuidv4(),
         cryptoId: cryptoId,
         amount: amount,
         audValueAtAdd: audValue,
-        boughtPrice: null, // No buy price for direct sell entries
+        boughtPrice: avgBuyCost, // Store average buy cost for P&L calculation
         soldPrice: soldPrice,
         dateAdded: Date.now(),
         dateSold: Date.now(),
@@ -7473,13 +7517,13 @@ function updateHoldingsTrackerPnL(cryptoId) {
         totalUnrealized += pnl;
     });
 
-    // Calculate realized P&L from sell entries
+    // Calculate realized P&L from sell entries (sell price - avg buy cost)
     const history = getHoldingsHistoryByCrypto(cryptoId);
     const sellEntries = history.filter(h => h.action === 'sell');
     let totalRealized = 0;
     sellEntries.forEach(sell => {
-        const livePrice = getPriceFromObject(cryptoPrices[sell.cryptoId]) || sell.soldPrice;
-        const pnl = (sell.soldPrice - livePrice) * sell.amount;
+        const avgBuyCost = sell.boughtPrice || 0; // boughtPrice stores avg buy cost for sell entries
+        const pnl = (sell.soldPrice - avgBuyCost) * sell.amount;
         totalRealized += pnl;
     });
 
@@ -7514,13 +7558,13 @@ function updateModalPnL(cryptoId) {
         totalUnrealized += pnl;
     });
 
-    // Calculate realized P&L from sell entries
+    // Calculate realized P&L from sell entries (sell price - avg buy cost)
     const history = getHoldingsHistoryByCrypto(cryptoId);
     const sellEntries = history.filter(h => h.action === 'sell');
     let totalRealized = 0;
     sellEntries.forEach(sell => {
-        const livePrice = getPriceFromObject(cryptoPrices[sell.cryptoId]) || sell.soldPrice;
-        const pnl = (sell.soldPrice - livePrice) * sell.amount;
+        const avgBuyCost = sell.boughtPrice || 0; // boughtPrice stores avg buy cost for sell entries
+        const pnl = (sell.soldPrice - avgBuyCost) * sell.amount;
         totalRealized += pnl;
     });
 
