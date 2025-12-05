@@ -137,16 +137,18 @@ function formatCryptoAmount(amount) {
         decimals = 10;
     }
 
-    // Format with decimals and trim trailing zeros
-    let formatted = amount.toFixed(decimals);
+    // Format with decimals using toLocaleString for comma separators
+    let formatted = amount.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: decimals
+    });
 
-    // Remove trailing zeros after decimal point, but keep at least 2 decimals for readability
-    if (formatted.includes('.')) {
-        formatted = formatted.replace(/\.?0+$/, '');
-        // Ensure at least some decimal places for very small numbers
-        if (!formatted.includes('.') && absAmount < 1) {
-            formatted = amount.toFixed(2);
-        }
+    // For whole numbers >= 1000, show no decimals (e.g., 94,000 not 94,000.00)
+    if (absAmount >= 1000 && Number.isInteger(amount)) {
+        formatted = amount.toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
     }
 
     return formatted;
