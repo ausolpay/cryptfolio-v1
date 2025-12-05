@@ -3448,6 +3448,34 @@ body:not(.dark-mode) .price-info-panel {
     flex: 0 0 auto;
 }
 
+.price-info-pnl {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-pnl-value {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.modal-pnl-value.pnl-positive {
+    color: #00FF00;
+}
+
+.modal-pnl-value.pnl-negative {
+    color: #FF0000;
+}
+
+.pnl-separator {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+body:not(.dark-mode) .pnl-separator {
+    color: rgba(0, 0, 0, 0.3);
+}
+
 .price-info-divider {
     width: 1px;
     height: 40px;

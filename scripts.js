@@ -7434,6 +7434,47 @@ function updateHoldingsTrackerPnL(cryptoId) {
         realizedEl.textContent = `${sign}$${formatNumber(Math.abs(totalRealized).toFixed(2))}`;
         realizedEl.className = `tracker-pnl-value ${totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
+
+    // Also update the chart modal P&L if it's for the same crypto
+    updateModalPnL(cryptoId);
+}
+
+// Update P&L values in the chart modal
+function updateModalPnL(cryptoId) {
+    // Calculate unrealized P&L from active buy entries
+    const entries = getHoldingsEntries(cryptoId);
+    let totalUnrealized = 0;
+    entries.filter(e => e.status === 'active').forEach(entry => {
+        const livePrice = getPriceFromObject(cryptoPrices[entry.cryptoId]) || 0;
+        const pnl = (livePrice - (entry.boughtPrice || 0)) * entry.amount;
+        totalUnrealized += pnl;
+    });
+
+    // Calculate realized P&L from sell entries
+    const history = getHoldingsHistoryByCrypto(cryptoId);
+    const sellEntries = history.filter(h => h.action === 'sell');
+    let totalRealized = 0;
+    sellEntries.forEach(sell => {
+        const livePrice = getPriceFromObject(cryptoPrices[sell.cryptoId]) || sell.soldPrice;
+        const pnl = (sell.soldPrice - livePrice) * sell.amount;
+        totalRealized += pnl;
+    });
+
+    // Update modal unrealized display
+    const modalUnrealizedEl = document.getElementById('modal-unrealized-pnl');
+    if (modalUnrealizedEl) {
+        const sign = totalUnrealized >= 0 ? '+' : '-';
+        modalUnrealizedEl.textContent = `Unrealized: ${sign}$${formatNumber(Math.abs(totalUnrealized).toFixed(2))}`;
+        modalUnrealizedEl.className = `modal-pnl-value ${totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+    }
+
+    // Update modal realized display
+    const modalRealizedEl = document.getElementById('modal-realized-pnl');
+    if (modalRealizedEl) {
+        const sign = totalRealized >= 0 ? '+' : '-';
+        modalRealizedEl.textContent = `Realized: ${sign}$${formatNumber(Math.abs(totalRealized).toFixed(2))}`;
+        modalRealizedEl.className = `modal-pnl-value ${totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+    }
 }
 
 // Initialize holdings tracking when chart modal opens
@@ -11363,6 +11404,11 @@ function syncModalLivePrice() {
                 if (currentCryptoId) {
                     storeCryptoRSI(currentCryptoId, realtimeRSI);
                 }
+            }
+
+            // Update modal P&L values in real-time
+            if (currentCryptoId) {
+                updateModalPnL(currentCryptoId);
             }
         }
     }
