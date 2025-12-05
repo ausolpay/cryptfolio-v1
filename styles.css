@@ -1640,6 +1640,8 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 body.light-mode .stat-item {
@@ -1691,6 +1693,8 @@ body.light-mode .stat-value.highlight-green {
     color: #888;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    text-align: center;
+    width: 100%;
 }
 
 
@@ -1711,6 +1715,8 @@ body.light-mode .stat-value.highlight-green {
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 body.light-mode .pnl-item,
@@ -1722,6 +1728,11 @@ body.light-mode .best-performer-item {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
 }
 
 .pnl-label, .performer-label {
@@ -1729,6 +1740,8 @@ body.light-mode .best-performer-item {
     color: #888;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    text-align: center;
+    width: 100%;
 }
 
 /* Best Performer */
