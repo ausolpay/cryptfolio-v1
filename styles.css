@@ -1872,6 +1872,12 @@ body.light-mode .performer-name {
 
     /* Row 4: Best Performer (full width) */
     .portfolio-pnl-grid .best-performer-item { order: 8; grid-column: span 6; } /* Best Performer */
+
+    /* Ensure all portfolio stat values stay at 18px on tablet */
+    .portfolio-stats-grid .stat-value,
+    .portfolio-pnl-grid .pnl-value {
+        font-size: 18px !important;
+    }
 }
 
 /* Mobile - 1 crypto box wide */
@@ -1974,6 +1980,19 @@ body.light-mode .performer-name {
 
     /* Row 7: Best Performer (full width) */
     .portfolio-pnl-grid .best-performer-item { order: 8; grid-column: span 2; } /* Best Performer */
+
+    /* Ensure all portfolio stat values stay at 18px on mobile */
+    .portfolio-stats-grid .stat-value,
+    .portfolio-pnl-grid .pnl-value,
+    #added-today,
+    #strip-unrealized-pnl,
+    #strip-realized-pnl,
+    #daily-milestone,
+    #record-high,
+    #record-low,
+    #crypto-count {
+        font-size: 18px !important;
+    }
 }
 
 button {
