@@ -7235,7 +7235,7 @@ function fillLiveBuyPrice() {
     const livePrice = getPriceFromObject(cryptoPrices[currentHoldingsCryptoId]);
     const input = document.getElementById('buy-price-input');
     if (input && livePrice) {
-        input.value = livePrice.toFixed(2);
+        input.value = formatPrice(livePrice);
     }
 }
 
@@ -7245,7 +7245,7 @@ function fillLiveSellPrice() {
     const livePrice = getPriceFromObject(cryptoPrices[currentHoldingsCryptoId]);
     const input = document.getElementById('sell-price-input');
     if (input && livePrice) {
-        input.value = livePrice.toFixed(2);
+        input.value = formatPrice(livePrice);
     }
 }
 
