@@ -4861,6 +4861,9 @@ function updateHoldings(crypto) {
 
         const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
 
+        console.log(`📊 Quick Sell Avg Cost: totalCost=${totalCost}, totalAmount=${totalAmount}, avgBuyCost=${avgBuyCost}, livePrice=${livePrice}`);
+        console.log(`📊 Active entries used:`, activeEntries.map(e => ({ amount: e.amount, boughtPrice: e.boughtPrice })));
+
         // Now reduce holdings from active buy entries (FIFO)
         for (const entry of activeEntries) {
             if (remainingToSell <= 0) break;
@@ -7056,6 +7059,8 @@ function renderSellCard(sellEntry, crypto) {
     const realizedClass = realizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative';
     const realizedSign = realizedPnL >= 0 ? '+' : '-';
 
+    console.log(`📊 Sell Card P&L: soldPrice=${soldPrice}, avgBuyCost=${avgBuyCost}, amount=${sellEntry.amount}, realizedPnL=${realizedPnL}`);
+
     return `
         <div class="sell-entry-card" data-entry-id="${sellEntry.id}">
             <div class="entry-header">
@@ -7074,6 +7079,10 @@ function renderSellCard(sellEntry, crypto) {
                     <input type="number" class="sold-price-input" id="sell-price-display-${sellEntry.id}"
                         value="${formatPrice(soldPrice)}" step="any" placeholder="0.00">
                 </div>
+            </div>
+
+            <div class="entry-cost-basis" style="font-size: 11px; color: #888; text-align: center; margin-bottom: 6px;">
+                Avg Cost: $${avgBuyCost > 0 ? formatPrice(avgBuyCost) : 'N/A'}
             </div>
 
             <div class="entry-pnl">
@@ -7446,6 +7455,9 @@ function submitSellEntry() {
     }
 
     const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
+
+    console.log(`📊 Sell Entry Avg Cost: totalCost=${totalCost}, totalAmount=${totalAmount}, avgBuyCost=${avgBuyCost}, soldPrice=${soldPrice}`);
+    console.log(`📊 Active entries used:`, activeEntries.map(e => ({ amount: e.amount, boughtPrice: e.boughtPrice })));
 
     // Now reduce holdings from active buy entries (FIFO)
     for (const entry of activeEntries) {
