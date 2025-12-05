@@ -4868,29 +4868,9 @@ function updateHoldings(crypto) {
         const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
 
         console.log(`📊 Quick Sell Avg Cost: totalCost=${totalCost}, totalAmount=${totalAmount}, avgBuyCost=${avgBuyCost}, livePrice=${livePrice}`);
-        console.log(`📊 Active entries used:`, activeEntries.map(e => ({ amount: e.amount, boughtPrice: e.boughtPrice })));
 
-        // Now reduce holdings from active buy entries (FIFO)
-        for (const entry of activeEntries) {
-            if (remainingToSell <= 0) break;
-
-            if (entry.amount <= remainingToSell) {
-                // Sell entire entry
-                remainingToSell -= entry.amount;
-                entry.amount = 0;
-                entry.status = 'sold';
-                entry.soldPrice = livePrice;
-                entry.dateSold = Date.now();
-            } else {
-                // Partial sell - reduce entry amount
-                entry.amount -= remainingToSell;
-                entry.audValueAtAdd = entry.amount * (entry.boughtPrice || 0);
-                remainingToSell = 0;
-            }
-        }
-
-        // Save updated entries
-        saveHoldingsEntries(crypto, entries);
+        // NOTE: Buy entries are NOT modified - they remain as historical records
+        // Holdings are calculated as: Total Buys - Total Sells
 
         // Create sell entry for history with average buy cost
         const sellEntry = {
@@ -6191,11 +6171,19 @@ function markHoldingsEntrySold(cryptoId, entryId, soldPrice) {
 }
 
 // Get total active holdings amount for a crypto
+// Holdings = Total Buys - Total Sells (buy cards are historical, not modified by sells)
 function getTotalActiveHoldings(cryptoId) {
+    // Sum all buy entries (regardless of status - they're historical records)
     const entries = getHoldingsEntries(cryptoId);
-    return entries
-        .filter(e => e.status === 'active')
-        .reduce((sum, e) => sum + e.amount, 0);
+    const totalBuys = entries.reduce((sum, e) => sum + e.amount, 0);
+
+    // Sum all sell entries from history
+    const history = getHoldingsHistoryByCrypto(cryptoId);
+    const totalSells = history
+        .filter(h => h.action === 'sell')
+        .reduce((sum, h) => sum + h.amount, 0);
+
+    return Math.max(0, totalBuys - totalSells);
 }
 
 // Calculate PnL for a single entry
@@ -6780,17 +6768,18 @@ function displayHoldingsEntries(cryptoId) {
     // Migrate existing holdings if needed
     migrateExistingHoldings(cryptoId);
 
+    // Show ALL buy entries (they're historical records, not modified by sells)
     const entries = getHoldingsEntries(cryptoId);
-    const activeEntries = entries.filter(e => e.status === 'active');
+    const buyEntries = entries; // All entries are buy records
 
     // Update tab count
     const countEl = document.getElementById('holdings-tab-count');
-    if (countEl) countEl.textContent = activeEntries.length;
+    if (countEl) countEl.textContent = buyEntries.length;
 
     // Calculate pagination
     const isDesktop = window.innerWidth > 600;
     const cardsPerPage = isDesktop ? 6 : 3;
-    const totalPages = Math.ceil(activeEntries.length / cardsPerPage) || 1;
+    const totalPages = Math.ceil(buyEntries.length / cardsPerPage) || 1;
 
     // Ensure current page is valid
     if (currentHoldingsPage > totalPages) currentHoldingsPage = totalPages;
@@ -6798,7 +6787,7 @@ function displayHoldingsEntries(cryptoId) {
 
     const startIndex = (currentHoldingsPage - 1) * cardsPerPage;
     const endIndex = startIndex + cardsPerPage;
-    const pageEntries = activeEntries.slice(startIndex, endIndex);
+    const pageEntries = buyEntries.slice(startIndex, endIndex);
 
     // Get crypto info for display
     const crypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
@@ -6809,7 +6798,7 @@ function displayHoldingsEntries(cryptoId) {
         : pageEntries.map(entry => renderHoldingsEntryCard(entry, crypto)).join('');
 
     // Update pagination controls
-    updateHoldingsPagination(activeEntries.length, cardsPerPage, totalPages);
+    updateHoldingsPagination(buyEntries.length, cardsPerPage, totalPages);
 
     // Update total PnL
     updateTotalPnLDisplay(cryptoId);
@@ -7132,32 +7121,35 @@ function updateSellEntryPrice(cryptoId, entryId) {
     }
 }
 
-// Delete a sell entry (only removes from history, does NOT affect holdings)
+// Delete a sell entry (removes from history and restores holdings)
 function deleteSellEntry(cryptoId, entryId) {
-    if (!confirm('Are you sure you want to delete this sell entry?')) {
+    if (!confirm('Are you sure you want to delete this sell entry? This will add the amount back to your holdings.')) {
         return;
     }
 
+    // Get the sell entry to find the amount being restored
+    const history = getHoldingsHistory();
+    const sellEntry = history.find(h => h.id === entryId);
+    const amountRestored = sellEntry ? sellEntry.amount : 0;
+
     // Log holdings BEFORE delete
-    const entriesBefore = getHoldingsEntries(cryptoId);
-    const totalBefore = entriesBefore.filter(e => e.status === 'active').reduce((sum, e) => sum + e.amount, 0);
+    const totalBefore = getTotalActiveHoldings(cryptoId);
     console.log(`📊 Holdings BEFORE delete: ${totalBefore}`);
 
-    // Remove the entry from history ONLY (not from holdings entries)
-    const history = getHoldingsHistory();
+    // Remove the entry from history
     const filteredHistory = history.filter(h => h.id !== entryId);
     localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
 
-    // Log holdings AFTER delete
-    const entriesAfter = getHoldingsEntries(cryptoId);
-    const totalAfter = entriesAfter.filter(e => e.status === 'active').reduce((sum, e) => sum + e.amount, 0);
-    console.log(`📊 Holdings AFTER delete: ${totalAfter}`);
+    // Log holdings AFTER delete (should be higher by amountRestored)
+    const totalAfter = getTotalActiveHoldings(cryptoId);
+    console.log(`📊 Holdings AFTER delete: ${totalAfter} (restored ${amountRestored})`);
 
-    // Update displays
+    // Update all displays
     displayHistoryEntries(cryptoId);
+    updateHoldingsDisplayFromEntries(cryptoId);
     updateHoldingsTrackerPnL(cryptoId);
 
-    console.log(`🗑️ Deleted sell entry ${entryId} - holdings unchanged`);
+    console.log(`🗑️ Deleted sell entry ${entryId} - restored ${amountRestored} to holdings`);
 }
 
 // Update pagination controls for history
@@ -7479,29 +7471,9 @@ function submitSellEntry() {
     const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
 
     console.log(`📊 Sell Entry Avg Cost: totalCost=${totalCost}, totalAmount=${totalAmount}, avgBuyCost=${avgBuyCost}, soldPrice=${soldPrice}`);
-    console.log(`📊 Active entries used:`, activeEntries.map(e => ({ amount: e.amount, boughtPrice: e.boughtPrice })));
 
-    // Now reduce holdings from active buy entries (FIFO)
-    for (const entry of activeEntries) {
-        if (remainingToSell <= 0) break;
-
-        if (entry.amount <= remainingToSell) {
-            // Sell entire entry
-            remainingToSell -= entry.amount;
-            entry.amount = 0;
-            entry.status = 'sold';
-            entry.soldPrice = soldPrice;
-            entry.dateSold = Date.now();
-        } else {
-            // Partial sell - reduce entry amount
-            entry.amount -= remainingToSell;
-            entry.audValueAtAdd = entry.amount * (entry.boughtPrice || 0);
-            remainingToSell = 0;
-        }
-    }
-
-    // Save updated entries
-    saveHoldingsEntries(cryptoId, entries);
+    // NOTE: Buy entries are NOT modified - they remain as historical records
+    // Holdings are calculated as: Total Buys - Total Sells
 
     // Create sell entry for history with average buy cost
     const sellEntry = {
@@ -7643,14 +7615,14 @@ function initHoldingsTracking(cryptoId) {
     document.getElementById('holdings-tracking-content').style.display = 'none';
     document.getElementById('holdings-collapse-icon').textContent = '▼';
 
-    // Update counts
+    // Update counts (all buy entries are historical records)
     migrateExistingHoldings(cryptoId);
     const entries = getHoldingsEntries(cryptoId);
-    const activeCount = entries.filter(e => e.status === 'active').length;
+    const buyCount = entries.length; // All entries are buy records
     const history = getHoldingsHistoryByCrypto(cryptoId);
     const sellCount = history.filter(h => h.action === 'sell').length;
 
-    document.getElementById('holdings-tab-count').textContent = activeCount;
+    document.getElementById('holdings-tab-count').textContent = buyCount;
     document.getElementById('history-tab-count').textContent = sellCount;
 
     // Update PnL
