@@ -6722,17 +6722,10 @@ function renderHoldingsEntryCard(entry, crypto) {
 
             <div class="entry-prices">
                 <div class="price-input-group">
-                    <label>Bought Price:</label>
+                    <label>Buy Price:</label>
                     <input type="number" class="bought-price-input" id="bought-price-${entry.id}"
                         value="${(displayBoughtPrice || 0).toFixed(2)}" step="0.01" placeholder="0.00"
                         onchange="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">
-                </div>
-                <div class="price-input-group">
-                    <label>Sold Price:</label>
-                    <div class="sold-price-wrapper">
-                        <input type="number" class="sold-price-input" id="sold-price-${entry.id}"
-                            value="${entry.soldPrice ? entry.soldPrice.toFixed(2) : ''}" step="0.01" placeholder="Not sold">
-                    </div>
                 </div>
             </div>
 
@@ -6741,20 +6734,11 @@ function renderHoldingsEntryCard(entry, crypto) {
                     <span class="pnl-label">Unrealized:</span>
                     <span class="${unrealizedClass}">${unrealizedSign}$${formatNumber(Math.abs(pnl.unrealizedPnL).toFixed(2))} (${unrealizedSign}${pnl.unrealizedPercent.toFixed(2)}%)</span>
                 </div>
-                <div class="pnl-row">
-                    <span class="pnl-label">Realized:</span>
-                    <span class="${pnl.realizedPnL !== null ? (pnl.realizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative') : 'pnl-na'}">
-                        ${pnl.realizedPnL !== null
-                            ? `${pnl.realizedPnL >= 0 ? '+' : '-'}$${formatNumber(Math.abs(pnl.realizedPnL).toFixed(2))} (${pnl.realizedPnL >= 0 ? '+' : '-'}${Math.abs(pnl.realizedPercent).toFixed(2)}%)`
-                            : '-- (not sold)'}
-                    </span>
-                </div>
             </div>
 
             <div class="entry-actions">
                 <button class="update-entry-btn" onclick="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">Update</button>
-                <button class="live-price-btn" onclick="autoFillSoldPrice('${entry.cryptoId}', '${entry.id}')" title="Use current live price">Live</button>
-                <button class="sell-entry-btn" onclick="deleteHoldingsEntryUI('${entry.cryptoId}', '${entry.id}')" title="Mark as sold">Sell</button>
+                <button class="delete-entry-btn" onclick="deleteBuyEntry('${entry.cryptoId}', '${entry.id}')" title="Delete this entry">Delete</button>
             </div>
         </div>
     `;
@@ -6798,43 +6782,45 @@ function prevHoldingsPage() {
     }
 }
 
-// Display history entries
+// Display sell entries (formerly history entries)
 function displayHistoryEntries(cryptoId) {
     const container = document.getElementById('history-entries-container');
     if (!container) return;
 
     const history = getHoldingsHistoryByCrypto(cryptoId);
 
+    // Filter to only show sell entries
+    const sellEntries = history.filter(h => h.action === 'sell');
+
     // Update tab count
     const countEl = document.getElementById('history-tab-count');
-    if (countEl) countEl.textContent = history.length;
+    if (countEl) countEl.textContent = sellEntries.length;
 
     // Sort by timestamp descending (newest first)
-    history.sort((a, b) => b.timestamp - a.timestamp);
+    sellEntries.sort((a, b) => b.timestamp - a.timestamp);
 
     // Calculate pagination
     const isDesktop = window.innerWidth > 600;
     const cardsPerPage = isDesktop ? 6 : 3;
-    const totalPages = Math.ceil(history.length / cardsPerPage) || 1;
+    const totalPages = Math.ceil(sellEntries.length / cardsPerPage) || 1;
 
     if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
     if (currentHistoryPage < 1) currentHistoryPage = 1;
 
     const startIndex = (currentHistoryPage - 1) * cardsPerPage;
     const endIndex = startIndex + cardsPerPage;
-    const pageHistory = history.slice(startIndex, endIndex);
+    const pageSells = sellEntries.slice(startIndex, endIndex);
 
     // Get crypto info
     const crypto = users[loggedInUser]?.cryptos?.find(c => c.id === cryptoId);
-    const symbol = crypto?.symbol?.toUpperCase() || cryptoId.toUpperCase();
 
     // Render cards
-    container.innerHTML = pageHistory.length === 0
-        ? '<div class="no-holdings-message">No transaction history yet. Buys and sells will appear here.</div>'
-        : pageHistory.map(h => renderHistoryCard(h, symbol)).join('');
+    container.innerHTML = pageSells.length === 0
+        ? '<div class="no-holdings-message">No sell entries yet. Click "+ Add Sell" to record sales.</div>'
+        : pageSells.map(h => renderSellCard(h, crypto)).join('');
 
     // Update pagination controls
-    updateHistoryPagination(history.length, cardsPerPage, totalPages);
+    updateHistoryPagination(sellEntries.length, cardsPerPage, totalPages);
 }
 
 // Render a single history card
@@ -6886,6 +6872,85 @@ function renderHistoryCard(historyEntry, symbol) {
             ${historyEntry.details?.note ? `<div class="history-note">${historyEntry.details.note}</div>` : ''}
         </div>
     `;
+}
+
+// Render a single sell card (styled like buy cards)
+function renderSellCard(sellEntry, crypto) {
+    // Format date as DD/MM/YY and time as h:mm AM/PM
+    const dateObj = new Date(sellEntry.timestamp);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = String(dateObj.getFullYear()).slice(-2);
+    const hours = dateObj.getHours();
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    const dateFormatted = `${day}/${month}/${year}`;
+    const timeFormatted = `${hour12}:${minutes} ${ampm}`;
+
+    // Get crypto icon
+    const iconUrl = crypto?.thumb ? crypto.thumb.replace('/thumb/', '/small/') : '';
+
+    const soldPrice = sellEntry.soldPrice || 0;
+    const audValue = sellEntry.audValue || (sellEntry.amount * soldPrice);
+
+    // Calculate realized P&L (sell value vs current value if we had held)
+    const livePrice = getPriceFromObject(cryptoPrices[sellEntry.cryptoId]) || soldPrice;
+    const realizedPnL = (soldPrice - livePrice) * sellEntry.amount;
+    const realizedPercent = livePrice > 0 ? ((soldPrice - livePrice) / livePrice) * 100 : 0;
+    const realizedClass = realizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative';
+    const realizedSign = realizedPnL >= 0 ? '+' : '-';
+
+    return `
+        <div class="sell-entry-card" data-entry-id="${sellEntry.id}">
+            <div class="entry-header">
+                ${iconUrl ? `<img src="${iconUrl}" alt="" class="entry-crypto-icon">` : ''}
+                <span class="entry-amount">${sellEntry.amount.toFixed(6)}</span>
+            </div>
+            <div class="entry-meta">
+                <span class="entry-source-badge source-sell">Sold</span>
+                <span class="entry-datetime">${dateFormatted} ${timeFormatted}</span>
+            </div>
+            <div class="entry-aud-value">$${formatNumber(audValue.toFixed(2))}</div>
+
+            <div class="entry-prices">
+                <div class="price-input-group">
+                    <label>Sell Price:</label>
+                    <input type="number" class="sold-price-input" id="sell-price-display-${sellEntry.id}"
+                        value="${soldPrice.toFixed(2)}" step="0.01" readonly>
+                </div>
+            </div>
+
+            <div class="entry-pnl">
+                <div class="pnl-row">
+                    <span class="pnl-label">Realized:</span>
+                    <span class="${realizedClass}">${realizedSign}$${formatNumber(Math.abs(realizedPnL).toFixed(2))} (${realizedSign}${Math.abs(realizedPercent).toFixed(2)}%)</span>
+                </div>
+            </div>
+
+            <div class="entry-actions">
+                <button class="delete-entry-btn" onclick="deleteSellEntry('${sellEntry.cryptoId}', '${sellEntry.id}')" title="Delete this entry">Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+// Delete a sell entry
+function deleteSellEntry(cryptoId, entryId) {
+    if (!confirm('Are you sure you want to delete this sell entry?')) {
+        return;
+    }
+
+    // Remove the entry from history
+    const history = getHoldingsHistory();
+    const filteredHistory = history.filter(h => h.id !== entryId);
+    localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
+
+    // Update displays
+    displayHistoryEntries(cryptoId);
+    updateHoldingsTrackerPnL(cryptoId);
+
+    console.log(`🗑️ Deleted sell entry ${entryId}`);
 }
 
 // Update pagination controls for history
@@ -6996,6 +7061,30 @@ function deleteHoldingsEntryUI(cryptoId, entryId) {
 
         console.log(`✅ Removed holding entry ${entryId} at $${soldPrice}`);
     }
+}
+
+// Delete a buy entry (simple delete without requiring sold price)
+function deleteBuyEntry(cryptoId, entryId) {
+    const entry = getHoldingsEntryById(cryptoId, entryId);
+    if (!entry) return;
+
+    if (!confirm(`Are you sure you want to delete this buy entry?\n\nAmount: ${entry.amount.toFixed(6)}\nBuy Price: $${(entry.boughtPrice || 0).toFixed(2)}`)) {
+        return;
+    }
+
+    // Remove the entry from holdings
+    const entries = getHoldingsEntries(cryptoId);
+    const filteredEntries = entries.filter(e => e.id !== entryId);
+    saveHoldingsEntries(cryptoId, filteredEntries);
+
+    // Update displays
+    displayHoldingsEntries(cryptoId);
+    updateHoldingsDisplayFromEntries(cryptoId);
+    updateTotalHoldings();
+    updateStripPnL();
+    updateHoldingsTrackerPnL(cryptoId);
+
+    console.log(`🗑️ Deleted buy entry ${entryId}`);
 }
 
 // =============================================================================
@@ -7170,12 +7259,7 @@ function submitSellEntry() {
 
     // Update displays
     displayHistoryEntries(cryptoId);
-    updateTotalPnLDisplay(cryptoId);
-
-    // Update history tab count
-    const history = getHoldingsHistoryByCrypto(cryptoId);
-    const historyCountEl = document.getElementById('history-tab-count');
-    if (historyCountEl) historyCountEl.textContent = history.length;
+    updateHoldingsTrackerPnL(cryptoId);
 
     // Hide form and clear inputs
     hideAddSellForm();
@@ -7183,23 +7267,46 @@ function submitSellEntry() {
     console.log(`✅ Added sell entry: ${amount} ${cryptoId.toUpperCase()} at $${soldPrice.toFixed(2)}`);
 }
 
-// Update total PnL display
+// Update total PnL display (legacy - calls new function)
 function updateTotalPnLDisplay(cryptoId) {
-    const pnl = calculateTotalPnL(cryptoId);
+    updateHoldingsTrackerPnL(cryptoId);
+}
 
-    const unrealizedEl = document.getElementById('total-unrealized-pnl');
-    const realizedEl = document.getElementById('total-realized-pnl');
+// Update the holdings tracker P&L summary at the top
+function updateHoldingsTrackerPnL(cryptoId) {
+    // Calculate unrealized P&L from active buy entries
+    const entries = getHoldingsEntries(cryptoId);
+    let totalUnrealized = 0;
+    entries.filter(e => e.status === 'active').forEach(entry => {
+        const livePrice = getPriceFromObject(cryptoPrices[entry.cryptoId]) || 0;
+        const pnl = (livePrice - (entry.boughtPrice || 0)) * entry.amount;
+        totalUnrealized += pnl;
+    });
 
+    // Calculate realized P&L from sell entries
+    const history = getHoldingsHistoryByCrypto(cryptoId);
+    const sellEntries = history.filter(h => h.action === 'sell');
+    let totalRealized = 0;
+    sellEntries.forEach(sell => {
+        const livePrice = getPriceFromObject(cryptoPrices[sell.cryptoId]) || sell.soldPrice;
+        const pnl = (sell.soldPrice - livePrice) * sell.amount;
+        totalRealized += pnl;
+    });
+
+    // Update unrealized display
+    const unrealizedEl = document.getElementById('tracker-unrealized-pnl');
     if (unrealizedEl) {
-        const sign = pnl.totalUnrealized >= 0 ? '+' : '-';
-        unrealizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalUnrealized).toFixed(2))}`;
-        unrealizedEl.className = `pnl-value ${pnl.totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+        const sign = totalUnrealized >= 0 ? '+' : '-';
+        unrealizedEl.textContent = `${sign}$${formatNumber(Math.abs(totalUnrealized).toFixed(2))}`;
+        unrealizedEl.className = `tracker-pnl-value ${totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
 
+    // Update realized display
+    const realizedEl = document.getElementById('tracker-realized-pnl');
     if (realizedEl) {
-        const sign = pnl.totalRealized >= 0 ? '+' : '-';
-        realizedEl.textContent = `${sign}$${formatNumber(Math.abs(pnl.totalRealized).toFixed(2))}`;
-        realizedEl.className = `pnl-value ${pnl.totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+        const sign = totalRealized >= 0 ? '+' : '-';
+        realizedEl.textContent = `${sign}$${formatNumber(Math.abs(totalRealized).toFixed(2))}`;
+        realizedEl.className = `tracker-pnl-value ${totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
 }
 
@@ -7231,13 +7338,14 @@ function initHoldingsTracking(cryptoId) {
     migrateExistingHoldings(cryptoId);
     const entries = getHoldingsEntries(cryptoId);
     const activeCount = entries.filter(e => e.status === 'active').length;
-    const historyCount = getHoldingsHistoryByCrypto(cryptoId).length;
+    const history = getHoldingsHistoryByCrypto(cryptoId);
+    const sellCount = history.filter(h => h.action === 'sell').length;
 
     document.getElementById('holdings-tab-count').textContent = activeCount;
-    document.getElementById('history-tab-count').textContent = historyCount;
+    document.getElementById('history-tab-count').textContent = sellCount;
 
     // Update PnL
-    updateTotalPnLDisplay(cryptoId);
+    updateHoldingsTrackerPnL(cryptoId);
 }
 
 

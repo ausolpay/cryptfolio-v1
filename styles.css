@@ -8826,6 +8826,46 @@ body.light-mode .api-hub-button .api-desc {
     padding: 15px;
 }
 
+/* Holdings Tracker P&L Summary (at top) */
+.holdings-tracker-pnl-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 15px;
+    padding: 12px 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid #333;
+}
+
+.tracker-pnl-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.tracker-pnl-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.tracker-pnl-value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.tracker-pnl-value.pnl-positive {
+    color: #2ecc71;
+}
+
+.tracker-pnl-value.pnl-negative {
+    color: #e74c3c;
+}
+
 /* Add Buy / Add Sell Action Buttons */
 .holdings-action-buttons {
     display: flex;
@@ -8935,6 +8975,7 @@ body.light-mode .api-hub-button .api-desc {
 .price-with-live {
     display: flex;
     gap: 8px;
+    align-items: stretch;
 }
 
 .price-with-live input {
@@ -8942,7 +8983,7 @@ body.light-mode .api-hub-button .api-desc {
 }
 
 .live-btn-small {
-    padding: 8px 12px;
+    padding: 0 12px;
     background: rgba(255, 165, 0, 0.2);
     border: 1px solid #ffa500;
     border-radius: 6px;
@@ -8951,6 +8992,9 @@ body.light-mode .api-hub-button .api-desc {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .live-btn-small:hover {
@@ -8982,7 +9026,45 @@ body.light-mode .api-hub-button .api-desc {
     background: linear-gradient(135deg, #c0392b, #a93226);
 }
 
-/* History Sell Entry Styles */
+/* Sell Entry Card Styles (styled like buy cards) */
+.sell-entry-card {
+    background: rgba(30, 30, 30, 0.9);
+    border: 1px solid #e74c3c;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sell-entry-card:hover {
+    border-color: #c0392b;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+}
+
+.sell-entry-card .entry-source-badge.source-sell {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+/* Delete Entry Button */
+.delete-entry-btn {
+    flex: 1;
+    padding: 6px 10px;
+    background: rgba(231, 76, 60, 0.2);
+    border: 1px solid #e74c3c;
+    border-radius: 4px;
+    color: #e74c3c;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.delete-entry-btn:hover {
+    background: rgba(231, 76, 60, 0.4);
+}
+
+/* History Sell Entry Styles (legacy) */
 .history-entry-card.action-sell {
     border-left: 3px solid #e74c3c;
 }
@@ -9589,6 +9671,26 @@ body.light-mode .history-pnl.pnl-positive {
 
 body.light-mode .history-pnl.pnl-negative {
     background: rgba(231, 76, 60, 0.12);
+}
+
+/* Light Mode - Tracker P&L Summary */
+body.light-mode .holdings-tracker-pnl-summary {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #ddd;
+}
+
+body.light-mode .tracker-pnl-label {
+    color: #666;
+}
+
+/* Light Mode - Sell Card */
+body.light-mode .sell-entry-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #e74c3c;
+}
+
+body.light-mode .sell-entry-card:hover {
+    border-color: #c0392b;
 }
 
 /* Mobile Responsive Styles */

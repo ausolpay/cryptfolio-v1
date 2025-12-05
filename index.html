@@ -2620,6 +2620,18 @@
                     </div>
 
                     <div class="holdings-tracking-content" id="holdings-tracking-content" style="display: none;">
+                        <!-- Overall P&L Summary -->
+                        <div class="holdings-tracker-pnl-summary">
+                            <div class="tracker-pnl-item">
+                                <span class="tracker-pnl-label">Unrealized P&L:</span>
+                                <span id="tracker-unrealized-pnl" class="tracker-pnl-value">$0.00</span>
+                            </div>
+                            <div class="tracker-pnl-item">
+                                <span class="tracker-pnl-label">Realized P&L:</span>
+                                <span id="tracker-realized-pnl" class="tracker-pnl-value">$0.00</span>
+                            </div>
+                        </div>
+
                         <!-- Add Buy / Add Sell Buttons -->
                         <div class="holdings-action-buttons">
                             <button class="add-buy-btn" onclick="showAddBuyForm()">+ Add Buy</button>
@@ -2676,7 +2688,7 @@
                                 Buys <span id="holdings-tab-count" class="tab-count">0</span>
                             </button>
                             <button class="holdings-tab" onclick="switchHoldingsTab('history')">
-                                History <span id="history-tab-count" class="tab-count">0</span>
+                                Sells <span id="history-tab-count" class="tab-count">0</span>
                             </button>
                         </div>
 
@@ -2701,18 +2713,6 @@
                                 <button class="history-arrow left" id="history-arrow-left" onclick="prevHistoryPage()" disabled>‹</button>
                                 <span class="history-page-count" id="history-page-count">1 of 1</span>
                                 <button class="history-arrow right" id="history-arrow-right" onclick="nextHistoryPage()">›</button>
-                            </div>
-                        </div>
-
-                        <!-- Total PnL Summary -->
-                        <div class="holdings-pnl-summary">
-                            <div class="pnl-item">
-                                <span class="pnl-label">Unrealized P&L:</span>
-                                <span id="total-unrealized-pnl" class="pnl-value">$0.00</span>
-                            </div>
-                            <div class="pnl-item">
-                                <span class="pnl-label">Realized P&L:</span>
-                                <span id="total-realized-pnl" class="pnl-value">$0.00</span>
                             </div>
                         </div>
                     </div>
