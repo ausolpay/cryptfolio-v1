@@ -9108,6 +9108,23 @@ body.light-mode .api-hub-button .api-desc {
     background: rgba(231, 76, 60, 0.4);
 }
 
+/* Sell Entry Button (on buy cards) */
+.sell-entry-btn {
+    flex: 1;
+    padding: 6px 10px;
+    background: rgba(231, 76, 60, 0.2);
+    border: 1px solid #e74c3c;
+    border-radius: 4px;
+    color: #e74c3c;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sell-entry-btn:hover {
+    background: rgba(231, 76, 60, 0.4);
+}
+
 /* History Sell Entry Styles (legacy) */
 .history-entry-card.action-sell {
     border-left: 3px solid #e74c3c;

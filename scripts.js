@@ -6891,7 +6891,7 @@ function renderHoldingsEntryCard(entry, crypto) {
 
             <div class="entry-actions">
                 <button class="update-entry-btn" onclick="updateHoldingsEntryPrices('${entry.cryptoId}', '${entry.id}')">Update</button>
-                <button class="delete-entry-btn" onclick="deleteBuyEntry('${entry.cryptoId}', '${entry.id}')" title="Delete this entry">Delete</button>
+                <button class="sell-entry-btn" onclick="sellBuyEntry('${entry.cryptoId}', '${entry.id}', ${entry.amount})" title="Sell at live price">Sell</button>
             </div>
         </div>
     `;
@@ -7350,6 +7350,62 @@ function fillLiveSellPrice() {
     if (input && livePrice) {
         input.value = formatPrice(livePrice);
     }
+}
+
+// Fill all current holdings into sell amount input
+function fillAllHoldings() {
+    if (!currentHoldingsCryptoId) return;
+    const totalHoldings = getTotalActiveHoldings(currentHoldingsCryptoId);
+    const input = document.getElementById('sell-amount-input');
+    if (input) {
+        input.value = formatCryptoAmount(totalHoldings);
+    }
+}
+
+// Sell a buy entry at the current live price
+function sellBuyEntry(cryptoId, entryId, amount) {
+    const livePrice = getPriceFromObject(cryptoPrices[cryptoId]);
+    if (!livePrice) {
+        alert('Unable to get live price. Please try again.');
+        return;
+    }
+
+    if (!confirm(`Sell ${formatCryptoAmount(amount)} at $${formatPrice(livePrice)}?`)) {
+        return;
+    }
+
+    // Get buy entries to calculate average buy cost for this specific entry
+    const entries = getHoldingsEntries(cryptoId);
+    const entry = entries.find(e => e.id === entryId);
+    const avgBuyCost = entry ? (entry.boughtPrice || (entry.audValueAtAdd / entry.amount) || 0) : 0;
+
+    // Create sell entry for history
+    const sellEntry = {
+        id: uuidv4(),
+        cryptoId: cryptoId,
+        amount: amount,
+        audValueAtAdd: amount * livePrice,
+        boughtPrice: avgBuyCost, // Store the buy cost for P&L calculation
+        soldPrice: livePrice,
+        dateAdded: Date.now(),
+        dateSold: Date.now(),
+        source: 'manual',
+        status: 'sold',
+        entryType: 'sell'
+    };
+
+    // Add to history as a sell
+    addToHoldingsHistory('sell', sellEntry);
+
+    // Update all displays
+    displayHoldingsEntries(cryptoId);
+    displayHistoryEntries(cryptoId);
+    updateHoldingsDisplayFromEntries(cryptoId);
+    updateHoldingsTrackerPnL(cryptoId);
+    updateTotalHoldings();
+    updateStripPnL();
+
+    console.log(`✅ Sold ${formatCryptoAmount(amount)} ${cryptoId.toUpperCase()} at $${formatPrice(livePrice)}`);
 }
 
 // Submit a new buy entry
