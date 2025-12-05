@@ -7132,14 +7132,27 @@ function deleteSellEntry(cryptoId, entryId) {
         return;
     }
 
-    // Get the sell entry to find the amount being restored
+    // Get the sell entry to find the amount being restored and linked buy entry
     const history = getHoldingsHistory();
     const sellEntry = history.find(h => h.id === entryId);
     const amountRestored = sellEntry ? sellEntry.amount : 0;
+    const linkedBuyEntryId = sellEntry?.linkedBuyEntryId;
 
     // Log holdings BEFORE delete
     const totalBefore = getTotalActiveHoldings(cryptoId);
     console.log(`📊 Holdings BEFORE delete: ${totalBefore}`);
+
+    // If this sell was linked to a buy entry, re-enable that buy entry
+    if (linkedBuyEntryId) {
+        const entries = getHoldingsEntries(cryptoId);
+        const buyEntryIndex = entries.findIndex(e => e.id === linkedBuyEntryId);
+        if (buyEntryIndex !== -1) {
+            entries[buyEntryIndex].status = 'active';
+            entries[buyEntryIndex].dateSold = null;
+            saveHoldingsEntries(cryptoId, entries);
+            console.log(`🔓 Re-enabled buy entry ${linkedBuyEntryId}`);
+        }
+    }
 
     // Remove the entry from history
     const filteredHistory = history.filter(h => h.id !== entryId);
@@ -7149,7 +7162,8 @@ function deleteSellEntry(cryptoId, entryId) {
     const totalAfter = getTotalActiveHoldings(cryptoId);
     console.log(`📊 Holdings AFTER delete: ${totalAfter} (restored ${amountRestored})`);
 
-    // Update all displays
+    // Update all displays (including buy cards to show re-enabled Sell button)
+    displayHoldingsEntries(cryptoId);
     displayHistoryEntries(cryptoId);
     updateHoldingsDisplayFromEntries(cryptoId);
     updateHoldingsTrackerPnL(cryptoId);
