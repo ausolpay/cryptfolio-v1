@@ -14520,7 +14520,7 @@ async function fetchRewardsForCrypto(crypto) {
         }
     }
 
-    const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&limit=100000&orphans=false&sortField=time&sortDir=DESC`;
+    const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&limit=100000000&orphans=false&sortField=time&sortDir=DESC`;
 
     try {
         const response = await fetch(VERCEL_PROXY_ENDPOINT, {
