@@ -321,6 +321,8 @@
 
 .mobile-menu.active {
     display: block;
+    opacity: 1;
+    visibility: visible;
 }
 
 .mobile-menu-content {
