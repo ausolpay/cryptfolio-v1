@@ -488,6 +488,57 @@
     gap: 24px;
 }
 
+/* 10-stage grid for presale */
+.stages-grid-10 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.stages-grid-10 .stage-card {
+    padding: 20px;
+}
+
+.stages-grid-10 .stage-header {
+    margin-bottom: 12px;
+}
+
+.stages-grid-10 .stage-price .price {
+    font-size: 24px;
+}
+
+.stages-grid-10 .stage-details {
+    margin-bottom: 12px;
+}
+
+/* Vesting info box */
+.vesting-info-box {
+    background: linear-gradient(135deg, rgba(0, 212, 170, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+    border-radius: 16px;
+    padding: 24px 30px;
+    margin-top: 40px;
+    text-align: center;
+}
+
+.vesting-info-box h4 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--about-primary);
+    margin: 0 0 10px;
+}
+
+.vesting-info-box p {
+    font-size: 15px;
+    color: var(--about-text-muted);
+    margin: 0;
+    line-height: 1.6;
+}
+
+.vesting-info-box strong {
+    color: var(--about-text);
+}
+
 .stage-card {
     background: var(--about-bg-card);
     border: 1px solid var(--about-border);
@@ -699,6 +750,9 @@
 .segment-5 { stroke: #3b82f6; }
 .segment-6 { stroke: #10b981; }
 .segment-7 { stroke: #6366f1; }
+.segment-8 { stroke: #ec4899; }
+
+.color-8 { background: #ec4899; }
 
 .chart-center {
     position: absolute;
@@ -1378,6 +1432,10 @@
     .stages-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
+    .stages-grid-10 {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 @media (max-width: 992px) {
@@ -1423,6 +1481,10 @@
 
     .stages-grid {
         grid-template-columns: 1fr;
+    }
+
+    .stages-grid-10 {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .stages-section,
@@ -1510,5 +1572,14 @@
 
     .token-info-cards {
         grid-template-columns: 1fr;
+    }
+
+    .stages-grid-10 {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .stages-grid-10 .stage-card {
+        padding: 16px;
     }
 }
