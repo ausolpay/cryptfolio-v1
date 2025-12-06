@@ -5864,6 +5864,338 @@ body.light-mode .stat-label {
     }
 }
 
+/* ========================================
+   Recent Rewards Section
+   ======================================== */
+.recent-rewards-section {
+    margin-top: 20px;
+    background-color: rgba(30, 30, 30, 0.5);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+body.light-mode .recent-rewards-section {
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+.recent-rewards-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.recent-rewards-header:hover {
+    background-color: rgba(50, 50, 50, 0.5);
+}
+
+body.light-mode .recent-rewards-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.recent-rewards-header .arrow {
+    color: #ffa500;
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.recent-rewards-section:not(.collapsed) .recent-rewards-header .arrow {
+    transform: rotate(90deg);
+}
+
+.recent-rewards-header .toggle-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+body.light-mode .recent-rewards-header .toggle-text {
+    color: #333;
+}
+
+.recent-rewards-content {
+    padding: 0 20px 20px;
+}
+
+/* Rewards Tabs */
+.rewards-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.rewards-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background-color: rgba(50, 50, 50, 0.6);
+    border: 2px solid transparent;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rewards-tab:hover {
+    background-color: rgba(70, 70, 70, 0.8);
+    border-color: rgba(255, 165, 0, 0.3);
+}
+
+.rewards-tab.active {
+    background-color: rgba(255, 165, 0, 0.2);
+    border-color: #ffa500;
+}
+
+body.light-mode .rewards-tab {
+    background-color: rgba(200, 200, 200, 0.4);
+}
+
+body.light-mode .rewards-tab:hover {
+    background-color: rgba(180, 180, 180, 0.6);
+}
+
+body.light-mode .rewards-tab.active {
+    background-color: rgba(255, 165, 0, 0.15);
+}
+
+.rewards-tab-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #fff;
+    object-fit: cover;
+}
+
+.rewards-tab-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+body.light-mode .rewards-tab-name {
+    color: #333;
+}
+
+/* Rewards List */
+.rewards-list-container {
+    background-color: rgba(20, 20, 20, 0.5);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+body.light-mode .rewards-list-container {
+    background-color: rgba(245, 245, 245, 0.8);
+}
+
+.rewards-list {
+    min-height: 100px;
+}
+
+.rewards-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    color: #888;
+    font-size: 14px;
+}
+
+.reward-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 12px;
+    transition: background-color 0.2s ease;
+}
+
+.reward-item:last-child {
+    border-bottom: none;
+}
+
+.reward-item:hover {
+    background-color: rgba(255, 165, 0, 0.1);
+}
+
+body.light-mode .reward-item {
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .reward-item:hover {
+    background-color: rgba(255, 165, 0, 0.08);
+}
+
+.reward-item-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #fff;
+    flex-shrink: 0;
+}
+
+.reward-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.reward-item-package {
+    font-size: 13px;
+    color: #ffa500;
+    font-weight: 600;
+}
+
+.reward-item-amount {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reward-amount-crypto {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+body.light-mode .reward-amount-crypto {
+    color: #333;
+}
+
+.reward-amount-fiat {
+    font-size: 14px;
+    color: #4ade80;
+    font-weight: 500;
+}
+
+.reward-item-date {
+    font-size: 12px;
+    color: #888;
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 100px;
+}
+
+/* Rewards Pagination */
+.rewards-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+    padding: 10px;
+}
+
+.rewards-arrow {
+    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 165, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.rewards-arrow:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ff8c00 0%, #ff7700 100%);
+    box-shadow: 0 4px 12px rgba(255, 165, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+.rewards-arrow:disabled {
+    background: #444;
+    color: #888;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.5;
+}
+
+body.light-mode .rewards-arrow:disabled {
+    background: #ccc;
+    color: #999;
+}
+
+.rewards-page-count {
+    color: #ffa500;
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Mobile Responsive - hide tab names */
+@media (max-width: 700px) {
+    .rewards-tab-name {
+        display: none;
+    }
+
+    .rewards-tab {
+        padding: 10px 12px;
+    }
+
+    .rewards-tabs {
+        gap: 6px;
+    }
+
+    .reward-item {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .reward-item-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .reward-amount-crypto {
+        font-size: 14px;
+    }
+
+    .reward-amount-fiat {
+        font-size: 12px;
+    }
+
+    .reward-item-date {
+        font-size: 11px;
+        min-width: 80px;
+    }
+
+    .reward-item-package {
+        font-size: 12px;
+    }
+
+    .recent-rewards-content {
+        padding: 0 10px 15px;
+    }
+
+    .recent-rewards-header {
+        padding: 12px 15px;
+    }
+}
+
+/* Tablet Responsive */
+@media (max-width: 1040px) {
+    .rewards-tabs {
+        justify-content: center;
+    }
+
+    .reward-item {
+        padding: 12px 14px;
+    }
+}
+
 .recommendation-card {
     background-color: #2a2a2a;
     border: 2px solid #ffa500;

@@ -14293,6 +14293,256 @@ function toggleEasyMining() {
     }
 }
 
+// ========================================
+// Recent Rewards Section
+// ========================================
+
+// State for Recent Rewards
+let recentRewardsData = {
+    BTC: [],
+    BCH: [],
+    DOGE: [],
+    LTC: [],
+    RVN: [],
+    KAS: []
+};
+let currentRewardsTab = 'BTC';
+let currentRewardsPage = 1;
+const REWARDS_PER_PAGE = 10;
+
+// Crypto icon URLs for rewards
+const rewardsCryptoIcons = {
+    BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
+    BCH: 'https://assets.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+    DOGE: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
+    LTC: 'https://assets.coingecko.com/coins/images/2/small/litecoin.png',
+    RVN: 'https://assets.coingecko.com/coins/images/3412/small/ravencoin.png',
+    KAS: 'https://assets.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png'
+};
+
+/**
+ * Toggle Recent Rewards section visibility
+ */
+function toggleRecentRewards() {
+    const content = document.getElementById('recent-rewards-content');
+    const arrow = document.getElementById('recent-rewards-arrow');
+    const section = document.querySelector('.recent-rewards-section');
+
+    if (!content || !section) return;
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        section.classList.remove('collapsed');
+        // Load rewards data when expanded
+        loadRecentRewards();
+    } else {
+        content.style.display = 'none';
+        section.classList.add('collapsed');
+    }
+}
+
+/**
+ * Switch between crypto tabs in Recent Rewards
+ */
+function switchRewardsTab(crypto) {
+    // Update active tab
+    const tabs = document.querySelectorAll('.rewards-tab');
+    tabs.forEach(tab => {
+        if (tab.dataset.crypto === crypto) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+
+    currentRewardsTab = crypto;
+    currentRewardsPage = 1;
+    renderRewardsList();
+}
+
+/**
+ * Load recent rewards data (placeholder for API integration)
+ * TODO: Connect to actual API endpoint
+ */
+async function loadRecentRewards() {
+    console.log('📦 Loading recent rewards...');
+
+    // Mock data for now - will be replaced with API call
+    // Each reward: { packageName, amount, amountAUD, timestamp }
+    recentRewardsData = {
+        BTC: generateMockRewards('BTC', 25),
+        BCH: generateMockRewards('BCH', 18),
+        DOGE: generateMockRewards('DOGE', 32),
+        LTC: generateMockRewards('LTC', 15),
+        RVN: generateMockRewards('RVN', 22),
+        KAS: generateMockRewards('KAS', 28)
+    };
+
+    renderRewardsList();
+}
+
+/**
+ * Generate mock rewards for testing
+ * TODO: Remove when API is connected
+ */
+function generateMockRewards(crypto, count) {
+    const packageNames = {
+        BTC: ['Gold S', 'Gold M', 'Gold L', 'Gold XL', 'Gold Team S', 'Gold Team M'],
+        BCH: ['Silver S', 'Silver M', 'Silver L', 'Silver Team S', 'Silver Team M'],
+        DOGE: ['Palladium DOGE S', 'Palladium DOGE M', 'Palladium DOGE L', 'Palladium Team S'],
+        LTC: ['Palladium LTC S', 'Palladium LTC M', 'Palladium LTC L', 'Palladium Team M'],
+        RVN: ['Chromium S', 'Chromium M', 'Chromium L', 'Chromium Team S'],
+        KAS: ['Titanium KAS S', 'Titanium KAS M', 'Titanium KAS L', 'Titanium Team S']
+    };
+
+    const blockRewards = {
+        BTC: 3.125,
+        BCH: 3.125,
+        DOGE: 10000,
+        LTC: 6.25,
+        RVN: 2500,
+        KAS: 38.89
+    };
+
+    const approxPrices = {
+        BTC: 150000,
+        BCH: 600,
+        DOGE: 0.40,
+        LTC: 130,
+        RVN: 0.025,
+        KAS: 0.15
+    };
+
+    const rewards = [];
+    const now = Date.now();
+    const packages = packageNames[crypto] || ['Package'];
+
+    for (let i = 0; i < count; i++) {
+        const pkg = packages[Math.floor(Math.random() * packages.length)];
+        const amount = blockRewards[crypto] || 1;
+        const amountAUD = amount * (approxPrices[crypto] || 1);
+        // Random timestamp within last 30 days
+        const timestamp = now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
+
+        rewards.push({
+            packageName: pkg,
+            amount: amount,
+            amountAUD: amountAUD,
+            timestamp: timestamp
+        });
+    }
+
+    // Sort by timestamp descending (most recent first)
+    rewards.sort((a, b) => b.timestamp - a.timestamp);
+    return rewards;
+}
+
+/**
+ * Render the rewards list for current tab and page
+ */
+function renderRewardsList() {
+    const listContainer = document.getElementById('rewards-list');
+    const paginationContainer = document.getElementById('rewards-pagination');
+
+    if (!listContainer) return;
+
+    const rewards = recentRewardsData[currentRewardsTab] || [];
+    const totalPages = Math.ceil(rewards.length / REWARDS_PER_PAGE);
+    const startIndex = (currentRewardsPage - 1) * REWARDS_PER_PAGE;
+    const endIndex = startIndex + REWARDS_PER_PAGE;
+    const pageRewards = rewards.slice(startIndex, endIndex);
+
+    if (pageRewards.length === 0) {
+        listContainer.innerHTML = '<div class="rewards-empty-state">No rewards found for this crypto</div>';
+        if (paginationContainer) paginationContainer.style.display = 'none';
+        return;
+    }
+
+    const iconUrl = rewardsCryptoIcons[currentRewardsTab];
+
+    listContainer.innerHTML = pageRewards.map(reward => {
+        const date = new Date(reward.timestamp);
+        const dateStr = formatRewardDate(date);
+
+        return `
+            <div class="reward-item">
+                <img src="${iconUrl}" alt="${currentRewardsTab}" class="reward-item-icon">
+                <div class="reward-item-info">
+                    <span class="reward-item-package">${reward.packageName}</span>
+                    <div class="reward-item-amount">
+                        <span class="reward-amount-crypto">${formatRewardAmount(reward.amount, currentRewardsTab)} ${currentRewardsTab}</span>
+                        <span class="reward-amount-fiat">= $${formatNumber(reward.amountAUD)}</span>
+                    </div>
+                </div>
+                <span class="reward-item-date">${dateStr}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Update pagination
+    if (paginationContainer) {
+        if (totalPages > 1) {
+            paginationContainer.style.display = 'flex';
+            document.getElementById('rewards-page-count').textContent = `${currentRewardsPage} of ${totalPages}`;
+            document.getElementById('rewards-arrow-left').disabled = currentRewardsPage === 1;
+            document.getElementById('rewards-arrow-right').disabled = currentRewardsPage === totalPages;
+        } else {
+            paginationContainer.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Format reward amount based on crypto type
+ */
+function formatRewardAmount(amount, crypto) {
+    if (['BTC', 'BCH', 'LTC'].includes(crypto)) {
+        return amount.toFixed(8);
+    } else if (['DOGE', 'RVN'].includes(crypto)) {
+        return amount.toLocaleString();
+    } else {
+        return amount.toFixed(4);
+    }
+}
+
+/**
+ * Format reward date for display
+ */
+function formatRewardDate(date) {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+
+    return `${day}/${month}/${year} ${hour12}:${minutes}${ampm}`;
+}
+
+/**
+ * Navigate to next rewards page
+ */
+function nextRewardsPage() {
+    const rewards = recentRewardsData[currentRewardsTab] || [];
+    const totalPages = Math.ceil(rewards.length / REWARDS_PER_PAGE);
+
+    if (currentRewardsPage < totalPages) {
+        currentRewardsPage++;
+        renderRewardsList();
+    }
+}
+
+/**
+ * Navigate to previous rewards page
+ */
+function prevRewardsPage() {
+    if (currentRewardsPage > 1) {
+        currentRewardsPage--;
+        renderRewardsList();
+    }
+}
+
 // DESKTOP: Navigate to next page of packages
 function nextPackagePage() {
     const filtered = getFilteredPackages(); // Get current filtered packages

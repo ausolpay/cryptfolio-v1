@@ -457,6 +457,58 @@
                     <div class="easymining-subheader">Team Package Alerts</div>
                     <div id="team-alerts-container" class="recommendations-container"></div>
                 </div>
+
+                <!-- Recent Rewards Section -->
+                <div class="recent-rewards-section collapsed">
+                    <div class="recent-rewards-header" onclick="toggleRecentRewards()">
+                        <span id="recent-rewards-arrow" class="arrow">▶</span>
+                        <span class="toggle-text">Recent Rewards</span>
+                    </div>
+                    <div id="recent-rewards-content" class="recent-rewards-content" style="display: none;">
+                        <!-- Crypto Tabs -->
+                        <div class="rewards-tabs">
+                            <button class="rewards-tab active" data-crypto="BTC" onclick="switchRewardsTab('BTC')">
+                                <img src="https://assets.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC" class="rewards-tab-icon">
+                                <span class="rewards-tab-name">BTC</span>
+                            </button>
+                            <button class="rewards-tab" data-crypto="BCH" onclick="switchRewardsTab('BCH')">
+                                <img src="https://assets.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png" alt="BCH" class="rewards-tab-icon">
+                                <span class="rewards-tab-name">BCH</span>
+                            </button>
+                            <button class="rewards-tab" data-crypto="DOGE" onclick="switchRewardsTab('DOGE')">
+                                <img src="https://assets.coingecko.com/coins/images/5/small/dogecoin.png" alt="DOGE" class="rewards-tab-icon">
+                                <span class="rewards-tab-name">DOGE</span>
+                            </button>
+                            <button class="rewards-tab" data-crypto="LTC" onclick="switchRewardsTab('LTC')">
+                                <img src="https://assets.coingecko.com/coins/images/2/small/litecoin.png" alt="LTC" class="rewards-tab-icon">
+                                <span class="rewards-tab-name">LTC</span>
+                            </button>
+                            <button class="rewards-tab" data-crypto="RVN" onclick="switchRewardsTab('RVN')">
+                                <img src="https://assets.coingecko.com/coins/images/3412/small/ravencoin.png" alt="RVN" class="rewards-tab-icon">
+                                <span class="rewards-tab-name">RVN</span>
+                            </button>
+                            <button class="rewards-tab" data-crypto="KAS" onclick="switchRewardsTab('KAS')">
+                                <img src="https://assets.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png" alt="KAS" class="rewards-tab-icon">
+                                <span class="rewards-tab-name">KAS</span>
+                            </button>
+                        </div>
+
+                        <!-- Rewards List Container -->
+                        <div id="rewards-list-container" class="rewards-list-container">
+                            <div class="rewards-list" id="rewards-list">
+                                <!-- Rewards will be populated dynamically -->
+                                <div class="rewards-empty-state">No rewards found for this crypto</div>
+                            </div>
+                        </div>
+
+                        <!-- Pagination Controls -->
+                        <div class="rewards-pagination" id="rewards-pagination" style="display: none;">
+                            <button class="rewards-arrow left" id="rewards-arrow-left" onclick="prevRewardsPage()" disabled>‹</button>
+                            <span class="rewards-page-count" id="rewards-page-count">1 of 1</span>
+                            <button class="rewards-arrow right" id="rewards-arrow-right" onclick="nextRewardsPage()">›</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
