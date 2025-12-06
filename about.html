@@ -3,54 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn about CryptFolio - a real-time cryptocurrency portfolio tracker. Track your investments with live price updates.">
+    <meta name="description" content="Ausolpay - Building the future of crypto portfolio management. Discover Cryptfolio, our flagship web app, and join the ASOL token presale.">
     <meta name="robots" content="index, follow">
-    <meta property="og:title" content="About - CryptFolio">
-    <meta property="og:description" content="Learn about CryptFolio - a real-time cryptocurrency portfolio tracker.">
+    <meta property="og:title" content="About Ausolpay - Cryptfolio & ASOL Token">
+    <meta property="og:description" content="Join the Ausolpay ecosystem. Track crypto with Cryptfolio and invest in the ASOL token presale.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cryptfolio.app/about.html">
-    <title>About - CryptFolio</title>
+    <title>About - Ausolpay | Cryptfolio & ASOL Token</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="about.css">
     <link rel="icon" type="image/png" href="favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- JSON-LD Schema -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "WebPage",
-        "name": "About",
-        "description": "Learn about CryptFolio - a real-time cryptocurrency portfolio tracker.",
-        "url": "https://cryptfolio.app/about.html",
-        "isPartOf": {
-            "@type": "WebSite",
-            "name": "CryptFolio",
-            "url": "https://cryptfolio.app"
+        "@type": "Organization",
+        "name": "Ausolpay",
+        "description": "Building the future of crypto portfolio management with Cryptfolio and the ASOL token ecosystem.",
+        "url": "https://cryptfolio.app",
+        "parentOrganization": {
+            "@type": "Organization",
+            "name": "Corah Media Pty Ltd"
         }
     }
     </script>
 </head>
-<body class="dark-mode">
+<body class="dark-mode about-page">
+    <!-- Animated Background -->
+    <div class="about-bg-animation">
+        <div class="floating-orb orb-1"></div>
+        <div class="floating-orb orb-2"></div>
+        <div class="floating-orb orb-3"></div>
+        <div class="grid-overlay"></div>
+    </div>
+
     <!-- Top Navigation Strip -->
     <nav class="top-nav" id="top-nav">
         <div class="nav-content">
-            <!-- Mobile: Hamburger Button -->
             <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()">
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
             </button>
-
-            <!-- Desktop: Navigation Links -->
             <div class="nav-links">
-                <a href="about.html" class="nav-link">ABOUT</a>
+                <a href="about.html" class="nav-link active">ABOUT</a>
                 <a href="index.html" class="nav-link">CRYPTFOLIO WEB APP</a>
                 <a href="docs.html" class="nav-link">DOCS</a>
                 <a href="contact.html" class="nav-link">CONTACT</a>
             </div>
-
-            <!-- Right: Profile, Donate, Logo -->
             <div class="nav-right">
-                <!-- Profile Dropdown (Desktop) -->
                 <div class="profile-dropdown desktop-only">
                     <button class="profile-btn" onclick="toggleProfileDropdown()">
                         <div class="profile-icon">
@@ -68,11 +71,7 @@
                         <a href="index.html" class="dropdown-item">Login</a>
                     </div>
                 </div>
-
-                <!-- Donate Button (Desktop) -->
-                <a href="#" class="donate-btn desktop-only">Donate Dev</a>
-
-                <!-- Logo -->
+                <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="donate-btn desktop-only">Donate Dev</a>
                 <img src="ausolpay-logo.png" alt="Logo" class="nav-logo">
             </div>
         </div>
@@ -81,47 +80,583 @@
     <!-- Mobile Menu Overlay -->
     <div class="mobile-menu" id="mobile-menu">
         <div class="mobile-menu-content">
-            <a href="about.html" class="mobile-menu-link" onclick="closeMobileMenu()">ABOUT</a>
-            <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">CRYPTFOLIO WEB APP</a>
-            <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
-            <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
+            <a href="about.html" class="mobile-menu-link active">ABOUT</a>
+            <a href="index.html" class="mobile-menu-link">CRYPTFOLIO WEB APP</a>
+            <a href="docs.html" class="mobile-menu-link">DOCS</a>
+            <a href="contact.html" class="mobile-menu-link">CONTACT</a>
             <div class="mobile-menu-divider"></div>
-            <a href="account-settings.html" class="mobile-menu-link" onclick="closeMobileMenu()">Account Settings</a>
-            <a href="index.html?page=settings" class="mobile-menu-link" onclick="closeMobileMenu()">App Settings</a>
-            <a href="preferences.html" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
-            <a href="help.html" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
+            <a href="account-settings.html" class="mobile-menu-link">Account Settings</a>
+            <a href="index.html?page=settings" class="mobile-menu-link">App Settings</a>
+            <a href="preferences.html" class="mobile-menu-link">Preferences</a>
+            <a href="help.html" class="mobile-menu-link">Help</a>
             <div class="mobile-menu-divider"></div>
-            <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">Login</a>
+            <a href="index.html" class="mobile-menu-link">Login</a>
             <div class="mobile-menu-divider"></div>
-            <a href="#" class="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
+            <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="mobile-donate-btn">Donate Dev</a>
         </div>
     </div>
 
-    <!-- Page Content -->
-    <div class="container static-page">
-        <div class="static-page-content">
-            <h1>About</h1>
-            <!-- Content placeholder -->
-        </div>
+    <!-- Main Content -->
+    <main class="about-main">
 
-        <!-- Footer -->
-        <div class="app-footer">
-            <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
-            <span class="footer-separator"></span>
-            <div class="footer-text">
-                <span>CryptFolio v2 (Beta)</span>
-                <span class="footer-divider">|</span>
-                <span><a href="https://www.ausolpay.com.au" target="_blank">AusolPay</a> &copy; <span class="current-year"></span></span>
-                <span class="footer-divider">|</span>
-                <span>Data by CoinGecko / MEXC</span>
+        <!-- Hero Section -->
+        <section class="about-hero">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <span class="badge-dot"></span>
+                    <span>Powered by Corah Media Pty Ltd</span>
+                </div>
+                <h1 class="hero-title">
+                    <span class="title-line">Building the Future of</span>
+                    <span class="title-gradient">Crypto Management</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Ausolpay is pioneering the next generation of cryptocurrency tools. From real-time portfolio tracking to our revolutionary token ecosystem, we're empowering investors worldwide.
+                </p>
+                <div class="hero-buttons">
+                    <a href="#presale" class="btn-primary">
+                        <span class="btn-icon">&#x1F680;</span>
+                        Join Token Presale
+                    </a>
+                    <a href="index.html" class="btn-secondary">
+                        <span class="btn-icon">&#x1F4CA;</span>
+                        Launch Cryptfolio
+                    </a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" data-count="14000">14,000+</span>
+                        <span class="stat-label">Cryptocurrencies Tracked</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">Real-Time</span>
+                        <span class="stat-label">Live Price Updates</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">100%</span>
+                        <span class="stat-label">Free to Use</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="app-preview">
+                    <div class="preview-glow"></div>
+                    <img src="ausolpay-logo.png" alt="Ausolpay" class="preview-logo">
+                </div>
+            </div>
+        </section>
+
+        <!-- Token Presale Section -->
+        <section class="presale-section" id="presale">
+            <div class="section-header">
+                <span class="section-tag">EXCLUSIVE OPPORTUNITY</span>
+                <h2 class="section-title">ASOL Token Presale</h2>
+                <p class="section-subtitle">Be an early investor in the Ausolpay ecosystem</p>
+            </div>
+
+            <div class="presale-content">
+                <div class="presale-info">
+                    <div class="presale-card highlight">
+                        <div class="card-header">
+                            <span class="live-badge">
+                                <span class="pulse"></span>
+                                PRESALE LIVE
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <h3>Why Invest in ASOL?</h3>
+                            <ul class="benefits-list">
+                                <li>
+                                    <span class="benefit-icon">&#x2728;</span>
+                                    <div>
+                                        <strong>Early Investor Advantage</strong>
+                                        <p>Get in at presale prices before public listing</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="benefit-icon">&#x1F4B0;</span>
+                                    <div>
+                                        <strong>Staking Rewards</strong>
+                                        <p>Earn passive income through our staking program</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="benefit-icon">&#x1F513;</span>
+                                    <div>
+                                        <strong>Premium Features</strong>
+                                        <p>Unlock exclusive Cryptfolio features with ASOL</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <span class="benefit-icon">&#x1F310;</span>
+                                    <div>
+                                        <strong>Ecosystem Growth</strong>
+                                        <p>Fund development of new web apps and tools</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="presale-stages">
+                        <h4>Presale Stages</h4>
+                        <div class="stages-timeline">
+                            <div class="stage active">
+                                <div class="stage-marker">1</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">Seed Round</span>
+                                    <span class="stage-price">$0.005</span>
+                                    <span class="stage-bonus">+50% Bonus</span>
+                                </div>
+                            </div>
+                            <div class="stage">
+                                <div class="stage-marker">2</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">Private Sale</span>
+                                    <span class="stage-price">$0.008</span>
+                                    <span class="stage-bonus">+25% Bonus</span>
+                                </div>
+                            </div>
+                            <div class="stage">
+                                <div class="stage-marker">3</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">Public Sale</span>
+                                    <span class="stage-price">$0.012</span>
+                                    <span class="stage-bonus">+10% Bonus</span>
+                                </div>
+                            </div>
+                            <div class="stage listing">
+                                <div class="stage-marker">&#x1F680;</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">Exchange Listing</span>
+                                    <span class="stage-price">$0.025</span>
+                                    <span class="stage-bonus">Target Price</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="presale-cta">
+                    <div class="cta-card">
+                        <div class="token-visual">
+                            <div class="token-ring"></div>
+                            <div class="token-core">ASOL</div>
+                        </div>
+                        <h3>Join the Presale Now</h3>
+                        <p>Limited allocation available. Don't miss your chance to be part of the Ausolpay revolution.</p>
+                        <a href="#" class="btn-presale">
+                            Buy ASOL Tokens
+                            <span class="arrow">&#x2192;</span>
+                        </a>
+                        <a href="#" class="whitepaper-link">
+                            <span>&#x1F4C4;</span>
+                            Read the Whitepaper
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Current Apps Section -->
+        <section class="apps-section" id="apps">
+            <div class="section-header">
+                <span class="section-tag">OUR PRODUCTS</span>
+                <h2 class="section-title">Current Apps</h2>
+                <p class="section-subtitle">Powerful tools for the modern crypto investor</p>
+            </div>
+
+            <div class="apps-showcase">
+                <div class="app-card featured">
+                    <div class="app-badge">FLAGSHIP</div>
+                    <div class="app-icon">
+                        <img src="ausolpay-logo.png" alt="Cryptfolio">
+                    </div>
+                    <h3>Cryptfolio</h3>
+                    <p class="app-tagline">Real-Time Cryptocurrency Portfolio Tracker</p>
+
+                    <div class="app-features">
+                        <div class="feature">
+                            <span class="feature-icon">&#x1F4C8;</span>
+                            <div>
+                                <strong>Live Price Tracking</strong>
+                                <p>Real-time prices via WebSocket connections to MEXC & LBank</p>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">&#x26CF;</span>
+                            <div>
+                                <strong>NiceHash EasyMining</strong>
+                                <p>Track your mining packages, blocks found, and earnings</p>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">&#x1F514;</span>
+                            <div>
+                                <strong>Smart Alerts</strong>
+                                <p>Set probability thresholds for package recommendations</p>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">&#x1F4CA;</span>
+                            <div>
+                                <strong>Holdings Tracker</strong>
+                                <p>Track buy/sell entries with P&L calculations</p>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">&#x1F3AF;</span>
+                            <div>
+                                <strong>Record Tracking</strong>
+                                <p>Monitor all-time highs, lows, and milestones</p>
+                            </div>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">&#x1F50A;</span>
+                            <div>
+                                <strong>Audio Alerts</strong>
+                                <p>Sound notifications for blocks, records, and alerts</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="app-stats-bar">
+                        <div class="app-stat">
+                            <span class="value">14,000+</span>
+                            <span class="label">Cryptos</span>
+                        </div>
+                        <div class="app-stat">
+                            <span class="value">5s</span>
+                            <span class="label">Update Rate</span>
+                        </div>
+                        <div class="app-stat">
+                            <span class="value">Free</span>
+                            <span class="label">To Use</span>
+                        </div>
+                    </div>
+
+                    <a href="index.html" class="btn-launch">
+                        Launch Cryptfolio
+                        <span class="arrow">&#x2192;</span>
+                    </a>
+                </div>
+
+                <div class="coming-soon-apps">
+                    <h4>Coming Soon</h4>
+                    <div class="future-apps-grid">
+                        <div class="future-app">
+                            <div class="future-icon">&#x1F4B1;</div>
+                            <span>DeFi Dashboard</span>
+                        </div>
+                        <div class="future-app">
+                            <div class="future-icon">&#x1F916;</div>
+                            <span>Trading Bot</span>
+                        </div>
+                        <div class="future-app">
+                            <div class="future-icon">&#x1F4F1;</div>
+                            <span>Mobile App</span>
+                        </div>
+                        <div class="future-app">
+                            <div class="future-icon">&#x1F4CA;</div>
+                            <span>Tax Reporter</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Roadmap Section -->
+        <section class="roadmap-section" id="roadmap">
+            <div class="section-header">
+                <span class="section-tag">THE JOURNEY</span>
+                <h2 class="section-title">Roadmap</h2>
+                <p class="section-subtitle">Our path to revolutionizing crypto management</p>
+            </div>
+
+            <div class="roadmap-container">
+                <div class="roadmap-line"></div>
+
+                <div class="roadmap-item completed">
+                    <div class="roadmap-marker">
+                        <span class="check">&#x2713;</span>
+                    </div>
+                    <div class="roadmap-content">
+                        <span class="roadmap-phase">Phase 1</span>
+                        <h4>Foundation</h4>
+                        <span class="roadmap-date">Q4 2024</span>
+                        <ul>
+                            <li>Cryptfolio v2 Launch</li>
+                            <li>Real-time price tracking</li>
+                            <li>NiceHash EasyMining integration</li>
+                            <li>Holdings tracker with P&L</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="roadmap-item active">
+                    <div class="roadmap-marker">
+                        <span class="dot pulse"></span>
+                    </div>
+                    <div class="roadmap-content">
+                        <span class="roadmap-phase">Phase 2</span>
+                        <h4>Token Launch</h4>
+                        <span class="roadmap-date">Q1 2025</span>
+                        <ul>
+                            <li>ASOL Token Presale</li>
+                            <li>Smart contract deployment</li>
+                            <li>Community building</li>
+                            <li>Whitepaper release</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="roadmap-item">
+                    <div class="roadmap-marker">
+                        <span class="dot"></span>
+                    </div>
+                    <div class="roadmap-content">
+                        <span class="roadmap-phase">Phase 3</span>
+                        <h4>Ecosystem Expansion</h4>
+                        <span class="roadmap-date">Q2 2025</span>
+                        <ul>
+                            <li>Exchange listings (CEX/DEX)</li>
+                            <li>Staking platform launch</li>
+                            <li>Premium feature unlocks</li>
+                            <li>Mobile app development</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="roadmap-item">
+                    <div class="roadmap-marker">
+                        <span class="dot"></span>
+                    </div>
+                    <div class="roadmap-content">
+                        <span class="roadmap-phase">Phase 4</span>
+                        <h4>Full Ecosystem</h4>
+                        <span class="roadmap-date">Q3-Q4 2025</span>
+                        <ul>
+                            <li>DeFi Dashboard launch</li>
+                            <li>Trading bot integration</li>
+                            <li>Tax reporting tools</li>
+                            <li>Enterprise partnerships</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Community Section -->
+        <section class="community-section" id="community">
+            <div class="section-header">
+                <span class="section-tag">JOIN US</span>
+                <h2 class="section-title">Community</h2>
+                <p class="section-subtitle">Connect with fellow investors and stay updated</p>
+            </div>
+
+            <div class="social-links">
+                <a href="#" class="social-card twitter" target="_blank">
+                    <div class="social-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                    </div>
+                    <div class="social-info">
+                        <span class="social-name">X (Twitter)</span>
+                        <span class="social-handle">@ausolpay</span>
+                    </div>
+                    <span class="social-arrow">&#x2192;</span>
+                </a>
+
+                <a href="#" class="social-card telegram" target="_blank">
+                    <div class="social-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                    </div>
+                    <div class="social-info">
+                        <span class="social-name">Telegram</span>
+                        <span class="social-handle">t.me/ausolpay</span>
+                    </div>
+                    <span class="social-arrow">&#x2192;</span>
+                </a>
+
+                <a href="#" class="social-card discord" target="_blank">
+                    <div class="social-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+                        </svg>
+                    </div>
+                    <div class="social-info">
+                        <span class="social-name">Discord</span>
+                        <span class="social-handle">discord.gg/ausolpay</span>
+                    </div>
+                    <span class="social-arrow">&#x2192;</span>
+                </a>
+            </div>
+
+            <div class="resources-row">
+                <a href="#" class="resource-card" target="_blank">
+                    <span class="resource-icon">&#x1F4C4;</span>
+                    <span class="resource-name">Whitepaper</span>
+                </a>
+                <a href="docs.html" class="resource-card">
+                    <span class="resource-icon">&#x1F4DA;</span>
+                    <span class="resource-name">Documentation</span>
+                </a>
+                <a href="contact.html" class="resource-card">
+                    <span class="resource-icon">&#x2709;</span>
+                    <span class="resource-name">Contact Us</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Company Footer Section -->
+        <section class="company-section">
+            <div class="company-info">
+                <img src="ausolpay-logo.png" alt="Ausolpay" class="company-logo">
+                <p class="company-tagline">Empowering crypto investors worldwide</p>
+                <p class="company-legal">A product of <strong>Corah Media Pty Ltd</strong></p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="about-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+                <span class="footer-name">Ausolpay</span>
+            </div>
+            <div class="footer-links">
+                <a href="index.html">Cryptfolio</a>
+                <a href="docs.html">Docs</a>
+                <a href="contact.html">Contact</a>
+                <a href="#">Whitepaper</a>
+            </div>
+            <div class="footer-legal">
+                <span>&copy; <span class="current-year"></span> Corah Media Pty Ltd. All rights reserved.</span>
             </div>
         </div>
-    </div>
+    </footer>
 
-    <script src="scripts.js"></script>
     <script>
+        // Set current year
         document.querySelectorAll('.current-year').forEach(el => {
             el.textContent = new Date().getFullYear();
+        });
+
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            const hamburger = document.getElementById('hamburger-btn');
+            const isActive = mobileMenu.classList.toggle('active');
+            hamburger.classList.toggle('active', isActive);
+            document.body.style.overflow = isActive ? 'hidden' : '';
+        }
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.mobile-menu-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobile-menu').classList.remove('active');
+                document.getElementById('hamburger-btn').classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        });
+
+        // Profile Dropdown Toggle
+        function toggleProfileDropdown() {
+            const dropdown = document.getElementById('profile-dropdown-menu');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('profile-dropdown-menu');
+            const profileBtn = document.querySelector('.profile-btn');
+            if (dropdown && !dropdown.contains(e.target) && !profileBtn.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Animate elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.roadmap-item, .app-card, .presale-card, .social-card, .coming-soon-apps, .presale-stages').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Nav shrink on scroll
+        let lastScroll = 0;
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('top-nav');
+            const currentScroll = window.pageYOffset;
+
+            if (currentScroll > 100) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+
+            lastScroll = currentScroll;
+        });
+
+        // Counter animation for stats
+        function animateCounter(element, target) {
+            let current = 0;
+            const increment = target / 50;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    element.textContent = target.toLocaleString() + '+';
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(current).toLocaleString() + '+';
+                }
+            }, 30);
+        }
+
+        // Observe stats for counter animation
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const countAttr = entry.target.getAttribute('data-count');
+                    if (countAttr) {
+                        animateCounter(entry.target, parseInt(countAttr));
+                        statsObserver.unobserve(entry.target);
+                    }
+                }
+            });
+        }, { threshold: 0.5 });
+
+        document.querySelectorAll('[data-count]').forEach(el => {
+            statsObserver.observe(el);
         });
     </script>
 </body>
