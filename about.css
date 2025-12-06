@@ -149,7 +149,7 @@
     border: none;
     cursor: pointer;
     padding: 8px;
-    z-index: 1001;
+    z-index: 1003;
 }
 
 .hamburger-line {
@@ -313,7 +313,7 @@
     bottom: 0;
     background: rgba(10, 10, 15, 0.98);
     backdrop-filter: blur(20px);
-    z-index: 999;
+    z-index: 1002;
     display: none;
     padding: 80px 20px 20px;
     overflow-y: auto;
