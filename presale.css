@@ -1443,15 +1443,18 @@
         grid-template-columns: 1fr;
         min-height: auto;
         padding: 100px 20px 60px;
+        justify-items: center;
     }
 
     .presale-hero-content {
         max-width: 100%;
         text-align: center;
+        width: 100%;
     }
 
     .purchase-widget {
         max-width: 500px;
+        width: 100%;
         margin: 0 auto;
     }
 
@@ -1480,11 +1483,13 @@
     }
 
     .presale-hero {
-        padding: 90px 16px 50px;
+        padding: 90px 0 50px;
+        gap: 40px;
     }
 
     .presale-hero-content {
         text-align: center;
+        padding: 0 16px;
     }
 
     .presale-badge {
@@ -1494,6 +1499,12 @@
 
     .countdown-container {
         text-align: center;
+    }
+
+    .purchase-widget {
+        max-width: 100%;
+        margin: 0 16px;
+        width: calc(100% - 32px);
     }
 
     .stages-grid {
@@ -1567,7 +1578,11 @@
 
 @media (max-width: 480px) {
     .presale-hero {
-        padding: 80px 16px 40px;
+        padding: 80px 0 40px;
+    }
+
+    .presale-hero-content {
+        padding: 0 16px;
     }
 
     .presale-badge {
@@ -1590,6 +1605,8 @@
     .purchase-widget {
         padding: 16px;
         border-radius: 16px;
+        margin: 0 16px;
+        width: calc(100% - 32px);
     }
 
     .widget-header {
