@@ -30612,6 +30612,12 @@ function initializeEasyMining() {
             console.log('🔒 EasyMining section hidden (not enabled)');
         }
     }
+
+    // Refresh holdings tracker after EasyMining loads
+    console.log('📊 Refreshing holdings tracker after EasyMining...');
+    if (typeof updateStripPnL === 'function') {
+        updateStripPnL();
+    }
 }
 
 // =============================================================================
@@ -30623,8 +30629,14 @@ const originalInitializeApp = initializeApp;
 if (typeof originalInitializeApp === 'function') {
     initializeApp = function() {
         originalInitializeApp();
-        
+
         if (loggedInUser) {
+            // Load holdings tracker data BEFORE EasyMining
+            console.log('📊 Loading holdings tracker before EasyMining...');
+            if (typeof updateStripPnL === 'function') {
+                updateStripPnL();
+            }
+
             initializeEasyMining();
         }
     };
