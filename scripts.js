@@ -14469,14 +14469,16 @@ function renderRewardsList() {
                 <span class="reward-item-package">${reward.packageName}</span>
                 <div class="reward-item-main">
                     <img src="${iconUrl}" alt="${currentRewardsTab}" class="reward-item-icon">
-                    <div class="reward-item-amount">
-                        <span class="reward-amount-crypto">${formatRewardAmount(reward.amount)}</span>
-                        <span class="reward-amount-fiat">= $${formatNumber(reward.amountAUD)}</span>
+                    <div class="reward-item-details">
+                        <div class="reward-row">
+                            <span class="reward-amount-crypto">${formatRewardAmount(reward.amount)}</span>
+                            <span class="reward-item-date">${dateStr}</span>
+                        </div>
+                        <div class="reward-row">
+                            <span class="reward-amount-fiat">= $${formatNumber(reward.amountAUD)}</span>
+                            <span class="reward-item-time">${timeStr}</span>
+                        </div>
                     </div>
-                </div>
-                <div class="reward-item-datetime">
-                    <span class="reward-item-date">${dateStr}</span>
-                    <span class="reward-item-time">${timeStr}</span>
                 </div>
             </div>
         `;

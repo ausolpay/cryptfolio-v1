@@ -6047,7 +6047,6 @@ body.light-mode .reward-item:hover {
 .reward-item-main {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
 }
 
@@ -6057,14 +6056,20 @@ body.light-mode .reward-item:hover {
     border-radius: 50%;
     background-color: #fff;
     flex-shrink: 0;
+    align-self: center;
 }
 
-.reward-item-amount {
+.reward-item-details {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     gap: 2px;
     flex: 1;
+}
+
+.reward-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .reward-amount-crypto {
@@ -6081,14 +6086,6 @@ body.light-mode .reward-amount-crypto {
     font-size: 13px;
     color: #4ade80;
     font-weight: 500;
-}
-
-.reward-item-datetime {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    flex-shrink: 0;
 }
 
 .reward-item-date {
