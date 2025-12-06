@@ -1634,11 +1634,20 @@
         margin-bottom: 40px;
     }
 
+    .about-main {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
     .presale-section,
     .apps-section,
     .roadmap-section,
     .community-section {
-        padding: 60px 16px;
+        padding: 60px 0;
+    }
+
+    .about-hero {
+        padding: 80px 0 40px;
     }
 
     .presale-card,
