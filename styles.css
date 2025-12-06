@@ -6013,6 +6013,16 @@ body.light-mode .rewards-list-container {
     font-size: 14px;
 }
 
+.rewards-loading-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    color: #f7931a;
+    font-size: 14px;
+    font-weight: 500;
+}
+
 .reward-item {
     display: flex;
     flex-direction: column;

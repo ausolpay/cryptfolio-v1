@@ -14306,11 +14306,20 @@ let recentRewardsData = {
     RVN: [],
     KAS: []
 };
+let rewardsLoadingState = {
+    BTC: false,
+    BCH: false,
+    DOGE: false,
+    LTC: false,
+    RVN: false,
+    KAS: false
+};
 let currentRewardsTab = 'BTC';
 let currentRewardsPage = 1;
 const REWARDS_PER_PAGE = 10;
 const REWARDS_POLL_INTERVAL = 10000; // 10 seconds
 const REWARDS_CRYPTOS = ['BTC', 'BCH', 'DOGE', 'LTC', 'RVN', 'KAS'];
+const REWARDS_STORAGE_KEY = 'recentRewardsCache';
 let rewardsPollingInterval = null;
 let rewardsPollQueue = [];
 let isRewardsPollRunning = false;
@@ -14452,11 +14461,48 @@ async function processRewardsPollQueue() {
 async function loadRecentRewards() {
     console.log('📦 Loading recent rewards for all cryptos...');
 
-    // Queue all cryptos for fetch
-    queueRewardsFetch();
+    // Load from cache first
+    loadRewardsFromCache();
 
-    // Render current tab immediately (will show empty state until data loads)
+    // Update tab counts from cached data
+    REWARDS_CRYPTOS.forEach(crypto => updateRewardsTabCount(crypto));
+
+    // Render current tab immediately (shows cached data or loading state)
     renderRewardsList();
+
+    // Queue all cryptos for fetch to get updates
+    queueRewardsFetch();
+}
+
+/**
+ * Load rewards data from localStorage cache
+ */
+function loadRewardsFromCache() {
+    try {
+        const cached = localStorage.getItem(REWARDS_STORAGE_KEY);
+        if (cached) {
+            const parsedCache = JSON.parse(cached);
+            REWARDS_CRYPTOS.forEach(crypto => {
+                if (parsedCache[crypto] && Array.isArray(parsedCache[crypto])) {
+                    recentRewardsData[crypto] = parsedCache[crypto];
+                    console.log(`📦 Loaded ${parsedCache[crypto].length} ${crypto} rewards from cache`);
+                }
+            });
+        }
+    } catch (error) {
+        console.warn('⚠️ Could not load rewards from cache:', error.message);
+    }
+}
+
+/**
+ * Save rewards data to localStorage cache
+ */
+function saveRewardsToCache() {
+    try {
+        localStorage.setItem(REWARDS_STORAGE_KEY, JSON.stringify(recentRewardsData));
+    } catch (error) {
+        console.warn('⚠️ Could not save rewards to cache:', error.message);
+    }
 }
 
 /**
@@ -14465,7 +14511,16 @@ async function loadRecentRewards() {
 async function fetchRewardsForCrypto(crypto) {
     console.log(`📦 Fetching ${crypto} rewards...`);
 
-    const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&orphans=false&sortField=time&sortDir=DESC`;
+    // Only show loading state if we have no cached data (initial load)
+    const hasExistingData = recentRewardsData[crypto] && recentRewardsData[crypto].length > 0;
+    if (!hasExistingData) {
+        rewardsLoadingState[crypto] = true;
+        if (currentRewardsTab === crypto) {
+            renderRewardsList();
+        }
+    }
+
+    const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&limit=100000&orphans=false&sortField=time&sortDir=DESC`;
 
     try {
         const response = await fetch(VERCEL_PROXY_ENDPOINT, {
@@ -14489,7 +14544,7 @@ async function fetchRewardsForCrypto(crypto) {
 
         if (Array.isArray(data)) {
             // Transform API response to our format
-            recentRewardsData[crypto] = data.map(reward => ({
+            const newRewards = data.map(reward => ({
                 id: reward.id,
                 packageName: reward.packageName || 'Unknown Package',
                 amount: reward.payoutReward ? reward.payoutReward / 100000000 : 0, // Convert satoshis to coin
@@ -14503,18 +14558,50 @@ async function fetchRewardsForCrypto(crypto) {
                 depositComplete: reward.depositComplete
             }));
 
-            console.log(`✅ Loaded ${recentRewardsData[crypto].length} ${crypto} rewards`);
+            // Merge with existing data (dedupe by id, keep newest)
+            const existingIds = new Set(recentRewardsData[crypto].map(r => r.id));
+            const uniqueNew = newRewards.filter(r => !existingIds.has(r.id));
+            let dataChanged = false;
+
+            if (uniqueNew.length > 0) {
+                // Add new rewards and sort by timestamp descending
+                recentRewardsData[crypto] = [...uniqueNew, ...recentRewardsData[crypto]]
+                    .sort((a, b) => b.timestamp - a.timestamp);
+                console.log(`✅ Added ${uniqueNew.length} new ${crypto} rewards (total: ${recentRewardsData[crypto].length})`);
+                dataChanged = true;
+            } else if (recentRewardsData[crypto].length === 0) {
+                // First load - just set the data
+                recentRewardsData[crypto] = newRewards;
+                console.log(`✅ Loaded ${newRewards.length} ${crypto} rewards`);
+                dataChanged = true;
+            } else {
+                console.log(`📦 No new ${crypto} rewards (total: ${recentRewardsData[crypto].length})`);
+            }
+
+            // Save to cache only if data changed
+            if (dataChanged) {
+                saveRewardsToCache();
+            }
 
             // Update the tab count
             updateRewardsTabCount(crypto);
 
-            // Re-render if this is the current tab
-            if (currentRewardsTab === crypto) {
+            // Re-render if this is the current tab and data changed (smart update)
+            if (currentRewardsTab === crypto && dataChanged) {
                 renderRewardsList();
             }
         }
     } catch (error) {
         console.warn(`⚠️ Could not fetch ${crypto} rewards:`, error.message);
+    } finally {
+        // Clear loading state if it was set
+        const wasLoading = rewardsLoadingState[crypto];
+        rewardsLoadingState[crypto] = false;
+
+        // Re-render if this was an initial load (loading state was shown)
+        if (currentRewardsTab === crypto && wasLoading) {
+            renderRewardsList();
+        }
     }
 }
 
@@ -14569,6 +14656,13 @@ function renderRewardsList() {
     const paginationContainer = document.getElementById('rewards-pagination');
 
     if (!listContainer) return;
+
+    // Show loading state if currently fetching
+    if (rewardsLoadingState[currentRewardsTab]) {
+        listContainer.innerHTML = '<div class="rewards-loading-state">Loading...</div>';
+        if (paginationContainer) paginationContainer.style.display = 'none';
+        return;
+    }
 
     const rewards = recentRewardsData[currentRewardsTab] || [];
     const totalPages = Math.ceil(rewards.length / REWARDS_PER_PAGE);
