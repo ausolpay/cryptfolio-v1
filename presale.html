@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ASOL Token Presale - Join the Ausolpay ecosystem. Buy ASOL tokens at exclusive presale prices before public listing.">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="ASOL Token Presale - Ausolpay">
+    <meta property="og:description" content="Get early access to ASOL tokens. Exclusive presale pricing with bonus rewards.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cryptfolio.app/presale.html">
+    <title>ASOL Token Presale - Ausolpay</title>
+    <link rel="stylesheet" href="about.css">
+    <link rel="stylesheet" href="presale.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="dark-mode about-page presale-page">
+    <!-- Animated Background -->
+    <div class="about-bg-animation">
+        <div class="floating-orb orb-1"></div>
+        <div class="floating-orb orb-2"></div>
+        <div class="floating-orb orb-3"></div>
+        <div class="grid-overlay"></div>
+    </div>
+
+    <!-- Top Navigation Strip -->
+    <nav class="top-nav" id="top-nav">
+        <div class="nav-content">
+            <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            <div class="nav-links">
+                <a href="about.html" class="nav-link">ABOUT</a>
+                <a href="presale.html" class="nav-link active">PRESALE</a>
+                <a href="index.html" class="nav-link">CRYPTFOLIO WEB APP</a>
+                <a href="docs.html" class="nav-link">DOCS</a>
+                <a href="contact.html" class="nav-link">CONTACT</a>
+            </div>
+            <div class="nav-right">
+                <button class="connect-wallet-btn nav-wallet-btn" id="nav-connect-wallet" onclick="connectWallet()">
+                    <span class="wallet-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                            <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                        </svg>
+                    </span>
+                    <span class="wallet-text">Connect Wallet</span>
+                </button>
+                <img src="ausolpay-logo.png" alt="Logo" class="nav-logo">
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu" id="mobile-menu">
+        <div class="mobile-menu-content">
+            <a href="about.html" class="mobile-menu-link">ABOUT</a>
+            <a href="presale.html" class="mobile-menu-link active">PRESALE</a>
+            <a href="index.html" class="mobile-menu-link">CRYPTFOLIO WEB APP</a>
+            <a href="docs.html" class="mobile-menu-link">DOCS</a>
+            <a href="contact.html" class="mobile-menu-link">CONTACT</a>
+            <div class="mobile-menu-divider"></div>
+            <button class="mobile-connect-wallet" onclick="connectWallet()">Connect Wallet</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="about-main presale-main">
+
+        <!-- Presale Hero Section -->
+        <section class="presale-hero">
+            <div class="presale-hero-content">
+                <div class="presale-badge">
+                    <span class="live-pulse"></span>
+                    <span>PRESALE LIVE - STAGE 1</span>
+                </div>
+                <h1 class="presale-title">
+                    <span class="title-line">ASOL Token</span>
+                    <span class="title-gradient">Presale</span>
+                </h1>
+                <p class="presale-subtitle">
+                    Be an early investor in the Ausolpay ecosystem. Get exclusive presale pricing before exchange listing.
+                </p>
+
+                <!-- Countdown Timer -->
+                <div class="countdown-container">
+                    <span class="countdown-label">Stage 1 Ends In:</span>
+                    <div class="countdown-timer">
+                        <div class="countdown-item">
+                            <span class="countdown-value" id="countdown-days">00</span>
+                            <span class="countdown-unit">Days</span>
+                        </div>
+                        <div class="countdown-separator">:</div>
+                        <div class="countdown-item">
+                            <span class="countdown-value" id="countdown-hours">00</span>
+                            <span class="countdown-unit">Hours</span>
+                        </div>
+                        <div class="countdown-separator">:</div>
+                        <div class="countdown-item">
+                            <span class="countdown-value" id="countdown-mins">00</span>
+                            <span class="countdown-unit">Mins</span>
+                        </div>
+                        <div class="countdown-separator">:</div>
+                        <div class="countdown-item">
+                            <span class="countdown-value" id="countdown-secs">00</span>
+                            <span class="countdown-unit">Secs</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Purchase Widget -->
+            <div class="purchase-widget">
+                <div class="widget-header">
+                    <div class="token-info">
+                        <div class="token-logo">
+                            <img src="ausolpay-logo.png" alt="ASOL">
+                        </div>
+                        <div class="token-details">
+                            <span class="token-name">ASOL Token</span>
+                            <span class="token-network">Solana Network</span>
+                        </div>
+                    </div>
+                    <div class="current-price">
+                        <span class="price-label">Current Price</span>
+                        <span class="price-value">$0.005</span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="presale-progress">
+                    <div class="progress-header">
+                        <span class="progress-label">Presale Progress</span>
+                        <span class="progress-percent">12.5%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 12.5%"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span class="raised">$125,000 raised</span>
+                        <span class="goal">$1,000,000 goal</span>
+                    </div>
+                </div>
+
+                <!-- Purchase Form -->
+                <div class="purchase-form">
+                    <div class="input-group">
+                        <label>You Pay</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="pay-amount" placeholder="0.00" min="0" step="0.01">
+                            <div class="currency-select">
+                                <select id="pay-currency">
+                                    <option value="SOL">SOL</option>
+                                    <option value="USDC">USDC</option>
+                                    <option value="USDT">USDT</option>
+                                </select>
+                            </div>
+                        </div>
+                        <span class="balance-info">Balance: <span id="user-balance">0.00</span></span>
+                    </div>
+
+                    <div class="swap-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                            <path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/>
+                        </svg>
+                    </div>
+
+                    <div class="input-group">
+                        <label>You Receive</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="receive-amount" placeholder="0.00" readonly>
+                            <div class="currency-display">
+                                <img src="ausolpay-logo.png" alt="ASOL" class="currency-icon">
+                                <span>ASOL</span>
+                            </div>
+                        </div>
+                        <span class="bonus-info">+50% Bonus Tokens Included!</span>
+                    </div>
+
+                    <div class="purchase-summary">
+                        <div class="summary-row">
+                            <span>Price per ASOL</span>
+                            <span>$0.005</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Bonus Tokens</span>
+                            <span class="bonus">+50%</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Network Fee</span>
+                            <span>~0.00025 SOL</span>
+                        </div>
+                    </div>
+
+                    <button class="buy-btn" id="buy-btn" onclick="buyTokens()">
+                        <span class="btn-content">
+                            <span class="wallet-required">Connect Wallet to Buy</span>
+                            <span class="buy-ready" style="display: none;">Buy ASOL Tokens</span>
+                        </span>
+                    </button>
+
+                    <div class="widget-footer">
+                        <span class="min-purchase">Min: 10 USDC</span>
+                        <span class="max-purchase">Max: 50,000 USDC</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Presale Stages Section -->
+        <section class="stages-section" id="stages">
+            <div class="section-header">
+                <span class="section-tag">PRESALE STAGES</span>
+                <h2 class="section-title">Token Sale Rounds</h2>
+                <p class="section-subtitle">Early investors get the best prices and highest bonuses</p>
+            </div>
+
+            <div class="stages-grid">
+                <div class="stage-card active">
+                    <div class="stage-badge">ACTIVE</div>
+                    <div class="stage-header">
+                        <span class="stage-number">Stage 1</span>
+                        <h3>Seed Round</h3>
+                    </div>
+                    <div class="stage-price">
+                        <span class="price">$0.005</span>
+                        <span class="per-token">per ASOL</span>
+                    </div>
+                    <div class="stage-details">
+                        <div class="detail-row">
+                            <span>Bonus</span>
+                            <span class="highlight">+50%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Allocation</span>
+                            <span>50,000,000 ASOL</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Min Purchase</span>
+                            <span>10 USDC</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Vesting</span>
+                            <span>25% TGE, 3mo cliff</span>
+                        </div>
+                    </div>
+                    <div class="stage-progress">
+                        <div class="mini-progress-bar">
+                            <div class="mini-progress-fill" style="width: 25%"></div>
+                        </div>
+                        <span class="stage-sold">12.5M / 50M sold</span>
+                    </div>
+                </div>
+
+                <div class="stage-card upcoming">
+                    <div class="stage-badge">UPCOMING</div>
+                    <div class="stage-header">
+                        <span class="stage-number">Stage 2</span>
+                        <h3>Private Sale</h3>
+                    </div>
+                    <div class="stage-price">
+                        <span class="price">$0.008</span>
+                        <span class="per-token">per ASOL</span>
+                    </div>
+                    <div class="stage-details">
+                        <div class="detail-row">
+                            <span>Bonus</span>
+                            <span class="highlight">+25%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Allocation</span>
+                            <span>75,000,000 ASOL</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Min Purchase</span>
+                            <span>50 USDC</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Vesting</span>
+                            <span>20% TGE, 2mo cliff</span>
+                        </div>
+                    </div>
+                    <div class="stage-locked">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                        </svg>
+                        <span>Opens after Stage 1</span>
+                    </div>
+                </div>
+
+                <div class="stage-card upcoming">
+                    <div class="stage-badge">UPCOMING</div>
+                    <div class="stage-header">
+                        <span class="stage-number">Stage 3</span>
+                        <h3>Public Sale</h3>
+                    </div>
+                    <div class="stage-price">
+                        <span class="price">$0.012</span>
+                        <span class="per-token">per ASOL</span>
+                    </div>
+                    <div class="stage-details">
+                        <div class="detail-row">
+                            <span>Bonus</span>
+                            <span class="highlight">+10%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Allocation</span>
+                            <span>100,000,000 ASOL</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Min Purchase</span>
+                            <span>25 USDC</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Vesting</span>
+                            <span>50% TGE, 1mo cliff</span>
+                        </div>
+                    </div>
+                    <div class="stage-locked">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                        </svg>
+                        <span>Opens after Stage 2</span>
+                    </div>
+                </div>
+
+                <div class="stage-card listing">
+                    <div class="stage-badge listing-badge">LISTING</div>
+                    <div class="stage-header">
+                        <span class="stage-number">Launch</span>
+                        <h3>DEX Listing</h3>
+                    </div>
+                    <div class="stage-price">
+                        <span class="price">$0.025</span>
+                        <span class="per-token">listing price</span>
+                    </div>
+                    <div class="stage-details">
+                        <div class="detail-row">
+                            <span>ROI from Stage 1</span>
+                            <span class="highlight">+400%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Exchange</span>
+                            <span>Raydium / Jupiter</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Liquidity</span>
+                            <span>Locked 2 Years</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Target</span>
+                            <span>Q2 2025</span>
+                        </div>
+                    </div>
+                    <div class="roi-calculator">
+                        <span>$100 in Stage 1 = $500 at listing</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tokenomics Section -->
+        <section class="tokenomics-section" id="tokenomics">
+            <div class="section-header">
+                <span class="section-tag">TOKEN DISTRIBUTION</span>
+                <h2 class="section-title">Tokenomics</h2>
+                <p class="section-subtitle">Fair and transparent token allocation</p>
+            </div>
+
+            <div class="tokenomics-content">
+                <div class="token-chart">
+                    <div class="chart-visual">
+                        <svg viewBox="0 0 200 200" class="donut-chart">
+                            <!-- Presale 22.5% -->
+                            <circle class="segment segment-1" cx="100" cy="100" r="80"
+                                stroke-dasharray="113.04 502.4" stroke-dashoffset="0"/>
+                            <!-- Liquidity 20% -->
+                            <circle class="segment segment-2" cx="100" cy="100" r="80"
+                                stroke-dasharray="100.48 502.4" stroke-dashoffset="-113.04"/>
+                            <!-- Team 15% -->
+                            <circle class="segment segment-3" cx="100" cy="100" r="80"
+                                stroke-dasharray="75.36 502.4" stroke-dashoffset="-213.52"/>
+                            <!-- Marketing 10% -->
+                            <circle class="segment segment-4" cx="100" cy="100" r="80"
+                                stroke-dasharray="50.24 502.4" stroke-dashoffset="-288.88"/>
+                            <!-- Development 15% -->
+                            <circle class="segment segment-5" cx="100" cy="100" r="80"
+                                stroke-dasharray="75.36 502.4" stroke-dashoffset="-339.12"/>
+                            <!-- Ecosystem 12.5% -->
+                            <circle class="segment segment-6" cx="100" cy="100" r="80"
+                                stroke-dasharray="62.8 502.4" stroke-dashoffset="-414.48"/>
+                            <!-- Reserve 5% -->
+                            <circle class="segment segment-7" cx="100" cy="100" r="80"
+                                stroke-dasharray="25.12 502.4" stroke-dashoffset="-477.28"/>
+                        </svg>
+                        <div class="chart-center">
+                            <span class="total-supply">1B</span>
+                            <span class="supply-label">Total Supply</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="token-breakdown">
+                    <div class="breakdown-item">
+                        <div class="item-color color-1"></div>
+                        <div class="item-info">
+                            <span class="item-name">Presale</span>
+                            <span class="item-percent">22.5%</span>
+                        </div>
+                        <span class="item-amount">225,000,000 ASOL</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="item-color color-2"></div>
+                        <div class="item-info">
+                            <span class="item-name">Liquidity Pool</span>
+                            <span class="item-percent">20%</span>
+                        </div>
+                        <span class="item-amount">200,000,000 ASOL</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="item-color color-3"></div>
+                        <div class="item-info">
+                            <span class="item-name">Team & Advisors</span>
+                            <span class="item-percent">15%</span>
+                        </div>
+                        <span class="item-amount">150,000,000 ASOL</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="item-color color-4"></div>
+                        <div class="item-info">
+                            <span class="item-name">Marketing</span>
+                            <span class="item-percent">10%</span>
+                        </div>
+                        <span class="item-amount">100,000,000 ASOL</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="item-color color-5"></div>
+                        <div class="item-info">
+                            <span class="item-name">Development</span>
+                            <span class="item-percent">15%</span>
+                        </div>
+                        <span class="item-amount">150,000,000 ASOL</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="item-color color-6"></div>
+                        <div class="item-info">
+                            <span class="item-name">Ecosystem & Staking</span>
+                            <span class="item-percent">12.5%</span>
+                        </div>
+                        <span class="item-amount">125,000,000 ASOL</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="item-color color-7"></div>
+                        <div class="item-info">
+                            <span class="item-name">Reserve</span>
+                            <span class="item-percent">5%</span>
+                        </div>
+                        <span class="item-amount">50,000,000 ASOL</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="token-info-cards">
+                <div class="info-card">
+                    <span class="info-icon">&#x1F4B0;</span>
+                    <h4>Total Supply</h4>
+                    <p>1,000,000,000 ASOL</p>
+                </div>
+                <div class="info-card">
+                    <span class="info-icon">&#x1F512;</span>
+                    <h4>Team Vesting</h4>
+                    <p>24 months linear unlock</p>
+                </div>
+                <div class="info-card">
+                    <span class="info-icon">&#x1F4A7;</span>
+                    <h4>Liquidity Lock</h4>
+                    <p>2 years locked on Raydium</p>
+                </div>
+                <div class="info-card">
+                    <span class="info-icon">&#x1F525;</span>
+                    <h4>Burn Mechanism</h4>
+                    <p>2% of fees burned quarterly</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- How to Buy Section -->
+        <section class="how-to-buy-section" id="how-to-buy">
+            <div class="section-header">
+                <span class="section-tag">GET STARTED</span>
+                <h2 class="section-title">How to Buy</h2>
+                <p class="section-subtitle">Purchase ASOL tokens in 4 simple steps</p>
+            </div>
+
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                        </svg>
+                    </div>
+                    <h4>Connect Wallet</h4>
+                    <p>Connect your Solana wallet (Phantom, Solflare, or any compatible wallet)</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/>
+                        </svg>
+                    </div>
+                    <h4>Choose Amount</h4>
+                    <p>Enter how much SOL, USDC, or USDT you want to spend</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z"/>
+                        </svg>
+                    </div>
+                    <h4>Confirm Purchase</h4>
+                    <p>Review the transaction details and confirm in your wallet</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <div class="step-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                    </div>
+                    <h4>Receive Tokens</h4>
+                    <p>ASOL tokens will be claimable according to vesting schedule</p>
+                </div>
+            </div>
+
+            <div class="wallets-supported">
+                <span class="wallets-label">Supported Wallets:</span>
+                <div class="wallet-logos">
+                    <div class="wallet-item" title="Phantom">
+                        <img src="https://phantom.app/img/phantom-logo.svg" alt="Phantom" onerror="this.style.display='none'">
+                        <span>Phantom</span>
+                    </div>
+                    <div class="wallet-item" title="Solflare">
+                        <img src="https://solflare.com/assets/logo.svg" alt="Solflare" onerror="this.style.display='none'">
+                        <span>Solflare</span>
+                    </div>
+                    <div class="wallet-item" title="Backpack">
+                        <span class="wallet-placeholder">BP</span>
+                        <span>Backpack</span>
+                    </div>
+                    <div class="wallet-item" title="Ledger">
+                        <span class="wallet-placeholder">L</span>
+                        <span>Ledger</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Token Utility Section -->
+        <section class="utility-section" id="utility">
+            <div class="section-header">
+                <span class="section-tag">TOKEN UTILITY</span>
+                <h2 class="section-title">What is ASOL?</h2>
+                <p class="section-subtitle">The native token powering the Ausolpay ecosystem</p>
+            </div>
+
+            <div class="utility-grid">
+                <div class="utility-card">
+                    <div class="utility-icon">&#x1F513;</div>
+                    <h4>Premium Features</h4>
+                    <p>Unlock advanced Cryptfolio features, trading bots, and analytics tools</p>
+                </div>
+                <div class="utility-card">
+                    <div class="utility-icon">&#x1F4B8;</div>
+                    <h4>Staking Rewards</h4>
+                    <p>Stake ASOL to earn passive income and governance rights</p>
+                </div>
+                <div class="utility-card">
+                    <div class="utility-icon">&#x1F3AF;</div>
+                    <h4>Fee Discounts</h4>
+                    <p>Reduced fees across all Ausolpay products and services</p>
+                </div>
+                <div class="utility-card">
+                    <div class="utility-icon">&#x1F5F3;</div>
+                    <h4>Governance</h4>
+                    <p>Vote on protocol upgrades and new feature proposals</p>
+                </div>
+                <div class="utility-card">
+                    <div class="utility-icon">&#x1F381;</div>
+                    <h4>Exclusive Airdrops</h4>
+                    <p>Receive airdrops from partner projects and new launches</p>
+                </div>
+                <div class="utility-card">
+                    <div class="utility-icon">&#x1F680;</div>
+                    <h4>Early Access</h4>
+                    <p>First access to new apps, features, and ecosystem products</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contract Info Section -->
+        <section class="contract-section" id="contract">
+            <div class="section-header">
+                <span class="section-tag">SMART CONTRACT</span>
+                <h2 class="section-title">Contract Details</h2>
+                <p class="section-subtitle">Verified and audited on Solana blockchain</p>
+            </div>
+
+            <div class="contract-card">
+                <div class="contract-row">
+                    <span class="contract-label">Token Address</span>
+                    <div class="contract-value">
+                        <code id="token-address">To be announced</code>
+                        <button class="copy-btn" onclick="copyAddress()" title="Copy">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="contract-row">
+                    <span class="contract-label">Network</span>
+                    <span class="contract-value">Solana Mainnet</span>
+                </div>
+                <div class="contract-row">
+                    <span class="contract-label">Token Standard</span>
+                    <span class="contract-value">SPL Token</span>
+                </div>
+                <div class="contract-row">
+                    <span class="contract-label">Decimals</span>
+                    <span class="contract-value">9</span>
+                </div>
+                <div class="contract-badges">
+                    <span class="badge audit">Audit Pending</span>
+                    <span class="badge verified">Contract Verified</span>
+                    <span class="badge renounced">Mint Disabled</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section" id="faq">
+            <div class="section-header">
+                <span class="section-tag">QUESTIONS</span>
+                <h2 class="section-title">FAQ</h2>
+                <p class="section-subtitle">Common questions about the ASOL presale</p>
+            </div>
+
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>When will I receive my tokens?</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Tokens are distributed according to the vesting schedule. Stage 1 participants receive 25% at TGE (Token Generation Event), with the remaining tokens unlocking linearly over the following months after a 3-month cliff period.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>What wallets are supported?</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>We support all major Solana wallets including Phantom, Solflare, Backpack, Ledger (via Phantom/Solflare), and any wallet compatible with the Solana Wallet Adapter.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>What payment methods are accepted?</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>You can purchase ASOL tokens using SOL, USDC (SPL), or USDT (SPL) on Solana network. All transactions are processed on-chain for full transparency.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>Is the smart contract audited?</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>Our smart contract audit is currently in progress with a reputable security firm. The audit report will be published before the Token Generation Event. All funds are secured in a multi-sig wallet.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question" onclick="toggleFaq(this)">
+                        <span>What happens after the presale ends?</span>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                        </svg>
+                    </button>
+                    <div class="faq-answer">
+                        <p>After all presale stages complete, ASOL will be listed on Raydium DEX with locked liquidity. TGE will occur within 2 weeks of presale completion. You'll be able to claim your tokens through this same interface.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Community Section -->
+        <section class="community-section" id="community">
+            <div class="section-header">
+                <span class="section-tag">JOIN US</span>
+                <h2 class="section-title">Community</h2>
+                <p class="section-subtitle">Stay updated and connect with other investors</p>
+            </div>
+
+            <div class="social-links">
+                <a href="#" class="social-card twitter" target="_blank">
+                    <div class="social-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                    </div>
+                    <div class="social-info">
+                        <span class="social-name">X (Twitter)</span>
+                        <span class="social-handle">@ausolpay</span>
+                    </div>
+                    <span class="social-arrow">&#x2192;</span>
+                </a>
+
+                <a href="#" class="social-card telegram" target="_blank">
+                    <div class="social-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                    </div>
+                    <div class="social-info">
+                        <span class="social-name">Telegram</span>
+                        <span class="social-handle">t.me/ausolpay</span>
+                    </div>
+                    <span class="social-arrow">&#x2192;</span>
+                </a>
+
+                <a href="#" class="social-card discord" target="_blank">
+                    <div class="social-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+                        </svg>
+                    </div>
+                    <div class="social-info">
+                        <span class="social-name">Discord</span>
+                        <span class="social-handle">discord.gg/ausolpay</span>
+                    </div>
+                    <span class="social-arrow">&#x2192;</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Company Footer Section -->
+        <section class="company-section">
+            <div class="company-info">
+                <img src="ausolpay-logo.png" alt="Ausolpay" class="company-logo">
+                <p class="company-tagline">Building the future of crypto management</p>
+                <p class="company-legal">A product of <strong>Corah Media Pty Ltd</strong></p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="about-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
+                <span class="footer-name">Ausolpay</span>
+            </div>
+            <div class="footer-links">
+                <a href="about.html">About</a>
+                <a href="index.html">Cryptfolio</a>
+                <a href="docs.html">Docs</a>
+                <a href="#">Whitepaper</a>
+            </div>
+            <div class="footer-legal">
+                <span>&copy; <span class="current-year"></span> Corah Media Pty Ltd. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Wallet Connection Modal -->
+    <div class="wallet-modal" id="wallet-modal">
+        <div class="wallet-modal-content">
+            <div class="wallet-modal-header">
+                <h3>Connect Wallet</h3>
+                <button class="close-modal" onclick="closeWalletModal()">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="wallet-modal-body">
+                <p class="wallet-modal-subtitle">Choose your preferred Solana wallet</p>
+                <div class="wallet-options">
+                    <button class="wallet-option" onclick="connectPhantom()">
+                        <img src="https://phantom.app/img/phantom-logo.svg" alt="Phantom" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2218%22 font-size=%2216%22>P</text></svg>'">
+                        <span>Phantom</span>
+                        <span class="wallet-detected" id="phantom-detected" style="display:none">Detected</span>
+                    </button>
+                    <button class="wallet-option" onclick="connectSolflare()">
+                        <img src="https://solflare.com/assets/logo.svg" alt="Solflare" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2218%22 font-size=%2216%22>S</text></svg>'">
+                        <span>Solflare</span>
+                        <span class="wallet-detected" id="solflare-detected" style="display:none">Detected</span>
+                    </button>
+                    <button class="wallet-option" onclick="connectBackpack()">
+                        <div class="wallet-placeholder-icon">BP</div>
+                        <span>Backpack</span>
+                        <span class="wallet-detected" id="backpack-detected" style="display:none">Detected</span>
+                    </button>
+                </div>
+                <p class="wallet-note">Don't have a wallet? <a href="https://phantom.app/" target="_blank">Get Phantom</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Pending Modal -->
+    <div class="tx-modal" id="tx-modal">
+        <div class="tx-modal-content">
+            <div class="tx-spinner"></div>
+            <h3 id="tx-status">Processing Transaction...</h3>
+            <p id="tx-message">Please confirm in your wallet</p>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // PRESALE PAGE JAVASCRIPT
+        // ============================================
+
+        // Wallet State
+        let walletConnected = false;
+        let walletAddress = null;
+        let walletProvider = null;
+
+        // Presale Configuration
+        const PRESALE_CONFIG = {
+            tokenPrice: 0.005, // USD
+            bonusPercent: 50,
+            minPurchase: 10, // USDC
+            maxPurchase: 50000, // USDC
+            solPrice: 100, // Will be fetched live
+            presaleEndDate: new Date('2025-02-28T23:59:59Z'),
+            tokenAddress: null, // To be set after deployment
+            presaleAddress: null // To be set after deployment
+        };
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set current year
+            document.querySelectorAll('.current-year').forEach(el => {
+                el.textContent = new Date().getFullYear();
+            });
+
+            // Start countdown
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+
+            // Check for existing wallet connections
+            checkWalletConnections();
+
+            // Setup amount input listeners
+            setupAmountCalculator();
+
+            // Animate elements on scroll
+            setupScrollAnimations();
+
+            // Fetch SOL price
+            fetchSolPrice();
+        });
+
+        // ============================================
+        // COUNTDOWN TIMER
+        // ============================================
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const end = PRESALE_CONFIG.presaleEndDate.getTime();
+            const diff = end - now;
+
+            if (diff <= 0) {
+                document.getElementById('countdown-days').textContent = '00';
+                document.getElementById('countdown-hours').textContent = '00';
+                document.getElementById('countdown-mins').textContent = '00';
+                document.getElementById('countdown-secs').textContent = '00';
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+            document.getElementById('countdown-days').textContent = String(days).padStart(2, '0');
+            document.getElementById('countdown-hours').textContent = String(hours).padStart(2, '0');
+            document.getElementById('countdown-mins').textContent = String(mins).padStart(2, '0');
+            document.getElementById('countdown-secs').textContent = String(secs).padStart(2, '0');
+        }
+
+        // ============================================
+        // WALLET CONNECTION
+        // ============================================
+        function connectWallet() {
+            const modal = document.getElementById('wallet-modal');
+            modal.classList.add('active');
+            checkWalletConnections();
+        }
+
+        function closeWalletModal() {
+            const modal = document.getElementById('wallet-modal');
+            modal.classList.remove('active');
+        }
+
+        function checkWalletConnections() {
+            // Check Phantom
+            if (window.solana?.isPhantom) {
+                document.getElementById('phantom-detected').style.display = 'inline';
+            }
+            // Check Solflare
+            if (window.solflare?.isSolflare) {
+                document.getElementById('solflare-detected').style.display = 'inline';
+            }
+            // Check Backpack
+            if (window.backpack) {
+                document.getElementById('backpack-detected').style.display = 'inline';
+            }
+        }
+
+        async function connectPhantom() {
+            if (!window.solana?.isPhantom) {
+                window.open('https://phantom.app/', '_blank');
+                return;
+            }
+
+            try {
+                showTxModal('Connecting...', 'Please approve the connection in Phantom');
+                const response = await window.solana.connect();
+                walletAddress = response.publicKey.toString();
+                walletProvider = window.solana;
+                walletConnected = true;
+                onWalletConnected('Phantom');
+            } catch (error) {
+                console.error('Phantom connection error:', error);
+                hideTxModal();
+                alert('Failed to connect Phantom wallet');
+            }
+        }
+
+        async function connectSolflare() {
+            if (!window.solflare?.isSolflare) {
+                window.open('https://solflare.com/', '_blank');
+                return;
+            }
+
+            try {
+                showTxModal('Connecting...', 'Please approve the connection in Solflare');
+                await window.solflare.connect();
+                walletAddress = window.solflare.publicKey.toString();
+                walletProvider = window.solflare;
+                walletConnected = true;
+                onWalletConnected('Solflare');
+            } catch (error) {
+                console.error('Solflare connection error:', error);
+                hideTxModal();
+                alert('Failed to connect Solflare wallet');
+            }
+        }
+
+        async function connectBackpack() {
+            if (!window.backpack) {
+                window.open('https://backpack.app/', '_blank');
+                return;
+            }
+
+            try {
+                showTxModal('Connecting...', 'Please approve the connection in Backpack');
+                await window.backpack.connect();
+                walletAddress = window.backpack.publicKey.toString();
+                walletProvider = window.backpack;
+                walletConnected = true;
+                onWalletConnected('Backpack');
+            } catch (error) {
+                console.error('Backpack connection error:', error);
+                hideTxModal();
+                alert('Failed to connect Backpack wallet');
+            }
+        }
+
+        function onWalletConnected(walletName) {
+            closeWalletModal();
+            hideTxModal();
+
+            // Update UI
+            const shortAddress = walletAddress.slice(0, 4) + '...' + walletAddress.slice(-4);
+
+            // Update nav button
+            const navBtn = document.getElementById('nav-connect-wallet');
+            navBtn.innerHTML = `
+                <span class="wallet-icon connected">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                </span>
+                <span class="wallet-text">${shortAddress}</span>
+            `;
+            navBtn.classList.add('connected');
+            navBtn.onclick = disconnectWallet;
+
+            // Update buy button
+            const buyBtn = document.getElementById('buy-btn');
+            buyBtn.querySelector('.wallet-required').style.display = 'none';
+            buyBtn.querySelector('.buy-ready').style.display = 'inline';
+
+            // Fetch balance
+            fetchWalletBalance();
+
+            console.log(`Connected to ${walletName}: ${walletAddress}`);
+        }
+
+        async function disconnectWallet() {
+            if (walletProvider?.disconnect) {
+                await walletProvider.disconnect();
+            }
+
+            walletConnected = false;
+            walletAddress = null;
+            walletProvider = null;
+
+            // Reset UI
+            const navBtn = document.getElementById('nav-connect-wallet');
+            navBtn.innerHTML = `
+                <span class="wallet-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                        <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
+                </span>
+                <span class="wallet-text">Connect Wallet</span>
+            `;
+            navBtn.classList.remove('connected');
+            navBtn.onclick = connectWallet;
+
+            // Reset buy button
+            const buyBtn = document.getElementById('buy-btn');
+            buyBtn.querySelector('.wallet-required').style.display = 'inline';
+            buyBtn.querySelector('.buy-ready').style.display = 'none';
+
+            // Reset balance
+            document.getElementById('user-balance').textContent = '0.00';
+        }
+
+        async function fetchWalletBalance() {
+            // This will be implemented with @solana/web3.js
+            // For now, show placeholder
+            document.getElementById('user-balance').textContent = '-- Loading --';
+
+            // TODO: Implement actual balance fetch
+            // const connection = new Connection(clusterApiUrl('mainnet-beta'));
+            // const balance = await connection.getBalance(new PublicKey(walletAddress));
+            // document.getElementById('user-balance').textContent = (balance / LAMPORTS_PER_SOL).toFixed(4);
+        }
+
+        // ============================================
+        // PURCHASE FUNCTIONS
+        // ============================================
+        function setupAmountCalculator() {
+            const payInput = document.getElementById('pay-amount');
+            const currencySelect = document.getElementById('pay-currency');
+
+            payInput.addEventListener('input', calculateReceiveAmount);
+            currencySelect.addEventListener('change', calculateReceiveAmount);
+        }
+
+        function calculateReceiveAmount() {
+            const payAmount = parseFloat(document.getElementById('pay-amount').value) || 0;
+            const currency = document.getElementById('pay-currency').value;
+
+            let usdValue = payAmount;
+            if (currency === 'SOL') {
+                usdValue = payAmount * PRESALE_CONFIG.solPrice;
+            }
+
+            const baseTokens = usdValue / PRESALE_CONFIG.tokenPrice;
+            const bonusTokens = baseTokens * (PRESALE_CONFIG.bonusPercent / 100);
+            const totalTokens = baseTokens + bonusTokens;
+
+            document.getElementById('receive-amount').value = totalTokens.toLocaleString(undefined, {
+                maximumFractionDigits: 2
+            });
+        }
+
+        async function buyTokens() {
+            if (!walletConnected) {
+                connectWallet();
+                return;
+            }
+
+            const payAmount = parseFloat(document.getElementById('pay-amount').value) || 0;
+            const currency = document.getElementById('pay-currency').value;
+
+            if (payAmount <= 0) {
+                alert('Please enter an amount');
+                return;
+            }
+
+            // Validate min/max
+            let usdValue = payAmount;
+            if (currency === 'SOL') {
+                usdValue = payAmount * PRESALE_CONFIG.solPrice;
+            }
+
+            if (usdValue < PRESALE_CONFIG.minPurchase) {
+                alert(`Minimum purchase is ${PRESALE_CONFIG.minPurchase} USDC`);
+                return;
+            }
+
+            if (usdValue > PRESALE_CONFIG.maxPurchase) {
+                alert(`Maximum purchase is ${PRESALE_CONFIG.maxPurchase} USDC`);
+                return;
+            }
+
+            showTxModal('Processing Transaction...', 'Please confirm in your wallet');
+
+            // TODO: Implement actual transaction
+            // This will be connected to the Solana presale smart contract
+            setTimeout(() => {
+                hideTxModal();
+                alert('Presale smart contract not yet deployed. Check back soon!');
+            }, 2000);
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        async function fetchSolPrice() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+                const data = await response.json();
+                PRESALE_CONFIG.solPrice = data.solana.usd;
+            } catch (error) {
+                console.error('Failed to fetch SOL price:', error);
+            }
+        }
+
+        function copyAddress() {
+            const address = document.getElementById('token-address').textContent;
+            if (address === 'To be announced') {
+                alert('Token address not yet available');
+                return;
+            }
+            navigator.clipboard.writeText(address);
+            alert('Address copied!');
+        }
+
+        function showTxModal(status, message) {
+            const modal = document.getElementById('tx-modal');
+            document.getElementById('tx-status').textContent = status;
+            document.getElementById('tx-message').textContent = message;
+            modal.classList.add('active');
+        }
+
+        function hideTxModal() {
+            const modal = document.getElementById('tx-modal');
+            modal.classList.remove('active');
+        }
+
+        // ============================================
+        // FAQ TOGGLE
+        // ============================================
+        function toggleFaq(button) {
+            const item = button.closest('.faq-item');
+            const isOpen = item.classList.contains('open');
+
+            // Close all others
+            document.querySelectorAll('.faq-item.open').forEach(el => {
+                el.classList.remove('open');
+            });
+
+            // Toggle current
+            if (!isOpen) {
+                item.classList.add('open');
+            }
+        }
+
+        // ============================================
+        // MOBILE MENU
+        // ============================================
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            const hamburger = document.getElementById('hamburger-btn');
+            const isActive = mobileMenu.classList.toggle('active');
+            hamburger.classList.toggle('active', isActive);
+            document.body.style.overflow = isActive ? 'hidden' : '';
+        }
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.mobile-menu-link').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobile-menu').classList.remove('active');
+                document.getElementById('hamburger-btn').classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        });
+
+        // ============================================
+        // SCROLL ANIMATIONS
+        // ============================================
+        function setupScrollAnimations() {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.stage-card, .utility-card, .step-card, .info-card, .social-card, .breakdown-item').forEach(el => {
+                observer.observe(el);
+            });
+
+            // Nav shrink on scroll
+            window.addEventListener('scroll', () => {
+                const nav = document.getElementById('top-nav');
+                if (window.pageYOffset > 100) {
+                    nav.classList.add('scrolled');
+                } else {
+                    nav.classList.remove('scrolled');
+                }
+            });
+        }
+
+        // Close modals on outside click
+        document.getElementById('wallet-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeWalletModal();
+            }
+        });
+    </script>
+</body>
+</html>
