@@ -6061,8 +6061,9 @@ body.light-mode .reward-item:hover {
 
 .reward-item-amount {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
 }
 
 .reward-amount-crypto {
@@ -6076,7 +6077,7 @@ body.light-mode .reward-amount-crypto {
 }
 
 .reward-amount-fiat {
-    font-size: 14px;
+    font-size: 13px;
     color: #4ade80;
     font-weight: 500;
 }

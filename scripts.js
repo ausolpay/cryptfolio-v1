@@ -14470,8 +14470,8 @@ function renderRewardsList() {
                 <div class="reward-item-info">
                     <span class="reward-item-package">${reward.packageName}</span>
                     <div class="reward-item-amount">
-                        <span class="reward-amount-crypto">${formatRewardAmount(reward.amount, currentRewardsTab)} ${currentRewardsTab}</span>
-                        <span class="reward-amount-fiat">= $${formatNumber(reward.amountAUD)}</span>
+                        <span class="reward-amount-crypto">${formatRewardAmount(reward.amount)}</span>
+                        <span class="reward-amount-fiat">$${formatNumber(reward.amountAUD)}</span>
                     </div>
                 </div>
                 <span class="reward-item-date">${dateStr}</span>
@@ -14493,16 +14493,10 @@ function renderRewardsList() {
 }
 
 /**
- * Format reward amount based on crypto type
+ * Format reward amount to 4 decimal places
  */
-function formatRewardAmount(amount, crypto) {
-    if (['BTC', 'BCH', 'LTC'].includes(crypto)) {
-        return amount.toFixed(8);
-    } else if (['DOGE', 'RVN'].includes(crypto)) {
-        return amount.toLocaleString();
-    } else {
-        return amount.toFixed(4);
-    }
+function formatRewardAmount(amount) {
+    return amount.toFixed(4);
 }
 
 /**
