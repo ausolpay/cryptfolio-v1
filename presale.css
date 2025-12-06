@@ -1479,12 +1479,30 @@
         padding-right: 16px;
     }
 
+    .presale-hero {
+        padding: 90px 16px 50px;
+    }
+
+    .presale-hero-content {
+        text-align: center;
+    }
+
+    .presale-badge {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .countdown-container {
+        text-align: center;
+    }
+
     .stages-grid {
         grid-template-columns: 1fr;
     }
 
     .stages-grid-10 {
         grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
     }
 
     .stages-section,
@@ -1493,7 +1511,7 @@
     .utility-section,
     .contract-section,
     .faq-section {
-        padding: 60px 0;
+        padding: 60px 16px;
     }
 
     .countdown-timer {
@@ -1515,28 +1533,63 @@
 
     .token-info-cards {
         grid-template-columns: 1fr 1fr;
+        gap: 16px;
     }
 
     .steps-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
 
     .utility-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
 
     .wallet-logos {
         gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .widget-footer {
+        font-size: 11px;
+    }
+
+    .section-header {
+        margin-bottom: 40px;
+    }
+
+    .section-title {
+        font-size: 32px;
     }
 }
 
 @media (max-width: 480px) {
     .presale-hero {
-        padding: 80px 0 40px;
+        padding: 80px 16px 40px;
+    }
+
+    .presale-badge {
+        font-size: 11px;
+        padding: 8px 14px;
+    }
+
+    .presale-title .title-line {
+        font-size: 28px;
+    }
+
+    .presale-title .title-gradient {
+        font-size: 36px;
+    }
+
+    .presale-subtitle {
+        font-size: 15px;
     }
 
     .purchase-widget {
-        padding: 20px;
+        padding: 16px;
+        border-radius: 16px;
     }
 
     .widget-header {
@@ -1545,16 +1598,75 @@
         align-items: flex-start;
     }
 
+    .token-logo {
+        width: 40px;
+        height: 40px;
+    }
+
+    .token-name {
+        font-size: 16px;
+    }
+
     .current-price {
         text-align: left;
     }
 
+    .price-value {
+        font-size: 20px;
+    }
+
+    .progress-stats {
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+
+    .countdown-container {
+        padding: 16px;
+    }
+
+    .countdown-timer {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+    }
+
     .countdown-item {
-        min-width: 50px;
+        min-width: 45px;
     }
 
     .countdown-value {
-        font-size: 24px;
+        font-size: 22px;
+    }
+
+    .countdown-separator {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+
+    .input-wrapper input {
+        padding: 14px 12px;
+        font-size: 16px;
+    }
+
+    .currency-select,
+    .currency-display {
+        padding: 0 12px;
+    }
+
+    .currency-display span {
+        font-size: 13px;
+    }
+
+    .buy-btn {
+        padding: 16px 20px;
+        font-size: 15px;
+    }
+
+    .widget-footer {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
     }
 
     .contract-value {
@@ -1570,8 +1682,20 @@
         text-overflow: ellipsis;
     }
 
+    .section-title {
+        font-size: 28px;
+    }
+
+    .section-subtitle {
+        font-size: 14px;
+    }
+
     .token-info-cards {
         grid-template-columns: 1fr;
+    }
+
+    .info-card {
+        padding: 20px;
     }
 
     .stages-grid-10 {
@@ -1581,5 +1705,111 @@
 
     .stages-grid-10 .stage-card {
         padding: 16px;
+    }
+
+    .stages-grid-10 .stage-price .price {
+        font-size: 22px;
+    }
+
+    .vesting-info-box {
+        padding: 16px 20px;
+    }
+
+    .vesting-info-box h4 {
+        font-size: 16px;
+    }
+
+    .vesting-info-box p {
+        font-size: 14px;
+    }
+
+    .tokenomics-content {
+        gap: 30px;
+    }
+
+    .chart-visual {
+        width: 220px;
+        height: 220px;
+    }
+
+    .total-supply {
+        font-size: 28px;
+    }
+
+    .breakdown-item {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .item-name {
+        font-size: 13px;
+    }
+
+    .item-amount {
+        font-size: 12px;
+    }
+
+    .step-card {
+        padding: 20px;
+    }
+
+    .step-number {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .step-card h4 {
+        font-size: 16px;
+    }
+
+    .utility-card {
+        padding: 20px;
+    }
+
+    .faq-question {
+        padding: 16px;
+        font-size: 14px;
+    }
+
+    .faq-answer {
+        padding: 0 16px 16px;
+        font-size: 13px;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+    .presale-hero {
+        padding: 70px 12px 30px;
+    }
+
+    .presale-title .title-line {
+        font-size: 24px;
+    }
+
+    .presale-title .title-gradient {
+        font-size: 30px;
+    }
+
+    .purchase-widget {
+        padding: 14px;
+    }
+
+    .countdown-value {
+        font-size: 18px;
+    }
+
+    .countdown-item {
+        min-width: 40px;
+    }
+
+    .chart-visual {
+        width: 180px;
+        height: 180px;
+    }
+
+    .total-supply {
+        font-size: 22px;
     }
 }
