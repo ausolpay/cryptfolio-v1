@@ -27,11 +27,14 @@
     <!-- Top Navigation Strip -->
     <nav class="top-nav" id="top-nav">
         <div class="nav-content">
+            <!-- Mobile: Hamburger Button -->
             <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()">
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
             </button>
+
+            <!-- Desktop: Navigation Links -->
             <div class="nav-links">
                 <a href="about.html" class="nav-link">ABOUT</a>
                 <a href="presale.html" class="nav-link active">PRESALE</a>
@@ -39,15 +42,33 @@
                 <a href="docs.html" class="nav-link">DOCS</a>
                 <a href="contact.html" class="nav-link">CONTACT</a>
             </div>
+
+            <!-- Right: Profile, Donate, Logo -->
             <div class="nav-right">
-                <button class="connect-wallet-btn nav-wallet-btn" id="nav-connect-wallet" onclick="connectWallet()">
-                    <span class="wallet-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                            <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                        </svg>
-                    </span>
-                    <span class="wallet-text">Connect Wallet</span>
-                </button>
+                <!-- Profile Dropdown (Desktop) -->
+                <div class="profile-dropdown desktop-only">
+                    <button class="profile-btn" onclick="toggleProfileDropdown()">
+                        <div class="profile-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </div>
+                    </button>
+                    <div class="dropdown-menu" id="profile-dropdown-menu">
+                        <a href="index.html" class="dropdown-item" onclick="localStorage.setItem('showAccountSettings', 'true');">Account Settings</a>
+                        <a href="index.html" class="dropdown-item" onclick="localStorage.setItem('showSettings', 'true');">App Settings</a>
+                        <a href="preferences.html" class="dropdown-item">Preferences</a>
+                        <a href="help.html" class="dropdown-item">Help</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="index.html" class="dropdown-item" id="nav-login-btn" style="display: none;">Login</a>
+                        <a href="index.html" class="dropdown-item" id="nav-logout-btn" onclick="localStorage.removeItem('loggedInUser');">Logout</a>
+                    </div>
+                </div>
+
+                <!-- Donate Button (Desktop) -->
+                <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="donate-btn desktop-only">Donate Dev</a>
+
+                <!-- Logo -->
                 <img src="ausolpay-logo.png" alt="Logo" class="nav-logo">
             </div>
         </div>
@@ -56,13 +77,21 @@
     <!-- Mobile Menu Overlay -->
     <div class="mobile-menu" id="mobile-menu">
         <div class="mobile-menu-content">
-            <a href="about.html" class="mobile-menu-link">ABOUT</a>
-            <a href="presale.html" class="mobile-menu-link active">PRESALE</a>
-            <a href="index.html" class="mobile-menu-link">CRYPTFOLIO WEB APP</a>
-            <a href="docs.html" class="mobile-menu-link">DOCS</a>
-            <a href="contact.html" class="mobile-menu-link">CONTACT</a>
+            <a href="about.html" class="mobile-menu-link" onclick="closeMobileMenu()">ABOUT</a>
+            <a href="presale.html" class="mobile-menu-link active" onclick="closeMobileMenu()">PRESALE</a>
+            <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">CRYPTFOLIO WEB APP</a>
+            <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
+            <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
             <div class="mobile-menu-divider"></div>
-            <button class="mobile-connect-wallet" onclick="connectWallet()">Connect Wallet</button>
+            <a href="index.html" class="mobile-menu-link" onclick="localStorage.setItem('showAccountSettings', 'true'); closeMobileMenu();">Account Settings</a>
+            <a href="index.html" class="mobile-menu-link" onclick="localStorage.setItem('showSettings', 'true'); closeMobileMenu();">App Settings</a>
+            <a href="preferences.html" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
+            <a href="help.html" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="index.html" class="mobile-menu-link" id="mobile-login-btn" style="display: none;" onclick="closeMobileMenu()">Login</a>
+            <a href="index.html" class="mobile-menu-link" id="mobile-logout-btn" onclick="localStorage.removeItem('loggedInUser'); closeMobileMenu();">Logout</a>
+            <div class="mobile-menu-divider"></div>
+            <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
         </div>
     </div>
 
@@ -1325,13 +1354,28 @@
             document.body.style.overflow = isActive ? 'hidden' : '';
         }
 
-        // Close mobile menu when clicking a link
-        document.querySelectorAll('.mobile-menu-link').forEach(link => {
-            link.addEventListener('click', () => {
-                document.getElementById('mobile-menu').classList.remove('active');
-                document.getElementById('hamburger-btn').classList.remove('active');
-                document.body.style.overflow = '';
-            });
+        // Close mobile menu
+        function closeMobileMenu() {
+            document.getElementById('mobile-menu').classList.remove('active');
+            document.getElementById('hamburger-btn').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // ============================================
+        // PROFILE DROPDOWN
+        // ============================================
+        function toggleProfileDropdown() {
+            const dropdown = document.getElementById('profile-dropdown-menu');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('profile-dropdown-menu');
+            const profileBtn = document.querySelector('.profile-btn');
+            if (dropdown && profileBtn && !dropdown.contains(e.target) && !profileBtn.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
         });
 
         // ============================================
