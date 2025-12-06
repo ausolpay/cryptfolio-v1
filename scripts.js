@@ -14371,7 +14371,6 @@ const REWARDS_STORAGE_KEY = 'recentRewardsCache';
 const REWARDS_COUNTS_KEY = 'rewardsBlockCounts';
 let rewardsBlockCounts = { BTC: 0, BCH: 0, DOGE: 0, LTC: 0, RVN: 0, KAS: 0 };
 let rewardsPollingInterval = null;
-let rewardsPollQueue = [];
 let isRewardsPollRunning = false;
 let rewardsExpanded = false;
 
@@ -14435,11 +14434,11 @@ function switchRewardsTab(crypto) {
  */
 function startRewardsPolling() {
     stopRewardsPolling();
-    console.log('🔄 Starting rewards polling (10s interval, queued)');
+    console.log('🔄 Starting rewards polling (10s interval, parallel)');
 
     rewardsPollingInterval = setInterval(() => {
         if (rewardsExpanded) {
-            queueRewardsFetch();
+            fetchAllRewardsParallel();
         }
     }, REWARDS_POLL_INTERVAL);
 }
@@ -14456,53 +14455,41 @@ function stopRewardsPolling() {
 }
 
 /**
- * Queue all crypto tabs for rewards fetch
+ * Fetch all crypto rewards in parallel (async)
+ * All tabs load together for faster loading
  */
-function queueRewardsFetch() {
-    // Add all cryptos to queue if not already queued
-    REWARDS_CRYPTOS.forEach(crypto => {
-        if (!rewardsPollQueue.includes(crypto)) {
-            rewardsPollQueue.push(crypto);
-        }
-    });
-
-    // Start processing queue if not already running
-    if (!isRewardsPollRunning) {
-        processRewardsPollQueue();
-    }
-}
-
-/**
- * Process the rewards poll queue one at a time
- * Waits for other NiceHash API calls to complete first
- */
-async function processRewardsPollQueue() {
-    if (rewardsPollQueue.length === 0) {
-        isRewardsPollRunning = false;
+async function fetchAllRewardsParallel() {
+    // Skip if already running
+    if (isRewardsPollRunning) {
+        console.log('⏭️ Rewards fetch already in progress, skipping');
         return;
     }
 
-    isRewardsPollRunning = true;
-
     // Wait if auto-buy or other priority operations are in progress
-    while (isAutoBuyInProgress) {
+    if (isAutoBuyInProgress) {
         console.log('⏳ Rewards fetch waiting for auto-buy to complete...');
         await new Promise(resolve => setTimeout(resolve, 1000));
+        return fetchAllRewardsParallel(); // Retry after waiting
     }
 
-    const crypto = rewardsPollQueue.shift();
+    isRewardsPollRunning = true;
+    console.log('📦 Fetching all rewards in parallel...');
 
     try {
-        await fetchRewardsForCrypto(crypto);
+        // Fetch all cryptos in parallel
+        await Promise.all(
+            REWARDS_CRYPTOS.map(crypto =>
+                fetchRewardsForCrypto(crypto).catch(error => {
+                    console.warn(`⚠️ Failed to fetch ${crypto} rewards:`, error.message);
+                })
+            )
+        );
+        console.log('✅ All rewards fetched in parallel');
     } catch (error) {
-        console.warn(`⚠️ Failed to fetch ${crypto} rewards:`, error.message);
+        console.warn('⚠️ Error fetching rewards:', error.message);
+    } finally {
+        isRewardsPollRunning = false;
     }
-
-    // Small delay between API calls
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Process next in queue
-    processRewardsPollQueue();
 }
 
 /**
@@ -14521,8 +14508,8 @@ async function loadRecentRewards() {
     // Render current tab immediately (shows cached data or loading state)
     renderRewardsList();
 
-    // Queue all cryptos for fetch to get updates
-    queueRewardsFetch();
+    // Fetch all cryptos in parallel to get updates
+    fetchAllRewardsParallel();
 }
 
 /**
