@@ -29882,10 +29882,10 @@ function showAveragesPage() {
     // Immediately display any existing stored data
     updateAveragesDisplay();
 
-    // Fetch fresh data and update display
+    // Fetch fresh data and update display on page load
     fetchAndUpdateAverages();
 
-    // Start polling every 60 seconds
+    // Start polling every 15 minutes (matches snapshot interval)
     startAveragesPolling();
 }
 
@@ -29940,12 +29940,12 @@ async function fetchAndUpdateAverages() {
 function startAveragesPolling() {
     stopAveragesPolling();
 
-    // Poll every 3 minutes (reduced from 30s - averages don't need rapid updates)
+    // Poll every 15 minutes to match snapshot interval
     averagesPollingInterval = setInterval(() => {
         fetchAndUpdateAverages();
-    }, 180000);
+    }, SNAPSHOT_INTERVAL_MS); // 15 minutes
 
-    console.log('📊 Started averages polling (3 min interval)');
+    console.log('📊 Started averages polling (15 min interval)');
 }
 
 /**
