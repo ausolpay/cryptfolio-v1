@@ -29424,6 +29424,11 @@ function processSnapshotQueue() {
     if (snapshotQueue.length === 0) {
         isProcessingSnapshotQueue = false;
         console.log('📊 Snapshot queue processing complete');
+
+        // Now that all snapshots are captured, update averages and display
+        updatePackageMetricsAverages();
+        updateAveragesDisplay();
+        console.log('📊 Averages updated after queue processing');
         return;
     }
 
@@ -29892,6 +29897,7 @@ function showAveragesPage() {
 /**
  * Fetch fresh package data and update the averages display
  * This fetches data and captures metrics without rendering to Buy Packages page
+ * API calls are queued with delays to prevent rate limiting
  */
 async function fetchAndUpdateAverages() {
     console.log('📊 Fetching fresh data for Averages page...');
@@ -29914,23 +29920,26 @@ async function fetchAndUpdateAverages() {
             ];
         }
 
+        // Add delay between API calls to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, SNAPSHOT_QUEUE_DELAY_MS));
+
         // Fetch team packages from API
         let teamPackages = await fetchNiceHashTeamPackages();
         console.log(`📊 Averages: Fetched ${singlePackages.length} solo, ${teamPackages?.length || 0} team packages`);
 
         const allPackages = [...singlePackages, ...teamPackages];
 
-        // Capture metrics (no DOM operations on Buy Packages page)
+        // Queue packages for snapshot capture (processed one at a time with delays)
+        // Averages update happens automatically when queue finishes in processSnapshotQueue()
         if (allPackages.length > 0) {
             capturePackageMetrics(allPackages);
-            updatePackageMetricsAverages();
-            console.log('✅ Metrics captured for Averages page');
+            console.log('✅ Packages queued for metrics capture');
         }
     } catch (error) {
         console.warn('⚠️ Could not fetch fresh data:', error.message);
     }
 
-    // Update the display with latest data
+    // Update display with existing stored data (new data will update when queue finishes)
     updateAveragesDisplay();
 }
 
