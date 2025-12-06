@@ -1653,6 +1653,11 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
     box-sizing: border-box;
 }
 
+/* Ensure all portfolio stat cards have consistent height */
+.portfolio-stats-grid .stat-item {
+    min-height: 58px;
+}
+
 body.light-mode .stat-item {
     background-color: rgba(255, 255, 255, 0.6);
 }
@@ -1726,6 +1731,11 @@ body.light-mode .stat-value.highlight-green {
     text-align: center;
     width: 100%;
     box-sizing: border-box;
+}
+
+/* Ensure pnl cards match stat card height */
+.portfolio-pnl-grid .pnl-item {
+    min-height: 58px;
 }
 
 body.light-mode .pnl-item,
