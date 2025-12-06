@@ -14309,6 +14309,12 @@ let recentRewardsData = {
 let currentRewardsTab = 'BTC';
 let currentRewardsPage = 1;
 const REWARDS_PER_PAGE = 10;
+const REWARDS_POLL_INTERVAL = 10000; // 10 seconds
+const REWARDS_CRYPTOS = ['BTC', 'BCH', 'DOGE', 'LTC', 'RVN', 'KAS'];
+let rewardsPollingInterval = null;
+let rewardsPollQueue = [];
+let isRewardsPollRunning = false;
+let rewardsExpanded = false;
 
 // Crypto icon URLs for rewards
 const rewardsCryptoIcons = {
@@ -14333,11 +14339,16 @@ function toggleRecentRewards() {
     if (content.style.display === 'none') {
         content.style.display = 'block';
         section.classList.remove('collapsed');
-        // Load rewards data when expanded
+        rewardsExpanded = true;
+        // Load rewards data when expanded and start polling
         loadRecentRewards();
+        startRewardsPolling();
     } else {
         content.style.display = 'none';
         section.classList.add('collapsed');
+        rewardsExpanded = false;
+        // Stop polling when collapsed
+        stopRewardsPolling();
     }
 }
 
@@ -14361,50 +14372,170 @@ function switchRewardsTab(crypto) {
 }
 
 /**
- * Load recent rewards data (placeholder for API integration)
- * TODO: Connect to actual API endpoint
+ * Start polling for rewards updates
+ */
+function startRewardsPolling() {
+    stopRewardsPolling();
+    console.log('🔄 Starting rewards polling (10s interval, queued)');
+
+    rewardsPollingInterval = setInterval(() => {
+        if (rewardsExpanded) {
+            queueRewardsFetch();
+        }
+    }, REWARDS_POLL_INTERVAL);
+}
+
+/**
+ * Stop polling for rewards updates
+ */
+function stopRewardsPolling() {
+    if (rewardsPollingInterval) {
+        clearInterval(rewardsPollingInterval);
+        rewardsPollingInterval = null;
+        console.log('⏹️ Stopped rewards polling');
+    }
+}
+
+/**
+ * Queue all crypto tabs for rewards fetch
+ */
+function queueRewardsFetch() {
+    // Add all cryptos to queue if not already queued
+    REWARDS_CRYPTOS.forEach(crypto => {
+        if (!rewardsPollQueue.includes(crypto)) {
+            rewardsPollQueue.push(crypto);
+        }
+    });
+
+    // Start processing queue if not already running
+    if (!isRewardsPollRunning) {
+        processRewardsPollQueue();
+    }
+}
+
+/**
+ * Process the rewards poll queue one at a time
+ * Waits for other NiceHash API calls to complete first
+ */
+async function processRewardsPollQueue() {
+    if (rewardsPollQueue.length === 0) {
+        isRewardsPollRunning = false;
+        return;
+    }
+
+    isRewardsPollRunning = true;
+
+    // Wait if auto-buy or other priority operations are in progress
+    while (isAutoBuyInProgress) {
+        console.log('⏳ Rewards fetch waiting for auto-buy to complete...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    const crypto = rewardsPollQueue.shift();
+
+    try {
+        await fetchRewardsForCrypto(crypto);
+    } catch (error) {
+        console.warn(`⚠️ Failed to fetch ${crypto} rewards:`, error.message);
+    }
+
+    // Small delay between API calls
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Process next in queue
+    processRewardsPollQueue();
+}
+
+/**
+ * Load recent rewards for all cryptos on initial load
  */
 async function loadRecentRewards() {
-    console.log('📦 Loading recent rewards...');
+    console.log('📦 Loading recent rewards for all cryptos...');
 
-    // Mock data for now - will be replaced with API call
-    // Each reward: { packageName, amount, amountAUD, timestamp }
-    recentRewardsData = {
-        BTC: generateMockRewards('BTC', 25),
-        BCH: generateMockRewards('BCH', 18),
-        DOGE: generateMockRewards('DOGE', 32),
-        LTC: generateMockRewards('LTC', 15),
-        RVN: generateMockRewards('RVN', 22),
-        KAS: generateMockRewards('KAS', 28)
-    };
+    // Queue all cryptos for fetch
+    queueRewardsFetch();
 
+    // Render current tab immediately (will show empty state until data loads)
     renderRewardsList();
 }
 
 /**
- * Generate mock rewards for testing
- * TODO: Remove when API is connected
+ * Fetch rewards for a specific crypto from NiceHash API
  */
-function generateMockRewards(crypto, count) {
-    const packageNames = {
-        BTC: ['Gold S', 'Gold M', 'Gold L', 'Gold XL', 'Gold Team S', 'Gold Team M'],
-        BCH: ['Silver S', 'Silver M', 'Silver L', 'Silver Team S', 'Silver Team M'],
-        DOGE: ['Palladium DOGE S', 'Palladium DOGE M', 'Palladium DOGE L', 'Palladium Team S'],
-        LTC: ['Palladium LTC S', 'Palladium LTC M', 'Palladium LTC L', 'Palladium Team M'],
-        RVN: ['Chromium S', 'Chromium M', 'Chromium L', 'Chromium Team S'],
-        KAS: ['Titanium KAS S', 'Titanium KAS M', 'Titanium KAS L', 'Titanium Team S']
+async function fetchRewardsForCrypto(crypto) {
+    console.log(`📦 Fetching ${crypto} rewards...`);
+
+    const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&limit=100&orphans=false&sortField=time&sortDir=DESC`;
+
+    try {
+        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            body: JSON.stringify({
+                endpoint: endpoint,
+                method: 'GET'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+            // Transform API response to our format
+            recentRewardsData[crypto] = data.map(reward => ({
+                id: reward.id,
+                packageName: reward.packageName || 'Unknown Package',
+                amount: reward.payoutReward ? reward.payoutReward / 100000000 : 0, // Convert satoshis to coin
+                amountBTC: reward.payoutRewardBtc || 0,
+                timestamp: reward.time || new Date(reward.createdTs).getTime(),
+                blockHeight: reward.blockHeight,
+                blockHash: reward.blockHash,
+                shared: reward.shared,
+                confirmations: reward.confirmations,
+                minConfirmations: reward.minConfirmations,
+                depositComplete: reward.depositComplete
+            }));
+
+            console.log(`✅ Loaded ${recentRewardsData[crypto].length} ${crypto} rewards`);
+
+            // Re-render if this is the current tab
+            if (currentRewardsTab === crypto) {
+                renderRewardsList();
+            }
+        }
+    } catch (error) {
+        console.warn(`⚠️ Could not fetch ${crypto} rewards:`, error.message);
+    }
+}
+
+/**
+ * Get current price for a crypto to calculate AUD value
+ */
+function getRewardAUDValue(crypto, amount) {
+    // Try to get price from our existing price data
+    const cryptoIdMap = {
+        BTC: 'bitcoin',
+        BCH: 'bitcoin-cash',
+        DOGE: 'dogecoin',
+        LTC: 'litecoin',
+        RVN: 'ravencoin',
+        KAS: 'kaspa'
     };
 
-    const blockRewards = {
-        BTC: 3.125,
-        BCH: 3.125,
-        DOGE: 10000,
-        LTC: 6.25,
-        RVN: 2500,
-        KAS: 38.89
-    };
+    const id = cryptoIdMap[crypto];
+    if (id && window.cryptoPrices && window.cryptoPrices[id]) {
+        return amount * window.cryptoPrices[id];
+    }
 
-    const approxPrices = {
+    // Fallback approximate prices
+    const fallbackPrices = {
         BTC: 150000,
         BCH: 600,
         DOGE: 0.40,
@@ -14413,28 +14544,7 @@ function generateMockRewards(crypto, count) {
         KAS: 0.15
     };
 
-    const rewards = [];
-    const now = Date.now();
-    const packages = packageNames[crypto] || ['Package'];
-
-    for (let i = 0; i < count; i++) {
-        const pkg = packages[Math.floor(Math.random() * packages.length)];
-        const amount = blockRewards[crypto] || 1;
-        const amountAUD = amount * (approxPrices[crypto] || 1);
-        // Random timestamp within last 30 days
-        const timestamp = now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
-
-        rewards.push({
-            packageName: pkg,
-            amount: amount,
-            amountAUD: amountAUD,
-            timestamp: timestamp
-        });
-    }
-
-    // Sort by timestamp descending (most recent first)
-    rewards.sort((a, b) => b.timestamp - a.timestamp);
-    return rewards;
+    return amount * (fallbackPrices[crypto] || 0);
 }
 
 /**
@@ -14463,6 +14573,7 @@ function renderRewardsList() {
     listContainer.innerHTML = pageRewards.map(reward => {
         const date = new Date(reward.timestamp);
         const { dateStr, timeStr } = formatRewardDate(date);
+        const amountAUD = getRewardAUDValue(currentRewardsTab, reward.amount);
 
         return `
             <div class="reward-item">
@@ -14475,7 +14586,7 @@ function renderRewardsList() {
                             <span class="reward-item-date">${dateStr}</span>
                         </div>
                         <div class="reward-row">
-                            <span class="reward-amount-fiat">= $${formatNumber(reward.amountAUD)}</span>
+                            <span class="reward-amount-fiat">= $${formatNumber(amountAUD)}</span>
                             <span class="reward-item-time">${timeStr}</span>
                         </div>
                     </div>
