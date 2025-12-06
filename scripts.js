@@ -14320,6 +14320,8 @@ const REWARDS_PER_PAGE = 10;
 const REWARDS_POLL_INTERVAL = 10000; // 10 seconds
 const REWARDS_CRYPTOS = ['BTC', 'BCH', 'DOGE', 'LTC', 'RVN', 'KAS'];
 const REWARDS_STORAGE_KEY = 'recentRewardsCache';
+const REWARDS_COUNTS_KEY = 'rewardsBlockCounts';
+let rewardsBlockCounts = { BTC: 0, BCH: 0, DOGE: 0, LTC: 0, RVN: 0, KAS: 0 };
 let rewardsPollingInterval = null;
 let rewardsPollQueue = [];
 let isRewardsPollRunning = false;
@@ -14461,17 +14463,49 @@ async function processRewardsPollQueue() {
 async function loadRecentRewards() {
     console.log('📦 Loading recent rewards for all cryptos...');
 
-    // Load from cache first
-    loadRewardsFromCache();
+    // Load block counts from cache first (instant tab display)
+    loadBlockCountsFromCache();
+    displayCachedBlockCounts();
 
-    // Update tab counts from cached data
-    REWARDS_CRYPTOS.forEach(crypto => updateRewardsTabCount(crypto));
+    // Load rewards data from cache
+    loadRewardsFromCache();
 
     // Render current tab immediately (shows cached data or loading state)
     renderRewardsList();
 
     // Queue all cryptos for fetch to get updates
     queueRewardsFetch();
+}
+
+/**
+ * Load block counts from localStorage cache (instant tab display)
+ */
+function loadBlockCountsFromCache() {
+    try {
+        const cached = localStorage.getItem(REWARDS_COUNTS_KEY);
+        if (cached) {
+            const parsedCounts = JSON.parse(cached);
+            REWARDS_CRYPTOS.forEach(crypto => {
+                if (typeof parsedCounts[crypto] === 'number') {
+                    rewardsBlockCounts[crypto] = parsedCounts[crypto];
+                }
+            });
+            console.log('📦 Loaded block counts from cache:', rewardsBlockCounts);
+        }
+    } catch (error) {
+        console.warn('⚠️ Could not load block counts from cache:', error.message);
+    }
+}
+
+/**
+ * Save block counts to localStorage cache
+ */
+function saveBlockCountsToCache() {
+    try {
+        localStorage.setItem(REWARDS_COUNTS_KEY, JSON.stringify(rewardsBlockCounts));
+    } catch (error) {
+        console.warn('⚠️ Could not save block counts to cache:', error.message);
+    }
 }
 
 /**
@@ -14583,8 +14617,9 @@ async function fetchRewardsForCrypto(crypto) {
                 saveRewardsToCache();
             }
 
-            // Update the tab count
-            updateRewardsTabCount(crypto);
+            // Update the tab count with new total (smartly caches if changed)
+            const newTotal = recentRewardsData[crypto].length;
+            updateRewardsTabCount(crypto, newTotal);
 
             // Re-render if this is the current tab and data changed (smart update)
             if (currentRewardsTab === crypto && dataChanged) {
@@ -14606,14 +14641,35 @@ async function fetchRewardsForCrypto(crypto) {
 }
 
 /**
- * Update the block count displayed on a rewards tab
+ * Update the block count displayed on a rewards tab (uses cached counts)
  */
-function updateRewardsTabCount(crypto) {
+function updateRewardsTabCount(crypto, newCount = null) {
     const countElement = document.getElementById(`rewards-count-${crypto}`);
-    if (countElement) {
-        const count = recentRewardsData[crypto]?.length || 0;
-        countElement.textContent = count.toLocaleString();
+    if (!countElement) return;
+
+    // If new count provided (from API), update cache
+    if (newCount !== null && newCount !== rewardsBlockCounts[crypto]) {
+        rewardsBlockCounts[crypto] = newCount;
+        saveBlockCountsToCache();
+        console.log(`📊 Updated ${crypto} block count: ${newCount}`);
     }
+
+    // Display the cached count
+    const displayCount = rewardsBlockCounts[crypto] || 0;
+    countElement.textContent = displayCount.toLocaleString();
+}
+
+/**
+ * Display all cached block counts on tabs (instant load)
+ */
+function displayCachedBlockCounts() {
+    REWARDS_CRYPTOS.forEach(crypto => {
+        const countElement = document.getElementById(`rewards-count-${crypto}`);
+        if (countElement) {
+            const count = rewardsBlockCounts[crypto] || 0;
+            countElement.textContent = count.toLocaleString();
+        }
+    });
 }
 
 /**
