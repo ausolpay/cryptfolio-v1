@@ -18998,25 +18998,33 @@ async function updateRecommendations() {
         }
     }
 
-    // Clean up alerted packages that are no longer in recommendations
+    // Clean up alerted packages that are no longer in recommendations (allows re-trigger)
     if (recommendations.length === 0) {
+        if (alertedSoloPackages.size > 0) {
+            console.log(`🔕 All solo packages left threshold - will re-trigger when they return`);
+        }
         alertedSoloPackages.clear();
     } else {
         const currentSoloNames = new Set(recommendations.map(pkg => pkg.name));
         alertedSoloPackages.forEach(name => {
             if (!currentSoloNames.has(name)) {
                 alertedSoloPackages.delete(name);
+                console.log(`🔕 ${name} left threshold - will re-trigger when it returns`);
             }
         });
     }
 
     if (teamRecommendations.length === 0) {
+        if (alertedTeamPackages.size > 0) {
+            console.log(`🔕 All team packages left threshold - will re-trigger when they return`);
+        }
         alertedTeamPackages.clear();
     } else {
         const currentTeamNames = new Set(teamRecommendations.map(pkg => pkg.name));
         alertedTeamPackages.forEach(name => {
             if (!currentTeamNames.has(name)) {
                 alertedTeamPackages.delete(name);
+                console.log(`🔕 ${name} left threshold - will re-trigger when it returns`);
             }
         });
     }
