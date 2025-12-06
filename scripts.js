@@ -1204,14 +1204,20 @@ function loadUserData() {
 
             const holdingsElement = document.getElementById(`${crypto.id}-holdings`);
             if (holdingsElement) {
-                // Load ONLY manual holdings from storage (not displayHoldings)
-                // EasyMining will add NiceHash balance when it loads
-                let holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                // Use getTotalActiveHoldings to calculate buys - sells immediately
+                // This ensures sells are already subtracted on page load
+                let holdings = 0;
+                if (typeof getTotalActiveHoldings === 'function') {
+                    holdings = getTotalActiveHoldings(crypto.id);
+                } else {
+                    // Fallback to legacy storage if function not available
+                    holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                }
 
                 if (crypto.id === 'bitcoin') {
                     // No formatting for BTC - use raw number with 8 decimals
                     holdingsElement.textContent = holdings.toFixed(8);
-                    console.log(`📖 Loaded Bitcoin manual holdings: ${holdings.toFixed(8)} (EasyMining balance will be added when it loads)`);
+                    console.log(`📖 Loaded Bitcoin holdings (buys - sells): ${holdings.toFixed(8)} (EasyMining balance will be added when it loads)`);
 
                     // Don't load stored AUD value - will be recalculated with current price
                 } else {
