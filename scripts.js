@@ -28903,6 +28903,16 @@ function pauseBuyPackagesPolling() {
 // Storage key for package metrics
 const PACKAGE_METRICS_STORAGE_KEY = 'packageMetricsHistory';
 
+// Snapshot configuration
+const SNAPSHOT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes between snapshots
+const MAX_SNAPSHOTS_PER_PACKAGE = 2000; // Circular buffer size
+const SNAPSHOT_QUEUE_DELAY_MS = 500; // 500ms delay between each package snapshot
+
+// Tracking variables for snapshot queue
+let lastSnapshotTime = 0;
+let snapshotQueue = [];
+let isProcessingSnapshotQueue = false;
+
 // Interval for updating averages (5 seconds)
 let packageMetricsAverageInterval = null;
 
@@ -29304,16 +29314,16 @@ function savePackageMetricsHistory(history) {
 
 /**
  * Trim package metrics history to reduce storage size
- * Keeps only the most recent snapshots per package
+ * Keeps only the most recent snapshots per package (half of max for emergency trim)
  */
 function trimPackageMetricsHistory(history) {
-    const MAX_SNAPSHOTS_PER_PACKAGE = 100; // Reduced from 200 during trim
+    const TRIM_TO = Math.floor(MAX_SNAPSHOTS_PER_PACKAGE / 2); // Trim to half during emergency
 
     Object.keys(history).forEach(name => {
-        if (history[name].snapshots && history[name].snapshots.length > MAX_SNAPSHOTS_PER_PACKAGE) {
+        if (history[name].snapshots && history[name].snapshots.length > TRIM_TO) {
             // Keep only the most recent snapshots
-            history[name].snapshots = history[name].snapshots.slice(-MAX_SNAPSHOTS_PER_PACKAGE);
-            console.log(`📊 Trimmed ${name} to ${MAX_SNAPSHOTS_PER_PACKAGE} snapshots`);
+            history[name].snapshots = history[name].snapshots.slice(-TRIM_TO);
+            console.log(`📊 Trimmed ${name} to ${TRIM_TO} snapshots`);
         }
     });
 
@@ -29368,7 +29378,8 @@ function parseProbability(probabilityVal) {
 
 /**
  * Capture current metrics for all packages
- * Called each time user lands on Buy Packages page
+ * Only captures if 15 minutes have passed since last snapshot
+ * Processes packages one at a time with delays to avoid overwhelming the system
  */
 function capturePackageMetrics(packages) {
     console.log('📊 capturePackageMetrics called with', packages?.length || 0, 'packages');
@@ -29378,88 +29389,121 @@ function capturePackageMetrics(packages) {
         return;
     }
 
+    // Check if 15 minutes have passed since last snapshot
+    const now = Date.now();
+    const timeSinceLastSnapshot = now - lastSnapshotTime;
+
+    if (lastSnapshotTime > 0 && timeSinceLastSnapshot < SNAPSHOT_INTERVAL_MS) {
+        const minutesRemaining = Math.ceil((SNAPSHOT_INTERVAL_MS - timeSinceLastSnapshot) / 60000);
+        console.log(`📊 Skipping snapshot - only ${Math.floor(timeSinceLastSnapshot / 60000)} minutes since last snapshot. Next in ${minutesRemaining} minutes.`);
+        return;
+    }
+
+    // Update last snapshot time
+    lastSnapshotTime = now;
+
     // Log package breakdown
     const soloCount = packages.filter(p => !p.isTeam).length;
     const teamCount = packages.filter(p => p.isTeam).length;
     console.log(`📊 Package breakdown: ${soloCount} solo, ${teamCount} team`);
+    console.log(`📊 Queuing ${packages.length} packages for snapshot (processing with ${SNAPSHOT_QUEUE_DELAY_MS}ms delays)...`);
+
+    // Add packages to queue
+    snapshotQueue = [...packages];
+
+    // Start processing queue if not already processing
+    if (!isProcessingSnapshotQueue) {
+        processSnapshotQueue();
+    }
+}
+
+/**
+ * Process the snapshot queue one package at a time with delays
+ */
+function processSnapshotQueue() {
+    if (snapshotQueue.length === 0) {
+        isProcessingSnapshotQueue = false;
+        console.log('📊 Snapshot queue processing complete');
+        return;
+    }
+
+    isProcessingSnapshotQueue = true;
+    const pkg = snapshotQueue.shift();
+
+    // Capture snapshot for this single package
+    captureSinglePackageSnapshot(pkg);
+
+    // Schedule next package with delay
+    setTimeout(() => {
+        processSnapshotQueue();
+    }, SNAPSHOT_QUEUE_DELAY_MS);
+}
+
+/**
+ * Capture a snapshot for a single package
+ * Uses circular buffer - overwrites oldest when reaching MAX_SNAPSHOTS_PER_PACKAGE
+ */
+function captureSinglePackageSnapshot(pkg) {
+    const name = pkg.name;
+    if (!name) return;
 
     const timestamp = new Date().toISOString();
     const history = getPackageMetricsHistory();
-    let capturedCount = 0;
-    let teamCaptured = 0;
-    let soloCaptured = 0;
 
-    packages.forEach(pkg => {
-        const name = pkg.name;
-        if (!name) return;
-
-        // Initialize package entry if not exists
-        if (!history[name]) {
-            history[name] = {
-                snapshots: [],
-                averages: null,
-                crypto: pkg.crypto,
-                algorithm: pkg.algorithm,
-                isTeam: pkg.isTeam || false
-            };
-        }
-
-        // Parse numeric values
-        const hashrateRaw = parseHashrate(pkg.hashrate);
-        const probabilityRaw = parseProbability(pkg.probability);
-
-        // Check if this is a Palladium package (dual mining DOGE + LTC)
-        const isPalladium = name.toLowerCase().includes('palladium');
-        const mergeProbabilityRaw = isPalladium ? parseProbability(pkg.mergeProbabilityPrecision || pkg.mergeProbability) : 0;
-
-        // Create snapshot with all available metrics
-        const snapshot = {
-            timestamp,
-            hashrate: pkg.hashrate,
-            hashrateRaw,
-            probability: pkg.probability,
-            probabilityRaw,
-            // Palladium dual-mining: LTC probability is main, DOGE is merge
-            probabilityLtc: isPalladium ? probabilityRaw : 0,
-            probabilityDoge: isPalladium ? mergeProbabilityRaw : 0,
-            priceBTC: parseFloat(pkg.priceBTC) || 0,
-            priceAUD: parseFloat(pkg.priceAUD) || 0,
-            duration: pkg.duration,
-            blockReward: pkg.blockReward,
-            // Team package specific metrics
-            participants: pkg.numberOfParticipants || 0,
-            shares: parseFloat(pkg.shares) || 0  // Share percentage (e.g., 5.25%)
+    // Initialize package entry if not exists
+    if (!history[name]) {
+        history[name] = {
+            snapshots: [],
+            averages: null,
+            crypto: pkg.crypto,
+            algorithm: pkg.algorithm,
+            isTeam: pkg.isTeam || false
         };
+    }
 
-        // Mark as Palladium in history for display purposes
-        if (isPalladium) {
-            history[name].isPalladium = true;
-        }
+    // Parse numeric values
+    const hashrateRaw = parseHashrate(pkg.hashrate);
+    const probabilityRaw = parseProbability(pkg.probability);
 
-        // Add to snapshots array
-        history[name].snapshots.push(snapshot);
+    // Check if this is a Palladium package (dual mining DOGE + LTC)
+    const isPalladium = name.toLowerCase().includes('palladium');
+    const mergeProbabilityRaw = isPalladium ? parseProbability(pkg.mergeProbabilityPrecision || pkg.mergeProbability) : 0;
 
-        // Keep only last 200 snapshots per package to prevent storage bloat
-        if (history[name].snapshots.length > 200) {
-            history[name].snapshots = history[name].snapshots.slice(-200);
-        }
+    // Create snapshot with all available metrics
+    const snapshot = {
+        timestamp,
+        hashrate: pkg.hashrate,
+        hashrateRaw,
+        probability: pkg.probability,
+        probabilityRaw,
+        // Palladium dual-mining: LTC probability is main, DOGE is merge
+        probabilityLtc: isPalladium ? probabilityRaw : 0,
+        probabilityDoge: isPalladium ? mergeProbabilityRaw : 0,
+        priceBTC: parseFloat(pkg.priceBTC) || 0,
+        priceAUD: parseFloat(pkg.priceAUD) || 0,
+        duration: pkg.duration,
+        blockReward: pkg.blockReward,
+        // Team package specific metrics
+        participants: pkg.numberOfParticipants || 0,
+        shares: parseFloat(pkg.shares) || 0  // Share percentage (e.g., 5.25%)
+    };
 
-        capturedCount++;
-        if (pkg.isTeam) {
-            teamCaptured++;
-        } else {
-            soloCaptured++;
-        }
-    });
+    // Mark as Palladium in history for display purposes
+    if (isPalladium) {
+        history[name].isPalladium = true;
+    }
 
+    // Circular buffer - if at max, overwrite oldest (shift and push)
+    if (history[name].snapshots.length >= MAX_SNAPSHOTS_PER_PACKAGE) {
+        history[name].snapshots.shift(); // Remove oldest
+    }
+    history[name].snapshots.push(snapshot);
+
+    // Save immediately after each package
     savePackageMetricsHistory(history);
-    console.log(`📊 Captured metrics for ${capturedCount} packages (${soloCaptured} solo, ${teamCaptured} team) at ${timestamp}`);
 
-    // Log the storage content for debugging
-    const savedHistory = getPackageMetricsHistory();
-    const savedTeamCount = Object.values(savedHistory).filter(p => p.isTeam).length;
-    const savedSoloCount = Object.values(savedHistory).filter(p => !p.isTeam).length;
-    console.log(`📊 Storage now has ${Object.keys(savedHistory).length} packages (${savedSoloCount} solo, ${savedTeamCount} team)`);
+    const snapshotCount = history[name].snapshots.length;
+    console.log(`📊 Captured snapshot for ${name} (${snapshotCount}/${MAX_SNAPSHOTS_PER_PACKAGE} snapshots)`);
 }
 
 /**
