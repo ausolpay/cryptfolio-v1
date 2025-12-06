@@ -4142,6 +4142,12 @@ function saveSoloAlerts() {
 
     // Reload to show updated status
     loadSoloAlerts();
+
+    // Clear alerted packages so new thresholds can trigger fresh alerts
+    alertedSoloPackages.clear();
+
+    // Trigger immediate recommendations check with new thresholds
+    updateRecommendations();
 }
 
 function saveTeamAlerts() {
@@ -4248,6 +4254,12 @@ function saveTeamAlerts() {
 
     // Reload to show updated status
     loadTeamAlerts();
+
+    // Clear alerted packages so new thresholds can trigger fresh alerts
+    alertedTeamPackages.clear();
+
+    // Trigger immediate recommendations check with new thresholds
+    updateRecommendations();
 }
 
 function clearSoloAlerts() {
