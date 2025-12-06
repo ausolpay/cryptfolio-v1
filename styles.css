@@ -5979,13 +5979,13 @@ body.light-mode .rewards-tab.active {
     object-fit: cover;
 }
 
-.rewards-tab-name {
+.rewards-tab-count {
     font-size: 14px;
     font-weight: 600;
     color: #fff;
 }
 
-body.light-mode .rewards-tab-name {
+body.light-mode .rewards-tab-count {
     color: #333;
 }
 
@@ -6152,18 +6152,21 @@ body.light-mode .rewards-arrow:disabled {
     text-align: center;
 }
 
-/* Mobile Responsive - hide tab names */
+/* Mobile Responsive */
 @media (max-width: 700px) {
-    .rewards-tab-name {
-        display: none;
+    .rewards-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
     }
 
     .rewards-tab {
         padding: 10px 12px;
+        justify-content: center;
     }
 
-    .rewards-tabs {
-        gap: 6px;
+    .rewards-tab-count {
+        font-size: 12px;
     }
 
     .reward-item {

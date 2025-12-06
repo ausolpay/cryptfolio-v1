@@ -14465,7 +14465,7 @@ async function loadRecentRewards() {
 async function fetchRewardsForCrypto(crypto) {
     console.log(`📦 Fetching ${crypto} rewards...`);
 
-    const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&limit=100&orphans=false&sortField=time&sortDir=DESC`;
+    const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&orphans=false&sortField=time&sortDir=DESC`;
 
     try {
         const response = await fetch(VERCEL_PROXY_ENDPOINT, {
@@ -14505,6 +14505,9 @@ async function fetchRewardsForCrypto(crypto) {
 
             console.log(`✅ Loaded ${recentRewardsData[crypto].length} ${crypto} rewards`);
 
+            // Update the tab count
+            updateRewardsTabCount(crypto);
+
             // Re-render if this is the current tab
             if (currentRewardsTab === crypto) {
                 renderRewardsList();
@@ -14512,6 +14515,17 @@ async function fetchRewardsForCrypto(crypto) {
         }
     } catch (error) {
         console.warn(`⚠️ Could not fetch ${crypto} rewards:`, error.message);
+    }
+}
+
+/**
+ * Update the block count displayed on a rewards tab
+ */
+function updateRewardsTabCount(crypto) {
+    const countElement = document.getElementById(`rewards-count-${crypto}`);
+    if (countElement) {
+        const count = recentRewardsData[crypto]?.length || 0;
+        countElement.textContent = count.toLocaleString();
     }
 }
 
