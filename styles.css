@@ -6015,10 +6015,10 @@ body.light-mode .rewards-list-container {
 
 .reward-item {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     padding: 14px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    gap: 12px;
+    gap: 8px;
     transition: background-color 0.2s ease;
 }
 
@@ -6038,6 +6038,19 @@ body.light-mode .reward-item:hover {
     background-color: rgba(255, 165, 0, 0.08);
 }
 
+.reward-item-package {
+    font-size: 13px;
+    color: #ffa500;
+    font-weight: 600;
+}
+
+.reward-item-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
 .reward-item-icon {
     width: 32px;
     height: 32px;
@@ -6046,24 +6059,12 @@ body.light-mode .reward-item:hover {
     flex-shrink: 0;
 }
 
-.reward-item-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.reward-item-package {
-    font-size: 13px;
-    color: #ffa500;
-    font-weight: 600;
-}
-
 .reward-item-amount {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
+    flex: 1;
 }
 
 .reward-amount-crypto {
@@ -6082,12 +6083,22 @@ body.light-mode .reward-amount-crypto {
     font-weight: 500;
 }
 
+.reward-item-datetime {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
 .reward-item-date {
     font-size: 12px;
     color: #888;
-    text-align: right;
-    flex-shrink: 0;
-    min-width: 100px;
+}
+
+.reward-item-time {
+    font-size: 11px;
+    color: #666;
 }
 
 /* Rewards Pagination */
@@ -6160,7 +6171,7 @@ body.light-mode .rewards-arrow:disabled {
 
     .reward-item {
         padding: 12px;
-        gap: 10px;
+        gap: 6px;
     }
 
     .reward-item-icon {
@@ -6178,7 +6189,10 @@ body.light-mode .rewards-arrow:disabled {
 
     .reward-item-date {
         font-size: 11px;
-        min-width: 80px;
+    }
+
+    .reward-item-time {
+        font-size: 10px;
     }
 
     .reward-item-package {

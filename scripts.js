@@ -14462,19 +14462,22 @@ function renderRewardsList() {
 
     listContainer.innerHTML = pageRewards.map(reward => {
         const date = new Date(reward.timestamp);
-        const dateStr = formatRewardDate(date);
+        const { dateStr, timeStr } = formatRewardDate(date);
 
         return `
             <div class="reward-item">
-                <img src="${iconUrl}" alt="${currentRewardsTab}" class="reward-item-icon">
-                <div class="reward-item-info">
-                    <span class="reward-item-package">${reward.packageName}</span>
+                <span class="reward-item-package">${reward.packageName}</span>
+                <div class="reward-item-main">
+                    <img src="${iconUrl}" alt="${currentRewardsTab}" class="reward-item-icon">
                     <div class="reward-item-amount">
                         <span class="reward-amount-crypto">${formatRewardAmount(reward.amount)}</span>
-                        <span class="reward-amount-fiat">$${formatNumber(reward.amountAUD)}</span>
+                        <span class="reward-amount-fiat">= $${formatNumber(reward.amountAUD)}</span>
                     </div>
                 </div>
-                <span class="reward-item-date">${dateStr}</span>
+                <div class="reward-item-datetime">
+                    <span class="reward-item-date">${dateStr}</span>
+                    <span class="reward-item-time">${timeStr}</span>
+                </div>
             </div>
         `;
     }).join('');
@@ -14501,6 +14504,7 @@ function formatRewardAmount(amount) {
 
 /**
  * Format reward date for display
+ * Returns object with separate date and time strings
  */
 function formatRewardDate(date) {
     const day = date.getDate().toString().padStart(2, '0');
@@ -14511,7 +14515,10 @@ function formatRewardDate(date) {
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours % 12 || 12;
 
-    return `${day}/${month}/${year} ${hour12}:${minutes}${ampm}`;
+    return {
+        dateStr: `${day}/${month}/${year}`,
+        timeStr: `${hour12}:${minutes}${ampm}`
+    };
 }
 
 /**
