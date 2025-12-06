@@ -14586,7 +14586,7 @@ function renderRewardsList() {
                             <span class="reward-item-date">${dateStr}</span>
                         </div>
                         <div class="reward-row">
-                            <span class="reward-amount-fiat">= $${formatNumber(amountAUD)}</span>
+                            <span class="reward-amount-fiat">= $${amountAUD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             <span class="reward-item-time">${timeStr}</span>
                         </div>
                     </div>
