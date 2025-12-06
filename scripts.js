@@ -19091,6 +19091,9 @@ async function updateRecommendations() {
         console.log(`⏭️ Skipping team update (no changes detected)`);
     }
 
+    // Refresh floating icons to ensure EasyMining balance icon is shown
+    refreshStripFloatingIcons();
+
     console.log('✅ Recommendations updated successfully');
 }
 
