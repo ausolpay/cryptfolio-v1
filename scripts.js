@@ -14620,7 +14620,7 @@ function updateRewardsTabCount(crypto) {
  * Get current price for a crypto to calculate AUD value
  */
 function getRewardAUDValue(crypto, amount) {
-    // Try to get price from our existing price data
+    // Map reward crypto symbols to CoinGecko IDs
     const cryptoIdMap = {
         BTC: 'bitcoin',
         BCH: 'bitcoin-cash',
@@ -14631,11 +14631,16 @@ function getRewardAUDValue(crypto, amount) {
     };
 
     const id = cryptoIdMap[crypto];
-    if (id && window.cryptoPrices && window.cryptoPrices[id]) {
-        return amount * window.cryptoPrices[id];
+
+    // Use live price from cryptoPrices global (uses getPriceFromObject for currency)
+    if (id && cryptoPrices && cryptoPrices[id]) {
+        const livePrice = getPriceFromObject(cryptoPrices[id]);
+        if (livePrice > 0) {
+            return amount * livePrice;
+        }
     }
 
-    // Fallback approximate prices
+    // Fallback approximate prices (only used if live price unavailable)
     const fallbackPrices = {
         BTC: 150000,
         BCH: 600,
