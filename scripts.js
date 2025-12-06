@@ -316,6 +316,11 @@ let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 let isAutoBuyInProgress = false; // Lock to pause package fetching during auto-buy purchases
+let easyMiningHasBeenOpened = false; // Track if EasyMining section was opened (for deferred loading)
+
+// Alert sound queue to prevent multiple sounds playing at once
+let alertSoundQueue = [];
+let isPlayingAlertSound = false;
 
 // Cache last valid API responses to prevent card flashing when API fails
 let lastValidSoloPackages = null;
@@ -1295,13 +1300,9 @@ function showAppPage() {
     document.getElementById('settings-page').style.display = 'none';
     document.getElementById('account-settings-page').style.display = 'none';
 
-    // Start EasyMining alerts polling if enabled
-    if (easyMiningSettings && easyMiningSettings.enabled) {
-        startEasyMiningAlertsPolling();
-
-        // Buy packages data will load when user opens buy packages page
-        // Removed pre-loading to prevent race condition with EasyMining polling
-    }
+    // EasyMining alerts polling now starts when user opens the EasyMining section (deferred loading)
+    // This prevents alerts from playing before user interacts with the section
+    // See toggleEasyMining() for the deferred start logic
 
     // Initialize strip floating icons after a short delay to ensure data is loaded
     setTimeout(() => {
@@ -4759,6 +4760,10 @@ function logout() {
     // Close WebSocket connection before logging out
     closeWebSocketIntentionally();
 
+    // Reset EasyMining state for fresh start on next login
+    easyMiningHasBeenOpened = false;
+    stopEasyMiningAlertsPolling();
+
     loggedInUser = null;
     removeStorageItem('loggedInUser');
     setStorageItem('modalMessage', 'Successfully logged out!');
@@ -5856,6 +5861,42 @@ function playSound(soundId) {
         }
     } else {
         console.error("Sound element not found:", soundId);
+    }
+}
+
+/**
+ * Queue an alert sound to play (prevents multiple sounds playing at once)
+ */
+function queueAlertSound(soundId) {
+    alertSoundQueue.push(soundId);
+    processAlertSoundQueue();
+}
+
+/**
+ * Process the alert sound queue - plays sounds one at a time with delay
+ */
+function processAlertSoundQueue() {
+    if (isPlayingAlertSound || alertSoundQueue.length === 0) return;
+
+    isPlayingAlertSound = true;
+    const soundId = alertSoundQueue.shift();
+    const sound = document.getElementById(soundId);
+
+    if (sound && !sound.muted) {
+        sound.play().catch(error => {
+            console.error('Alert sound play failed:', error);
+        });
+
+        // Wait for sound to finish (or 2 seconds max) before playing next
+        const duration = (sound.duration || 2) * 1000;
+        setTimeout(() => {
+            isPlayingAlertSound = false;
+            processAlertSoundQueue();
+        }, Math.min(duration, 2000));
+    } else {
+        // Sound not found or muted, process next immediately
+        isPlayingAlertSound = false;
+        processAlertSoundQueue();
     }
 }
 
@@ -14287,6 +14328,13 @@ function toggleEasyMining() {
         content.style.display = 'block';
         arrow.classList.add('rotated');
         if (section) section.scrollIntoView({ block: 'start' });
+
+        // Start alerts polling on first open (deferred loading)
+        if (!easyMiningHasBeenOpened && easyMiningSettings && easyMiningSettings.enabled) {
+            easyMiningHasBeenOpened = true;
+            console.log('📦 EasyMining section opened for first time, starting alerts polling...');
+            startEasyMiningAlertsPolling();
+        }
     } else {
         content.style.display = 'none';
         arrow.classList.remove('rotated');
@@ -18922,13 +18970,13 @@ async function updateRecommendations() {
 
     console.log('🔄 Recommendations changed, updating display...');
 
-    // Play alert sounds for NEW package alerts (once per new alert)
+    // Play alert sounds for NEW package alerts (queued to prevent overlapping)
     if (soloChanged && recommendations.length > 0) {
         // Check for new solo package alerts
         const newSoloAlerts = recommendations.filter(pkg => !alertedSoloPackages.has(pkg.name));
         if (newSoloAlerts.length > 0) {
             console.log(`🔔 New solo package alert(s): ${newSoloAlerts.map(p => p.name).join(', ')}`);
-            playSound('solo-pkg-alert-sound');
+            queueAlertSound('solo-pkg-alert-sound');
             if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
                 navigator.vibrate([100, 50, 100]); // Double vibrate for alert
             }
@@ -18942,7 +18990,7 @@ async function updateRecommendations() {
         const newTeamAlerts = teamRecommendations.filter(pkg => !alertedTeamPackages.has(pkg.name));
         if (newTeamAlerts.length > 0) {
             console.log(`🔔 New team package alert(s): ${newTeamAlerts.map(p => p.name).join(', ')}`);
-            playSound('team-pkg-alert-sound');
+            queueAlertSound('team-pkg-alert-sound');
             if (isEasyMiningVibrateEnabled && "vibrate" in navigator) {
                 navigator.vibrate([100, 50, 100]); // Double vibrate for alert
             }
