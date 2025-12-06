@@ -1876,6 +1876,12 @@ body.light-mode .performer-name {
         margin: 0;
     }
 
+    /* Ensure consistent card heights on tablet */
+    .portfolio-stats-grid .stat-item,
+    .portfolio-pnl-grid .pnl-item {
+        min-height: 58px;
+    }
+
     /* Row 1: Record High (span 3) | Record Low (span 3) */
     .portfolio-stats-grid .stat-item:nth-child(2) { order: 1; grid-column: span 3; } /* Record High */
     .portfolio-stats-grid .stat-item:nth-child(3) { order: 2; grid-column: span 3; } /* Record Low */
@@ -1982,6 +1988,12 @@ body.light-mode .performer-name {
     .portfolio-pnl-grid .pnl-item,
     .portfolio-pnl-grid .best-performer-item {
         margin: 0;
+    }
+
+    /* Ensure consistent card heights on mobile */
+    .portfolio-stats-grid .stat-item,
+    .portfolio-pnl-grid .pnl-item {
+        min-height: 58px;
     }
 
     /* Row 1: Record High | Record Low (side by side) */
