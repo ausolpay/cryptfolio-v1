@@ -3507,26 +3507,7 @@ async function loadSoloAlerts() {
                     <span style="color: #888; font-size: 13px; margin-left: 8px;">(Dual-Crypto Package)</span>
                 </div>
 
-                <!-- LTC Alert -->
-                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <span style="color: #F7931A; font-weight: bold;">${mainCrypto}</span>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mainProbFormatted}</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="color: #aaa; font-size: 14px;">Alert when ≤ 1:</label>
-                        <input type="number"
-                               id="alert-${pkg.name.replace(/\s+/g, '-')}-${mainCrypto}"
-                               value="${savedMainThreshold}"
-                               placeholder="e.g., 130"
-                               min="1"
-                               step="0.1"
-                               style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
-                        ${isMainActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
-                    </div>
-                </div>
-
-                <!-- DOGE Alert -->
+                <!-- DOGE Alert (merge crypto first) -->
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #C3A634; font-weight: bold;">${mergeCrypto}</span>
@@ -3542,6 +3523,25 @@ async function loadSoloAlerts() {
                                step="0.1"
                                style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
                         ${isMergeActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
+                    </div>
+                </div>
+
+                <!-- LTC Alert (main crypto second) -->
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #F7931A; font-weight: bold;">${mainCrypto}</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mainProbFormatted}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="color: #aaa; font-size: 14px;">Alert when ≤ 1:</label>
+                        <input type="number"
+                               id="alert-${pkg.name.replace(/\s+/g, '-')}-${mainCrypto}"
+                               value="${savedMainThreshold}"
+                               placeholder="e.g., 130"
+                               min="1"
+                               step="0.1"
+                               style="width: 100px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                        ${isMainActive ? '<span style="color: #4CAF50; font-size: 12px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px;">Not set</span>'}
                     </div>
                 </div>
 
@@ -3780,24 +3780,11 @@ async function loadTeamAlerts() {
         if (isDualCrypto) {
             // Show both probability inputs for dual-crypto packages
             // Use probabilityPrecision directly, formatted with formatProbability
+            // DOGE (merge) shown first, LTC (main) shown second - matches API structure
             const mainProbFormatted = formatProbability(pkg.mainProbabilityPrecision || pkg.mainProbability) || 'N/A';
             const mergeProbFormatted = formatProbability(pkg.mergeProbabilityPrecision || pkg.mergeProbability) || 'N/A';
 
             probabilityInputs = `
-                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <span style="color: #F7931A; font-weight: bold;">${pkg.mainCrypto} Probability</span>
-                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mainProbFormatted}</span>
-                    </div>
-                    <input type="number"
-                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-prob-${pkg.mainCrypto}"
-                           value="${savedMainProb}"
-                           placeholder="e.g., 130"
-                           min="1"
-                           step="0.1"
-                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
-                </div>
-
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <span style="color: #C3A634; font-weight: bold;">${pkg.mergeCrypto} Probability</span>
@@ -3807,6 +3794,20 @@ async function loadTeamAlerts() {
                            id="team-alert-${pkg.name.replace(/\s+/g, '-')}-prob-${pkg.mergeCrypto}"
                            value="${savedMergeProb}"
                            placeholder="e.g., 150"
+                           min="1"
+                           step="0.1"
+                           style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
+                </div>
+
+                <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #F7931A; font-weight: bold;">${pkg.mainCrypto} Probability</span>
+                        <span style="color: #4CAF50; font-size: 13px;">Current: ${mainProbFormatted}</span>
+                    </div>
+                    <input type="number"
+                           id="team-alert-${pkg.name.replace(/\s+/g, '-')}-prob-${pkg.mainCrypto}"
+                           value="${savedMainProb}"
+                           placeholder="e.g., 130"
                            min="1"
                            step="0.1"
                            style="width: 150px; padding: 8px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px;">
@@ -20045,8 +20046,10 @@ function createTeamPackageRecommendationCard(pkg) {
     }
 
     // Floating icons (1-3 based on shares owned)
+    // For dual-crypto (Palladium), pass merge icon URL and set isPalladium=true
     const iconCount = myCurrentShares > 0 ? Math.min(3, Math.max(1, Math.ceil(myCurrentShares / 5))) : 1;
-    getOrCreateFloatingIconsConfig(`alert-team-${pkg.name}`, floatingIconUrl, '', iconCount, false);
+    const isPalladiumAlert = pkg.isDualCrypto && pkg.mergeCrypto;
+    getOrCreateFloatingIconsConfig(`alert-team-${pkg.name}`, floatingIconUrl, isPalladiumAlert ? mergeFloatingIconUrl : '', iconCount, isPalladiumAlert);
     const floatingIconsHtml = generateFloatingIconsHtml(`alert-team-${pkg.name}`, 12, null);
 
     // Calculate countdown display for share-info section
@@ -23350,7 +23353,9 @@ function createTeamPackageCard(pkg) {
     const totalBoughtShares = Math.round(addedAmount * 10000);
     const availableShares = Math.round(availableAmount * 10000);
     // Use formatProbability with probabilityPrecision for accurate display
-    const probability = formatProbability(ticket.probabilityPrecision || pkg.probabilityPrecision || ticket.probability) || 'N/A';
+    // For dual-crypto (Palladium): DOGE (merge) probability shown first, LTC (main) shown second
+    const mainProbability = formatProbability(ticket.probabilityPrecision || pkg.probabilityPrecision || ticket.probability) || 'N/A';
+    const mergeProbability = isDualCrypto ? formatProbability(ticket.mergeProbabilityPrecision || pkg.mergeProbabilityPrecision) || 'N/A' : null;
     const blockReward = ticket.currencyAlgo?.blockRewardWithNhFee || ticket.currencyAlgo?.blockReward || 0;
     const participants = pkg.numberOfParticipants || 0;
 
@@ -23451,7 +23456,8 @@ function createTeamPackageCard(pkg) {
     const iconCount = myBoughtShares > 0 ? Math.min(3, Math.max(1, Math.ceil(myBoughtShares / 5))) : 1;
 
     // Get or create persistent floating icons config for team package
-    getOrCreateFloatingIconsConfig(`team-${packageName}`, floatingIconUrl, '', iconCount, false);
+    // For dual-crypto (Palladium), pass merge icon URL and set isPalladium=true
+    getOrCreateFloatingIconsConfig(`team-${packageName}`, floatingIconUrl, isDualCrypto ? mergeFloatingIconUrl : '', iconCount, isDualCrypto);
     const floatingIconsHtml = generateFloatingIconsHtml(`team-${packageName}`, 12, null);
 
     // Get duration from ticket data
@@ -23496,8 +23502,21 @@ function createTeamPackageCard(pkg) {
                             <line x1="2" y1="12" x2="6" y2="12"/>
                             <line x1="18" y1="12" x2="22" y2="12"/>
                         </svg>
-                        <span class="team-stat-value">${probability}</span>
+                        <span class="team-stat-value">${isDualCrypto && mergeProbability ? mergeProbability : mainProbability}</span>
                     </div>
+                    ${isDualCrypto && mainProbability ? `
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                            <line x1="12" y1="2" x2="12" y2="6"/>
+                            <line x1="12" y1="18" x2="12" y2="22"/>
+                            <line x1="2" y1="12" x2="6" y2="12"/>
+                            <line x1="18" y1="12" x2="22" y2="12"/>
+                        </svg>
+                        <span class="team-stat-value">${mainProbability}</span>
+                    </div>
+                    ` : ''}
                     <div class="team-stat-item">
                         <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
@@ -26946,8 +26965,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
 
         // Floating icons (1-3 based on shares owned)
+        // For dual-crypto (Palladium), pass merge icon URL and set isPalladium=true
         const iconCount = myBoughtShares > 0 ? Math.min(3, Math.max(1, Math.ceil(myBoughtShares / 5))) : 1;
-        getOrCreateFloatingIconsConfig(`team-${pkg.name}`, floatingIconUrl, '', iconCount, false);
+        const isPalladiumTeam = pkg.isDualCrypto && pkg.mergeCrypto;
+        getOrCreateFloatingIconsConfig(`team-${pkg.name}`, floatingIconUrl, isPalladiumTeam ? mergeFloatingIconUrl : '', iconCount, isPalladiumTeam);
         const floatingIconsHtml = generateFloatingIconsHtml(`team-${pkg.name}`, 12, null);
 
         // Calculate participants and available shares
