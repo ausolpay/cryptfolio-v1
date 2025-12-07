@@ -19126,22 +19126,52 @@ function updateSoloAlertCardValues(pkg) {
     const packageIdForElements = pkg.name.replace(/\s+/g, '-');
 
     // Update probability values
-    if (pkg.isDualCrypto) {
-        // Dual-crypto package: update both probabilities (no crypto labels)
-        const mergeProbElement = document.getElementById(`merge-probability-${packageIdForElements}`);
-        const mainProbElement = document.getElementById(`main-probability-${packageIdForElements}`);
+    // Palladium solo packages use palladium-stats-row with -display suffix IDs
+    if (pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium')) {
+        // Dual-crypto package (Palladium): DOGE (merge) shown first, LTC (main) shown second
+        // Uses -display suffix IDs for solo packages
+        const mergeProbElement = document.getElementById(`merge-probability-display-${packageIdForElements}`) ||
+                                  document.getElementById(`merge-probability-${packageIdForElements}`);
+        const mainProbElement = document.getElementById(`probability-display-${packageIdForElements}`) ||
+                                 document.getElementById(`main-probability-${packageIdForElements}`);
 
-        if (mergeProbElement) {
-            mergeProbElement.textContent = pkg.mergeProbability;
+        if (mergeProbElement && pkg.mergeProbability) {
+            // Keep the SVG if present, update the text
+            const svg = mergeProbElement.querySelector('svg');
+            if (svg) {
+                mergeProbElement.innerHTML = '';
+                mergeProbElement.appendChild(svg);
+                mergeProbElement.appendChild(document.createTextNode(' ' + pkg.mergeProbability));
+            } else {
+                mergeProbElement.textContent = pkg.mergeProbability;
+            }
         }
         if (mainProbElement) {
-            mainProbElement.textContent = pkg.mainProbability;
+            const probValue = pkg.mainProbability || pkg.probability;
+            if (probValue) {
+                const svg = mainProbElement.querySelector('svg');
+                if (svg) {
+                    mainProbElement.innerHTML = '';
+                    mainProbElement.appendChild(svg);
+                    mainProbElement.appendChild(document.createTextNode(' ' + probValue));
+                } else {
+                    mainProbElement.textContent = probValue;
+                }
+            }
         }
     } else if (pkg.probability) {
         // Single crypto package: update one probability
-        const probElement = document.getElementById(`probability-${packageIdForElements}`);
+        const probElement = document.getElementById(`probability-display-${packageIdForElements}`) ||
+                            document.getElementById(`probability-${packageIdForElements}`);
         if (probElement) {
-            probElement.textContent = pkg.probability;
+            const svg = probElement.querySelector('svg');
+            if (svg) {
+                probElement.innerHTML = '';
+                probElement.appendChild(svg);
+                probElement.appendChild(document.createTextNode(' ' + pkg.probability));
+            } else {
+                probElement.textContent = pkg.probability;
+            }
         }
     }
 
@@ -25346,25 +25376,29 @@ function updateSoloPackageCardsInPlace(soloPackages, soloRecommendedNames) {
         const packageIdForElements = pkg.name.replace(/\s+/g, '-');
 
         // Update probability display (text content after SVG)
+        // For Palladium: probability-display shows LTC (main), merge-probability-display shows DOGE (merge)
         const probEl = card.querySelector(`#probability-display-${packageIdForElements}`);
-        if (probEl && pkg.probability) {
-            // Keep the SVG, update the text after it
-            const svg = probEl.querySelector('svg');
-            if (svg) {
-                probEl.innerHTML = '';
-                probEl.appendChild(svg);
-                probEl.appendChild(document.createTextNode(' ' + pkg.probability));
+        if (probEl) {
+            const probValue = pkg.mainProbability || pkg.probability;
+            if (probValue) {
+                // Keep the SVG, update the text after it
+                const svg = probEl.querySelector('svg');
+                if (svg) {
+                    probEl.innerHTML = '';
+                    probEl.appendChild(svg);
+                    probEl.appendChild(document.createTextNode(' ' + probValue));
+                }
             }
         }
 
-        // Update merge probability for Palladium
+        // Update merge probability for Palladium (DOGE - shown first in UI)
         const mergeProbEl = card.querySelector(`#merge-probability-display-${packageIdForElements}`);
-        if (mergeProbEl && (pkg.mergeProbability || pkg.probability)) {
+        if (mergeProbEl && pkg.mergeProbability) {
             const svg = mergeProbEl.querySelector('svg');
             if (svg) {
                 mergeProbEl.innerHTML = '';
                 mergeProbEl.appendChild(svg);
-                mergeProbEl.appendChild(document.createTextNode(' ' + (pkg.mergeProbability || pkg.probability)));
+                mergeProbEl.appendChild(document.createTextNode(' ' + pkg.mergeProbability));
             }
         }
 
@@ -26709,19 +26743,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             <div class="package-body">
                 <div class="package-section mining-info">
                     ${(pkg.isDualCrypto || pkg.name?.toLowerCase().includes('palladium')) ? `
-                    <!-- Palladium: All stats on one line -->
+                    <!-- Palladium: All stats on one line - DOGE (merge) first, LTC (main) second -->
                     <div class="palladium-stats-row">
-                        <span class="stat-value-medium" id="probability-display-${packageIdForElements}">
-                            <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <circle cx="12" cy="12" r="3" fill="currentColor"/>
-                                <line x1="12" y1="2" x2="12" y2="6"/>
-                                <line x1="12" y1="18" x2="12" y2="22"/>
-                                <line x1="2" y1="12" x2="6" y2="12"/>
-                                <line x1="18" y1="12" x2="22" y2="12"/>
-                            </svg>
-                            ${pkg.probability || 'N/A'}
-                        </span>
                         <span class="stat-value-medium" id="merge-probability-display-${packageIdForElements}">
                             <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"/>
@@ -26731,7 +26754,18 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                 <line x1="2" y1="12" x2="6" y2="12"/>
                                 <line x1="18" y1="12" x2="22" y2="12"/>
                             </svg>
-                            ${pkg.mergeProbability || pkg.probability || 'N/A'}
+                            ${pkg.mergeProbability || 'N/A'}
+                        </span>
+                        <span class="stat-value-medium" id="probability-display-${packageIdForElements}">
+                            <svg class="probability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                <line x1="12" y1="2" x2="12" y2="6"/>
+                                <line x1="12" y1="18" x2="12" y2="22"/>
+                                <line x1="2" y1="12" x2="6" y2="12"/>
+                                <line x1="18" y1="12" x2="22" y2="12"/>
+                            </svg>
+                            ${pkg.mainProbability || pkg.probability || 'N/A'}
                         </span>
                         <span class="stat-value-medium" id="duration-${packageIdForElements}">
                             <svg class="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
