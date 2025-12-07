@@ -25765,15 +25765,18 @@ function updateAllBuyButtonStates() {
 
         const shares = parseInt(input.value) || 0;
         const totalBought = parseInt(input.dataset.totalBought) || 0;
-        const totalAvailable = parseInt(input.dataset.max) || 0;
+        const totalAvailable = parseInt(input.dataset.totalAvailable) || parseInt(input.max) || 0;
         const myBought = parseInt(input.dataset.myBought) || 0;
+
+        // Skip update if we don't have valid data yet
+        if (totalAvailable === 0) return;
 
         const sharesRemaining = totalAvailable - totalBought;
         const maxSharesICanOwn = myBought + sharesRemaining;
         const newShares = shares - myBought;
         const currentShareCost = newShares * sharePrice;
 
-        // Update + button state
+        // Update + button state - ONLY disable when no more shares available
         const plusButton = card.querySelector('.share-adjuster-btn:last-of-type, button[onclick*=", 1"]');
         if (plusButton) {
             if (shares >= maxSharesICanOwn) {
@@ -25787,7 +25790,7 @@ function updateAllBuyButtonStates() {
             }
         }
 
-        // Update Buy button state
+        // Update Buy button state - disabled when no new shares or insufficient balance
         const buyButton = card.querySelector('.buy-now-btn:not(.clear-shares-btn)');
         if (buyButton) {
             if (newShares > sharesRemaining) {
@@ -25823,8 +25826,11 @@ function updateAllBuyButtonStates() {
 
             const shares = parseInt(input.value) || 0;
             const totalBought = parseInt(input.dataset.totalBought) || 0;
-            const totalAvailable = parseInt(input.dataset.max) || 0;
+            const totalAvailable = parseInt(input.dataset.totalAvailable) || parseInt(input.max) || 0;
             const myBought = parseInt(input.dataset.myBought) || 0;
+
+            // Skip update if we don't have valid data yet
+            if (totalAvailable === 0) return;
 
             const sharesRemaining = totalAvailable - totalBought;
             const maxSharesICanOwn = myBought + sharesRemaining;
