@@ -19610,17 +19610,19 @@ function updateTeamAlertCardValues(pkg) {
         priceEl.textContent = `${getUserCurrencySymbol()}${priceLocal.toFixed(2)}`;
     }
 
-    // ✅ SYNC: Update the share input field to reflect current owned shares
+    // ✅ Update data attributes only - DON'T overwrite input value during polling
+    // This preserves user's intended purchase selection while updating underlying data
     const shareInput = document.getElementById(`shares-${packageId}`);
-    if (shareInput && myBoughtShares > 0) {
-        shareInput.value = myBoughtShares;
+    if (shareInput) {
         shareInput.min = 1;  // Always allow decreasing to minimum of 1
         shareInput.dataset.myBought = myBoughtShares;
-        // Update cached value too
+        shareInput.dataset.totalBought = totalBoughtShares;
+        shareInput.dataset.totalAvailable = Math.round((pkg.fullAmount || 0) * 10000);
+        // Update cached value too (for data tracking, not UI)
         if (window.packageShareValues) {
             window.packageShareValues[pkg.name] = myBoughtShares;
         }
-        console.log(`🔄 Synced alert card input for ${pkg.name}: ${myBoughtShares} shares`);
+        // Note: Don't update shareInput.value here - user may have adjusted it to buy more shares
     }
 
     // ✅ Update countdown timer for alert cards
@@ -25461,29 +25463,23 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         // ✅ Update robot icon state (solid when shares owned, spinning when waiting)
         updateBuyPageRobotIcon(card, pkg, myBoughtShares);
 
-        // ✅ Sync share input to myBoughtShares from API
+        // ✅ Update data attributes only - DON'T overwrite input value during polling
+        // This preserves user's intended purchase selection while updating underlying data
         const shareInput = card.querySelector(`#shares-${packageIdForElements}`) ||
                            card.querySelector('.share-adjuster-input');
-        const currentInputValue = shareInput ? parseInt(shareInput.value, 10) || 1 : 1;
 
         if (shareInput) {
             // Update data attributes with latest API values
             shareInput.dataset.totalBought = totalBoughtShares;
             shareInput.dataset.totalAvailable = totalAvailableShares;
             shareInput.dataset.myBought = myBoughtShares;
-
-            // Always sync input to my bought shares (minimum 1 for display)
-            const displayValue = myBoughtShares > 0 ? myBoughtShares : 1;
-            const currentValue = parseInt(shareInput.value, 10) || 0;
-            if (currentValue !== displayValue) {
-                shareInput.value = displayValue;
-                console.log(`   ✅ Synced input: ${currentValue} → ${displayValue} shares`);
-            }
             shareInput.min = 1;
 
             // Set max to remaining available shares (what's left to buy)
             const remainingShares = totalAvailableShares - totalBoughtShares + myBoughtShares;
             shareInput.max = remainingShares > 0 ? remainingShares : 1;
+
+            // Note: Don't update shareInput.value here - user may have adjusted it to buy more shares
         }
 
         // ✅ Update + button state (disabled ONLY when input >= max available shares)
