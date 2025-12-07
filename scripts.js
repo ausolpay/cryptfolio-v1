@@ -17693,9 +17693,8 @@ function displayActivePackages() {
                 <!-- Mining Stats Section (All packages - probability always shown) -->
                 <div class="package-section mining-info">
                     <div class="package-stat-grid">
-                        ${pkg.probability ? `
                         ${isPalladium ? `
-                        <!-- Palladium: DOGE (merge) first, LTC (main) second -->
+                        <!-- Palladium: DOGE (merge) first, LTC (main) second - always show -->
                         <div class="stat-block">
                             <span class="stat-value-medium" id="active-merge-prob-${pkg.id}">
                                 <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -17704,7 +17703,7 @@ function displayActivePackages() {
                                     <line x1="12" y1="2" x2="12" y2="6"/>
                                     <line x1="12" y1="18" x2="12" y2="22"/>
                                 </svg>
-                                ${pkg.mergeProbability || 'N/A'}
+                                ${pkg.mergeProbability || savedPackageProbabilities[pkg.id]?.mergeProbability || 'N/A'}
                             </span>
                         </div>
                         <div class="stat-block">
@@ -17715,10 +17714,10 @@ function displayActivePackages() {
                                     <line x1="12" y1="2" x2="12" y2="6"/>
                                     <line x1="12" y1="18" x2="12" y2="22"/>
                                 </svg>
-                                ${pkg.probability}
+                                ${pkg.probability || savedPackageProbabilities[pkg.id]?.probability || 'N/A'}
                             </span>
                         </div>
-                        ` : `
+                        ` : pkg.probability ? `
                         <!-- Non-Palladium: Single probability -->
                         <div class="stat-block">
                             <span class="stat-value-medium" id="active-prob-${pkg.id}">
@@ -17731,7 +17730,6 @@ function displayActivePackages() {
                                 ${pkg.probability}
                             </span>
                         </div>
-                        `}
                         ` : ''}
                         ${!pkg.active && pkg.endTime ? `
                         <div class="stat-block">
