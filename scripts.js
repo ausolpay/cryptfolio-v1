@@ -17242,6 +17242,9 @@ function generateMockBlocks() {
 // EASYMINING UI UPDATE FUNCTIONS
 // =============================================================================
 
+// Track previous package list for smart update detection
+let previousActivePackageIds = [];
+
 function updateEasyMiningUI() {
     // Update balances (BTC) - include BTC suffix for new balance card format
     document.getElementById('easymining-available-btc').textContent = `${easyMiningData.availableBTC} BTC`;
@@ -17265,8 +17268,22 @@ function updateEasyMiningUI() {
     document.getElementById('easymining-available-aud').textContent = `$${formatNumber(availableAUD.toFixed(2))}`;
     document.getElementById('easymining-pending-aud').textContent = `$${formatNumber(pendingAUD.toFixed(2))}`;
 
-    // Display active packages
-    displayActivePackages();
+    // Check if package list has changed (needs full re-render) or just values changed (smart update)
+    const currentPackageIds = (easyMiningData.activePackages || []).map(p => p.id).sort().join(',');
+    const packageListChanged = currentPackageIds !== previousActivePackageIds.join(',');
+    const container = document.getElementById('active-packages-container');
+    const hasExistingCards = container && container.querySelectorAll('.package-card').length > 0;
+
+    if (packageListChanged || !hasExistingCards) {
+        // Full re-render needed (package list changed or first load)
+        console.log('🔄 Full re-render: Package list changed or first load');
+        displayActivePackages();
+        previousActivePackageIds = (easyMiningData.activePackages || []).map(p => p.id).sort();
+    } else {
+        // Smart update - just update values in place
+        console.log('⚡ Smart update: Updating values in place');
+        smartUpdateActivePackageCards();
+    }
 
     // Update live probability values from solo packages
     updateActivePackageProbabilities();
@@ -17894,6 +17911,139 @@ function displayActivePackages() {
 
     // Validate robot icons on active packages after rendering
     validateActivePackageRobotIcons();
+}
+
+/**
+ * Smart update active package cards in place without re-rendering
+ * Updates: time remaining, hashrate, rigs, progress, probability
+ */
+function smartUpdateActivePackageCards() {
+    const container = document.getElementById('active-packages-container');
+    if (!container) return;
+
+    const cards = container.querySelectorAll('.package-card');
+    if (cards.length === 0) return; // No cards to update
+
+    // Update tab counts
+    const activeCountEl = document.getElementById('active-count');
+    const completedCountEl = document.getElementById('completed-count');
+    const rewardsCountEl = document.getElementById('rewards-count');
+    if (activeCountEl) activeCountEl.textContent = easyMiningData.activePackages.filter(pkg => pkg.active === true).length;
+    if (completedCountEl) completedCountEl.textContent = easyMiningData.activePackages.filter(pkg => pkg.active === false).length;
+    if (rewardsCountEl) rewardsCountEl.textContent = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true).length;
+
+    let updatedCount = 0;
+
+    easyMiningData.activePackages.forEach(pkg => {
+        if (!pkg.active) return; // Only update active packages
+
+        // Find the card by looking for matching package name in h4
+        const card = Array.from(cards).find(c => {
+            const h4 = c.querySelector('h4');
+            return h4 && h4.textContent.includes(pkg.name);
+        });
+
+        if (!card) return;
+
+        const isPalladium = pkg.cryptoSecondary && (pkg.name?.toLowerCase().includes('palladium') || pkg.name?.toLowerCase().includes('team palladium'));
+
+        // Update time remaining
+        const timeEl = card.querySelector('.stat-value-medium svg.stat-icon[viewBox="0 0 24 24"] + *')?.closest('.stat-value-medium');
+        if (!timeEl) {
+            // Find time element by looking for clock icon
+            const statBlocks = card.querySelectorAll('.stat-block .stat-value-medium');
+            statBlocks.forEach(el => {
+                const svg = el.querySelector('svg');
+                if (svg && svg.innerHTML.includes('polyline')) {
+                    // This is a clock icon - update time
+                    const svgHtml = svg.outerHTML;
+                    el.innerHTML = svgHtml + ' ' + (pkg.timeRemaining || '');
+                    updatedCount++;
+                }
+            });
+        }
+
+        // Update hashrate (look for lightning bolt icon)
+        const hashrateEl = card.querySelector('.hashrate-value');
+        if (hashrateEl && pkg.hashrate) {
+            const svg = hashrateEl.querySelector('svg');
+            const liveIndicator = hashrateEl.querySelector('.live-indicator');
+            if (svg) {
+                const match = pkg.hashrate.match(/^([\d.]+)\s*(.+)$/);
+                hashrateEl.innerHTML = '';
+                if (liveIndicator) hashrateEl.appendChild(liveIndicator.cloneNode(true));
+                hashrateEl.appendChild(svg.cloneNode(true));
+                if (match) {
+                    hashrateEl.appendChild(document.createTextNode(' ' + parseFloat(match[1]).toFixed(4) + ' ' + match[2]));
+                } else {
+                    hashrateEl.appendChild(document.createTextNode(' ' + pkg.hashrate));
+                }
+                updatedCount++;
+            }
+        }
+
+        // Update rigs count
+        const rigsEl = card.querySelector('.rigs-value');
+        if (rigsEl && pkg.rigsCount !== undefined) {
+            const svg = rigsEl.querySelector('svg');
+            if (svg) {
+                rigsEl.innerHTML = svg.outerHTML + ' ' + pkg.rigsCount;
+                updatedCount++;
+            }
+        }
+
+        // Update closest-to-reward progress bar
+        const chartData = miningChartDataStore[pkg.id];
+        const closestToRewardPercent = chartData?.highestBar?.percentage || pkg.progress || 0;
+        const progressFill = card.querySelector('.closest-reward-fill');
+        const progressLabel = card.querySelector('.closest-reward-label');
+        if (progressFill) {
+            progressFill.style.width = `${Math.min(closestToRewardPercent, 100)}%`;
+            updatedCount++;
+        }
+        if (progressLabel) {
+            progressLabel.textContent = `${closestToRewardPercent.toFixed(1)}% to reward`;
+        }
+
+        // Update probability (with IDs)
+        if (isPalladium) {
+            const mergeEl = document.getElementById(`active-merge-prob-${pkg.id}`);
+            const mainEl = document.getElementById(`active-main-prob-${pkg.id}`);
+            if (mergeEl && pkg.mergeProbability) {
+                const svg = mergeEl.querySelector('svg');
+                if (svg) {
+                    mergeEl.innerHTML = '';
+                    mergeEl.appendChild(svg.cloneNode(true));
+                    mergeEl.appendChild(document.createTextNode(' ' + pkg.mergeProbability));
+                    updatedCount++;
+                }
+            }
+            if (mainEl && pkg.probability) {
+                const svg = mainEl.querySelector('svg');
+                if (svg) {
+                    mainEl.innerHTML = '';
+                    mainEl.appendChild(svg.cloneNode(true));
+                    mainEl.appendChild(document.createTextNode(' ' + pkg.probability));
+                    updatedCount++;
+                }
+            }
+        } else {
+            const probEl = document.getElementById(`active-prob-${pkg.id}`);
+            if (probEl && pkg.probability) {
+                const svg = probEl.querySelector('svg');
+                if (svg) {
+                    probEl.innerHTML = '';
+                    probEl.appendChild(svg.cloneNode(true));
+                    probEl.appendChild(document.createTextNode(' ' + pkg.probability));
+                    updatedCount++;
+                }
+            }
+        }
+    });
+
+    if (updatedCount > 0) {
+        console.log(`⚡ Smart updated ${updatedCount} values on active package cards`);
+    }
 }
 
 // Validate and fix robot icons on active and completed packages
