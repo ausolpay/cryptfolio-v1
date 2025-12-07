@@ -19056,6 +19056,18 @@ async function updateRecommendations() {
                 // Display each recommended package using the same card format as buy packages
                 recommendations.forEach(pkg => {
                     const card = createBuyPackageCardForPage(pkg, true); // true = isRecommended
+
+                    // Ensure recommended styling is applied (EasyMining alerts should always show as recommended)
+                    if (!card.classList.contains('recommended')) {
+                        card.classList.add('recommended');
+                    }
+
+                    // Ensure star is present in the h4
+                    const titleElement = card.querySelector('h4');
+                    if (titleElement && !titleElement.innerHTML.includes('⭐')) {
+                        titleElement.innerHTML = `${pkg.name} <span class="recommended-star">⭐</span>`;
+                    }
+
                     bestPackagesContainer.appendChild(card);
                 });
             }
