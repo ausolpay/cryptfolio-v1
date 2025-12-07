@@ -14351,6 +14351,16 @@ function toggleEasyMining() {
             console.log('📦 EasyMining section opened for first time, starting alerts polling...');
             startEasyMiningAlertsPolling();
         }
+
+        // Refresh active packages when opening EasyMining section (catch newly active team packages)
+        if (easyMiningSettings && easyMiningSettings.enabled) {
+            console.log('🔄 EasyMining section opened - refreshing active packages...');
+            fetchEasyMiningData().then(() => {
+                displayActivePackages();
+            }).catch(err => {
+                console.error('Failed to refresh on section open:', err);
+            });
+        }
     } else {
         content.style.display = 'none';
         arrow.classList.remove('rotated');
@@ -17315,8 +17325,19 @@ function switchPackageTab(tab) {
     });
     event.target.closest('.package-tab').classList.add('active');
 
-    // Refresh display
-    displayActivePackages();
+    // If switching to Active tab, fetch fresh data to catch newly active packages
+    if (tab === 'active') {
+        console.log('🔄 Active tab clicked - refreshing package data...');
+        fetchEasyMiningData().then(() => {
+            displayActivePackages();
+        }).catch(err => {
+            console.error('Failed to refresh on active tab:', err);
+            displayActivePackages(); // Still display with existing data
+        });
+    } else {
+        // Refresh display
+        displayActivePackages();
+    }
 }
 
 window.switchPackageTab = switchPackageTab;
@@ -26347,6 +26368,9 @@ function validateAndFixAutoBuyRobotIcons() {
     console.log(`🤖 Validation complete: ${fixedCount} icons added/fixed, ${removedCount} icons removed`);
 }
 
+// Track packages that were in countdown state (to detect when they become active)
+window.packagesInCountdown = window.packagesInCountdown || {};
+
 // Update countdown timers for team packages
 function updateTeamPackageCountdowns() {
     // Get all team packages from the current display
@@ -26361,9 +26385,35 @@ function updateTeamPackageCountdowns() {
     const currentRecommendations = currentTeamRecommendations || [];
     const recommendedPackageIds = currentRecommendations.map(rec => rec.apiData?.id || rec.id);
 
+    // Track if any package with shares just became active
+    let shouldRefreshActivePackages = false;
+
     window.currentTeamPackages.forEach(pkg => {
         if (pkg.lifeTimeTill) {
             const countdownElement = document.getElementById(`countdown-buy-${pkg.id}`);
+            const packageId = pkg.apiData?.id || pkg.id;
+            const startTime = new Date(pkg.lifeTimeTill);
+            const now = new Date();
+            const timeUntilStart = startTime - now;
+
+            // Check if this package just transitioned from countdown to active
+            const wasInCountdown = window.packagesInCountdown[packageId];
+            const isNowActive = timeUntilStart <= 0;
+
+            if (wasInCountdown && isNowActive) {
+                // Package just became active - check if user has shares
+                const myShares = getMyTeamShares(packageId) || 0;
+                if (myShares > 0) {
+                    console.log(`🚀 Team package "${pkg.name}" just became active with ${myShares} shares - triggering refresh!`);
+                    shouldRefreshActivePackages = true;
+                }
+                // Remove from countdown tracking
+                delete window.packagesInCountdown[packageId];
+            } else if (timeUntilStart > 0) {
+                // Mark as in countdown
+                window.packagesInCountdown[packageId] = true;
+            }
+
             if (countdownElement) {
                 const startTime = new Date(pkg.lifeTimeTill);
                 const now = new Date();
@@ -26586,6 +26636,24 @@ function updateTeamPackageCountdowns() {
                 }
             }
         });
+    }
+
+    // If any package with shares just became active, trigger a data refresh
+    if (shouldRefreshActivePackages && !window.activePackageRefreshPending) {
+        window.activePackageRefreshPending = true;
+        console.log('🔄 Refreshing EasyMining data for newly active package...');
+        // Small delay to let API update the package status
+        setTimeout(async () => {
+            try {
+                await fetchEasyMiningData();
+                displayActivePackages();
+                console.log('✅ Active packages refreshed!');
+            } catch (err) {
+                console.error('Failed to refresh active packages:', err);
+            } finally {
+                window.activePackageRefreshPending = false;
+            }
+        }, 2000); // 2 second delay to let NiceHash API update
     }
 }
 
