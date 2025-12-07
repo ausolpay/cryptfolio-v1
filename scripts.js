@@ -29680,42 +29680,88 @@ function addFloatingIconForShares(packageName) {
         return;
     }
 
-    // Add a new icon to the config
-    const newIcon = {
+    // Find the container in the DOM
+    const container = document.querySelector(`[data-package-key="${teamKey}"]`);
+    const baseSpeed = 12;
+
+    // Add a new main icon (LTC for Palladium, or the single crypto for others)
+    const newMainIcon = {
         delay: -(Math.random() * 8),
-        startX: 5 + Math.random() * 80,
-        startY: 10 + Math.random() * 70,
+        startX: config.isPalladium ? (5 + (config.mainIcons.length * 25) + Math.random() * 10) : (5 + Math.random() * 80),
+        startY: config.isPalladium ? (10 + Math.random() * 35) : (10 + Math.random() * 70),
         speedMultiplier: 0.7 + Math.random() * 0.6,
         speedYRatio: 0.7 + Math.random() * 0.6,
         pulseSpeed: 6 + Math.random() * 6,
-        rangeX: 20 + Math.random() * 40,
-        rangeY: 25 + Math.random() * 30,
+        rangeX: config.isPalladium ? (15 + Math.random() * 30) : (20 + Math.random() * 40),
+        rangeY: config.isPalladium ? (20 + Math.random() * 25) : (25 + Math.random() * 30),
         direction: Math.random() > 0.5 ? 'normal' : 'reverse'
     };
 
-    config.mainIcons.push(newIcon);
+    config.mainIcons.push(newMainIcon);
     config.iconCount = config.mainIcons.length;
 
-    // Find the container in the DOM and add the new icon
-    const container = document.querySelector(`[data-package-key="${teamKey}"]`);
+    // Add main icon to DOM
     if (container && config.iconUrl) {
-        const speed = 12 * newIcon.speedMultiplier;
+        const speed = baseSpeed * newMainIcon.speedMultiplier;
 
         const iconImg = document.createElement('img');
         iconImg.className = 'reward-floating-icon';
         iconImg.src = config.iconUrl;
+        iconImg.dataset.iconType = 'main';
         iconImg.style.cssText = `
-            --float-delay: ${newIcon.delay.toFixed(1)}s;
+            --float-delay: ${newMainIcon.delay.toFixed(1)}s;
             --float-speed: ${speed.toFixed(1)}s;
-            --range-x: ${newIcon.rangeX.toFixed(0)}px;
-            --range-y: ${newIcon.rangeY.toFixed(0)}px;
-            left: ${newIcon.startX.toFixed(0)}%;
-            top: ${newIcon.startY.toFixed(0)}%;
-            animation-direction: ${newIcon.direction};
+            --range-x: ${newMainIcon.rangeX.toFixed(0)}px;
+            --range-y: ${newMainIcon.rangeY.toFixed(0)}px;
+            left: ${newMainIcon.startX.toFixed(0)}%;
+            top: ${newMainIcon.startY.toFixed(0)}%;
+            animation-direction: ${newMainIcon.direction};
         `;
         iconImg.onerror = function() { this.style.display = 'none'; };
 
         container.appendChild(iconImg);
+    }
+
+    // For Palladium: also add a merge icon (DOGE)
+    if (config.isPalladium && config.dualIconUrl) {
+        const newMergeIcon = {
+            delay: -(Math.random() * 8),
+            startX: 50 + (config.mergeIcons.length * 20) + Math.random() * 15,
+            startY: 45 + Math.random() * 40,
+            speedMultiplier: 0.7 + Math.random() * 0.6,
+            speedYRatio: 0.7 + Math.random() * 0.5,
+            pulseSpeed: 6 + Math.random() * 5,
+            rangeX: 20 + Math.random() * 35,
+            rangeY: 15 + Math.random() * 30,
+            direction: Math.random() > 0.5 ? 'normal' : 'reverse'
+        };
+
+        config.mergeIcons.push(newMergeIcon);
+
+        // Add merge icon to DOM
+        if (container) {
+            const speed = baseSpeed * newMergeIcon.speedMultiplier;
+
+            const mergeIconImg = document.createElement('img');
+            mergeIconImg.className = 'reward-floating-icon';
+            mergeIconImg.src = config.dualIconUrl;
+            mergeIconImg.dataset.iconType = 'merge';
+            mergeIconImg.style.cssText = `
+                --float-delay: ${newMergeIcon.delay.toFixed(1)}s;
+                --float-speed: ${speed.toFixed(1)}s;
+                --range-x: ${newMergeIcon.rangeX.toFixed(0)}px;
+                --range-y: ${newMergeIcon.rangeY.toFixed(0)}px;
+                left: ${newMergeIcon.startX.toFixed(0)}%;
+                top: ${newMergeIcon.startY.toFixed(0)}%;
+                animation-direction: ${newMergeIcon.direction};
+            `;
+            mergeIconImg.onerror = function() { this.style.display = 'none'; };
+
+            container.appendChild(mergeIconImg);
+        }
+
+        console.log(`🎈 Added floating icons for ${packageName} (Palladium): ${config.mainIcons.length} LTC + ${config.mergeIcons.length} DOGE`);
+    } else {
         console.log(`🎈 Added floating icon for ${packageName} (now ${config.mainIcons.length} icons)`);
     }
 }
@@ -29723,6 +29769,8 @@ function addFloatingIconForShares(packageName) {
 /**
  * Remove a floating icon when shares decrease (minus button pressed)
  * Called from adjustShares() when delta < 0
+ * For Palladium: removes one LTC AND one DOGE icon
+ * For others: removes one icon
  */
 function removeFloatingIconForShares(packageName) {
     const key = packageName.replace(/\s+/g, '-');
@@ -29730,22 +29778,56 @@ function removeFloatingIconForShares(packageName) {
     const config = floatingIconsStore[teamKey];
 
     if (!config || config.mainIcons.length <= 1) {
-        // Keep at least 1 icon
+        // Keep at least 1 icon of each type
         return;
     }
 
-    // Remove from config
+    const container = document.querySelector(`[data-package-key="${teamKey}"]`);
+
+    // Remove main icon from config
     config.mainIcons.pop();
     config.iconCount = config.mainIcons.length;
 
-    // Remove from DOM
-    const container = document.querySelector(`[data-package-key="${teamKey}"]`);
+    // Remove main icon from DOM (find last one with data-icon-type="main" or just last main icon)
     if (container) {
-        const icons = container.querySelectorAll('.reward-floating-icon');
-        if (icons.length > 1) {
-            icons[icons.length - 1].remove();
-            console.log(`🎈 Removed floating icon for ${packageName} (now ${config.mainIcons.length} icons)`);
+        const mainIcons = container.querySelectorAll('.reward-floating-icon[data-icon-type="main"]');
+        if (mainIcons.length > 1) {
+            mainIcons[mainIcons.length - 1].remove();
+        } else {
+            // Fallback: find icons by src matching mainIconUrl
+            const allIcons = container.querySelectorAll('.reward-floating-icon');
+            const mainIconsFiltered = Array.from(allIcons).filter(icon =>
+                icon.src === config.iconUrl || icon.getAttribute('src') === config.iconUrl
+            );
+            if (mainIconsFiltered.length > 1) {
+                mainIconsFiltered[mainIconsFiltered.length - 1].remove();
+            }
         }
+    }
+
+    // For Palladium: also remove a merge icon (DOGE)
+    if (config.isPalladium && config.mergeIcons.length > 1) {
+        config.mergeIcons.pop();
+
+        if (container) {
+            const mergeIcons = container.querySelectorAll('.reward-floating-icon[data-icon-type="merge"]');
+            if (mergeIcons.length > 1) {
+                mergeIcons[mergeIcons.length - 1].remove();
+            } else {
+                // Fallback: find icons by src matching dualIconUrl
+                const allIcons = container.querySelectorAll('.reward-floating-icon');
+                const mergeIconsFiltered = Array.from(allIcons).filter(icon =>
+                    icon.src === config.dualIconUrl || icon.getAttribute('src') === config.dualIconUrl
+                );
+                if (mergeIconsFiltered.length > 1) {
+                    mergeIconsFiltered[mergeIconsFiltered.length - 1].remove();
+                }
+            }
+        }
+
+        console.log(`🎈 Removed floating icons for ${packageName} (Palladium): ${config.mainIcons.length} LTC + ${config.mergeIcons.length} DOGE`);
+    } else {
+        console.log(`🎈 Removed floating icon for ${packageName} (now ${config.mainIcons.length} icons)`);
     }
 }
 
@@ -29761,12 +29843,13 @@ function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
 
     let html = `<div class="reward-floating-icons" data-package-key="${key}">`;
 
-    // Add main icons
+    // Add main icons (LTC for Palladium, or single crypto for others)
     config.mainIcons.forEach((icon, i) => {
         if (config.iconUrl) {
             const speed = metricsSpeed || (baseSpeed * icon.speedMultiplier);
 
             html += `<img class="reward-floating-icon" src="${config.iconUrl}"
+                data-icon-type="main"
                 style="--float-delay: ${icon.delay.toFixed(1)}s;
                        --float-speed: ${speed.toFixed(1)}s;
                        --range-x: ${icon.rangeX.toFixed(0)}px;
@@ -29778,12 +29861,13 @@ function generateFloatingIconsHtml(packageName, baseSpeed, metricsSpeed) {
         }
     });
 
-    // Add merge icons for Palladium
+    // Add merge icons for Palladium (DOGE)
     config.mergeIcons.forEach((icon, i) => {
         if (config.dualIconUrl) {
             const speed = metricsSpeed || (baseSpeed * icon.speedMultiplier);
 
             html += `<img class="reward-floating-icon" src="${config.dualIconUrl}"
+                data-icon-type="merge"
                 style="--float-delay: ${icon.delay.toFixed(1)}s;
                        --float-speed: ${speed.toFixed(1)}s;
                        --range-x: ${icon.rangeX.toFixed(0)}px;
