@@ -19161,15 +19161,23 @@ function updateSoloAlertCardValues(pkg) {
 function updateTeamAlertCardValues(pkg) {
     const packageId = pkg.name.replace(/\s+/g, '-');
 
-    // Update probability values
+    // Update probability values - for dual crypto, first element shows DOGE (merge), second shows LTC (main)
+    const probEl = document.getElementById(`alert-probability-${packageId}`);
+    if (probEl) {
+        // For dual crypto, first probability shows mergeProbability (DOGE)
+        const probValue = pkg.isDualCrypto && pkg.mergeProbability ? pkg.mergeProbability : pkg.probability;
+        if (probValue) probEl.textContent = probValue;
+    }
+
     if (pkg.isDualCrypto) {
+        // Update second probability (LTC/main) - check both possible IDs
+        const mainProbEl = document.getElementById(`alert-probability-main-${packageId}`) ||
+                           document.getElementById(`alert-main-probability-${packageId}`);
+        if (mainProbEl && pkg.mainProbability) mainProbEl.textContent = pkg.mainProbability;
+
+        // Also update merge probability in detailed section if exists
         const mergeProbEl = document.getElementById(`alert-merge-probability-${packageId}`);
-        const mainProbEl = document.getElementById(`alert-main-probability-${packageId}`);
-        if (mergeProbEl) mergeProbEl.textContent = pkg.mergeProbability;
-        if (mainProbEl) mainProbEl.textContent = pkg.mainProbability;
-    } else {
-        const probEl = document.getElementById(`alert-probability-${packageId}`);
-        if (probEl) probEl.textContent = pkg.probability;
+        if (mergeProbEl && pkg.mergeProbability) mergeProbEl.textContent = pkg.mergeProbability;
     }
 
     // Update hashrate with live speed calculation - preserve hashrate-unit styling
@@ -20132,8 +20140,21 @@ function createTeamPackageRecommendationCard(pkg) {
                             <line x1="2" y1="12" x2="6" y2="12"/>
                             <line x1="18" y1="12" x2="22" y2="12"/>
                         </svg>
-                        <span class="team-stat-value" id="alert-probability-${packageId}">${pkg.probability || 'N/A'}</span>
+                        <span class="team-stat-value" id="alert-probability-${packageId}">${pkg.isDualCrypto && pkg.mergeProbability ? pkg.mergeProbability : (pkg.probability || 'N/A')}</span>
                     </div>
+                    ${pkg.isDualCrypto && pkg.mainProbability ? `
+                    <div class="team-stat-item">
+                        <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                            <line x1="12" y1="2" x2="12" y2="6"/>
+                            <line x1="12" y1="18" x2="12" y2="22"/>
+                            <line x1="2" y1="12" x2="6" y2="12"/>
+                            <line x1="18" y1="12" x2="22" y2="12"/>
+                        </svg>
+                        <span class="team-stat-value" id="alert-probability-main-${packageId}">${pkg.mainProbability}</span>
+                    </div>
+                    ` : ''}
                     <div class="team-stat-item">
                         <svg class="team-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"/>
@@ -25094,23 +25115,31 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             }
         }
 
-        // Update probability (single crypto) - try both team and old ID formats
+        // Update probability - for dual crypto (Palladium), first element shows DOGE (merge), second shows LTC (main)
         const probabilityEl = card.querySelector(`#team-probability-${packageIdForElements}`) ||
                               card.querySelector(`#probability-${packageIdForElements}`);
-        if (probabilityEl && pkg.probability) {
-            probabilityEl.textContent = pkg.probability;
-            console.log(`   ✅ Updated probability: ${pkg.probability}`);
+        if (probabilityEl) {
+            // For dual crypto, first probability element shows mergeProbability (DOGE)
+            // For single crypto, shows probability
+            const probValue = pkg.isDualCrypto && pkg.mergeProbability ? pkg.mergeProbability : pkg.probability;
+            if (probValue) {
+                probabilityEl.textContent = probValue;
+                console.log(`   ✅ Updated probability: ${probValue}${pkg.isDualCrypto ? ' (DOGE/merge)' : ''}`);
+            }
         }
 
-        // Update dual-crypto probabilities (no crypto labels)
+        // Update dual-crypto main probability (LTC) - second probability element
+        const mainProbEl = card.querySelector(`#team-probability-main-${packageIdForElements}`) ||
+                           card.querySelector(`#main-probability-${packageIdForElements}`);
+        if (mainProbEl && pkg.mainProbability) {
+            mainProbEl.textContent = pkg.mainProbability;
+            console.log(`   ✅ Updated main probability: ${pkg.mainProbability} (LTC)`);
+        }
+
+        // Also check for merge-probability ID (used in some card formats)
         const mergeProbEl = card.querySelector(`#merge-probability-${packageIdForElements}`);
         if (mergeProbEl && pkg.mergeProbability) {
             mergeProbEl.textContent = pkg.mergeProbability;
-        }
-
-        const mainProbEl = card.querySelector(`#main-probability-${packageIdForElements}`);
-        if (mainProbEl && pkg.mainProbability) {
-            mainProbEl.textContent = pkg.mainProbability;
         }
 
         // Update hashrate - use team-hashrate ID for team cards
