@@ -18161,11 +18161,18 @@ async function updateActivePackageProbabilities() {
     easyMiningData.activePackages.forEach(activePkg => {
         if (!activePkg.active) return; // Only update active packages
 
-        // Find matching solo package by name (e.g., "Gold S" matches "Gold" active packages)
-        const baseName = activePkg.name?.replace(/\s+(S|M|L|XL|Team)$/i, '').trim();
-        const matchingSolo = soloPackages.find(solo =>
-            solo.name?.toLowerCase().startsWith(baseName?.toLowerCase())
+        // Find matching solo package by EXACT name (Palladium S, Palladium M, Palladium L must match exactly)
+        let matchingSolo = soloPackages.find(solo =>
+            solo.name?.toLowerCase() === activePkg.name?.toLowerCase()
         );
+
+        // Fallback: try matching by base name for non-sized packages (e.g., "Gold" active matches "Gold S")
+        if (!matchingSolo) {
+            const baseName = activePkg.name?.replace(/\s+(S|M|L|XL|Team)$/i, '').trim();
+            matchingSolo = soloPackages.find(solo =>
+                solo.name?.toLowerCase().startsWith(baseName?.toLowerCase())
+            );
+        }
 
         if (!matchingSolo) return;
 
