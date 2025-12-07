@@ -17268,6 +17268,9 @@ function updateEasyMiningUI() {
     // Display active packages
     displayActivePackages();
 
+    // Update live probability values from solo packages
+    updateActivePackageProbabilities();
+
     // Update stats
     updateStats();
 
@@ -17673,20 +17676,21 @@ function displayActivePackages() {
                 <div class="package-section mining-info">
                     <div class="package-stat-grid">
                         ${pkg.probability ? `
+                        ${isPalladium ? `
+                        <!-- Palladium: DOGE (merge) first, LTC (main) second -->
                         <div class="stat-block">
-                            <span class="stat-value-medium">
+                            <span class="stat-value-medium" id="active-merge-prob-${pkg.id}">
                                 <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"/>
                                     <circle cx="12" cy="12" r="3" fill="currentColor"/>
                                     <line x1="12" y1="2" x2="12" y2="6"/>
                                     <line x1="12" y1="18" x2="12" y2="22"/>
                                 </svg>
-                                ${pkg.mergeProbability ? pkg.mergeProbability : pkg.probability}
+                                ${pkg.mergeProbability || 'N/A'}
                             </span>
                         </div>
-                        ${pkg.mergeProbability ? `
                         <div class="stat-block">
-                            <span class="stat-value-medium">
+                            <span class="stat-value-medium" id="active-main-prob-${pkg.id}">
                                 <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"/>
                                     <circle cx="12" cy="12" r="3" fill="currentColor"/>
@@ -17696,7 +17700,20 @@ function displayActivePackages() {
                                 ${pkg.probability}
                             </span>
                         </div>
-                        ` : ''}
+                        ` : `
+                        <!-- Non-Palladium: Single probability -->
+                        <div class="stat-block">
+                            <span class="stat-value-medium" id="active-prob-${pkg.id}">
+                                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                                    <line x1="12" y1="2" x2="12" y2="6"/>
+                                    <line x1="12" y1="18" x2="12" y2="22"/>
+                                </svg>
+                                ${pkg.probability}
+                            </span>
+                        </div>
+                        `}
                         ` : ''}
                         ${!pkg.active && pkg.endTime ? `
                         <div class="stat-block">
@@ -17971,6 +17988,74 @@ function validateActivePackageRobotIcons() {
 
     if (fixedActiveCount > 0 || fixedCompletedCount > 0) {
         console.log(`🤖 Package validation: Added ${fixedActiveCount} flashing + ${fixedCompletedCount} solid robot icons`);
+    }
+}
+
+/**
+ * Update live probability values on active package cards
+ * Uses latest solo package data for most accurate probabilities
+ */
+async function updateActivePackageProbabilities() {
+    if (!easyMiningData?.activePackages || easyMiningData.activePackages.length === 0) return;
+
+    // Fetch latest solo packages to get live probability data
+    const soloPackages = await fetchNiceHashSoloPackages();
+    if (!soloPackages || soloPackages.length === 0) {
+        console.log('⚠️ No solo packages available for probability update');
+        return;
+    }
+
+    let updatedCount = 0;
+
+    // Update each active package's probability from matching solo package
+    easyMiningData.activePackages.forEach(activePkg => {
+        if (!activePkg.active) return; // Only update active packages
+
+        // Find matching solo package by name (e.g., "Gold S" matches "Gold" active packages)
+        const baseName = activePkg.name?.replace(/\s+(S|M|L|XL|Team)$/i, '').trim();
+        const matchingSolo = soloPackages.find(solo =>
+            solo.name?.toLowerCase().startsWith(baseName?.toLowerCase())
+        );
+
+        if (!matchingSolo) return;
+
+        const isPalladium = activePkg.cryptoSecondary || activePkg.name?.toLowerCase().includes('palladium');
+
+        if (isPalladium) {
+            // Update DOGE (merge) probability
+            const mergeEl = document.getElementById(`active-merge-prob-${activePkg.id}`);
+            if (mergeEl && matchingSolo.mergeProbability) {
+                const svg = mergeEl.querySelector('svg');
+                mergeEl.innerHTML = '';
+                if (svg) mergeEl.appendChild(svg);
+                mergeEl.appendChild(document.createTextNode(' ' + matchingSolo.mergeProbability));
+                updatedCount++;
+            }
+
+            // Update LTC (main) probability
+            const mainEl = document.getElementById(`active-main-prob-${activePkg.id}`);
+            if (mainEl && matchingSolo.probability) {
+                const svg = mainEl.querySelector('svg');
+                mainEl.innerHTML = '';
+                if (svg) mainEl.appendChild(svg);
+                mainEl.appendChild(document.createTextNode(' ' + matchingSolo.probability));
+                updatedCount++;
+            }
+        } else {
+            // Update single probability
+            const probEl = document.getElementById(`active-prob-${activePkg.id}`);
+            if (probEl && matchingSolo.probability) {
+                const svg = probEl.querySelector('svg');
+                probEl.innerHTML = '';
+                if (svg) probEl.appendChild(svg);
+                probEl.appendChild(document.createTextNode(' ' + matchingSolo.probability));
+                updatedCount++;
+            }
+        }
+    });
+
+    if (updatedCount > 0) {
+        console.log(`🎲 Updated ${updatedCount} live probability values on active packages`);
     }
 }
 
