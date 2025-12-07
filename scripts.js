@@ -24244,24 +24244,51 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     }
 
     // 2. Get share count from input (this is the DESIRED TOTAL, not increment)
-    // Use robust multi-method lookup like buyTeamPackage() does
+    // CRITICAL: Search buy packages page FIRST to avoid finding alert card inputs
     let input = document.getElementById(`${cardId}-shares`);
+    let card = null;
 
-    // Fallback: Try by package-id attribute with class selector
-    if (!input && packageId) {
-        const card = document.querySelector(`[data-package-id="${packageId}"]`);
-        if (card) {
-            input = card.querySelector('.share-adjuster-input');
+    // Priority 1: Search in buy-team-packages-page container (buy packages page)
+    if (!input) {
+        const buyPackagesContainer = document.getElementById('buy-team-packages-page');
+        if (buyPackagesContainer) {
+            card = buyPackagesContainer.querySelector(`[data-package-id="${packageId}"]`);
+            if (card) {
+                input = card.querySelector('.share-adjuster-input');
+                console.log(`📍 Found input in buy-team-packages-page: ${packageId}, value=${input?.value}`);
+            }
         }
     }
 
-    // Additional fallback: Try alert ID format using package name
+    // Priority 2: Search in recommendations container (EasyMining alerts)
+    if (!input) {
+        const alertsContainer = document.querySelector('.recommendations-container');
+        if (alertsContainer) {
+            card = alertsContainer.querySelector(`[data-package-id="${packageId}"]`);
+            if (card) {
+                input = card.querySelector('.share-adjuster-input');
+                console.log(`📍 Found input in alerts container: ${packageId}, value=${input?.value}`);
+            }
+        }
+    }
+
+    // Priority 3: Fallback to any card with matching data-package-id
+    if (!input && packageId) {
+        card = document.querySelector(`[data-package-id="${packageId}"]`);
+        if (card) {
+            input = card.querySelector('.share-adjuster-input');
+            console.log(`📍 Fallback: Found input via data-package-id: ${packageId}, value=${input?.value}`);
+        }
+    }
+
+    // Priority 4: Try alert ID format using package name
     if (!input) {
         const packageCard = document.getElementById(cardId);
         if (packageCard) {
-            const packageName = packageCard.querySelector('h4')?.textContent?.replace(' (Team)', '');
+            const packageName = packageCard.querySelector('h4')?.textContent?.replace(' (Team)', '').replace(' ⭐', '');
             if (packageName) {
                 input = document.getElementById(`shares-${packageName.replace(/\s+/g, '-')}`);
+                console.log(`📍 Fallback: Found input via package name: ${packageName}, value=${input?.value}`);
             }
         }
     }
@@ -24272,6 +24299,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     }
 
     const desiredTotalShares = parseInt(input.value) || 0;
+    console.log(`📊 Reading input value: ${input?.value} → parsed as ${desiredTotalShares}`);
 
     if (desiredTotalShares <= 0) {
         showModal('Please select at least 1 share to purchase.');
@@ -28081,24 +28109,50 @@ async function buyTeamPackage(pkg, packageId) {
     console.log('🛒 Purchasing team package:', pkg.name);
 
     // Get desired total shares from input field
-    // Use context-aware search to handle duplicate cards for same package
+    // CRITICAL: Search buy packages page FIRST to avoid finding alert card inputs
     let sharesInput = null;
+    let card = null;
 
-    // First try to find by card's data-package-id attribute (most reliable)
-    const card = document.querySelector(`[data-package-id="${packageId}"]`);
-    if (card) {
-        sharesInput = card.querySelector('.share-adjuster-input');
-        console.log(`📍 Found input via card data-package-id: ${packageId}`);
+    // Priority 1: Search in buy-team-packages-page container (buy packages page)
+    const buyPackagesContainer = document.getElementById('buy-team-packages-page');
+    if (buyPackagesContainer) {
+        card = buyPackagesContainer.querySelector(`[data-package-id="${packageId}"]`);
+        if (card) {
+            sharesInput = card.querySelector('.share-adjuster-input');
+            console.log(`📍 Found input in buy-team-packages-page: ${packageId}, value=${sharesInput?.value}`);
+        }
     }
 
-    // Fallback to old ID-based method
+    // Priority 2: Search in recommendations container (EasyMining alerts)
+    if (!sharesInput) {
+        const alertsContainer = document.querySelector('.recommendations-container');
+        if (alertsContainer) {
+            card = alertsContainer.querySelector(`[data-package-id="${packageId}"]`);
+            if (card) {
+                sharesInput = card.querySelector('.share-adjuster-input');
+                console.log(`📍 Found input in alerts container: ${packageId}, value=${sharesInput?.value}`);
+            }
+        }
+    }
+
+    // Priority 3: Fallback to any card with matching data-package-id
+    if (!sharesInput) {
+        card = document.querySelector(`[data-package-id="${packageId}"]`);
+        if (card) {
+            sharesInput = card.querySelector('.share-adjuster-input');
+            console.log(`📍 Fallback: Found input via data-package-id: ${packageId}, value=${sharesInput?.value}`);
+        }
+    }
+
+    // Priority 4: Fallback to old ID-based method
     if (!sharesInput) {
         const inputId = `shares-${pkg.name.replace(/\s+/g, '-')}`;
         sharesInput = document.getElementById(inputId);
-        console.log(`📍 Fallback: Found input via ID: ${inputId}`);
+        console.log(`📍 Fallback: Found input via ID: ${inputId}, value=${sharesInput?.value}`);
     }
 
     const desiredTotalShares = sharesInput ? parseInt(sharesInput.value) || 0 : 0;
+    console.log(`📊 Reading input value: ${sharesInput?.value} → parsed as ${desiredTotalShares}`);
 
     if (desiredTotalShares <= 0) {
         alert('Please select number of shares to purchase (use +/- buttons)');
