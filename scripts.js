@@ -19482,18 +19482,16 @@ function initializeAlertCardButtonStates(packageName, myBoughtShares, totalBough
     const currentShareCost = newShares * sharePrice;
     const nextShareCost = nextNewShares * sharePrice;
 
-    // Find + button
+    // Find + button - ONLY disable when no more shares available (not based on balance)
     const plusButton = document.getElementById(`plus-${packageId}`);
     if (plusButton) {
         if (shares >= maxSharesICanOwn) {
-            plusButton.disabled = true;
-            plusButton.style.opacity = '0.5';
-            plusButton.style.cursor = 'not-allowed';
-        } else if (availableBalance < nextShareCost) {
+            // No more shares available to buy
             plusButton.disabled = true;
             plusButton.style.opacity = '0.5';
             plusButton.style.cursor = 'not-allowed';
         } else {
+            // Enable + button as long as shares are available (regardless of balance)
             plusButton.disabled = false;
             plusButton.style.opacity = '1';
             plusButton.style.cursor = 'pointer';
@@ -23750,21 +23748,19 @@ function updateTeamPackageButtonStates(card, input, shares, myBoughtShares, tota
     const currentShareCost = newShares * sharePrice;
     const nextShareCost = nextNewShares * sharePrice;
 
-    // Find + button
+    // Find + button - ONLY disable when no more shares available (not based on balance)
     const plusButton = card.querySelector('.share-button:last-of-type') ||
                        card.querySelector('button[onclick*="adjustShares"][onclick*=", 1"]');
 
-    // Update + button state
+    // Update + button state - ONLY disable when no more shares available
     if (plusButton) {
         if (shares >= maxSharesICanOwn) {
-            plusButton.disabled = true;
-            plusButton.style.opacity = '0.5';
-            plusButton.style.cursor = 'not-allowed';
-        } else if (availableBalance < nextShareCost) {
+            // No more shares available to buy
             plusButton.disabled = true;
             plusButton.style.opacity = '0.5';
             plusButton.style.cursor = 'not-allowed';
         } else {
+            // Enable + button as long as shares are available (regardless of balance)
             plusButton.disabled = false;
             plusButton.style.opacity = '1';
             plusButton.style.cursor = 'pointer';
