@@ -28107,19 +28107,28 @@ window.adjustShares = adjustShares;
 
 async function buyTeamPackage(pkg, packageId) {
     console.log('🛒 Purchasing team package:', pkg.name);
+    console.log('🔍 Package IDs - pkg.id:', pkg.id, ', pkg.apiData?.id:', pkg.apiData?.id, ', packageId param:', packageId);
 
     // Get desired total shares from input field
     // CRITICAL: Search buy packages page FIRST to avoid finding alert card inputs
+    // CRITICAL: Try BOTH pkg.id AND packageId since card uses pkg.id but API uses apiData.id
     let sharesInput = null;
     let card = null;
+
+    // IDs to try - card is created with pkg.id, but packageId might be pkg.apiData.id
+    const idsToTry = [pkg.id, packageId, pkg.apiData?.id].filter((id, i, arr) => id && arr.indexOf(id) === i);
+    console.log('🔍 Will try these IDs:', idsToTry);
 
     // Priority 1: Search in buy-team-packages-page container (buy packages page)
     const buyPackagesContainer = document.getElementById('buy-team-packages-page');
     if (buyPackagesContainer) {
-        card = buyPackagesContainer.querySelector(`[data-package-id="${packageId}"]`);
-        if (card) {
-            sharesInput = card.querySelector('.share-adjuster-input');
-            console.log(`📍 Found input in buy-team-packages-page: ${packageId}, value=${sharesInput?.value}`);
+        for (const id of idsToTry) {
+            card = buyPackagesContainer.querySelector(`[data-package-id="${id}"]`);
+            if (card) {
+                sharesInput = card.querySelector('.share-adjuster-input');
+                console.log(`📍 Found input in buy-team-packages-page with id=${id}, value=${sharesInput?.value}`);
+                break;
+            }
         }
     }
 
@@ -28127,28 +28136,41 @@ async function buyTeamPackage(pkg, packageId) {
     if (!sharesInput) {
         const alertsContainer = document.querySelector('.recommendations-container');
         if (alertsContainer) {
-            card = alertsContainer.querySelector(`[data-package-id="${packageId}"]`);
-            if (card) {
-                sharesInput = card.querySelector('.share-adjuster-input');
-                console.log(`📍 Found input in alerts container: ${packageId}, value=${sharesInput?.value}`);
+            for (const id of idsToTry) {
+                card = alertsContainer.querySelector(`[data-package-id="${id}"]`);
+                if (card) {
+                    sharesInput = card.querySelector('.share-adjuster-input');
+                    console.log(`📍 Found input in alerts container with id=${id}, value=${sharesInput?.value}`);
+                    break;
+                }
             }
         }
     }
 
     // Priority 3: Fallback to any card with matching data-package-id
     if (!sharesInput) {
-        card = document.querySelector(`[data-package-id="${packageId}"]`);
-        if (card) {
-            sharesInput = card.querySelector('.share-adjuster-input');
-            console.log(`📍 Fallback: Found input via data-package-id: ${packageId}, value=${sharesInput?.value}`);
+        for (const id of idsToTry) {
+            card = document.querySelector(`[data-package-id="${id}"]`);
+            if (card) {
+                sharesInput = card.querySelector('.share-adjuster-input');
+                console.log(`📍 Fallback: Found input via data-package-id=${id}, value=${sharesInput?.value}`);
+                break;
+            }
         }
     }
 
-    // Priority 4: Fallback to old ID-based method
+    // Priority 4: Search by input ID within buy packages container (avoids duplicate ID issues)
+    if (!sharesInput && buyPackagesContainer) {
+        const inputId = `shares-${pkg.name.replace(/\s+/g, '-')}`;
+        sharesInput = buyPackagesContainer.querySelector(`#${CSS.escape(inputId)}`);
+        console.log(`📍 Fallback: Found input in buy container via ID: ${inputId}, value=${sharesInput?.value}`);
+    }
+
+    // Priority 5: Last resort - getElementById (might get wrong one if duplicates exist)
     if (!sharesInput) {
         const inputId = `shares-${pkg.name.replace(/\s+/g, '-')}`;
         sharesInput = document.getElementById(inputId);
-        console.log(`📍 Fallback: Found input via ID: ${inputId}, value=${sharesInput?.value}`);
+        console.log(`📍 Last resort: Found input via getElementById: ${inputId}, value=${sharesInput?.value}`);
     }
 
     const desiredTotalShares = sharesInput ? parseInt(sharesInput.value) || 0 : 0;
