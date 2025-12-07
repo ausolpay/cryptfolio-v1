@@ -2298,6 +2298,9 @@ async function fetchAndUpdateDepositsBalance() {
                 pending: balanceData.pending || 0
             };
             console.log('✅ Fresh balance fetched:', window.niceHashBalance);
+
+            // Update buy button states across the app
+            updateAllBuyButtonStates();
         }
 
         // Fetch fresh BTC price if not available or stale
@@ -18877,9 +18880,13 @@ async function updateRecommendations() {
             pending: balanceData.pending || 0
         };
         console.log('✅ Balance fetched for EasyMining recommendations:', window.niceHashBalance);
+
+        // Update buy button states across the app on balance change
+        updateAllBuyButtonStates();
     } catch (error) {
         console.error('❌ Failed to fetch balance for recommendations:', error);
         window.niceHashBalance = { available: 0, pending: 0 };
+        updateAllBuyButtonStates(); // Still update buttons with zero balance
     }
 
     // Pre-fetch packages once for all recommendation checks (avoids redundant API calls)
@@ -25502,6 +25509,133 @@ function updateBalanceSectionBorderColor() {
     }
 }
 
+/**
+ * Update all buy button states across the app when balance changes
+ * Checks EasyMining alert cards and Buy Packages page cards
+ */
+function updateAllBuyButtonStates() {
+    const availableBalance = window.niceHashBalance?.available || 0;
+    const sharePrice = 0.0001;
+    console.log(`💰 Updating all buy button states (balance: ${availableBalance.toFixed(8)} BTC)...`);
+
+    // Update EasyMining alert cards (solo and team)
+    const alertCards = document.querySelectorAll('.recommendations-container .buy-package-card');
+    alertCards.forEach(card => {
+        const input = card.querySelector('.share-adjuster-input');
+        if (!input) return;
+
+        const shares = parseInt(input.value) || 0;
+        const totalBought = parseInt(input.dataset.totalBought) || 0;
+        const totalAvailable = parseInt(input.dataset.max) || 0;
+        const myBought = parseInt(input.dataset.myBought) || 0;
+
+        const sharesRemaining = totalAvailable - totalBought;
+        const maxSharesICanOwn = myBought + sharesRemaining;
+        const newShares = shares - myBought;
+        const currentShareCost = newShares * sharePrice;
+
+        // Update + button state
+        const plusButton = card.querySelector('.share-adjuster-btn:last-of-type, button[onclick*=", 1"]');
+        if (plusButton) {
+            if (shares >= maxSharesICanOwn) {
+                plusButton.disabled = true;
+                plusButton.style.opacity = '0.5';
+                plusButton.style.cursor = 'not-allowed';
+            } else {
+                plusButton.disabled = false;
+                plusButton.style.opacity = '1';
+                plusButton.style.cursor = 'pointer';
+            }
+        }
+
+        // Update Buy button state
+        const buyButton = card.querySelector('.buy-now-btn:not(.clear-shares-btn)');
+        if (buyButton) {
+            if (newShares > sharesRemaining) {
+                buyButton.disabled = true;
+                buyButton.style.opacity = '0.5';
+                buyButton.style.cursor = 'not-allowed';
+            } else if (newShares > 0 && availableBalance < currentShareCost) {
+                buyButton.disabled = true;
+                buyButton.style.opacity = '0.5';
+                buyButton.style.cursor = 'not-allowed';
+            } else if (newShares <= 0) {
+                buyButton.disabled = true;
+                buyButton.style.opacity = '0.5';
+                buyButton.style.cursor = 'not-allowed';
+            } else {
+                buyButton.disabled = false;
+                buyButton.style.opacity = '1';
+                buyButton.style.cursor = 'pointer';
+            }
+        }
+    });
+
+    // Update Buy Packages page cards (solo and team)
+    const buyPageContainers = ['buy-single-packages-page', 'buy-team-packages-page'];
+    buyPageContainers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const cards = container.querySelectorAll('.buy-package-card');
+        cards.forEach(card => {
+            const input = card.querySelector('.share-adjuster-input');
+            if (!input) return;
+
+            const shares = parseInt(input.value) || 0;
+            const totalBought = parseInt(input.dataset.totalBought) || 0;
+            const totalAvailable = parseInt(input.dataset.max) || 0;
+            const myBought = parseInt(input.dataset.myBought) || 0;
+
+            const sharesRemaining = totalAvailable - totalBought;
+            const maxSharesICanOwn = myBought + sharesRemaining;
+            const newShares = shares - myBought;
+            const currentShareCost = newShares * sharePrice;
+
+            // Update + button state
+            const plusButton = card.querySelector('.share-adjuster-btn:last-of-type, button[onclick*=", 1"]');
+            if (plusButton) {
+                if (shares >= maxSharesICanOwn) {
+                    plusButton.disabled = true;
+                    plusButton.style.opacity = '0.5';
+                    plusButton.style.cursor = 'not-allowed';
+                } else {
+                    plusButton.disabled = false;
+                    plusButton.style.opacity = '1';
+                    plusButton.style.cursor = 'pointer';
+                }
+            }
+
+            // Update Buy button state
+            const buyButton = card.querySelector('.buy-now-btn:not(.clear-shares-btn), .team-buy-btn');
+            if (buyButton) {
+                if (newShares > sharesRemaining) {
+                    buyButton.disabled = true;
+                    buyButton.style.opacity = '0.5';
+                    buyButton.style.cursor = 'not-allowed';
+                } else if (newShares > 0 && availableBalance < currentShareCost) {
+                    buyButton.disabled = true;
+                    buyButton.style.opacity = '0.5';
+                    buyButton.style.cursor = 'not-allowed';
+                } else if (newShares <= 0) {
+                    buyButton.disabled = true;
+                    buyButton.style.opacity = '0.5';
+                    buyButton.style.cursor = 'not-allowed';
+                } else {
+                    buyButton.disabled = false;
+                    buyButton.style.opacity = '1';
+                    buyButton.style.cursor = 'pointer';
+                }
+            }
+        });
+    });
+
+    // Update balance section border colors
+    updateBalanceSectionBorderColor();
+
+    console.log(`✅ Buy button states updated for ${alertCards.length} alert cards`);
+}
+
 async function loadBuyPackagesDataOnPage() {
     console.log('📦 Loading packages on buy packages page...');
 
@@ -25519,6 +25653,9 @@ async function loadBuyPackagesDataOnPage() {
             pending: balanceData.pending || 0
         };
         console.log('✅ Balance fetched:', window.niceHashBalance);
+
+        // Update buy button states across the app on balance change
+        updateAllBuyButtonStates();
     } catch (error) {
         console.warn('⚠️ Failed to fetch balance, using fallback:', error);
         // Fallback to easyMiningData or zero
@@ -25526,6 +25663,7 @@ async function loadBuyPackagesDataOnPage() {
             available: easyMiningData?.balanceBTC || 0,
             pending: easyMiningData?.pendingBTC || 0
         };
+        updateAllBuyButtonStates(); // Still update buttons with fallback balance
     }
 
     // Try to fetch from API, use cache if unavailable
