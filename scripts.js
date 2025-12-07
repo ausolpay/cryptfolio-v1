@@ -17460,7 +17460,8 @@ function displayActivePackages() {
 
         let rewardDisplay;
         let rewardIconsHtml = '';
-        const isPalladium = pkg.cryptoSecondary && (pkg.name?.toLowerCase().includes('palladium') || pkg.name?.toLowerCase().includes('team palladium'));
+        // Detect Palladium by: cryptoSecondary, mergeProbability, or name containing 'palladium'
+        const isPalladium = pkg.cryptoSecondary || pkg.mergeProbability || pkg.name?.toLowerCase().includes('palladium');
 
         if (isPalladium) {
             // Dual-crypto: show overlapping icons like buy packages
@@ -17945,7 +17946,8 @@ function smartUpdateActivePackageCards() {
 
         if (!card) return;
 
-        const isPalladium = pkg.cryptoSecondary && (pkg.name?.toLowerCase().includes('palladium') || pkg.name?.toLowerCase().includes('team palladium'));
+        // Detect Palladium by: cryptoSecondary, mergeProbability, or name containing 'palladium'
+        const isPalladium = pkg.cryptoSecondary || pkg.mergeProbability || pkg.name?.toLowerCase().includes('palladium');
 
         // Update time remaining
         const timeEl = card.querySelector('.stat-value-medium svg.stat-icon[viewBox="0 0 24 24"] + *')?.closest('.stat-value-medium');
@@ -18169,7 +18171,8 @@ async function updateActivePackageProbabilities() {
 
         if (!matchingSolo) return;
 
-        const isPalladium = activePkg.cryptoSecondary || activePkg.name?.toLowerCase().includes('palladium');
+        // Detect Palladium by: cryptoSecondary, mergeProbability, or name containing 'palladium'
+        const isPalladium = activePkg.cryptoSecondary || activePkg.mergeProbability || activePkg.name?.toLowerCase().includes('palladium');
 
         if (isPalladium) {
             // Update DOGE (merge) probability
