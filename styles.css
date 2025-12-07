@@ -5803,6 +5803,17 @@ body.light-mode .stat-label {
     grid-column: 1 / -1; /* Span all columns */
 }
 
+/* Desktop - Alert cards fit grid columns with proper gaps */
+.recommendations-container .buy-package-card {
+    width: 336px; /* Match grid column width */
+    min-height: 380px; /* Slightly smaller for alert cards */
+}
+
+.recommendations-container .buy-package-card.team-package {
+    width: 336px; /* Match grid column width */
+    min-height: 400px; /* Slightly taller for team package content */
+}
+
 /* Tablet - 2 columns max, centered */
 @media (max-width: 1040px) {
     /* Add spacing between subheader strips and alert cards on all tablets */
