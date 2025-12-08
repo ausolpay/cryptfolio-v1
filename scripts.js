@@ -14345,15 +14345,13 @@ function toggleEasyMining() {
         arrow.classList.add('rotated');
         if (section) section.scrollIntoView({ block: 'start' });
 
-        // Start alerts polling on first open (deferred loading)
-        if (!easyMiningHasBeenOpened && easyMiningSettings && easyMiningSettings.enabled) {
-            easyMiningHasBeenOpened = true;
-            console.log('📦 EasyMining section opened for first time, starting alerts polling...');
-            startEasyMiningAlertsPolling();
-        }
-
-        // Refresh active packages when opening EasyMining section (catch newly active team packages)
         if (easyMiningSettings && easyMiningSettings.enabled) {
+            // Start/restart alerts polling when section is opened
+            console.log('📦 EasyMining section opened, starting alerts polling...');
+            startEasyMiningAlertsPolling();
+            easyMiningHasBeenOpened = true;
+
+            // Refresh active packages (catch newly active team packages)
             console.log('🔄 EasyMining section opened - refreshing active packages...');
             fetchEasyMiningData().then(() => {
                 displayActivePackages();
@@ -14364,6 +14362,8 @@ function toggleEasyMining() {
     } else {
         content.style.display = 'none';
         arrow.classList.remove('rotated');
+        // Stop alerts polling when section is collapsed to save resources
+        stopEasyMiningAlertsPolling();
     }
 }
 
@@ -26646,8 +26646,19 @@ function updateTeamPackageCountdowns() {
         setTimeout(async () => {
             try {
                 await fetchEasyMiningData();
-                displayActivePackages();
-                console.log('✅ Active packages refreshed!');
+                // Force full re-render by resetting previous IDs tracking
+                previousActivePackageIds = [];
+                // Switch to active tab if not already there
+                if (currentPackageTab !== 'active') {
+                    currentPackageTab = 'active';
+                    // Update tab UI
+                    document.querySelectorAll('.package-tab').forEach(btn => {
+                        btn.classList.toggle('active', btn.textContent.toLowerCase().includes('active'));
+                    });
+                }
+                // Full UI update including card rendering
+                updateEasyMiningUI();
+                console.log('✅ Active packages refreshed and displayed!');
             } catch (err) {
                 console.error('Failed to refresh active packages:', err);
             } finally {
