@@ -31137,6 +31137,10 @@ async function confirmClearPackageMetrics() {
 // EASYMINING ALERTS POLLING (Solo/Team Alerts in Main Section)
 // =============================================================================
 
+// Track last alerts poll time for watchdog
+let lastAlertsPollTime = 0;
+let alertsPollingWatchdogInterval = null;
+
 function startEasyMiningAlertsPolling() {
     console.log('🔄 Starting EasyMining alerts polling...');
 
@@ -31145,14 +31149,55 @@ function startEasyMiningAlertsPolling() {
 
     // Initial load
     updateRecommendations();
+    lastAlertsPollTime = Date.now();
 
     // Poll every 5 seconds
     easyMiningAlertsPollingInterval = setInterval(() => {
         console.log('🔄 Refreshing EasyMining alerts...');
         updateRecommendations();
+        lastAlertsPollTime = Date.now();
     }, 5000);
 
-    console.log('✅ EasyMining alerts polling started (5s interval)');
+    // Start alerts watchdog to ensure polling stays alive
+    startAlertsPollingWatchdog();
+
+    console.log('✅ EasyMining alerts polling started (5s interval with watchdog)');
+}
+
+// Watchdog to ensure alerts polling stays alive (browsers throttle background tabs)
+function startAlertsPollingWatchdog() {
+    // Clear existing watchdog
+    if (alertsPollingWatchdogInterval) {
+        clearInterval(alertsPollingWatchdogInterval);
+    }
+
+    // Check every 15 seconds if polling is stale
+    alertsPollingWatchdogInterval = setInterval(() => {
+        const timeSinceLastPoll = Date.now() - lastAlertsPollTime;
+        const staleThreshold = 15000; // 15 seconds = 3x the 5s interval
+
+        // If more than 15 seconds since last poll and section is open, restart
+        const easyMiningContent = document.getElementById('easymining-content');
+        const isSectionOpen = easyMiningContent && easyMiningContent.style.display !== 'none';
+
+        if (timeSinceLastPoll > staleThreshold && isSectionOpen && easyMiningSettings?.enabled) {
+            console.warn(`⚠️ Alerts polling watchdog detected stalled polling (${Math.round(timeSinceLastPoll / 1000)}s since last poll)`);
+            console.log('🔄 Restarting EasyMining alerts polling...');
+            // Clear stale interval and restart
+            if (easyMiningAlertsPollingInterval) {
+                clearInterval(easyMiningAlertsPollingInterval);
+            }
+            updateRecommendations();
+            lastAlertsPollTime = Date.now();
+            easyMiningAlertsPollingInterval = setInterval(() => {
+                console.log('🔄 Refreshing EasyMining alerts...');
+                updateRecommendations();
+                lastAlertsPollTime = Date.now();
+            }, 5000);
+        }
+    }, 15000);
+
+    console.log('🐕 Alerts polling watchdog started (checks every 15s)');
 }
 
 function stopEasyMiningAlertsPolling() {
@@ -31160,6 +31205,11 @@ function stopEasyMiningAlertsPolling() {
         clearInterval(easyMiningAlertsPollingInterval);
         easyMiningAlertsPollingInterval = null;
         console.log('⏹️ EasyMining alerts polling stopped');
+    }
+    // Also stop the watchdog
+    if (alertsPollingWatchdogInterval) {
+        clearInterval(alertsPollingWatchdogInterval);
+        alertsPollingWatchdogInterval = null;
     }
 }
 
@@ -31910,16 +31960,39 @@ function startPollingWatchdog() {
 // Add listener only once to prevent duplicates
 if (!visibilityChangeListenerAdded) {
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && easyMiningSettings.enabled && easyMiningPollingInterval) {
-            const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
-            const pollingInterval = getPollingInterval();
-            const resumeThreshold = pollingInterval * 2; // 2x polling interval = refetch on visible
+        if (!document.hidden && easyMiningSettings?.enabled) {
+            // Resume main EasyMining polling
+            if (easyMiningPollingInterval) {
+                const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
+                const pollingInterval = getPollingInterval();
+                const resumeThreshold = pollingInterval * 2; // 2x polling interval = refetch on visible
 
-            // If more than 2x polling interval since last poll, fetch immediately
-            if (timeSinceLastPoll > resumeThreshold) {
-                console.log(`👁️ Page visible again - fetching fresh data...`);
-                fetchEasyMiningData();
-                lastEasyMiningPollTime = Date.now();
+                // If more than 2x polling interval since last poll, fetch immediately
+                if (timeSinceLastPoll > resumeThreshold) {
+                    console.log(`👁️ Page visible again - fetching fresh EasyMining data...`);
+                    fetchEasyMiningData();
+                    lastEasyMiningPollTime = Date.now();
+                }
+            }
+
+            // Resume alerts polling if EasyMining section is open
+            const easyMiningContent = document.getElementById('easymining-content');
+            const isSectionOpen = easyMiningContent && easyMiningContent.style.display !== 'none';
+            if (isSectionOpen) {
+                const timeSinceLastAlertsPoll = Date.now() - lastAlertsPollTime;
+                const alertsResumeThreshold = 10000; // 10 seconds = 2x the 5s interval
+
+                if (timeSinceLastAlertsPoll > alertsResumeThreshold) {
+                    console.log(`👁️ Page visible again - refreshing alerts data...`);
+                    updateRecommendations();
+                    lastAlertsPollTime = Date.now();
+                }
+
+                // Restart alerts polling if it was stopped
+                if (!easyMiningAlertsPollingInterval) {
+                    console.log(`👁️ Page visible - restarting alerts polling...`);
+                    startEasyMiningAlertsPolling();
+                }
             }
         }
     });
