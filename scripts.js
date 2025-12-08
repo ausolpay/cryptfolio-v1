@@ -1300,9 +1300,13 @@ function showAppPage() {
     document.getElementById('settings-page').style.display = 'none';
     document.getElementById('account-settings-page').style.display = 'none';
 
-    // EasyMining alerts polling now starts when user opens the EasyMining section (deferred loading)
-    // This prevents alerts from playing before user interacts with the section
-    // See toggleEasyMining() for the deferred start logic
+    // EasyMining alerts polling - restart if section is already open
+    // This ensures polling continues after returning from other pages
+    const easyMiningContent = document.getElementById('easymining-content');
+    if (easyMiningContent && easyMiningContent.style.display !== 'none' && easyMiningSettings?.enabled) {
+        console.log('📦 EasyMining section is open, restarting alerts polling...');
+        startEasyMiningAlertsPolling();
+    }
 
     // Initialize strip floating icons after a short delay to ensure data is loaded
     setTimeout(() => {
@@ -26646,18 +26650,22 @@ function updateTeamPackageCountdowns() {
         setTimeout(async () => {
             try {
                 await fetchEasyMiningData();
-                // Force full re-render by resetting previous IDs tracking
+                // Force switch to active tab and render cards
+                currentPackageTab = 'active';
+                currentPackagePage = 1; // Reset pagination
+                // Update tab UI buttons
+                document.querySelectorAll('.package-tab').forEach(btn => {
+                    const isActiveTab = btn.textContent.toLowerCase().includes('active') &&
+                                       !btn.textContent.toLowerCase().includes('completed');
+                    btn.classList.toggle('active', isActiveTab);
+                });
+                // Clear container and force fresh render
+                const container = document.getElementById('active-packages-container');
+                if (container) container.innerHTML = '';
+                // Reset tracking to force full re-render
                 previousActivePackageIds = [];
-                // Switch to active tab if not already there
-                if (currentPackageTab !== 'active') {
-                    currentPackageTab = 'active';
-                    // Update tab UI
-                    document.querySelectorAll('.package-tab').forEach(btn => {
-                        btn.classList.toggle('active', btn.textContent.toLowerCase().includes('active'));
-                    });
-                }
-                // Full UI update including card rendering
-                updateEasyMiningUI();
+                // Display packages - this will render the cards
+                displayActivePackages();
                 console.log('✅ Active packages refreshed and displayed!');
             } catch (err) {
                 console.error('Failed to refresh active packages:', err);
