@@ -514,8 +514,17 @@
             </div>
         </div>
 
-        <div id="crypto-containers">
-            <!-- Dynamic crypto containers will be added here -->
+        <div class="holdings-tracker-wrapper">
+            <div id="crypto-containers">
+                <!-- Dynamic crypto containers will be added here -->
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="crypto-pagination" id="crypto-pagination" style="display: none;">
+                <button class="crypto-arrow left" id="crypto-arrow-left" onclick="prevCryptoPage()" disabled>‹</button>
+                <span class="crypto-page-count" id="crypto-page-count">1 of 1</span>
+                <button class="crypto-arrow right" id="crypto-arrow-right" onclick="nextCryptoPage()">›</button>
+            </div>
         </div>
 
         <div class="app-footer">
