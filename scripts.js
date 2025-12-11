@@ -20187,6 +20187,14 @@ async function executeAutoSharesTeam(teamPackages) {
         const newTotalShares = myShares + actualSharesToBuy;
         const actualTotalAmount = actualSharesToBuy * sharePrice;
 
+        console.log(`💰 Auto-shares amount calc:`, {
+            currentOwned: myShares,
+            buyingThisRound: actualSharesToBuy,
+            totalAfter: newTotalShares,
+            amountBTC: actualTotalAmount,
+            formula: `${actualSharesToBuy} shares × ${sharePrice} BTC = ${actualTotalAmount} BTC`
+        });
+
         // Check balance
         const availableBalance = window.niceHashBalance?.available || 0;
         if (availableBalance < actualTotalAmount) {
@@ -20215,7 +20223,12 @@ async function executeAutoSharesTeam(teamPackages) {
         const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        console.log(`📡 Auto-shares request: buying ${actualSharesToBuy} shares, total will be ${newTotalShares}`);
+        console.log(`📡 Auto-shares request:`, {
+            sharesBeingBought: actualSharesToBuy,
+            totalSharesAfter: newTotalShares,
+            amountBTC: actualTotalAmount,
+            bodyData: bodyData
+        });
 
         let response;
         if (USE_VERCEL_PROXY) {
