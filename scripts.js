@@ -17846,14 +17846,24 @@ function displayActivePackages() {
             return false;
         })();
 
-        // Either bot feature being active counts
-        const isBotActiveCard = isAutoBuyActive || isAutoSharesActiveCard;
+        // Check if auto-shares on alert is active (team packages only)
+        const isAutoSharesOnAlertActiveCard = (() => {
+            if (pkg.isTeam) {
+                const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+                return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
+            }
+            return false;
+        })();
+
+        // Any bot feature being active counts
+        const isBotActiveCard = isAutoBuyActive || isAutoSharesActiveCard || isAutoSharesOnAlertActiveCard;
 
         // Build tooltip based on active features
         const getBotTooltipCard = (state) => {
             const features = [];
             if (isAutoBuyActive) features.push('auto-buy');
             if (isAutoSharesActiveCard) features.push('auto-shares');
+            if (isAutoSharesOnAlertActiveCard) features.push('auto-shares-on-alert');
             const featureStr = features.join(' + ');
             return `${featureStr} ${state}`;
         };
@@ -18339,11 +18349,13 @@ function validateActivePackageRobotIcons() {
 
     const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
     const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
     const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
     // Only validate if we have any bot settings
     if (Object.keys(teamAutoBuy).length === 0 &&
         Object.keys(teamAutoShares).length === 0 &&
+        Object.keys(teamAutoSharesOnAlert).length === 0 &&
         Object.keys(soloAutoBuy).length === 0) {
         return;
     }
@@ -18376,7 +18388,10 @@ function validateActivePackageRobotIcons() {
         const isAutoSharesActive = isTeamPackage
             ? teamAutoShares[packageName]?.enabled === true
             : false;
-        const isBotActive = isAutoBuyActive || isAutoSharesActive;
+        const isAutoSharesOnAlertActive = isTeamPackage
+            ? teamAutoSharesOnAlert[packageName]?.enabled === true
+            : false;
+        const isBotActive = isAutoBuyActive || isAutoSharesActive || isAutoSharesOnAlertActive;
 
         // Check if user has shares (card would show "My Shares" stat)
         const hasShares = Array.from(card.querySelectorAll('.package-card-stat')).some(stat =>
@@ -18388,6 +18403,7 @@ function validateActivePackageRobotIcons() {
             const features = [];
             if (isAutoBuyActive) features.push('auto-buy');
             if (isAutoSharesActive) features.push('auto-shares');
+            if (isAutoSharesOnAlertActive) features.push('auto-shares-on-alert');
             return features.length > 0 ? `${features.join(' + ')} ${state}` : state;
         };
 
@@ -21004,8 +21020,17 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
         return false;
     })();
 
-    // Either feature being active should show the robot
-    const isBotActive = isAutoBuyActive || isAutoSharesActive;
+    // Check if auto-shares on alert is active for this package (team packages only)
+    const isAutoSharesOnAlertActive = (() => {
+        if (pkg.isTeam) {
+            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
+        }
+        return false;
+    })();
+
+    // Any feature being active should show the robot
+    const isBotActive = isAutoBuyActive || isAutoSharesActive || isAutoSharesOnAlertActive;
 
     // Check if this is a countdown package
     const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
@@ -21027,6 +21052,7 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
         const features = [];
         if (isAutoBuyActive) features.push('auto-buy');
         if (isAutoSharesActive) features.push('auto-shares');
+        if (isAutoSharesOnAlertActive) features.push('auto-shares-on-alert');
         const featureStr = features.join(' + ');
 
         if (isWaiting) return `${featureStr} active (waiting)`;
@@ -21579,14 +21605,24 @@ function createTeamPackageRecommendationCard(pkg) {
         return false;
     })();
 
-    // Either bot feature being active counts
-    const isBotActive = isAutoBuyActive || isAutoSharesActiveLocal;
+    // Check if auto-shares on alert is active (team packages only)
+    const isAutoSharesOnAlertActiveLocal = (() => {
+        if (pkg.isTeam) {
+            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
+        }
+        return false;
+    })();
+
+    // Any bot feature being active counts
+    const isBotActive = isAutoBuyActive || isAutoSharesActiveLocal || isAutoSharesOnAlertActiveLocal;
 
     // Build tooltip based on active features
     const getBotTooltip = (state) => {
         const features = [];
         if (isAutoBuyActive) features.push('auto-buy');
         if (isAutoSharesActiveLocal) features.push('auto-shares');
+        if (isAutoSharesOnAlertActiveLocal) features.push('auto-shares-on-alert');
         const featureStr = features.join(' + ');
         return `${featureStr} ${state}`;
     };
@@ -26950,18 +26986,23 @@ function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
     const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
     const isAutoBuyActive = teamAutoBuy[pkg.name]?.enabled === true;
 
-    // Check if auto-shares is active for this team package
+    // Check if auto-shares (continuous) is active for this team package
     const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     const isAutoSharesActive = teamAutoShares[pkg.name]?.enabled === true;
 
-    // Either bot feature being active counts
-    const isBotActive = isAutoBuyActive || isAutoSharesActive;
+    // Check if auto-shares on alert is active for this team package
+    const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const isAutoSharesOnAlertActive = teamAutoSharesOnAlert[pkg.name]?.enabled === true;
+
+    // Any bot feature being active counts
+    const isBotActive = isAutoBuyActive || isAutoSharesActive || isAutoSharesOnAlertActive;
 
     // Build tooltip based on active features
     const getBotTooltip = (state) => {
         const features = [];
         if (isAutoBuyActive) features.push('auto-buy');
         if (isAutoSharesActive) features.push('auto-shares');
+        if (isAutoSharesOnAlertActive) features.push('auto-shares-on-alert');
         return `${features.join(' + ')} ${state}`;
     };
 
@@ -27630,6 +27671,7 @@ function validateAndFixAutoBuyRobotIcons() {
     const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
     const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
     const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
 
     // Query all package cards on the Buy Packages page
     // Note: Container IDs are buy-single-packages-page and buy-team-packages-page
@@ -27682,7 +27724,8 @@ function validateAndFixAutoBuyRobotIcons() {
         const packageName = packageNameElement.textContent.trim();
         const isAutoBuyActive = teamAutoBuy[packageName]?.enabled === true;
         const isAutoSharesActive = teamAutoShares[packageName]?.enabled === true;
-        const isBotActive = isAutoBuyActive || isAutoSharesActive;
+        const isAutoSharesOnAlertActive = teamAutoSharesOnAlert[packageName]?.enabled === true;
+        const isBotActive = isAutoBuyActive || isAutoSharesActive || isAutoSharesOnAlertActive;
         const robotIcon = card.querySelector('.auto-buy-robot');
 
         // Get package ID to check shares
@@ -27694,6 +27737,7 @@ function validateAndFixAutoBuyRobotIcons() {
             const features = [];
             if (isAutoBuyActive) features.push('auto-buy');
             if (isAutoSharesActive) features.push('auto-shares');
+            if (isAutoSharesOnAlertActive) features.push('auto-shares-on-alert');
             return `${features.join(' + ')} ${state}`;
         };
 
@@ -28512,14 +28556,24 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         return false;
     })();
 
-    // Either bot feature being active counts
-    const isBotActiveBuyPage = isAutoBuyActive || isAutoSharesActiveBuyPage;
+    // Check if auto-shares on alert is active (team packages only)
+    const isAutoSharesOnAlertActiveBuyPage = (() => {
+        if (pkg.isTeam) {
+            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
+        }
+        return false;
+    })();
+
+    // Any bot feature being active counts
+    const isBotActiveBuyPage = isAutoBuyActive || isAutoSharesActiveBuyPage || isAutoSharesOnAlertActiveBuyPage;
 
     // Build tooltip based on active features
     const getBotTooltipBuyPage = (state) => {
         const features = [];
         if (isAutoBuyActive) features.push('auto-buy');
         if (isAutoSharesActiveBuyPage) features.push('auto-shares');
+        if (isAutoSharesOnAlertActiveBuyPage) features.push('auto-shares-on-alert');
         const featureStr = features.join(' + ');
         return `${featureStr} ${state}`;
     };
@@ -28529,6 +28583,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         console.log(`🔍 Robot Icon Decision for "${pkg.name}":`, {
             isAutoBuyActive,
             isAutoSharesActive: isAutoSharesActiveBuyPage,
+            isAutoSharesOnAlertActive: isAutoSharesOnAlertActiveBuyPage,
             isBotActive: isBotActiveBuyPage,
             isAutoBought: !!isAutoBought,
             matchMethod,
