@@ -16644,6 +16644,7 @@ async function fetchNiceHashOrders() {
 
                 // Calculate my shares from shares object if available (more accurate than addedAmount calculation)
                 // ✅ FIXED: Use isTeamPackage instead of isCompletedTeam to work for both active and completed team packages
+                let apiMyShares = 0;
                 if (isTeamPackage && userMember?.shares) {
                     const sharesObj = userMember.shares;
                     const small = parseInt(sharesObj.small || 0);
@@ -16651,13 +16652,22 @@ async function fetchNiceHashOrders() {
                     const large = parseInt(sharesObj.large || 0);
 
                     // Calculate: small = 1 share each, medium = 10 shares each, large = 100 shares each
-                    myShares = small + (medium * 10) + (large * 100);
+                    apiMyShares = small + (medium * 10) + (large * 100);
                     console.log(`      My shares from API: small=${small}, medium=${medium}, large=${large}`);
-                    console.log(`      Calculated shares: ${small} + (${medium}×10) + (${large}×100) = ${myShares}`);
+                    console.log(`      Calculated shares: ${small} + (${medium}×10) + (${large}×100) = ${apiMyShares}`);
                 } else {
                     // Fallback: Calculate my shares from addedAmount * 10000
-                    myShares = addedAmount > 0 ? Math.round(addedAmount * 10000) : 0;
-                    console.log(`      My shares (calculated): ${addedAmount.toFixed(8)} * 10000 = ${myShares.toFixed(2)}`);
+                    apiMyShares = addedAmount > 0 ? Math.round(addedAmount * 10000) : 0;
+                    console.log(`      My shares (calculated): ${addedAmount.toFixed(8)} * 10000 = ${apiMyShares.toFixed(2)}`);
+                }
+
+                // Use getMyTeamShares() to respect pending purchases from auto-shares
+                // This ensures recent purchases aren't overwritten by old API data
+                const ticketId = order.sharedTicket?.id || order.id;
+                const pendingShares = getMyTeamShares(ticketId);
+                myShares = (pendingShares !== null && pendingShares > apiMyShares) ? pendingShares : apiMyShares;
+                if (pendingShares !== null && pendingShares > apiMyShares) {
+                    console.log(`      🔒 Using pending shares (${pendingShares}) instead of API (${apiMyShares})`);
                 }
 
                 // Calculate total shares: sharedTicket.addedAmount * 10000
@@ -19706,12 +19716,12 @@ async function executeAutoSharesTeam(teamPackages) {
     // Check if target reached - but ONLY complete if last buy was secondary
     if (myShares >= targetShares) {
         const trackedIds = settings.trackedPackageIds || {};
-        const trackState = trackedIds[packageId] || { isPrimary: true };
+        const trackState = trackedIds[packageId] || { isPrimary: true, lastBuyType: null };
 
-        // isPrimary=true means last buy was secondary (it toggles after each buy)
-        // isPrimary=false means last buy was primary, need one more secondary
-        if (trackState.isPrimary) {
-            // Last buy was secondary, we can complete
+        // CRITICAL: Can ONLY complete if lastBuyType is 'secondary'
+        // If lastBuyType is 'primary' or null, we MUST do a secondary buy first
+        if (trackState.lastBuyType === 'secondary') {
+            // Last buy was secondary - safe to complete
             trackState.completed = true;
             trackState.lastSeenTotalShares = totalSharesBought;
             trackedIds[packageId] = trackState;
@@ -19722,8 +19732,8 @@ async function executeAutoSharesTeam(teamPackages) {
             autoSharesCurrentPackage = null;
             return;
         } else {
-            // Last buy was primary, need one more secondary buy to complete
-            console.log(`🔄 ${pkg.name}: Target reached (${myShares}/${targetShares}) but last buy was primary, doing final secondary`);
+            // Last buy was primary (or no buy yet) - MUST do secondary buy to complete
+            console.log(`🔄 ${pkg.name}: Target reached (${myShares}/${targetShares}) but lastBuyType='${trackState.lastBuyType}', forcing secondary buy`);
             // Don't return - continue to do the secondary buy
         }
     }
@@ -19732,7 +19742,8 @@ async function executeAutoSharesTeam(teamPackages) {
     const trackedIds = settings.trackedPackageIds || {};
     if (!trackedIds[packageId]) {
         trackedIds[packageId] = {
-            isPrimary: true,
+            isPrimary: true,        // true = next buy is primary, false = next buy is secondary
+            lastBuyType: null,      // 'primary' or 'secondary' - explicit tracking of last buy
             lastBuyTime: 0,
             completed: false,
             lastSeenTotalShares: totalSharesBought
@@ -19752,37 +19763,27 @@ async function executeAutoSharesTeam(teamPackages) {
         return; // Keep as current, wait for cooldown
     }
 
-    // Determine shares to buy this round
+    // Determine shares to buy this round - ALWAYS alternate primary/secondary
+    // We intentionally go OVER the target to ensure we always end on secondary
     const sharesToBuy = trackState.isPrimary ? settings.primaryShares : settings.secondaryShares;
     let actualSharesToBuy = sharesToBuy;
 
-    // Calculate if this buy would exceed target
-    const projectedShares = myShares + sharesToBuy;
-
-    // If buying would exceed target and we're on primary, switch to secondary
-    if (projectedShares > targetShares && trackState.isPrimary) {
-        actualSharesToBuy = settings.secondaryShares;
-        trackState.isPrimary = false;
-    }
-
-    // If even that would exceed, buy only what's needed (but ensure we end on secondary)
-    if (myShares + actualSharesToBuy > targetShares) {
-        // If we're on primary and would exceed, we need to do a final secondary buy
-        if (trackState.isPrimary) {
-            // Skip this buy, switch to secondary for final
-            trackState.isPrimary = false;
-            actualSharesToBuy = Math.min(settings.secondaryShares, targetShares - myShares);
-        } else {
-            // Already on secondary, just buy what's needed
-            actualSharesToBuy = targetShares - myShares;
-        }
-
-        if (actualSharesToBuy <= 0) {
+    // Only check for early completion if we're ALREADY over target
+    // We still need to ensure we end on secondary before marking complete
+    if (myShares >= targetShares) {
+        // CRITICAL: Can ONLY complete if lastBuyType is 'secondary'
+        if (trackState.lastBuyType === 'secondary') {
+            // Last buy was secondary - safe to complete
             trackState.completed = true;
+            console.log(`🏁 ${pkg.name}: Over target (${myShares}/${targetShares}) and ended on secondary - complete!`);
             settings.trackedPackageIds = trackedIds;
             localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
             autoSharesCurrentPackage = null;
             return;
+        } else {
+            // Last buy was primary (or null) - MUST do one more secondary buy
+            actualSharesToBuy = settings.secondaryShares;
+            console.log(`🔄 ${pkg.name}: Over target but lastBuyType='${trackState.lastBuyType}' - forcing secondary buy (${actualSharesToBuy} shares) to end properly`);
         }
     }
 
@@ -19891,12 +19892,18 @@ async function executeAutoSharesTeam(teamPackages) {
         const result = await response.json();
         console.log(`✅ AUTO-SHARES: ${pkg.name} - bought ${actualSharesToBuy} shares, expecting total ${newTotalShares}`);
 
-        // Save to localStorage and update UI inputs
+        // CRITICAL: Set pending shares FIRST to prevent API overwrite during 10s cooldown
+        // This ensures getMyTeamShares() returns our new value until API confirms
+        setPendingShares(packageId, newTotalShares);
+
+        // Save to localStorage as backup and update UI inputs
         saveMyTeamShares(packageId, newTotalShares);
         syncTeamShareInputs(packageId, pkg.name, newTotalShares);
-        console.log(`💾 Saved ${newTotalShares} shares for ${pkg.name} (ID: ${packageId})`);
+        console.log(`💾 Saved ${newTotalShares} shares for ${pkg.name} (ID: ${packageId}) with 10s pending hold`);
 
-        // Update tracking state
+        // Update tracking state - record what type of buy we just did BEFORE toggling
+        const thisBuyType = trackState.isPrimary ? 'primary' : 'secondary';
+        trackState.lastBuyType = thisBuyType; // EXPLICIT tracking - 'primary' or 'secondary'
         trackState.lastBuyTime = Date.now();
         trackState.isPrimary = !trackState.isPrimary; // Toggle for next buy
         trackState.lastSeenTotalShares = totalSharesBought;
@@ -19904,15 +19911,19 @@ async function executeAutoSharesTeam(teamPackages) {
         // Set verification flags - will verify on next poll that shares actually increased
         trackState.pendingVerification = true;
         trackState.expectedShares = newTotalShares;
-        console.log(`🔒 ${pkg.name}: Verification set - expecting ${newTotalShares} shares after 10s cooldown`);
+        console.log(`🔒 ${pkg.name}: Bought ${thisBuyType.toUpperCase()}, expecting ${newTotalShares} shares after 10s cooldown`);
 
-        // Check if we reached target AND ended on secondary (isPrimary is now true after toggle means we just did secondary)
+        // CRITICAL: Can ONLY complete if lastBuyType is 'secondary'
+        // If we just bought primary, we MUST do secondary next regardless of target
         const updatedTarget = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
-        if (newTotalShares >= updatedTarget && trackState.isPrimary) {
-            // We just bought secondary (isPrimary toggled to true) and reached target
+        if (newTotalShares >= updatedTarget && trackState.lastBuyType === 'secondary') {
+            // We just bought secondary and reached target - safe to complete
             trackState.completed = true;
-            console.log(`🏁 ${pkg.name}: Completed! (${newTotalShares}/${updatedTarget} shares, ended on secondary)`);
+            console.log(`🏁 ${pkg.name}: Completed! (${newTotalShares}/${updatedTarget} shares, ended on SECONDARY)`);
             autoSharesCurrentPackage = null; // Move to next
+        } else if (newTotalShares >= updatedTarget && trackState.lastBuyType === 'primary') {
+            // We just bought primary and reached target - MUST do secondary next
+            console.log(`⚠️ ${pkg.name}: Target reached (${newTotalShares}/${updatedTarget}) but just bought PRIMARY - will do SECONDARY next`);
         }
 
         // Save updated state
@@ -19934,6 +19945,35 @@ async function executeAutoSharesTeam(teamPackages) {
 
     } catch (error) {
         console.error(`❌ Auto-shares failed for ${pkg.name}:`, error.message);
+
+        // Check if this is a "package full" or similar terminal error - move to next package
+        const errorMsg = error.message?.toLowerCase() || '';
+        const isTerminalError = errorMsg.includes('full') ||
+                               errorMsg.includes('sold out') ||
+                               errorMsg.includes('not available') ||
+                               errorMsg.includes('not found') ||
+                               errorMsg.includes('expired') ||
+                               errorMsg.includes('closed') ||
+                               error.message?.includes('404') ||
+                               error.message?.includes('400');
+
+        if (isTerminalError) {
+            console.log(`🚫 ${pkg.name}: Terminal error (${error.message}) - marking complete and moving to next`);
+            // Mark as completed so we move to next in queue
+            const packageId = pkg.id || pkg.ticketId || pkg.name;
+            const autoSharesSettingsLocal = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            const settingsLocal = autoSharesSettingsLocal[pkg.name] || {};
+            const trackedIdsLocal = settingsLocal.trackedPackageIds || {};
+            if (trackedIdsLocal[packageId]) {
+                trackedIdsLocal[packageId].completed = true;
+                trackedIdsLocal[packageId].error = error.message;
+                settingsLocal.trackedPackageIds = trackedIdsLocal;
+                autoSharesSettingsLocal[pkg.name] = settingsLocal;
+                localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettingsLocal));
+            }
+            autoSharesCurrentPackage = null; // Allow next package to be processed
+        }
+        // For non-terminal errors (network issues, rate limits), keep trying same package
     } finally {
         isAutoSharesInProgress = false;
     }
@@ -24371,16 +24411,16 @@ function setPendingShares(packageId, shares) {
         shares: shares,
         timestamp: Date.now()
     };
-    console.log(`⏳ Set pending shares: ${packageId} = ${shares} (hold for up to 10s)`);
+    console.log(`⏳ Set pending shares: ${packageId} = ${shares} (hold for up to 15s)`);
 }
 
-// Get pending shares if still valid (within 10 seconds)
+// Get pending shares if still valid (within 15 seconds - longer than 10s cooldown to prevent race condition)
 function getPendingShares(packageId) {
     const pending = pendingSharePurchases[packageId];
     if (!pending) return null;
 
     const elapsed = Date.now() - pending.timestamp;
-    if (elapsed >= 10000) {
+    if (elapsed >= 15000) { // 15 seconds to give buffer beyond 10s cooldown
         delete pendingSharePurchases[packageId];
         return null;
     }
@@ -24394,7 +24434,7 @@ function clearPendingIfConfirmed(packageId, apiShares) {
     if (!pending) return;
 
     const elapsed = Date.now() - pending.timestamp;
-    const maxHold = 10000; // 10 seconds
+    const maxHold = 15000; // 15 seconds - longer than 10s cooldown to prevent race condition
 
     // Clear if: API matches or exceeds expected shares OR timeout exceeded
     if (apiShares >= pending.shares || elapsed >= maxHold) {
