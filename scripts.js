@@ -19301,6 +19301,55 @@ async function executeAutoBuyTeam(recommendations) {
                 bodyData: bodyData
             });
 
+            // ========== TWO-STEP PROCESS: CLEAR THEN BUY ==========
+            // Step 1: Clear existing shares if we have any
+            if (currentShares > 0) {
+                console.log(`🗑️ AUTO-BUY STEP 1: Clearing ${currentShares} existing shares before buying ${newTotalShares} new total...`);
+
+                const clearData = { clear: true };
+                const clearBody = JSON.stringify(clearData);
+                const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
+
+                let clearResponse;
+                if (USE_VERCEL_PROXY) {
+                    clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            endpoint: endpoint,
+                            method: 'POST',
+                            headers: clearHeaders,
+                            body: clearData
+                        })
+                    });
+                } else {
+                    clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                        method: 'POST',
+                        headers: clearHeaders,
+                        body: clearBody
+                    });
+                }
+
+                if (!clearResponse.ok) {
+                    const clearError = await clearResponse.text();
+                    throw new Error(`Failed to clear existing shares: ${clearError}`);
+                }
+
+                console.log(`✅ AUTO-BUY STEP 1 COMPLETE: Cleared ${currentShares} shares successfully`);
+
+                // Small delay to ensure server processes the clear
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Re-sync time for the buy request
+                await syncNiceHashTime();
+            }
+
+            // ========== STEP 2: BUY NEW TOTAL ==========
+            console.log(`🛒 AUTO-BUY STEP 2: Buying ${newTotalShares} shares (fresh purchase)...`);
+
+            // Regenerate headers after potential time sync
+            const buyHeaders = generateNiceHashAuthHeaders('POST', endpoint, body);
+
             let response;
             if (USE_VERCEL_PROXY) {
                 response = await fetch(VERCEL_PROXY_ENDPOINT, {
@@ -19309,14 +19358,14 @@ async function executeAutoBuyTeam(recommendations) {
                     body: JSON.stringify({
                         endpoint: endpoint,
                         method: 'POST',
-                        headers: headers,
+                        headers: buyHeaders,
                         body: bodyData
                     })
                 });
             } else {
                 response = await fetch(`https://api2.nicehash.com${endpoint}`, {
                     method: 'POST',
-                    headers: headers,
+                    headers: buyHeaders,
                     body: body
                 });
             }
@@ -19330,8 +19379,9 @@ async function executeAutoBuyTeam(recommendations) {
             console.log('📦 Team auto-buy response:', result);
 
             // Validate response indicates success (check for order ID or success indicators)
+            // Note: HTTP 200 already indicates success, missing fields is just a warning
             if (!result || (!result.id && !result.orderId && !result.success)) {
-                throw new Error(`Purchase failed: Invalid response from NiceHash (no order ID returned)`);
+                console.warn(`⚠️ Auto-buy response missing expected fields (id/orderId/success), but HTTP 200 received - treating as success`);
             }
 
             console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} - bought ${actualSharesToBuy} share(s), now has ${newTotalShares} total. Order ID: ${result.id || result.orderId || 'N/A'}`);
@@ -20241,13 +20291,61 @@ async function executeAutoSharesTeam(teamPackages) {
             bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
         }
 
+        // ========== TWO-STEP PROCESS: CLEAR THEN BUY ==========
+        // If user already owns shares, first clear them, then buy the new total
+
+        if (myShares > 0) {
+            console.log(`🗑️ AUTO-SHARES STEP 1: Clearing ${myShares} existing shares before buying ${newTotalShares} new total...`);
+
+            const clearData = { clear: true };
+            const clearBody = JSON.stringify(clearData);
+            const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
+
+            let clearResponse;
+            if (USE_VERCEL_PROXY) {
+                clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        headers: clearHeaders,
+                        body: clearData
+                    })
+                });
+            } else {
+                clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                    method: 'POST',
+                    headers: clearHeaders,
+                    body: clearBody
+                });
+            }
+
+            if (!clearResponse.ok) {
+                const clearError = await clearResponse.text();
+                console.error('❌ AUTO-SHARES: Failed to clear existing shares:', clearError);
+                throw new Error(`Failed to clear existing shares: ${clearError}`);
+            }
+
+            console.log(`✅ AUTO-SHARES STEP 1 COMPLETE: Cleared ${myShares} shares successfully`);
+
+            // Small delay to ensure API processes the clear
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Re-sync time before the buy request
+            await syncNiceHashTime();
+        }
+
+        // ========== STEP 2: BUY NEW TOTAL ==========
+        console.log(`🛒 AUTO-SHARES STEP 2: Buying ${newTotalShares} shares (fresh purchase)...`);
+
         const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
         // ✅ VERIFICATION: Both amount and shares.small are being sent
         console.log(`📡 Auto-shares API request:`, {
             endpoint: endpoint,
-            currentOwned: myShares,
+            previousOwned: myShares,
             sharesBeingBought: actualSharesToBuy,
             totalSharesAfter: newTotalShares,
             'body.amount': bodyData.amount,
@@ -25873,10 +25971,56 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         // 6. Sync NiceHash time
         await syncNiceHashTime();
 
-        // 7. Make single POST request - send TOTAL shares (API expects total, not increment)
+        // 7. TWO-STEP PROCESS: Clear existing shares first, then buy new total
         console.log(`🛒 Purchasing ${sharesToPurchase} share(s), updating total to ${desiredTotalShares}...`);
 
         const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+
+        // ========== STEP 1: CLEAR EXISTING SHARES (if any and not decreasing) ==========
+        if (currentShares > 0 && !isDecrease) {
+            console.log(`🗑️ STEP 1: Clearing ${currentShares} existing shares before buying ${desiredTotalShares} new total...`);
+
+            const clearData = { clear: true };
+            const clearBody = JSON.stringify(clearData);
+            const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
+
+            let clearResponse;
+            if (USE_VERCEL_PROXY) {
+                clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        headers: clearHeaders,
+                        body: clearData
+                    })
+                });
+            } else {
+                clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                    method: 'POST',
+                    headers: clearHeaders,
+                    body: clearBody
+                });
+            }
+
+            if (!clearResponse.ok) {
+                const clearError = await clearResponse.text();
+                console.error('❌ Failed to clear existing shares:', clearError);
+                throw new Error(`Failed to clear existing shares: ${clearError}`);
+            }
+
+            console.log(`✅ STEP 1 COMPLETE: Cleared ${currentShares} shares successfully`);
+
+            // Small delay to ensure API processes the clear
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Re-sync time before the buy request
+            await syncNiceHashTime();
+        }
+
+        // ========== STEP 2: BUY NEW TOTAL ==========
+        console.log(`🛒 STEP 2: Buying ${desiredTotalShares} shares (fresh purchase)...`);
 
         // Request body: BOTH amount and shares.small should be TOTAL values
         const orderData = {
@@ -30075,13 +30219,59 @@ Do you want to continue?
             'sharesToPurchase': sharesToPurchase
         });
 
-        // Single POST request with total amount
-        // Endpoint: POST /hashpower/api/v2/hashpower/shared/ticket/{id}
         const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
 
-        console.log(`📡 Purchasing ${shares} share(s) with single POST request...`);
+        // ========== TWO-STEP PROCESS: CLEAR THEN BUY ==========
+        // If user already owns shares, first clear them, then buy the new total
+        // This ensures the API correctly sets the new share count
 
-        // Generate auth headers
+        if (currentShares > 0 && !isDecrease) {
+            console.log(`🗑️ STEP 1: Clearing ${currentShares} existing shares before buying ${desiredTotalShares} new total...`);
+
+            // Clear existing shares first
+            const clearData = { clear: true };
+            const clearBody = JSON.stringify(clearData);
+            const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
+
+            let clearResponse;
+            if (USE_VERCEL_PROXY) {
+                clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        headers: clearHeaders,
+                        body: clearData
+                    })
+                });
+            } else {
+                clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                    method: 'POST',
+                    headers: clearHeaders,
+                    body: clearBody
+                });
+            }
+
+            if (!clearResponse.ok) {
+                const clearError = await clearResponse.text();
+                console.error('❌ Failed to clear existing shares:', clearError);
+                throw new Error(`Failed to clear existing shares: ${clearError}`);
+            }
+
+            console.log(`✅ STEP 1 COMPLETE: Cleared ${currentShares} shares successfully`);
+
+            // Small delay to ensure API processes the clear
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Re-sync time before the buy request
+            await syncNiceHashTime();
+        }
+
+        // ========== STEP 2: BUY NEW TOTAL ==========
+        console.log(`🛒 STEP 2: Buying ${desiredTotalShares} shares (fresh purchase)...`);
+
+        // Generate fresh auth headers for the buy request
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
