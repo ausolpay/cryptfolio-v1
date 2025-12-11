@@ -3796,6 +3796,11 @@ async function loadTeamAlerts() {
         const autoSharesSettings = savedAutoShares[pkg.name] || {};
         const autoSharesEnabled = autoSharesSettings.enabled || false;
 
+        // Get auto-shares on alert settings
+        const savedAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+        const autoSharesOnAlertSettings = savedAutoSharesOnAlert[pkg.name] || {};
+        const autoSharesOnAlertEnabled = autoSharesOnAlertSettings.enabled || false;
+
         let probabilityInputs = '';
 
         if (isDualCrypto) {
@@ -4023,6 +4028,28 @@ async function loadTeamAlerts() {
                     Target: ${autoSharesSettings.percentage || 10}% | Primary: ${autoSharesSettings.primaryShares || 2} | Secondary: ${autoSharesSettings.secondaryShares || 1}
                 </div>
                 ` : ''}
+
+                <!-- Auto-Shares on Alert Section -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 10px;">
+                    <label style="color: #aaa; font-size: 14px; flex: 1;">🔔 Auto-Shares on Alert:</label>
+                    <input type="checkbox"
+                           class="team-alert-checkbox team-autoshares-onalert-checkbox"
+                           id="team-autoshares-onalert-${pkg.name.replace(/\s+/g, '-')}"
+                           data-package-name="${pkg.name}"
+                           data-crypto="${isDualCrypto ? pkg.mainCrypto : pkg.crypto}"
+                           data-merge-crypto="${isDualCrypto ? pkg.mergeCrypto : ''}"
+                           data-is-dual-crypto="${isDualCrypto}"
+                           ${autoSharesOnAlertEnabled ? 'checked' : ''}
+                           onchange="handleAutoSharesOnAlertCheckboxChange(this)">
+                    <span id="autoshares-onalert-status-${pkg.name.replace(/\s+/g, '-')}" style="color: ${autoSharesOnAlertEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
+                        ${autoSharesOnAlertEnabled ? '✓ Enabled' : 'Disabled'}
+                    </span>
+                </div>
+                ${autoSharesOnAlertEnabled ? `
+                <div id="autoshares-onalert-config-${pkg.name.replace(/\s+/g, '-')}" style="padding: 8px 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 5px; font-size: 12px; color: #888;">
+                    Target: ${autoSharesOnAlertSettings.percentage || 10}% | Primary: ${autoSharesOnAlertSettings.primaryShares || 2} | Secondary: ${autoSharesOnAlertSettings.secondaryShares || 1}
+                </div>
+                ` : ''}
             </div>
         `;
 
@@ -4039,6 +4066,9 @@ async function loadTeamAlerts() {
                 const isDualCrypto = this.dataset.isDualCrypto === 'true';
 
                 if (this.checked) {
+                    // Disable other auto options first (mutual exclusivity)
+                    disableOtherAutoOptions(packageName, 'autoBuy');
+
                     // Get current shares value from input
                     const sharesInputId = `team-autobuy-shares-${packageName.replace(/\s+/g, '-')}`;
                     const sharesInput = document.getElementById(sharesInputId);
@@ -4141,6 +4171,8 @@ function handleAutoSharesCheckboxChange(checkbox) {
     console.log('🔧 Auto-shares checkbox changed:', { packageName, crypto, mergeCrypto, isDualCrypto, checked: checkbox.checked });
 
     if (checkbox.checked) {
+        // Disable other auto options first (mutual exclusivity)
+        disableOtherAutoOptions(packageName, 'autoShares');
         // Use browser prompts for configuration
         configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCrypto, isDualCrypto);
     } else {
@@ -19524,7 +19556,7 @@ function saveAutoSharesConfig() {
 /**
  * Disable auto-shares for a package
  */
-function disableAutoShares(packageName) {
+function disableAutoShares(packageName, skipUIUpdate = false) {
     // Stop any running interval for this package
     stopAutoSharesForPackage(packageName);
 
@@ -19535,15 +19567,238 @@ function disableAutoShares(packageName) {
         localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
     }
 
-    // Update status text
-    const statusSpanId = `autoshares-status-${packageName.replace(/\s+/g, '-')}`;
-    const statusSpan = document.getElementById(statusSpanId);
-    if (statusSpan) {
-        statusSpan.textContent = 'Disabled';
-        statusSpan.style.color = '#888';
+    // Update status text and checkbox
+    if (!skipUIUpdate) {
+        const statusSpanId = `autoshares-status-${packageName.replace(/\s+/g, '-')}`;
+        const statusSpan = document.getElementById(statusSpanId);
+        if (statusSpan) {
+            statusSpan.textContent = 'Disabled';
+            statusSpan.style.color = '#888';
+        }
+        const checkbox = document.getElementById(`team-autoshares-${packageName.replace(/\s+/g, '-')}`);
+        if (checkbox) checkbox.checked = false;
     }
 
     console.log(`❌ Auto-shares disabled for ${packageName}`);
+}
+
+/**
+ * Handle auto-shares on alert checkbox change
+ * Similar to handleAutoSharesCheckboxChange but for alert-triggered auto-shares
+ */
+function handleAutoSharesOnAlertCheckboxChange(checkbox) {
+    const packageName = checkbox.dataset.packageName;
+    const crypto = checkbox.dataset.crypto;
+    const mergeCrypto = checkbox.dataset.mergeCrypto || null;
+    const isDualCrypto = checkbox.dataset.isDualCrypto === 'true';
+
+    console.log('🔔 Auto-shares on alert checkbox changed:', { packageName, crypto, mergeCrypto, isDualCrypto, checked: checkbox.checked });
+
+    if (checkbox.checked) {
+        // Disable other auto options first (mutual exclusivity)
+        disableOtherAutoOptions(packageName, 'autoSharesOnAlert');
+        // Use browser prompts for configuration
+        configureAutoSharesOnAlertWithPrompts(checkbox, packageName, crypto, mergeCrypto, isDualCrypto);
+    } else {
+        // Disable auto-shares on alert
+        disableAutoSharesOnAlert(packageName);
+    }
+}
+
+/**
+ * Configure auto-shares on alert using browser prompts (mobile-friendly)
+ */
+function configureAutoSharesOnAlertWithPrompts(checkbox, packageName, crypto, mergeCrypto, isDualCrypto) {
+    // Load existing settings
+    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const existingSettings = savedSettings[packageName] || {};
+
+    // Prompt for percentage
+    const percentageInput = prompt(
+        `Auto-Shares on Alert for ${packageName}\n\n` +
+        `This will ONLY activate when the package alert triggers!\n\n` +
+        `Enter target percentage (1-100%):\n` +
+        `This is the percentage of total shares you want to own.`,
+        existingSettings.percentage || '10'
+    );
+
+    if (percentageInput === null) {
+        checkbox.checked = false;
+        return; // Cancelled
+    }
+
+    const percentage = parseInt(percentageInput);
+    if (isNaN(percentage) || percentage < 1 || percentage > 100) {
+        alert('Invalid percentage. Must be between 1 and 100.');
+        checkbox.checked = false;
+        return;
+    }
+
+    // Prompt for primary shares
+    const primaryInput = prompt(
+        `Enter PRIMARY shares (bought first in each cycle):`,
+        existingSettings.primaryShares || '2'
+    );
+
+    if (primaryInput === null) {
+        checkbox.checked = false;
+        return; // Cancelled
+    }
+
+    const primaryShares = parseInt(primaryInput);
+    if (isNaN(primaryShares) || primaryShares < 1) {
+        alert('Invalid primary shares. Must be at least 1.');
+        checkbox.checked = false;
+        return;
+    }
+
+    // Prompt for secondary shares
+    const secondaryInput = prompt(
+        `Enter SECONDARY shares (bought after primary, then alternates):\n\n` +
+        `When alert triggers: Buy ${primaryShares} → wait 10s → Buy secondary → repeat\n` +
+        `Always ends after secondary shares are bought.`,
+        existingSettings.secondaryShares || '1'
+    );
+
+    if (secondaryInput === null) {
+        checkbox.checked = false;
+        return; // Cancelled
+    }
+
+    const secondaryShares = parseInt(secondaryInput);
+    if (isNaN(secondaryShares) || secondaryShares < 1) {
+        alert('Invalid secondary shares. Must be at least 1.');
+        checkbox.checked = false;
+        return;
+    }
+
+    // Check/prompt for withdrawal addresses
+    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+    let mainAddress = savedAddresses[crypto];
+    if (!mainAddress) {
+        mainAddress = prompt(`Enter ${crypto} withdrawal address for auto-shares on alert:`);
+        if (!mainAddress || mainAddress.trim() === '') {
+            alert('Withdrawal address is required');
+            checkbox.checked = false;
+            return;
+        }
+        savedAddresses[crypto] = mainAddress.trim();
+    }
+
+    let mergeAddress = null;
+    if (mergeCrypto) {
+        mergeAddress = savedAddresses[mergeCrypto];
+        if (!mergeAddress) {
+            mergeAddress = prompt(`Enter ${mergeCrypto} withdrawal address for auto-shares on alert:`);
+            if (!mergeAddress || mergeAddress.trim() === '') {
+                alert('Withdrawal address is required');
+                checkbox.checked = false;
+                return;
+            }
+            savedAddresses[mergeCrypto] = mergeAddress.trim();
+        }
+    }
+
+    // Save addresses
+    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+
+    // Save auto-shares on alert settings
+    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    autoSharesOnAlertSettings[packageName] = {
+        enabled: true,
+        crypto: crypto,
+        mergeCrypto: mergeCrypto || null,
+        mainAddress: mainAddress,
+        mergeAddress: mergeAddress,
+        percentage: percentage,
+        primaryShares: primaryShares,
+        secondaryShares: secondaryShares,
+        trackedPackageIds: existingSettings.trackedPackageIds || {}
+    };
+    localStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
+
+    // Update status text
+    const statusSpanId = `autoshares-onalert-status-${packageName.replace(/\s+/g, '-')}`;
+    const statusSpan = document.getElementById(statusSpanId);
+    if (statusSpan) {
+        statusSpan.textContent = '✓ Enabled';
+        statusSpan.style.color = '#4CAF50';
+    }
+
+    // Keep checkbox checked
+    checkbox.checked = true;
+
+    console.log(`✅ Auto-shares on alert enabled for ${packageName}: ${percentage}%, primary=${primaryShares}, secondary=${secondaryShares}`);
+    alert(`Auto-shares on Alert enabled for ${packageName}!\n\nTarget: ${percentage}%\nPrimary: ${primaryShares} shares\nSecondary: ${secondaryShares} shares\n\nWill ONLY activate when package alert triggers!`);
+
+    // Reload team alerts to show config info
+    loadTeamAlerts();
+}
+
+/**
+ * Disable auto-shares on alert for a package
+ */
+function disableAutoSharesOnAlert(packageName, skipUIUpdate = false) {
+    // Disable in settings
+    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    if (autoSharesOnAlertSettings[packageName]) {
+        autoSharesOnAlertSettings[packageName].enabled = false;
+        localStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
+    }
+
+    // Update status text and checkbox
+    if (!skipUIUpdate) {
+        const statusSpanId = `autoshares-onalert-status-${packageName.replace(/\s+/g, '-')}`;
+        const statusSpan = document.getElementById(statusSpanId);
+        if (statusSpan) {
+            statusSpan.textContent = 'Disabled';
+            statusSpan.style.color = '#888';
+        }
+        const checkbox = document.getElementById(`team-autoshares-onalert-${packageName.replace(/\s+/g, '-')}`);
+        if (checkbox) checkbox.checked = false;
+    }
+
+    console.log(`❌ Auto-shares on alert disabled for ${packageName}`);
+}
+
+/**
+ * Disable other auto options when one is selected (mutual exclusivity)
+ * @param {string} packageName - The package name
+ * @param {string} selectedOption - 'autoBuy', 'autoShares', or 'autoSharesOnAlert'
+ */
+function disableOtherAutoOptions(packageName, selectedOption) {
+    console.log(`🔄 Disabling other auto options for ${packageName} (selected: ${selectedOption})`);
+
+    if (selectedOption !== 'autoBuy') {
+        // Disable auto-buy
+        const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+        if (autoBuySettings[packageName]?.enabled) {
+            autoBuySettings[packageName].enabled = false;
+            localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
+            // Update UI
+            const checkbox = document.getElementById(`team-autobuy-${packageName.replace(/\s+/g, '-')}`);
+            if (checkbox) {
+                checkbox.checked = false;
+                const statusSpan = checkbox.nextElementSibling;
+                if (statusSpan) {
+                    statusSpan.textContent = 'Disabled';
+                    statusSpan.style.color = '#888';
+                }
+            }
+            console.log(`   ❌ Auto-buy disabled`);
+        }
+    }
+
+    if (selectedOption !== 'autoShares') {
+        // Disable auto-shares (continuous)
+        disableAutoShares(packageName, false);
+    }
+
+    if (selectedOption !== 'autoSharesOnAlert') {
+        // Disable auto-shares on alert
+        disableAutoSharesOnAlert(packageName, false);
+    }
 }
 
 /**
