@@ -25867,7 +25867,8 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         console.log('   Current shares:', currentShares);
         console.log('   Buying:', sharesToPurchase, 'new shares');
         console.log('   New total:', desiredTotalShares, 'shares');
-        console.log('   Cost:', totalAmount, 'BTC');
+        console.log('   Cost for new shares:', costForNewShares, 'BTC');
+        console.log('   Total amount for API:', totalAmountForAPI, 'BTC');
 
         // 6. Sync NiceHash time
         await syncNiceHashTime();
