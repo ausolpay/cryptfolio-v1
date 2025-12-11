@@ -19703,19 +19703,29 @@ async function executeAutoSharesTeam(teamPackages) {
         return; // Keep as current, wait for conditions
     }
 
-    // Check if target reached
+    // Check if target reached - but ONLY complete if last buy was secondary
     if (myShares >= targetShares) {
         const trackedIds = settings.trackedPackageIds || {};
-        const trackState = trackedIds[packageId] || {};
-        trackState.completed = true;
-        trackState.lastSeenTotalShares = totalSharesBought;
-        trackedIds[packageId] = trackState;
-        settings.trackedPackageIds = trackedIds;
-        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+        const trackState = trackedIds[packageId] || { isPrimary: true };
 
-        console.log(`✅ ${pkg.name}: Target reached (${myShares}/${targetShares}), moving to next`);
-        autoSharesCurrentPackage = null;
-        return;
+        // isPrimary=true means last buy was secondary (it toggles after each buy)
+        // isPrimary=false means last buy was primary, need one more secondary
+        if (trackState.isPrimary) {
+            // Last buy was secondary, we can complete
+            trackState.completed = true;
+            trackState.lastSeenTotalShares = totalSharesBought;
+            trackedIds[packageId] = trackState;
+            settings.trackedPackageIds = trackedIds;
+            localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+
+            console.log(`✅ ${pkg.name}: Target reached (${myShares}/${targetShares}), ended on secondary, moving to next`);
+            autoSharesCurrentPackage = null;
+            return;
+        } else {
+            // Last buy was primary, need one more secondary buy to complete
+            console.log(`🔄 ${pkg.name}: Target reached (${myShares}/${targetShares}) but last buy was primary, doing final secondary`);
+            // Don't return - continue to do the secondary buy
+        }
     }
 
     // Initialize tracking if needed
@@ -24489,49 +24499,63 @@ function saveMyTeamShares(packageId, shares) {
 function syncTeamShareInputs(packageId, packageName, newShares) {
     console.log(`🔄 Syncing share inputs: packageId=${packageId}, name=${packageName}, shares=${newShares}`);
 
-    // 1. Update Alert Card input (ID format: shares-PackageName-With-Dashes)
-    const alertInputId = `shares-${packageName.replace(/\s+/g, '-')}`;
-    const alertInput = document.getElementById(alertInputId);
-    if (alertInput) {
-        alertInput.value = newShares;
-        alertInput.min = 1;  // Always allow decreasing to minimum of 1
-        alertInput.dataset.myBought = newShares;
-        console.log(`   ✅ Updated alert card input: ${alertInputId} = ${newShares}`);
+    const packageIdForElements = packageName.replace(/\s+/g, '-');
+
+    // 1. Update input by ID (format: shares-PackageName-With-Dashes)
+    const inputById = document.getElementById(`shares-${packageIdForElements}`);
+    if (inputById) {
+        inputById.value = newShares;
+        inputById.min = newShares > 0 ? 1 : 1;
+        inputById.dataset.myBought = newShares;
+        console.log(`   ✅ Updated input by ID: shares-${packageIdForElements} = ${newShares}`);
     }
 
-    // 2. Update Buy Packages page inputs (multiple possible ID formats)
-    // Format 1: team-{packageId}-shares
-    const buyInput1 = document.getElementById(`team-${packageId}-shares`);
-    if (buyInput1) {
-        buyInput1.value = newShares;
-        buyInput1.min = 1;  // Always allow decreasing to minimum of 1
-        buyInput1.dataset.myBought = newShares;
-        console.log(`   ✅ Updated buy packages input: team-${packageId}-shares = ${newShares}`);
+    // 2. Update all share inputs on cards that match this package
+    document.querySelectorAll('.share-adjuster-input').forEach(input => {
+        // Check if this input is for our package (by ID pattern or parent card)
+        if (input.id === `shares-${packageIdForElements}`) {
+            input.value = newShares;
+            input.dataset.myBought = newShares;
+        }
+    });
+
+    // 3. Update share distribution displays (format: (myShares/totalBought/totalAvailable))
+    const shareDistEl = document.getElementById(`team-shares-${packageIdForElements}`) ||
+                        document.getElementById(`alert-share-distribution-${packageIdForElements}`);
+    if (shareDistEl) {
+        // Parse existing format to get totalBought and totalAvailable
+        const match = shareDistEl.textContent.match(/\((\d+)\/(\d+)\/(\d+)\)/);
+        if (match) {
+            const totalBought = match[2];
+            const totalAvailable = match[3];
+            shareDistEl.textContent = `(${newShares}/${totalBought}/${totalAvailable})`;
+            console.log(`   ✅ Updated share distribution: (${newShares}/${totalBought}/${totalAvailable})`);
+        }
     }
 
-    // Format 2: {packageName}-shares (with dashes)
-    const buyInput2 = document.getElementById(`${packageName.replace(/\s+/g, '-')}-shares`);
-    if (buyInput2 && buyInput2 !== alertInput) {
-        buyInput2.value = newShares;
-        buyInput2.min = 1;  // Always allow decreasing to minimum of 1
-        buyInput2.dataset.myBought = newShares;
-        console.log(`   ✅ Updated buy packages input: ${packageName.replace(/\s+/g, '-')}-shares = ${newShares}`);
-    }
-
-    // 3. Update cached share values
+    // 4. Update cached share values
     if (window.packageShareValues) {
         window.packageShareValues[packageName] = newShares;
-        window.packageShareValues[packageName.replace(/\s+/g, '-')] = newShares;
-        console.log(`   ✅ Updated cached share values`);
+        window.packageShareValues[packageIdForElements] = newShares;
     }
 
-    // 4. Also update any inputs that have the packageId in data attribute
-    document.querySelectorAll('input[data-package-id]').forEach(input => {
-        if (input.dataset.packageId === packageId) {
-            input.value = newShares;
-            input.min = 1;  // Always allow decreasing to minimum of 1
-            input.dataset.myBought = newShares;
-            console.log(`   ✅ Updated input with data-package-id: ${input.id} = ${newShares}`);
+    // 5. Also update any inputs that have the packageId in data attribute
+    document.querySelectorAll(`input[data-package-id="${packageId}"]`).forEach(input => {
+        input.value = newShares;
+        input.dataset.myBought = newShares;
+        console.log(`   ✅ Updated input with data-package-id: ${input.id} = ${newShares}`);
+    });
+
+    // 6. Find and update Buy Packages page card by package name in title
+    document.querySelectorAll('.buy-package-card').forEach(card => {
+        const title = card.querySelector('h4');
+        if (title && title.textContent.includes(packageName)) {
+            const cardInput = card.querySelector('.share-adjuster-input');
+            if (cardInput) {
+                cardInput.value = newShares;
+                cardInput.dataset.myBought = newShares;
+                console.log(`   ✅ Updated card input for ${packageName} = ${newShares}`);
+            }
         }
     });
 }
