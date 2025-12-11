@@ -19161,13 +19161,13 @@ async function executeAutoBuyTeam(recommendations) {
         // Execute auto-buy
         const sharesToBuy = autoBuy.shares || 1;  // Configured shares to ADD
         const sharePrice = 0.0001;
-        const totalAmount = sharesToBuy * sharePrice;  // Cost for NEW shares only
 
         // Calculate new total (current + configured shares to buy)
         const currentShares = getMyTeamShares(packageId) || 0;
         let actualSharesToBuy = sharesToBuy;
-        let actualTotalAmount = totalAmount;
         let newTotalShares = currentShares + actualSharesToBuy;
+        let costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
+        let totalAmountForAPI = newTotalShares * sharePrice;    // Total value to send in API
 
         // 💰 Balance check: Can we afford the configured shares?
         const availableBalance = window.niceHashBalance?.available || 0;
@@ -19181,12 +19181,13 @@ async function executeAutoBuyTeam(recommendations) {
         if (maxAffordableShares < sharesToBuy) {
             // Partial purchase: buy what we can afford
             actualSharesToBuy = maxAffordableShares;
-            actualTotalAmount = actualSharesToBuy * sharePrice;
             newTotalShares = currentShares + actualSharesToBuy;
+            costForNewShares = actualSharesToBuy * sharePrice;
+            totalAmountForAPI = newTotalShares * sharePrice;
             console.log(`💰 ${pkg.name}: Partial purchase - can afford ${actualSharesToBuy} of ${sharesToBuy} shares (balance: ${availableBalance.toFixed(8)} BTC)`);
         }
 
-        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (buying ${actualSharesToBuy} shares, total will be ${newTotalShares}, cost ${actualTotalAmount} BTC)`);
+        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (buying ${actualSharesToBuy} shares, total will be ${newTotalShares}, API amount ${totalAmountForAPI} BTC)`);
 
         // Set lock to pause other package fetches during purchase
         isAutoBuyInProgress = true;
@@ -19248,11 +19249,11 @@ async function executeAutoBuyTeam(recommendations) {
                 }
             }
 
-            // Create order payload: amount is for NEW shares, but shares.small is TOTAL desired
+            // Create order payload: both amount and shares.small are TOTAL values
             const bodyData = {
-                amount: actualTotalAmount,  // BTC cost for NEW shares only
+                amount: totalAmountForAPI,  // Total value (all shares × 0.0001)
                 shares: {
-                    small: newTotalShares,  // Send TOTAL shares, API sets your shares to this value
+                    small: newTotalShares,  // Total shares count
                     medium: 0,
                     large: 0,
                     couponSmall: 0,
@@ -19271,7 +19272,7 @@ async function executeAutoBuyTeam(recommendations) {
             const body = JSON.stringify(bodyData);
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-            console.log(`📡 Auto-buy request: buying ${actualSharesToBuy} shares, setting total to ${newTotalShares} (${actualTotalAmount} BTC)`, {
+            console.log(`📡 Auto-buy request: buying ${actualSharesToBuy} shares, setting total to ${newTotalShares} (API amount: ${totalAmountForAPI} BTC)`, {
                 isDualCrypto: isDualCrypto,
                 mainCrypto: mainCrypto,
                 mainWallet: mainWalletAddress.substring(0, 10) + '...',
@@ -19280,6 +19281,8 @@ async function executeAutoBuyTeam(recommendations) {
                 currentShares: currentShares,
                 actualSharesToBuy: actualSharesToBuy,
                 newTotalShares: newTotalShares,
+                'body.amount': bodyData.amount,
+                'body.shares.small': bodyData.shares.small,
                 bodyData: bodyData
             });
 
@@ -19331,7 +19334,8 @@ async function executeAutoBuyTeam(recommendations) {
                 timestamp: Date.now(),
                 sharesBought: actualSharesToBuy,
                 totalShares: newTotalShares,
-                amount: actualTotalAmount,
+                amount: totalAmountForAPI,  // Total value sent to API
+                costPaid: costForNewShares, // Actual cost for new shares
                 orderId: orderIdReturned,
                 ticketId: packageId  // Store ticket ID for reference but use order ID as key
             };
@@ -19364,9 +19368,9 @@ async function executeAutoBuyTeam(recommendations) {
                 console.log(`   ✅ Marked package ID ${packageId} as bought (smart cooldowns OFF - one buy per package ID)`);
             }
 
-            // Update stats
+            // Update stats (use actual cost paid, not total value)
             const btcPrice = getPriceFromObject(window.packageCryptoPrices?.['btc']) || 140000;
-            const totalPriceAUD = actualTotalAmount * btcPrice;
+            const totalPriceAUD = costForNewShares * btcPrice;
             easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
             easyMiningData.todayStats.totalSpent += totalPriceAUD;
             localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
@@ -20185,27 +20189,29 @@ async function executeAutoSharesTeam(teamPackages) {
 
         const sharePrice = 0.0001;
         const newTotalShares = myShares + actualSharesToBuy;
-        const actualTotalAmount = actualSharesToBuy * sharePrice;
+        const costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
+        const totalAmountForAPI = newTotalShares * sharePrice;    // Total value to send in API
 
         console.log(`💰 Auto-shares amount calc:`, {
             currentOwned: myShares,
             buyingThisRound: actualSharesToBuy,
             totalAfter: newTotalShares,
-            amountBTC: actualTotalAmount,
-            formula: `${actualSharesToBuy} shares × ${sharePrice} BTC = ${actualTotalAmount} BTC`
+            costForNewShares: costForNewShares,
+            totalAmountForAPI: totalAmountForAPI,
+            formula: `API amount = ${newTotalShares} total shares × ${sharePrice} BTC = ${totalAmountForAPI} BTC`
         });
 
-        // Check balance
+        // Check balance - we only need to afford the NEW shares being bought
         const availableBalance = window.niceHashBalance?.available || 0;
-        if (availableBalance < actualTotalAmount) {
-            console.log(`💰 ${pkg.name}: Insufficient balance (need ${actualTotalAmount} BTC, have ${availableBalance} BTC)`);
+        if (availableBalance < costForNewShares) {
+            console.log(`💰 ${pkg.name}: Insufficient balance (need ${costForNewShares} BTC for ${actualSharesToBuy} new shares, have ${availableBalance} BTC)`);
             return; // Keep as current, wait for balance
         }
 
         const bodyData = {
-            amount: actualTotalAmount,
+            amount: totalAmountForAPI,  // Total value (all shares × 0.0001)
             shares: {
-                small: newTotalShares,
+                small: newTotalShares,  // Total shares count
                 medium: 0,
                 large: 0,
                 couponSmall: 0,
@@ -20226,11 +20232,12 @@ async function executeAutoSharesTeam(teamPackages) {
         // ✅ VERIFICATION: Both amount and shares.small are being sent
         console.log(`📡 Auto-shares API request:`, {
             endpoint: endpoint,
-            sharesBeingBought: actualSharesToBuy,
             currentOwned: myShares,
+            sharesBeingBought: actualSharesToBuy,
+            totalSharesAfter: newTotalShares,
             'body.amount': bodyData.amount,
             'body.shares.small': bodyData.shares.small,
-            verification: `✅ amount (${bodyData.amount} BTC) = ${actualSharesToBuy} shares × 0.0001 BTC`
+            verification: `✅ amount (${bodyData.amount} BTC) = ${newTotalShares} total shares × 0.0001 BTC`
         });
         console.log(`📄 Full request body:`, JSON.stringify(bodyData, null, 2));
 
@@ -29926,16 +29933,15 @@ Do you want to continue?
         });
 
         // Create order payload for team mining package
-        // Calculate total amount (shares × 0.0001 BTC per share)
-        // Cost is 0 for decreases, positive for increases
-        const totalAmount = isDecrease ? 0 : (shares * sharePrice);
+        // Both amount and shares.small use TOTAL values
+        // Amount = total shares × 0.0001 BTC (0 for decreases)
+        const totalAmountForAPI = isDecrease ? 0 : (desiredTotalShares * sharePrice);
 
-        // ✅ FIX: Send TOTAL shares (desiredTotalShares), not increment (sharesToPurchase)
-        // NiceHash API expects total shares you want to own, not just new shares
+        // NiceHash API expects total values for both amount and shares.small
         const orderData = {
-            amount: totalAmount,
+            amount: totalAmountForAPI,  // Total value (all shares × 0.0001)
             shares: {
-                small: desiredTotalShares,  // Send TOTAL shares, API sets your shares to this value
+                small: desiredTotalShares,  // Total shares count
                 medium: 0,
                 large: 0,
                 couponSmall: 0,
@@ -29954,8 +29960,11 @@ Do you want to continue?
         console.log('📦 Team package purchase:', {
             endpoint: `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`,
             method: 'POST',
-            totalShares: shares,
-            totalAmount: totalAmount + ' BTC',
+            currentShares: currentShares,
+            sharesBeingBought: sharesToPurchase,
+            desiredTotalShares: desiredTotalShares,
+            'body.amount': totalAmountForAPI + ' BTC',
+            'body.shares.small': desiredTotalShares,
             sharePrice: sharePrice + ' BTC per share',
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
             mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr || '(not set)',
