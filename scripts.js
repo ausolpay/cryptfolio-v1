@@ -4125,6 +4125,7 @@ async function loadTeamAlerts() {
 
 /**
  * Handle auto-shares checkbox change - reads data from data-* attributes
+ * Uses browser prompts for simplicity and mobile compatibility
  */
 function handleAutoSharesCheckboxChange(checkbox) {
     const packageName = checkbox.dataset.packageName;
@@ -4135,14 +4136,143 @@ function handleAutoSharesCheckboxChange(checkbox) {
     console.log('🔧 Auto-shares checkbox changed:', { packageName, crypto, mergeCrypto, isDualCrypto, checked: checkbox.checked });
 
     if (checkbox.checked) {
-        // Show configuration modal instead of enabling directly
-        showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypto);
-        // Uncheck temporarily - will be checked if user confirms in modal
-        checkbox.checked = false;
+        // Use browser prompts for configuration
+        configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCrypto, isDualCrypto);
     } else {
         // Disable auto-shares
         disableAutoShares(packageName);
     }
+}
+
+/**
+ * Configure auto-shares using browser prompts (mobile-friendly)
+ */
+function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCrypto, isDualCrypto) {
+    // Load existing settings
+    const savedAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const existingSettings = savedAutoShares[packageName] || {};
+
+    // Prompt for fraction
+    const fractionInput = prompt(
+        `Auto-Shares Configuration for ${packageName}\n\n` +
+        `Enter target fraction (1-10):\n` +
+        `This means you'll buy up to X/10 of the total shares bought.\n\n` +
+        `Example: Enter 2 to own 2/10 (20%) of total shares.`,
+        existingSettings.fraction || '2'
+    );
+
+    if (fractionInput === null) {
+        checkbox.checked = false;
+        return; // Cancelled
+    }
+
+    const fraction = parseInt(fractionInput);
+    if (isNaN(fraction) || fraction < 1 || fraction > 10) {
+        alert('Invalid fraction. Must be between 1 and 10.');
+        checkbox.checked = false;
+        return;
+    }
+
+    // Prompt for primary shares
+    const primaryInput = prompt(
+        `Enter PRIMARY shares (bought first in each cycle):`,
+        existingSettings.primaryShares || '2'
+    );
+
+    if (primaryInput === null) {
+        checkbox.checked = false;
+        return; // Cancelled
+    }
+
+    const primaryShares = parseInt(primaryInput);
+    if (isNaN(primaryShares) || primaryShares < 1) {
+        alert('Invalid primary shares. Must be at least 1.');
+        checkbox.checked = false;
+        return;
+    }
+
+    // Prompt for secondary shares
+    const secondaryInput = prompt(
+        `Enter SECONDARY shares (bought after primary, then alternates):\n\n` +
+        `The bot will: Buy ${primaryShares} → wait 10s → Buy secondary → wait 10s → repeat\n` +
+        `Always ends after secondary shares are bought.`,
+        existingSettings.secondaryShares || '1'
+    );
+
+    if (secondaryInput === null) {
+        checkbox.checked = false;
+        return; // Cancelled
+    }
+
+    const secondaryShares = parseInt(secondaryInput);
+    if (isNaN(secondaryShares) || secondaryShares < 1) {
+        alert('Invalid secondary shares. Must be at least 1.');
+        checkbox.checked = false;
+        return;
+    }
+
+    // Check/prompt for withdrawal addresses
+    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+    let mainAddress = savedAddresses[crypto];
+    if (!mainAddress) {
+        mainAddress = prompt(`Enter ${crypto} withdrawal address for auto-shares:`);
+        if (!mainAddress || mainAddress.trim() === '') {
+            alert('Withdrawal address is required for auto-shares');
+            checkbox.checked = false;
+            return;
+        }
+        savedAddresses[crypto] = mainAddress.trim();
+    }
+
+    let mergeAddress = null;
+    if (mergeCrypto) {
+        mergeAddress = savedAddresses[mergeCrypto];
+        if (!mergeAddress) {
+            mergeAddress = prompt(`Enter ${mergeCrypto} withdrawal address for auto-shares:`);
+            if (!mergeAddress || mergeAddress.trim() === '') {
+                alert('Withdrawal address is required for auto-shares');
+                checkbox.checked = false;
+                return;
+            }
+            savedAddresses[mergeCrypto] = mergeAddress.trim();
+        }
+    }
+
+    // Save addresses
+    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+
+    // Save auto-shares settings
+    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    autoSharesSettings[packageName] = {
+        enabled: true,
+        crypto: crypto,
+        mergeCrypto: mergeCrypto || null,
+        mainAddress: mainAddress,
+        mergeAddress: mergeAddress,
+        fraction: fraction,
+        primaryShares: primaryShares,
+        secondaryShares: secondaryShares,
+        trackedPackageIds: existingSettings.trackedPackageIds || {}
+    };
+    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+
+    // Update status text
+    const statusSpanId = `autoshares-status-${packageName.replace(/\s+/g, '-')}`;
+    const statusSpan = document.getElementById(statusSpanId);
+    if (statusSpan) {
+        statusSpan.textContent = '✓ Enabled';
+        statusSpan.style.color = '#4CAF50';
+    }
+
+    // Keep checkbox checked
+    checkbox.checked = true;
+
+    console.log(`✅ Auto-shares enabled for ${packageName}: ${fraction}/10, primary=${primaryShares}, secondary=${secondaryShares}`);
+    alert(`Auto-shares enabled for ${packageName}!\n\nConfig: ${fraction}/10\nPrimary: ${primaryShares} shares\nSecondary: ${secondaryShares} shares\n\nOnly activates when participants > 5 and total shares > 15.`);
+
+    // Reload team alerts to show config info
+    loadTeamAlerts();
 }
 
 function adjustTeamAutoBuyShares(packageName, delta) {
