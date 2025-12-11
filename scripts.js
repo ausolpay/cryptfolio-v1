@@ -1195,113 +1195,6 @@ function clearCryptoContainers() {
     }
 }
 
-// =============================================================================
-// HOLDINGS TRACKER PAGINATION
-// =============================================================================
-let currentCryptoPage = 1;
-
-// Get cards per page based on screen size
-function getCryptoCardsPerPage() {
-    const width = window.innerWidth;
-    if (width <= 600) {
-        return 2; // Mobile: 2 stacked cards per page
-    } else if (width <= 900) {
-        return 2; // Tablet: 2 cards per page
-    } else {
-        return 6; // Desktop: 3 per row × 2 rows = 6 per page
-    }
-}
-
-// Get all crypto containers
-function getAllCryptoContainers() {
-    const container = document.getElementById('crypto-containers');
-    if (!container) return [];
-    return Array.from(container.querySelectorAll('.crypto-container'));
-}
-
-// Update holdings pagination display
-function updateCryptoPagination() {
-    const containers = getAllCryptoContainers();
-    const cardsPerPage = getCryptoCardsPerPage();
-    const totalPages = Math.max(1, Math.ceil(containers.length / cardsPerPage));
-
-    // Ensure current page is valid
-    if (currentCryptoPage > totalPages) {
-        currentCryptoPage = totalPages;
-    }
-    if (currentCryptoPage < 1) {
-        currentCryptoPage = 1;
-    }
-
-    // Show/hide containers based on current page
-    const startIndex = (currentCryptoPage - 1) * cardsPerPage;
-    const endIndex = startIndex + cardsPerPage;
-
-    containers.forEach((container, index) => {
-        if (index >= startIndex && index < endIndex) {
-            container.style.display = '';
-        } else {
-            container.style.display = 'none';
-        }
-    });
-
-    // Update pagination controls
-    const paginationEl = document.getElementById('crypto-pagination');
-    const pageCountEl = document.getElementById('crypto-page-count');
-    const leftArrow = document.getElementById('crypto-arrow-left');
-    const rightArrow = document.getElementById('crypto-arrow-right');
-
-    if (paginationEl) {
-        // Show pagination only if there's more than one page
-        paginationEl.style.display = totalPages > 1 ? 'flex' : 'none';
-    }
-
-    if (pageCountEl) {
-        pageCountEl.textContent = `${currentCryptoPage} of ${totalPages}`;
-    }
-
-    if (leftArrow) {
-        leftArrow.disabled = currentCryptoPage <= 1;
-    }
-
-    if (rightArrow) {
-        rightArrow.disabled = currentCryptoPage >= totalPages;
-    }
-}
-
-// Navigate to next page of crypto holdings
-function nextCryptoPage() {
-    const containers = getAllCryptoContainers();
-    const cardsPerPage = getCryptoCardsPerPage();
-    const totalPages = Math.ceil(containers.length / cardsPerPage);
-
-    if (currentCryptoPage < totalPages) {
-        currentCryptoPage++;
-        updateCryptoPagination();
-    }
-}
-
-// Navigate to previous page of crypto holdings
-function prevCryptoPage() {
-    if (currentCryptoPage > 1) {
-        currentCryptoPage--;
-        updateCryptoPagination();
-    }
-}
-
-// Make pagination functions globally accessible
-window.nextCryptoPage = nextCryptoPage;
-window.prevCryptoPage = prevCryptoPage;
-
-// Update pagination on window resize (debounced)
-let cryptoResizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(cryptoResizeTimeout);
-    cryptoResizeTimeout = setTimeout(() => {
-        updateCryptoPagination();
-    }, 150);
-});
-
 function loadUserData() {
     const activeElement = document.activeElement;
     const activeElementId = activeElement ? activeElement.id : null;
@@ -1352,9 +1245,6 @@ function loadUserData() {
             newActiveElement.setSelectionRange(activeSelectionStart, activeSelectionEnd);
         }
     }
-
-    // Update pagination after loading user data
-    updateCryptoPagination();
 }
 
 
@@ -9788,9 +9678,6 @@ function addCryptoContainer(id, symbol, name, thumb) {
     });
 
     fetchPrices();
-
-    // Update pagination after adding container
-    updateCryptoPagination();
 }
 
 
@@ -9816,9 +9703,6 @@ function deleteContainer(containerId, cryptoId) {
 
     // Update portfolio strip (crypto count changed)
     updatePortfolioStrip();
-
-    // Update pagination after removing container
-    updateCryptoPagination();
 }
 
 function formatNumber(number, isPrice = false) {
