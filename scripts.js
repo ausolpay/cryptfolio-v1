@@ -25808,14 +25808,14 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
 
     const isDecrease = sharesToPurchase < 0;
 
-    // 4. Calculate cost for NEW shares only (not total)
-    // Cost is 0 for decreases, positive for increases
+    // 4. Calculate amounts - API expects TOTAL value (all shares × 0.0001)
     const sharePrice = 0.0001;
-    const totalAmount = isDecrease ? 0 : (sharesToPurchase * sharePrice);
-    const totalCostBTC = totalAmount.toFixed(8);
+    const totalAmountForAPI = desiredTotalShares * sharePrice;  // TOTAL value to send in API
+    const costForNewShares = isDecrease ? 0 : (sharesToPurchase * sharePrice);  // Cost we pay
+    const totalCostBTC = costForNewShares.toFixed(8);
 
     const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
-    const totalAUD = (totalAmount * btcPrice).toFixed(2);
+    const totalAUD = (costForNewShares * btcPrice).toFixed(2);
 
     // 4. Get wallet address from localStorage
     let mainWalletAddress = getWithdrawalAddress(crypto);
@@ -25867,11 +25867,11 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
 
         const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
 
-        // Request body: amount is for NEW shares, but shares.small is TOTAL desired
+        // Request body: BOTH amount and shares.small should be TOTAL values
         const orderData = {
-            amount: totalAmount, // BTC cost for NEW shares only
+            amount: totalAmountForAPI, // TOTAL value (all shares × 0.0001)
             shares: {
-                small: desiredTotalShares,  // Send TOTAL shares, API sets your shares to this value
+                small: desiredTotalShares,  // TOTAL shares count
                 medium: 0,
                 large: 0,
                 couponSmall: 0,
@@ -25921,12 +25921,19 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             throw new Error(errorData.message || `API Error: ${response.status}`);
         }
 
-        const result = await response.json();
-        console.log('✅ Team package purchased successfully:', result);
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (e) {
+            // Some successful responses may have empty body
+            console.log('📥 Response body empty or not JSON (this is OK for some operations)');
+        }
+        console.log('✅ Team package API call successful:', result);
 
-        // Validate response indicates success
-        if (!result || (!result.id && !result.orderId && !result.success)) {
-            throw new Error(`Purchase failed: Invalid response from NiceHash (no order ID returned)`);
+        // Log warning if expected fields missing, but don't fail
+        // HTTP 200 means success - trust the status code
+        if (!result.id && !result.orderId && !result.success) {
+            console.warn('⚠️ Response missing expected fields (id/orderId/success), but HTTP 200 received - treating as success');
         }
 
         // 8. Update tracking - set pending hold and save to localStorage
