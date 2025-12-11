@@ -31054,8 +31054,16 @@ async function autoClearTeamShares(packageId, packageName) {
         const sharesInput = document.getElementById(inputId);
         if (sharesInput) {
             sharesInput.value = '';
+            sharesInput.dataset.myBought = '0';
             console.log(`✅ Reset input value for ${packageName}`);
         }
+
+        // Hide Clear Shares button immediately (shares are now 0)
+        updateClearSharesButtonVisibility(packageName, packageId, 0);
+        console.log(`✅ Hidden Clear Shares button for ${packageName}`);
+
+        // Sync share inputs across all UIs
+        syncTeamShareInputs(packageId, packageName, 0);
 
         // Refresh package data to update UI
         await fetchEasyMiningData();
