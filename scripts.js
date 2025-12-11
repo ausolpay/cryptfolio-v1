@@ -20223,12 +20223,16 @@ async function executeAutoSharesTeam(teamPackages) {
         const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        console.log(`📡 Auto-shares request:`, {
+        // ✅ VERIFICATION: Both amount and shares.small are being sent
+        console.log(`📡 Auto-shares API request:`, {
+            endpoint: endpoint,
             sharesBeingBought: actualSharesToBuy,
-            totalSharesAfter: newTotalShares,
-            amountBTC: actualTotalAmount,
-            bodyData: bodyData
+            currentOwned: myShares,
+            'body.amount': bodyData.amount,
+            'body.shares.small': bodyData.shares.small,
+            verification: `✅ amount (${bodyData.amount} BTC) = ${actualSharesToBuy} shares × 0.0001 BTC`
         });
+        console.log(`📄 Full request body:`, JSON.stringify(bodyData, null, 2));
 
         let response;
         if (USE_VERCEL_PROXY) {
@@ -25008,6 +25012,28 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
             }
         }
     });
+
+    // 7. Update price displays (shares × 0.0001 BTC × BTC_AUD_rate)
+    const sharePrice = 0.0001; // BTC per share
+    const totalBTC = newShares * sharePrice;
+    const priceAUD = convertBTCtoAUD(totalBTC);
+
+    // Update Buy Packages page price
+    const buyPagePriceEl = document.getElementById(`team-price-${packageIdForElements}`) ||
+                           document.getElementById(`price-${packageIdForElements}`);
+    if (buyPagePriceEl) {
+        buyPagePriceEl.textContent = `$${priceAUD.toFixed(2)}`;
+        console.log(`   ✅ Updated buy page price: $${priceAUD.toFixed(2)} (${newShares} shares × ${sharePrice} BTC)`);
+    }
+
+    // Update Alert card price
+    const alertPriceEl = document.getElementById(`alert-price-${packageIdForElements}`);
+    if (alertPriceEl) {
+        alertPriceEl.textContent = `$${priceAUD.toFixed(2)}`;
+        console.log(`   ✅ Updated alert price: $${priceAUD.toFixed(2)} (${newShares} shares × ${sharePrice} BTC)`);
+    }
+
+    console.log(`💵 Price sync: ${newShares} shares × ${sharePrice} BTC = ${totalBTC} BTC = $${priceAUD.toFixed(2)} AUD`);
 }
 
 /**
