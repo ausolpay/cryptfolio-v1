@@ -29862,6 +29862,13 @@ async function buyTeamPackage(pkg, packageId) {
 
     const desiredTotalShares = sharesInput ? parseInt(sharesInput.value) || 0 : 0;
     console.log(`📊 Reading input value: ${sharesInput?.value} → parsed as ${desiredTotalShares}`);
+    console.log(`📊 INPUT VERIFICATION:`, {
+        inputId: sharesInput?.id,
+        inputValue: sharesInput?.value,
+        parsedDesiredTotal: desiredTotalShares,
+        datasetMyBought: sharesInput?.dataset?.myBought,
+        datasetTotalBought: sharesInput?.dataset?.totalBought
+    });
 
     if (desiredTotalShares <= 0) {
         alert('Please select number of shares to purchase (use +/- buttons)');
@@ -30059,6 +30066,14 @@ Do you want to continue?
 
         // Log the actual JSON that will be sent
         console.log('📄 Request body:', JSON.stringify(orderData, null, 2));
+        console.log('🔴 FINAL VALUES TO API:', {
+            'shares.small': orderData.shares.small,
+            'amount': orderData.amount,
+            'expectedAmount': desiredTotalShares * sharePrice,
+            'desiredTotalShares': desiredTotalShares,
+            'currentSharesOwned': currentShares,
+            'sharesToPurchase': sharesToPurchase
+        });
 
         // Single POST request with total amount
         // Endpoint: POST /hashpower/api/v2/hashpower/shared/ticket/{id}
