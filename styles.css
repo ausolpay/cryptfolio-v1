@@ -9668,6 +9668,14 @@ body.light-mode .api-hub-button .api-desc {
     min-height: 100px;
 }
 
+/* Tablet: 2 columns */
+@media (max-width: 900px) {
+    .holdings-entries-container,
+    .history-entries-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* Holdings Entry Card */
 .holdings-entry-card,
 .history-entry-card {

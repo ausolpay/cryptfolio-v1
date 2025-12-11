@@ -6991,8 +6991,20 @@ function findCostBasisForEntry(entry) {
 let currentHoldingsTab = 'holdings';
 let currentHoldingsPage = 1;
 let currentHistoryPage = 1;
-const holdingsEntriesPerPage = 6;
 let currentHoldingsCryptoId = null; // Track which crypto's modal is open
+
+// Get cards per page based on screen size for holdings tracker
+// Desktop: 6 (3 per row × 2 rows), Tablet: 2, Mobile: 2
+function getHoldingsCardsPerPage() {
+    const width = window.innerWidth;
+    if (width <= 600) {
+        return 2; // Mobile: 2 stacked cards per page
+    } else if (width <= 900) {
+        return 2; // Tablet: 2 cards per page
+    } else {
+        return 6; // Desktop: 3 per row × 2 rows = 6 per page
+    }
+}
 
 // Toggle holdings tracking section collapse
 function toggleHoldingsTracking() {
@@ -7067,9 +7079,8 @@ function displayHoldingsEntries(cryptoId) {
     const countEl = document.getElementById('holdings-tab-count');
     if (countEl) countEl.textContent = buyEntries.length;
 
-    // Calculate pagination
-    const isDesktop = window.innerWidth > 600;
-    const cardsPerPage = isDesktop ? 6 : 3;
+    // Calculate pagination (responsive: desktop 6, tablet/mobile 2)
+    const cardsPerPage = getHoldingsCardsPerPage();
     const totalPages = Math.ceil(buyEntries.length / cardsPerPage) || 1;
 
     // Ensure current page is valid
@@ -7219,8 +7230,7 @@ function updateHoldingsPagination(totalEntries, cardsPerPage, totalPages) {
 function nextHoldingsPage() {
     const entries = getHoldingsEntries(currentHoldingsCryptoId);
     const activeEntries = entries.filter(e => e.status === 'active');
-    const isDesktop = window.innerWidth > 600;
-    const cardsPerPage = isDesktop ? 6 : 3;
+    const cardsPerPage = getHoldingsCardsPerPage();
     const totalPages = Math.ceil(activeEntries.length / cardsPerPage);
 
     if (currentHoldingsPage < totalPages) {
@@ -7253,9 +7263,8 @@ function displayHistoryEntries(cryptoId) {
     // Sort by timestamp descending (newest first)
     sellEntries.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Calculate pagination
-    const isDesktop = window.innerWidth > 600;
-    const cardsPerPage = isDesktop ? 6 : 3;
+    // Calculate pagination (responsive: desktop 6, tablet/mobile 2)
+    const cardsPerPage = getHoldingsCardsPerPage();
     const totalPages = Math.ceil(sellEntries.length / cardsPerPage) || 1;
 
     if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
@@ -7486,8 +7495,7 @@ function updateHistoryPagination(totalEntries, cardsPerPage, totalPages) {
 
 function nextHistoryPage() {
     const history = getHoldingsHistoryByCrypto(currentHoldingsCryptoId);
-    const isDesktop = window.innerWidth > 600;
-    const cardsPerPage = isDesktop ? 6 : 3;
+    const cardsPerPage = getHoldingsCardsPerPage();
     const totalPages = Math.ceil(history.length / cardsPerPage);
 
     if (currentHistoryPage < totalPages) {
