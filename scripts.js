@@ -20943,7 +20943,21 @@ function updateTeamAlertCardValues(pkg) {
         if (window.packageShareValues) {
             window.packageShareValues[pkg.name] = myBoughtShares;
         }
-        // Note: Don't update shareInput.value here - user may have adjusted it to buy more shares
+
+        // Check if any bot feature is active for this package
+        const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+        const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+        const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+        const isBotActive = teamAutoBuy[pkg.name]?.enabled ||
+                           teamAutoShares[pkg.name]?.enabled ||
+                           teamAutoSharesOnAlert[pkg.name]?.enabled;
+
+        // If bot is active, sync input to current shares owned (shows progress)
+        // If no bot, preserve user's manual input value
+        if (isBotActive && myBoughtShares > 0) {
+            shareInput.value = myBoughtShares;
+            console.log(`🤖 Alert Card ${pkg.name}: Bot active, syncing input to owned shares: ${myBoughtShares}`);
+        }
     }
 
     // ✅ Update countdown timer for alert cards
@@ -26906,7 +26920,20 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             const remainingShares = totalAvailableShares - totalBoughtShares + myBoughtShares;
             shareInput.max = remainingShares > 0 ? remainingShares : 1;
 
-            // Note: Don't update shareInput.value here - user may have adjusted it to buy more shares
+            // Check if any bot feature is active for this package
+            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            const isBotActive = teamAutoBuy[pkg.name]?.enabled ||
+                               teamAutoShares[pkg.name]?.enabled ||
+                               teamAutoSharesOnAlert[pkg.name]?.enabled;
+
+            // If bot is active, sync input to current shares owned (shows progress)
+            // If no bot, preserve user's manual input value
+            if (isBotActive && myBoughtShares > 0) {
+                shareInput.value = myBoughtShares;
+                console.log(`🤖 ${pkg.name}: Bot active, syncing input to owned shares: ${myBoughtShares}`);
+            }
         }
 
         // ✅ Update + button state (disabled ONLY when input >= max available shares)
