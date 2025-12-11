@@ -4015,7 +4015,7 @@ async function loadTeamAlerts() {
                 </div>
                 ${autoSharesEnabled ? `
                 <div id="autoshares-config-${pkg.name.replace(/\s+/g, '-')}" style="padding: 8px 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 5px; font-size: 12px; color: #888;">
-                    Config: ${autoSharesSettings.fraction || 2}/10 | Primary: ${autoSharesSettings.primaryShares || 2} | Secondary: ${autoSharesSettings.secondaryShares || 1}
+                    Target: ${autoSharesSettings.percentage || 10}% | Primary: ${autoSharesSettings.primaryShares || 2} | Secondary: ${autoSharesSettings.secondaryShares || 1}
                 </div>
                 ` : ''}
             </div>
@@ -4152,23 +4152,23 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
     const savedAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     const existingSettings = savedAutoShares[packageName] || {};
 
-    // Prompt for fraction
-    const fractionInput = prompt(
+    // Prompt for percentage
+    const percentageInput = prompt(
         `Auto-Shares Configuration for ${packageName}\n\n` +
-        `Enter target fraction (1-10):\n` +
-        `This means you'll buy up to X/10 of the total shares bought.\n\n` +
-        `Example: Enter 2 to own 2/10 (20%) of total shares.`,
-        existingSettings.fraction || '2'
+        `Enter target percentage (1-100%):\n` +
+        `This is the percentage of total shares you want to own.\n\n` +
+        `Example: Enter 10 to own 10% of total shares.`,
+        existingSettings.percentage || '10'
     );
 
-    if (fractionInput === null) {
+    if (percentageInput === null) {
         checkbox.checked = false;
         return; // Cancelled
     }
 
-    const fraction = parseInt(fractionInput);
-    if (isNaN(fraction) || fraction < 1 || fraction > 10) {
-        alert('Invalid fraction. Must be between 1 and 10.');
+    const percentage = parseInt(percentageInput);
+    if (isNaN(percentage) || percentage < 1 || percentage > 100) {
+        alert('Invalid percentage. Must be between 1 and 100.');
         checkbox.checked = false;
         return;
     }
@@ -4250,7 +4250,7 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
         mergeCrypto: mergeCrypto || null,
         mainAddress: mainAddress,
         mergeAddress: mergeAddress,
-        fraction: fraction,
+        percentage: percentage,
         primaryShares: primaryShares,
         secondaryShares: secondaryShares,
         trackedPackageIds: existingSettings.trackedPackageIds || {}
@@ -4268,8 +4268,8 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
     // Keep checkbox checked
     checkbox.checked = true;
 
-    console.log(`✅ Auto-shares enabled for ${packageName}: ${fraction}/10, primary=${primaryShares}, secondary=${secondaryShares}`);
-    alert(`Auto-shares enabled for ${packageName}!\n\nConfig: ${fraction}/10\nPrimary: ${primaryShares} shares\nSecondary: ${secondaryShares} shares\n\nOnly activates when participants > 5 and total shares > 15.`);
+    console.log(`✅ Auto-shares enabled for ${packageName}: ${percentage}%, primary=${primaryShares}, secondary=${secondaryShares}`);
+    alert(`Auto-shares enabled for ${packageName}!\n\nTarget: ${percentage}%\nPrimary: ${primaryShares} shares\nSecondary: ${secondaryShares} shares\n\nOnly activates when participants > 5 and total shares > 15.`);
 
     // Reload team alerts to show config info
     loadTeamAlerts();
@@ -19563,7 +19563,7 @@ async function executeAutoSharesTeam(teamPackages) {
         const participants = pkg.numberOfParticipants || 0;
         const totalSharesBought = pkg.sharesBoughtTotal || pkg.totalSharesBought || 0;
         const myShares = getMyTeamShares(packageId) || 0;
-        const targetShares = Math.floor(totalSharesBought * (settings.fraction / 10));
+        const targetShares = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
 
         // Track state per package ID
         const trackedIds = settings.trackedPackageIds || {};
@@ -19572,8 +19572,8 @@ async function executeAutoSharesTeam(teamPackages) {
         // Check if total shares increased (others bought more) - re-queue if needed
         const lastSeenTotal = trackState.lastSeenTotalShares || 0;
         if (totalSharesBought > lastSeenTotal && trackState.completed) {
-            // More shares bought, need to buy more to maintain fraction
-            const newTarget = Math.floor(totalSharesBought * (settings.fraction / 10));
+            // More shares bought, need to buy more to maintain percentage
+            const newTarget = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
             if (myShares < newTarget) {
                 console.log(`📈 ${pkg.name}: Total shares increased (${lastSeenTotal} → ${totalSharesBought}), re-queuing (new target: ${newTarget})`);
                 trackState.completed = false;
@@ -19645,7 +19645,7 @@ async function executeAutoSharesTeam(teamPackages) {
     const participants = pkg.numberOfParticipants || 0;
     const totalSharesBought = pkg.sharesBoughtTotal || pkg.totalSharesBought || 0;
     const myShares = getMyTeamShares(packageId) || 0;
-    const targetShares = Math.floor(totalSharesBought * (settings.fraction / 10));
+    const targetShares = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
 
     // Check preconditions
     if (participants <= 5 || totalSharesBought <= 15) {
@@ -19837,7 +19837,7 @@ async function executeAutoSharesTeam(teamPackages) {
         trackState.lastSeenTotalShares = totalSharesBought;
 
         // Check if we reached target AND ended on secondary (isPrimary is now true after toggle means we just did secondary)
-        const updatedTarget = Math.floor(totalSharesBought * (settings.fraction / 10));
+        const updatedTarget = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
         if (newTotalShares >= updatedTarget && trackState.isPrimary) {
             // We just bought secondary (isPrimary toggled to true) and reached target
             trackState.completed = true;
