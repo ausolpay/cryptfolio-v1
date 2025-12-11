@@ -3978,17 +3978,17 @@ async function loadTeamAlerts() {
             <div style="margin-top: 15px; padding: 15px; background-color: #2a2a2a; border-radius: 8px; border: 1px solid #444;">
                 <div style="margin-bottom: 10px;">
                     <label style="color: #aaa; font-size: 14px; display: block; margin-bottom: 8px;">🤖 Auto-Buy Shares (when alert triggers):</label>
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
                         <button onclick="adjustTeamAutoBuyShares('${pkg.name}', -1)"
-                                style="width: 35px; height: 35px; background-color: #444; color: white; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold;">-</button>
+                                style="width: 24px; height: 28px; background-color: #444; color: white; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; padding: 0;">-</button>
                         <input type="number"
                                id="team-autobuy-shares-${pkg.name.replace(/\s+/g, '-')}"
                                value="${autoBuyShares}"
                                min="1"
                                max="9999"
-                               style="width: 80px; padding: 8px; background-color: #1a1a1a; border: 1px solid #555; color: white; border-radius: 4px; text-align: center; font-size: 16px;">
+                               style="width: 70px; padding: 6px; background-color: #1a1a1a; border: 1px solid #555; color: white; border-radius: 4px; text-align: center; font-size: 14px;">
                         <button onclick="adjustTeamAutoBuyShares('${pkg.name}', 1)"
-                                style="width: 35px; height: 35px; background-color: #444; color: white; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold;">+</button>
+                                style="width: 24px; height: 28px; background-color: #444; color: white; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; padding: 0;">+</button>
                     </div>
                 </div>
 
@@ -4031,7 +4031,7 @@ async function loadTeamAlerts() {
 
                 <!-- Auto-Shares on Alert Section -->
                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 10px;">
-                    <label style="color: #aaa; font-size: 14px; flex: 1;">🔔 Auto-Shares on Alert:</label>
+                    <label style="color: #aaa; font-size: 14px; flex: 1;">🤖 Auto-Shares on Alert:</label>
                     <input type="checkbox"
                            class="team-alert-checkbox team-autoshares-onalert-checkbox"
                            id="team-autoshares-onalert-${pkg.name.replace(/\s+/g, '-')}"
