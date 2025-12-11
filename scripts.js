@@ -19761,6 +19761,75 @@ function disableAutoSharesOnAlert(packageName, skipUIUpdate = false) {
 }
 
 /**
+ * Clean up after an on-alert auto-shares run completes
+ * - Syncs tracking data back to teamAutoSharesOnAlert
+ * - Removes temporary entry from teamAutoShares
+ */
+function cleanupOnAlertAutoShares(packageName, trackedIds) {
+    console.log(`🧹 ${packageName}: Cleaning up on-alert auto-shares...`);
+
+    // Sync tracking back to on-alert storage
+    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    if (autoSharesOnAlertSettings[packageName]) {
+        autoSharesOnAlertSettings[packageName].trackedPackageIds = trackedIds;
+        localStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
+        console.log(`   ✅ Synced tracking to on-alert storage`);
+    }
+
+    // Remove temporary entry from teamAutoShares (so it doesn't run continuously)
+    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    if (autoSharesSettings[packageName]?.fromOnAlert) {
+        delete autoSharesSettings[packageName];
+        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+        console.log(`   ✅ Removed temporary entry from continuous auto-shares`);
+    }
+}
+
+/**
+ * Execute auto-shares on alert for team packages that hit their alert threshold
+ * This uses the SAME queue as continuous auto-shares to prevent conflicts
+ * @param {Array} recommendations - Team packages that triggered alerts
+ */
+async function executeAutoSharesOnAlertTeam(recommendations) {
+    if (!recommendations || recommendations.length === 0) return;
+
+    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+
+    // Check each recommended package for auto-shares on alert settings
+    for (const pkg of recommendations) {
+        const onAlertSettings = autoSharesOnAlertSettings[pkg.name];
+        if (!onAlertSettings || !onAlertSettings.enabled) continue;
+
+        console.log(`🔔 AUTO-SHARES ON ALERT: ${pkg.name} triggered alert, activating auto-shares!`);
+
+        // Copy settings to regular auto-shares storage so queue processing works
+        // (queue processor uses teamAutoShares settings)
+        autoSharesSettings[pkg.name] = {
+            enabled: true,
+            crypto: onAlertSettings.crypto,
+            mergeCrypto: onAlertSettings.mergeCrypto,
+            mainAddress: onAlertSettings.mainAddress,
+            mergeAddress: onAlertSettings.mergeAddress,
+            percentage: onAlertSettings.percentage,
+            primaryShares: onAlertSettings.primaryShares,
+            secondaryShares: onAlertSettings.secondaryShares,
+            trackedPackageIds: onAlertSettings.trackedPackageIds || {},
+            fromOnAlert: true // Flag to identify this came from on-alert
+        };
+
+        // Add to queue if not already in queue and not currently processing
+        if (!autoSharesQueue.includes(pkg.name) && autoSharesCurrentPackage !== pkg.name) {
+            autoSharesQueue.push(pkg.name);
+            console.log(`📋 ${pkg.name}: Added to auto-shares queue via ON ALERT (position ${autoSharesQueue.length})`);
+        }
+    }
+
+    // Save the updated settings (so queue processor can use them)
+    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+}
+
+/**
  * Disable other auto options when one is selected (mutual exclusivity)
  * @param {string} packageName - The package name
  * @param {string} selectedOption - 'autoBuy', 'autoShares', or 'autoSharesOnAlert'
@@ -19985,6 +20054,12 @@ async function executeAutoSharesTeam(teamPackages) {
             localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 
             console.log(`✅ ${pkg.name}: Target reached (${myShares}/${targetShares}), ended on secondary, moving to next`);
+
+            // Clean up if this was from on-alert (sync tracking and remove temp entry)
+            if (settings.fromOnAlert) {
+                cleanupOnAlertAutoShares(pkg.name, trackedIds);
+            }
+
             autoSharesCurrentPackage = null;
             return;
         } else {
@@ -20034,6 +20109,12 @@ async function executeAutoSharesTeam(teamPackages) {
             console.log(`🏁 ${pkg.name}: Over target (${myShares}/${targetShares}) and ended on secondary - complete!`);
             settings.trackedPackageIds = trackedIds;
             localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+
+            // Clean up if this was from on-alert (sync tracking and remove temp entry)
+            if (settings.fromOnAlert) {
+                cleanupOnAlertAutoShares(pkg.name, trackedIds);
+            }
+
             autoSharesCurrentPackage = null;
             return;
         } else {
@@ -20176,6 +20257,12 @@ async function executeAutoSharesTeam(teamPackages) {
             // We just bought secondary and reached target - safe to complete
             trackState.completed = true;
             console.log(`🏁 ${pkg.name}: Completed! (${newTotalShares}/${updatedTarget} shares, ended on SECONDARY)`);
+
+            // Clean up if this was from on-alert (sync tracking and remove temp entry)
+            if (settings.fromOnAlert) {
+                cleanupOnAlertAutoShares(pkg.name, trackedIds);
+            }
+
             autoSharesCurrentPackage = null; // Move to next
         } else if (newTotalShares >= updatedTarget && trackState.lastBuyType === 'primary') {
             // We just bought primary and reached target - MUST do secondary next
@@ -20385,6 +20472,10 @@ async function updateRecommendations() {
     // Execute auto-buy for any new recommendations (with cooldown check)
     await executeAutoBuySolo(recommendations);
     await executeAutoBuyTeam(teamRecommendations);
+
+    // Execute auto-shares ON ALERT for team packages that triggered alerts
+    // (uses same queue as continuous auto-shares)
+    await executeAutoSharesOnAlertTeam(teamRecommendations);
 
     // Execute auto-shares for team packages (continuous buying based on fraction)
     await executeAutoSharesTeam(teamPackages);
