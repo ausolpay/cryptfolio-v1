@@ -4001,19 +4001,20 @@ async function loadTeamAlerts() {
                 <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 10px;">
                     <label style="color: #aaa; font-size: 14px; flex: 1;">🤖 Auto-Shares (continuous):</label>
                     <input type="checkbox"
-                           class="team-autoshares-checkbox"
+                           class="team-alert-checkbox team-autoshares-checkbox"
                            id="team-autoshares-${pkg.name.replace(/\s+/g, '-')}"
                            data-package-name="${pkg.name}"
                            data-crypto="${isDualCrypto ? pkg.mainCrypto : pkg.crypto}"
                            ${isDualCrypto ? `data-merge-crypto="${pkg.mergeCrypto}"` : ''}
                            data-is-dual-crypto="${isDualCrypto}"
-                           ${autoSharesEnabled ? 'checked' : ''}>
+                           ${autoSharesEnabled ? 'checked' : ''}
+                           onclick="handleAutoSharesCheckboxClick(event, '${pkg.name.replace(/'/g, "\\'")}', '${isDualCrypto ? pkg.mainCrypto : pkg.crypto}', ${isDualCrypto ? `'${pkg.mergeCrypto}'` : 'null'}, ${isDualCrypto})">
                     <span id="autoshares-status-${pkg.name.replace(/\s+/g, '-')}" style="color: ${autoSharesEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
                         ${autoSharesEnabled ? '✓ Enabled' : 'Disabled'}
                     </span>
                 </div>
                 ${autoSharesEnabled ? `
-                <div style="padding: 8px 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 5px; font-size: 12px; color: #888;">
+                <div id="autoshares-config-${pkg.name.replace(/\s+/g, '-')}" style="padding: 8px 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 5px; font-size: 12px; color: #888;">
                     Config: ${autoSharesSettings.fraction || 2}/10 | Primary: ${autoSharesSettings.primaryShares || 2} | Secondary: ${autoSharesSettings.secondaryShares || 1}
                 </div>
                 ` : ''}
@@ -4119,27 +4120,25 @@ async function loadTeamAlerts() {
         }
     });
 
-    // Add event listeners to auto-shares checkboxes
-    document.querySelectorAll('.team-autoshares-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const packageName = this.dataset.packageName;
-            const crypto = this.dataset.crypto;
-            const mergeCrypto = this.dataset.mergeCrypto || null;
-            const isDualCrypto = this.dataset.isDualCrypto === 'true';
-
-            if (this.checked) {
-                // Show configuration modal instead of enabling directly
-                showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypto);
-                // Uncheck temporarily - will be checked if user confirms
-                this.checked = false;
-            } else {
-                // Disable auto-shares
-                disableAutoShares(packageName);
-            }
-        });
-    });
-
     console.log(`✅ Loaded ${packages.length} team package alert settings`);
+}
+
+/**
+ * Handle auto-shares checkbox click - using inline onclick for reliability
+ */
+function handleAutoSharesCheckboxClick(event, packageName, crypto, mergeCrypto, isDualCrypto) {
+    const checkbox = event.target;
+
+    if (checkbox.checked) {
+        // Show configuration modal instead of enabling directly
+        showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypto);
+        // Uncheck temporarily - will be checked if user confirms in modal
+        checkbox.checked = false;
+        event.preventDefault();
+    } else {
+        // Disable auto-shares
+        disableAutoShares(packageName);
+    }
 }
 
 function adjustTeamAutoBuyShares(packageName, delta) {
