@@ -2888,6 +2888,68 @@
         </div>
     </div>
 
+    <!-- Auto-Shares Configuration Modal -->
+    <div id="auto-shares-config-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" onclick="closeAutoSharesConfigModal()">&times;</span>
+            <h2 style="color: #ffa500;">Auto-Shares Configuration</h2>
+            <p id="auto-shares-package-name" style="color: #aaa; margin-bottom: 20px;">Package Name</p>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: #fff; font-size: 14px; display: block; margin-bottom: 8px;">
+                    Target Fraction of Total Shares
+                </label>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="number"
+                           id="auto-shares-fraction"
+                           min="1"
+                           max="10"
+                           value="2"
+                           style="width: 60px; padding: 10px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px; text-align: center; font-size: 18px;">
+                    <span style="color: #aaa; font-size: 16px;">/ 10</span>
+                    <span style="color: #888; font-size: 12px; margin-left: 10px;">(Buy up to this fraction of total shares)</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: #fff; font-size: 14px; display: block; margin-bottom: 8px;">
+                    Primary Shares (bought first, then alternates)
+                </label>
+                <input type="number"
+                       id="auto-shares-primary"
+                       min="1"
+                       max="100"
+                       value="2"
+                       style="width: 100%; padding: 10px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px; font-size: 16px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: #fff; font-size: 14px; display: block; margin-bottom: 8px;">
+                    Secondary Shares (bought after primary, then alternates)
+                </label>
+                <input type="number"
+                       id="auto-shares-secondary"
+                       min="1"
+                       max="100"
+                       value="1"
+                       style="width: 100%; padding: 10px; background-color: #2a2a2a; border: 1px solid #555; color: white; border-radius: 4px; font-size: 16px;">
+            </div>
+
+            <p style="color: #888; font-size: 12px; margin-bottom: 20px; line-height: 1.5;">
+                Buys primary shares, waits 10s, buys secondary shares, waits 10s, repeats until target fraction reached.
+                <br>Only activates when participants &gt; 5 and total shares &gt; 15.
+                <br>Always ends after secondary shares are bought.
+            </p>
+
+            <input type="hidden" id="auto-shares-package-name-hidden">
+
+            <div class="modal-buttons" style="display: flex; gap: 10px;">
+                <button class="modal-close-btn" onclick="closeAutoSharesConfigModal()" style="flex: 1;">Cancel</button>
+                <button class="settings-action-btn" onclick="saveAutoSharesConfig()" style="flex: 1; background-color: #4CAF50;">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Audio elements for notifications -->
     <!-- Holdings Sounds -->
     <audio id="good-sound" src="sounds/good-sound.mp3" preload="auto" muted></audio>

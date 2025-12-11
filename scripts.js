@@ -316,6 +316,10 @@ let buyPackagesPollingInterval = null;
 let buyPackagesPollingPaused = false;
 let buyPackagesPauseTimer = null;
 let isAutoBuyInProgress = false; // Lock to pause package fetching during auto-buy purchases
+let isAutoSharesInProgress = false; // Lock for auto-shares buying process
+let autoSharesQueue = []; // Queue of package names to process: ['Team Gold', 'Team Silver', ...]
+let autoSharesCurrentPackage = null; // Currently processing package name
+let autoSharesLastTotalShares = {}; // Track last seen total shares per package to detect increases
 let easyMiningHasBeenOpened = false; // Track if EasyMining section was opened (for deferred loading)
 
 // Alert sound queue to prevent multiple sounds playing at once
@@ -3782,6 +3786,11 @@ async function loadTeamAlerts() {
         const autoBuyEnabled = autoBuySettings.enabled || false;
         const autoBuyShares = autoBuySettings.shares || 1;
 
+        // Get auto-shares settings
+        const savedAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+        const autoSharesSettings = savedAutoShares[pkg.name] || {};
+        const autoSharesEnabled = autoSharesSettings.enabled || false;
+
         let probabilityInputs = '';
 
         if (isDualCrypto) {
@@ -3987,6 +3996,27 @@ async function loadTeamAlerts() {
                         ${autoBuyEnabled ? '✓ Enabled' : 'Disabled'}
                     </span>
                 </div>
+
+                <!-- Auto-Shares Section -->
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 10px;">
+                    <label style="color: #aaa; font-size: 14px; flex: 1;">🤖 Auto-Shares (continuous):</label>
+                    <input type="checkbox"
+                           class="team-autoshares-checkbox"
+                           id="team-autoshares-${pkg.name.replace(/\s+/g, '-')}"
+                           data-package-name="${pkg.name}"
+                           data-crypto="${isDualCrypto ? pkg.mainCrypto : pkg.crypto}"
+                           ${isDualCrypto ? `data-merge-crypto="${pkg.mergeCrypto}"` : ''}
+                           data-is-dual-crypto="${isDualCrypto}"
+                           ${autoSharesEnabled ? 'checked' : ''}>
+                    <span id="autoshares-status-${pkg.name.replace(/\s+/g, '-')}" style="color: ${autoSharesEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
+                        ${autoSharesEnabled ? '✓ Enabled' : 'Disabled'}
+                    </span>
+                </div>
+                ${autoSharesEnabled ? `
+                <div style="padding: 8px 10px; background-color: #1a1a1a; border-radius: 4px; margin-top: 5px; font-size: 12px; color: #888;">
+                    Config: ${autoSharesSettings.fraction || 2}/10 | Primary: ${autoSharesSettings.primaryShares || 2} | Secondary: ${autoSharesSettings.secondaryShares || 1}
+                </div>
+                ` : ''}
             </div>
         `;
 
@@ -4087,6 +4117,26 @@ async function loadTeamAlerts() {
                 }
             });
         }
+    });
+
+    // Add event listeners to auto-shares checkboxes
+    document.querySelectorAll('.team-autoshares-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const packageName = this.dataset.packageName;
+            const crypto = this.dataset.crypto;
+            const mergeCrypto = this.dataset.mergeCrypto || null;
+            const isDualCrypto = this.dataset.isDualCrypto === 'true';
+
+            if (this.checked) {
+                // Show configuration modal instead of enabling directly
+                showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypto);
+                // Uncheck temporarily - will be checked if user confirms
+                this.checked = false;
+            } else {
+                // Disable auto-shares
+                disableAutoShares(packageName);
+            }
+        });
     });
 
     console.log(`✅ Loaded ${packages.length} team package alert settings`);
@@ -17603,6 +17653,27 @@ function displayActivePackages() {
             }
         })();
 
+        // Check if auto-shares is active (team packages only)
+        const isAutoSharesActiveCard = (() => {
+            if (pkg.isTeam) {
+                const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+                return teamAutoShares[pkg.name]?.enabled === true;
+            }
+            return false;
+        })();
+
+        // Either bot feature being active counts
+        const isBotActiveCard = isAutoBuyActive || isAutoSharesActiveCard;
+
+        // Build tooltip based on active features
+        const getBotTooltipCard = (state) => {
+            const features = [];
+            if (isAutoBuyActive) features.push('auto-buy');
+            if (isAutoSharesActiveCard) features.push('auto-shares');
+            const featureStr = features.join(' + ');
+            return `${featureStr} ${state}`;
+        };
+
         let robotHtml = '';
 
         // Robot icon logic with share detection and cleanup
@@ -17613,13 +17684,13 @@ function displayActivePackages() {
             const packageId = pkg.id || pkg.apiData?.id;
             const myShares = getMyTeamShares(packageId) || 0;
 
-            if (isAutoBuyActive && myShares > 0) {
+            if (isBotActiveCard && myShares > 0) {
                 if (pkg.active) {
                     // Active team package with shares: FLASHING robot (mining in progress)
-                    robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-buy active (mining)">🤖</div>';
+                    robotHtml = `<div class="block-found-indicator flashing auto-buy-robot" title="${getBotTooltipCard('active (mining)')}">🤖</div>`;
                 } else {
                     // Completed team package with shares: SOLID robot
-                    robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+                    robotHtml = `<div class="block-found-indicator auto-buy-robot" title="${getBotTooltipCard('active (shares owned)')}">🤖</div>`;
                 }
             } else if (isAutoBought && pkg.active) {
                 // Active auto-bought team package (matched by name/timestamp): FLASHING robot
@@ -17627,7 +17698,7 @@ function displayActivePackages() {
             }
             // Note: Spinning robot never shows on active packages (only on buy page/alerts)
         } else {
-            // SOLO packages
+            // SOLO packages (no auto-shares for solo)
             if (isAutoBought && pkg.active) {
                 // Active auto-bought solo package: FLASHING robot
                 robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
@@ -19137,6 +19208,529 @@ async function executeAutoBuyTeam(recommendations) {
     }
 }
 
+// =============================================================================
+// AUTO-SHARES FEATURE - Continuous share buying based on fraction of total
+// =============================================================================
+
+let pendingAutoSharesModal = null; // Store pending modal data
+
+/**
+ * Show the auto-shares configuration modal
+ */
+function showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypto) {
+    const modal = document.getElementById('auto-shares-config-modal');
+    if (!modal) {
+        console.error('Auto-shares config modal not found');
+        return;
+    }
+
+    // Store pending data for when user clicks OK
+    pendingAutoSharesModal = { packageName, crypto, mergeCrypto, isDualCrypto };
+
+    // Load existing settings if any
+    const savedAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const existingSettings = savedAutoShares[packageName] || {};
+
+    // Update modal content
+    document.getElementById('auto-shares-package-name').textContent = packageName;
+    document.getElementById('auto-shares-package-name-hidden').value = packageName;
+    document.getElementById('auto-shares-fraction').value = existingSettings.fraction || 2;
+    document.getElementById('auto-shares-primary').value = existingSettings.primaryShares || 2;
+    document.getElementById('auto-shares-secondary').value = existingSettings.secondaryShares || 1;
+
+    modal.style.display = 'block';
+    console.log(`📋 Showing auto-shares config modal for ${packageName}`);
+}
+
+/**
+ * Close the auto-shares configuration modal
+ */
+function closeAutoSharesConfigModal() {
+    const modal = document.getElementById('auto-shares-config-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    pendingAutoSharesModal = null;
+}
+
+/**
+ * Save auto-shares configuration and enable the feature
+ */
+function saveAutoSharesConfig() {
+    if (!pendingAutoSharesModal) {
+        console.error('No pending auto-shares modal data');
+        closeAutoSharesConfigModal();
+        return;
+    }
+
+    const { packageName, crypto, mergeCrypto, isDualCrypto } = pendingAutoSharesModal;
+
+    const fraction = parseInt(document.getElementById('auto-shares-fraction').value) || 2;
+    const primaryShares = parseInt(document.getElementById('auto-shares-primary').value) || 2;
+    const secondaryShares = parseInt(document.getElementById('auto-shares-secondary').value) || 1;
+
+    // Validate inputs
+    if (fraction < 1 || fraction > 10) {
+        alert('Fraction must be between 1 and 10');
+        return;
+    }
+    if (primaryShares < 1) {
+        alert('Primary shares must be at least 1');
+        return;
+    }
+    if (secondaryShares < 1) {
+        alert('Secondary shares must be at least 1');
+        return;
+    }
+
+    // Check/prompt for withdrawal addresses
+    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+
+    let mainAddress = savedAddresses[crypto];
+    if (!mainAddress) {
+        mainAddress = prompt(`Enter ${crypto} withdrawal address for auto-shares:`);
+        if (!mainAddress || mainAddress.trim() === '') {
+            alert('Withdrawal address is required for auto-shares');
+            return;
+        }
+        savedAddresses[crypto] = mainAddress.trim();
+    }
+
+    let mergeAddress = null;
+    if (mergeCrypto) {
+        mergeAddress = savedAddresses[mergeCrypto];
+        if (!mergeAddress) {
+            mergeAddress = prompt(`Enter ${mergeCrypto} withdrawal address for auto-shares:`);
+            if (!mergeAddress || mergeAddress.trim() === '') {
+                alert('Withdrawal address is required for auto-shares');
+                return;
+            }
+            savedAddresses[mergeCrypto] = mergeAddress.trim();
+        }
+    }
+
+    // Save addresses
+    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+
+    // Save auto-shares settings
+    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    autoSharesSettings[packageName] = {
+        enabled: true,
+        crypto: crypto,
+        mergeCrypto: mergeCrypto || null,
+        mainAddress: mainAddress,
+        mergeAddress: mergeAddress,
+        fraction: fraction,
+        primaryShares: primaryShares,
+        secondaryShares: secondaryShares,
+        trackedPackageIds: {} // Track which package IDs we've worked on
+    };
+    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+
+    // Update checkbox state
+    const checkboxId = `team-autoshares-${packageName.replace(/\s+/g, '-')}`;
+    const checkbox = document.getElementById(checkboxId);
+    if (checkbox) {
+        checkbox.checked = true;
+    }
+
+    // Update status text
+    const statusSpanId = `autoshares-status-${packageName.replace(/\s+/g, '-')}`;
+    const statusSpan = document.getElementById(statusSpanId);
+    if (statusSpan) {
+        statusSpan.textContent = '✓ Enabled';
+        statusSpan.style.color = '#4CAF50';
+    }
+
+    console.log(`✅ Auto-shares enabled for ${packageName}: ${fraction}/10, primary=${primaryShares}, secondary=${secondaryShares}`);
+    alert(`Auto-shares enabled for ${packageName}!\n\nConfig: ${fraction}/10 | Primary: ${primaryShares} | Secondary: ${secondaryShares}`);
+
+    closeAutoSharesConfigModal();
+
+    // Reload team alerts to show config info
+    loadTeamAlerts();
+}
+
+/**
+ * Disable auto-shares for a package
+ */
+function disableAutoShares(packageName) {
+    // Stop any running interval for this package
+    stopAutoSharesForPackage(packageName);
+
+    // Disable in settings
+    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    if (autoSharesSettings[packageName]) {
+        autoSharesSettings[packageName].enabled = false;
+        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+    }
+
+    // Update status text
+    const statusSpanId = `autoshares-status-${packageName.replace(/\s+/g, '-')}`;
+    const statusSpan = document.getElementById(statusSpanId);
+    if (statusSpan) {
+        statusSpan.textContent = 'Disabled';
+        statusSpan.style.color = '#888';
+    }
+
+    console.log(`❌ Auto-shares disabled for ${packageName}`);
+}
+
+/**
+ * Stop auto-shares for a specific package and remove from queue
+ */
+function stopAutoSharesForPackage(packageName) {
+    // Remove from queue if present
+    const queueIndex = autoSharesQueue.indexOf(packageName);
+    if (queueIndex > -1) {
+        autoSharesQueue.splice(queueIndex, 1);
+        console.log(`📋 ${packageName}: Removed from auto-shares queue`);
+    }
+
+    // If currently processing this package, clear it
+    if (autoSharesCurrentPackage === packageName) {
+        autoSharesCurrentPackage = null;
+        console.log(`⏹️ ${packageName}: Stopped current processing`);
+    }
+
+    // Clear last seen total shares tracking
+    delete autoSharesLastTotalShares[packageName];
+}
+
+/**
+ * Execute auto-shares buying for team packages using a queue system
+ * - Processes one package at a time until it reaches target (ending on secondary)
+ * - Re-queues packages when more shares are bought by others
+ * Called from updateRecommendations to check and buy shares continuously
+ */
+async function executeAutoSharesTeam(teamPackages) {
+    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+
+    // Step 1: Check all enabled packages and manage queue
+    for (const pkg of teamPackages) {
+        const settings = autoSharesSettings[pkg.name];
+        if (!settings || !settings.enabled) continue;
+
+        const packageId = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
+        if (!packageId) continue;
+
+        const participants = pkg.numberOfParticipants || 0;
+        const totalSharesBought = pkg.sharesBoughtTotal || pkg.totalSharesBought || 0;
+        const myShares = getMyTeamShares(packageId) || 0;
+        const targetShares = Math.floor(totalSharesBought * (settings.fraction / 10));
+
+        // Track state per package ID
+        const trackedIds = settings.trackedPackageIds || {};
+        const trackState = trackedIds[packageId] || { isPrimary: true, lastBuyTime: 0, completed: false, lastSeenTotalShares: 0 };
+
+        // Check if total shares increased (others bought more) - re-queue if needed
+        const lastSeenTotal = trackState.lastSeenTotalShares || 0;
+        if (totalSharesBought > lastSeenTotal && trackState.completed) {
+            // More shares bought, need to buy more to maintain fraction
+            const newTarget = Math.floor(totalSharesBought * (settings.fraction / 10));
+            if (myShares < newTarget) {
+                console.log(`📈 ${pkg.name}: Total shares increased (${lastSeenTotal} → ${totalSharesBought}), re-queuing (new target: ${newTarget})`);
+                trackState.completed = false;
+                // Reset to secondary for next buy to end on secondary
+                trackState.isPrimary = false;
+                trackedIds[packageId] = trackState;
+                settings.trackedPackageIds = trackedIds;
+                localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+            }
+        }
+
+        // Update last seen total shares
+        trackState.lastSeenTotalShares = totalSharesBought;
+        trackedIds[packageId] = trackState;
+        settings.trackedPackageIds = trackedIds;
+
+        // Check preconditions: participants > 5 AND total shares > 15
+        if (participants <= 5 || totalSharesBought <= 15) {
+            continue; // Not ready yet
+        }
+
+        // Check if already completed or at target
+        if (trackState.completed || myShares >= targetShares) {
+            continue;
+        }
+
+        // Add to queue if not already in queue and not currently processing
+        if (!autoSharesQueue.includes(pkg.name) && autoSharesCurrentPackage !== pkg.name) {
+            autoSharesQueue.push(pkg.name);
+            console.log(`📋 ${pkg.name}: Added to auto-shares queue (position ${autoSharesQueue.length})`);
+        }
+    }
+
+    // Save any tracking updates
+    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+
+    // Step 2: If not currently processing, pick next from queue
+    if (!autoSharesCurrentPackage && autoSharesQueue.length > 0) {
+        autoSharesCurrentPackage = autoSharesQueue.shift();
+        console.log(`🎯 ${autoSharesCurrentPackage}: Now processing (${autoSharesQueue.length} remaining in queue)`);
+    }
+
+    // Step 3: Process current package
+    if (!autoSharesCurrentPackage) {
+        return; // Nothing to process
+    }
+
+    // Find the package data
+    const pkg = teamPackages.find(p => p.name === autoSharesCurrentPackage);
+    if (!pkg) {
+        console.log(`⚠️ ${autoSharesCurrentPackage}: Package not found, moving to next`);
+        autoSharesCurrentPackage = null;
+        return;
+    }
+
+    const settings = autoSharesSettings[pkg.name];
+    if (!settings || !settings.enabled) {
+        console.log(`⚠️ ${pkg.name}: Auto-shares disabled, moving to next`);
+        autoSharesCurrentPackage = null;
+        return;
+    }
+
+    const packageId = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
+    if (!packageId) {
+        autoSharesCurrentPackage = null;
+        return;
+    }
+
+    const participants = pkg.numberOfParticipants || 0;
+    const totalSharesBought = pkg.sharesBoughtTotal || pkg.totalSharesBought || 0;
+    const myShares = getMyTeamShares(packageId) || 0;
+    const targetShares = Math.floor(totalSharesBought * (settings.fraction / 10));
+
+    // Check preconditions
+    if (participants <= 5 || totalSharesBought <= 15) {
+        console.log(`⏸️ ${pkg.name}: Waiting for conditions (participants: ${participants}/5, shares: ${totalSharesBought}/15)`);
+        return; // Keep as current, wait for conditions
+    }
+
+    // Check if target reached
+    if (myShares >= targetShares) {
+        const trackedIds = settings.trackedPackageIds || {};
+        const trackState = trackedIds[packageId] || {};
+        trackState.completed = true;
+        trackState.lastSeenTotalShares = totalSharesBought;
+        trackedIds[packageId] = trackState;
+        settings.trackedPackageIds = trackedIds;
+        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+
+        console.log(`✅ ${pkg.name}: Target reached (${myShares}/${targetShares}), moving to next`);
+        autoSharesCurrentPackage = null;
+        return;
+    }
+
+    // Initialize tracking if needed
+    const trackedIds = settings.trackedPackageIds || {};
+    if (!trackedIds[packageId]) {
+        trackedIds[packageId] = {
+            isPrimary: true,
+            lastBuyTime: 0,
+            completed: false,
+            lastSeenTotalShares: totalSharesBought
+        };
+        settings.trackedPackageIds = trackedIds;
+        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+        console.log(`🆕 ${pkg.name}: Started tracking package ID ${packageId}`);
+    }
+
+    const trackState = trackedIds[packageId];
+
+    // Check 10-second cooldown between buys
+    const timeSinceLastBuy = Date.now() - (trackState.lastBuyTime || 0);
+    if (timeSinceLastBuy < 10000) {
+        const remaining = Math.ceil((10000 - timeSinceLastBuy) / 1000);
+        console.log(`⏳ ${pkg.name}: Cooldown (${remaining}s remaining)`);
+        return; // Keep as current, wait for cooldown
+    }
+
+    // Determine shares to buy this round
+    const sharesToBuy = trackState.isPrimary ? settings.primaryShares : settings.secondaryShares;
+    let actualSharesToBuy = sharesToBuy;
+
+    // Calculate if this buy would exceed target
+    const projectedShares = myShares + sharesToBuy;
+
+    // If buying would exceed target and we're on primary, switch to secondary
+    if (projectedShares > targetShares && trackState.isPrimary) {
+        actualSharesToBuy = settings.secondaryShares;
+        trackState.isPrimary = false;
+    }
+
+    // If even that would exceed, buy only what's needed (but ensure we end on secondary)
+    if (myShares + actualSharesToBuy > targetShares) {
+        // If we're on primary and would exceed, we need to do a final secondary buy
+        if (trackState.isPrimary) {
+            // Skip this buy, switch to secondary for final
+            trackState.isPrimary = false;
+            actualSharesToBuy = Math.min(settings.secondaryShares, targetShares - myShares);
+        } else {
+            // Already on secondary, just buy what's needed
+            actualSharesToBuy = targetShares - myShares;
+        }
+
+        if (actualSharesToBuy <= 0) {
+            trackState.completed = true;
+            settings.trackedPackageIds = trackedIds;
+            localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+            autoSharesCurrentPackage = null;
+            return;
+        }
+    }
+
+    // Execute the buy
+    console.log(`🤖 AUTO-SHARES: ${pkg.name} - buying ${actualSharesToBuy} shares (${trackState.isPrimary ? 'PRIMARY' : 'SECONDARY'}), current: ${myShares}, target: ${targetShares}, queue: ${autoSharesQueue.length}`);
+
+    try {
+        isAutoSharesInProgress = true;
+
+        // Get EasyMining settings
+        const easyMiningSettingsLocal = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+        if (!easyMiningSettingsLocal.enabled || !easyMiningSettingsLocal.apiKey) {
+            console.error('❌ EasyMining not configured for auto-shares');
+            return;
+        }
+
+        // Sync time before purchase
+        await syncNiceHashTime();
+
+        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCrypto && pkg.mainCrypto);
+
+        // Get withdrawal addresses
+        let mainWalletAddress, mergeWalletAddress;
+        let mainCrypto, mergeCrypto;
+
+        if (isDualCrypto) {
+            mainCrypto = pkg.mainCrypto || 'LTC';
+            mergeCrypto = pkg.mergeCrypto || 'DOGE';
+            mainWalletAddress = getWithdrawalAddress(mainCrypto);
+            mergeWalletAddress = getWithdrawalAddress(mergeCrypto);
+
+            if (!mainWalletAddress || !mergeWalletAddress) {
+                console.error(`❌ Missing withdrawal address for auto-shares`);
+                return;
+            }
+        } else {
+            mainCrypto = pkg.crypto || pkg.currencyAlgo?.title || 'Unknown';
+            mainWalletAddress = getWithdrawalAddress(mainCrypto);
+
+            if (!mainWalletAddress) {
+                console.error(`❌ Missing withdrawal address for ${mainCrypto}`);
+                return;
+            }
+        }
+
+        const sharePrice = 0.0001;
+        const newTotalShares = myShares + actualSharesToBuy;
+        const actualTotalAmount = actualSharesToBuy * sharePrice;
+
+        // Check balance
+        const availableBalance = window.niceHashBalance?.available || 0;
+        if (availableBalance < actualTotalAmount) {
+            console.log(`💰 ${pkg.name}: Insufficient balance (need ${actualTotalAmount} BTC, have ${availableBalance} BTC)`);
+            return; // Keep as current, wait for balance
+        }
+
+        const bodyData = {
+            amount: actualTotalAmount,
+            shares: {
+                small: newTotalShares,
+                medium: 0,
+                large: 0,
+                couponSmall: 0,
+                couponMedium: 0,
+                couponLarge: 0,
+                massBuy: 0
+            },
+            soloMiningRewardAddr: mainWalletAddress.trim()
+        };
+
+        if (isDualCrypto && mergeWalletAddress) {
+            bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
+        }
+
+        const body = JSON.stringify(bodyData);
+        const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
+
+        console.log(`📡 Auto-shares request: buying ${actualSharesToBuy} shares, total will be ${newTotalShares}`);
+
+        let response;
+        if (USE_VERCEL_PROXY) {
+            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: endpoint,
+                    method: 'POST',
+                    headers: headers,
+                    body: bodyData
+                })
+            });
+        } else {
+            response = await fetch(`https://api2.nicehash.com${endpoint}`, {
+                method: 'POST',
+                headers: headers,
+                body: body
+            });
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `API Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log(`✅ AUTO-SHARES: ${pkg.name} - bought ${actualSharesToBuy} shares, now has ${newTotalShares}`);
+
+        // Update tracking state
+        trackState.lastBuyTime = Date.now();
+        trackState.isPrimary = !trackState.isPrimary; // Toggle for next buy
+        trackState.lastSeenTotalShares = totalSharesBought;
+
+        // Check if we reached target AND ended on secondary (isPrimary is now true after toggle means we just did secondary)
+        const updatedTarget = Math.floor(totalSharesBought * (settings.fraction / 10));
+        if (newTotalShares >= updatedTarget && trackState.isPrimary) {
+            // We just bought secondary (isPrimary toggled to true) and reached target
+            trackState.completed = true;
+            console.log(`🏁 ${pkg.name}: Completed! (${newTotalShares}/${updatedTarget} shares, ended on secondary)`);
+            autoSharesCurrentPackage = null; // Move to next
+        }
+
+        // Save updated state
+        trackedIds[packageId] = trackState;
+        settings.trackedPackageIds = trackedIds;
+        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+
+        // Mark as auto-bought for robot icon
+        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        const orderIdReturned = result.id || result.orderId || packageId;
+        autoBoughtPackages[`autoshares_${orderIdReturned}_${Date.now()}`] = {
+            type: 'team-autoshares',
+            packageName: pkg.name,
+            timestamp: Date.now(),
+            sharesBought: actualSharesToBuy,
+            totalShares: newTotalShares
+        };
+        localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+
+    } catch (error) {
+        console.error(`❌ Auto-shares failed for ${pkg.name}:`, error.message);
+    } finally {
+        isAutoSharesInProgress = false;
+    }
+}
+
+/**
+ * Check if auto-shares is active for a package
+ */
+function isAutoSharesActive(packageName) {
+    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    return autoSharesSettings[packageName]?.enabled === true;
+}
+
 async function updateRecommendations() {
     console.log('🔄 Checking for recommendation updates...');
 
@@ -19199,6 +19793,9 @@ async function updateRecommendations() {
     // Execute auto-buy for any new recommendations (with cooldown check)
     await executeAutoBuySolo(recommendations);
     await executeAutoBuyTeam(teamRecommendations);
+
+    // Execute auto-shares for team packages (continuous buying based on fraction)
+    await executeAutoSharesTeam(teamPackages);
 
     // Fetch crypto prices once for ALL packages (prevents race condition)
     const allPackages = [...recommendations, ...teamRecommendations];
@@ -19690,10 +20287,10 @@ function updateTeamAlertCardValues(pkg) {
 }
 
 /**
- * Update robot icon on alert card based on share ownership and auto-buy status
- * - No shares + auto-buy active = spinning (waiting)
- * - Has shares + auto-buy active = solid (owned)
- * - No auto-buy = no robot
+ * Update robot icon on alert card based on share ownership and auto-buy/auto-shares status
+ * - No shares + auto-buy/auto-shares active = spinning (waiting)
+ * - Has shares + auto-buy/auto-shares active = solid (owned)
+ * - Neither active = no robot
  */
 function updateAlertCardRobotIcon(pkg, myBoughtShares) {
     const packageId = pkg.name.replace(/\s+/g, '-');
@@ -19715,39 +20312,62 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
         }
     })();
 
+    // Check if auto-shares is active for this package (team packages only)
+    const isAutoSharesActive = (() => {
+        if (pkg.isTeam) {
+            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            return teamAutoShares[pkg.name]?.enabled === true;
+        }
+        return false;
+    })();
+
+    // Either feature being active should show the robot
+    const isBotActive = isAutoBuyActive || isAutoSharesActive;
+
     // Check if this is a countdown package
     const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
 
     // Find existing robot icon
     const existingRobot = card.querySelector('.auto-buy-robot');
 
-    if (!isAutoBuyActive) {
-        // No auto-buy = remove robot if exists
+    if (!isBotActive) {
+        // No auto-buy or auto-shares = remove robot if exists
         if (existingRobot) {
             existingRobot.remove();
-            console.log(`🤖 Removed robot icon from ${pkg.name} - auto-buy disabled`);
+            console.log(`🤖 Removed robot icon from ${pkg.name} - no bot features active`);
         }
         return;
     }
 
-    // Auto-buy is active - determine correct state
+    // Determine tooltip based on which features are active
+    const getTooltip = (hasShares, isWaiting) => {
+        const features = [];
+        if (isAutoBuyActive) features.push('auto-buy');
+        if (isAutoSharesActive) features.push('auto-shares');
+        const featureStr = features.join(' + ');
+
+        if (isWaiting) return `${featureStr} active (waiting)`;
+        if (isCountdown) return `${featureStr} active (starting soon)`;
+        return `${featureStr} active (shares owned)`;
+    };
+
+    // Auto-buy or auto-shares is active - determine correct state
     if (myBoughtShares > 0) {
         // Has shares - robot should be solid (not spinning)
         if (existingRobot) {
             existingRobot.classList.remove('waiting', 'flashing');
             if (isCountdown) {
                 existingRobot.classList.add('countdown');
-                existingRobot.title = 'Auto-buy active (starting soon)';
             } else {
                 existingRobot.classList.remove('countdown');
-                existingRobot.title = 'Auto-buy active (shares owned)';
             }
+            existingRobot.title = getTooltip(true, false);
             console.log(`🤖 Updated robot icon to solid for ${pkg.name} - ${myBoughtShares} shares owned`);
         } else {
             // Add solid robot icon
             const robotDiv = document.createElement('div');
             robotDiv.className = `block-found-indicator auto-buy-robot${isCountdown ? ' countdown' : ''}`;
-            robotDiv.title = isCountdown ? 'Auto-buy active (starting soon)' : 'Auto-buy active (shares owned)';
+            robotDiv.title = getTooltip(true, false);
             robotDiv.textContent = '🤖';
             const titleDiv = card.querySelector('.buy-package-title');
             if (titleDiv) {
@@ -19760,13 +20380,13 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
         if (existingRobot) {
             existingRobot.classList.remove('countdown', 'flashing');
             existingRobot.classList.add('waiting');
-            existingRobot.title = 'Auto-buy active (waiting)';
+            existingRobot.title = getTooltip(false, true);
             console.log(`🤖 Updated robot icon to spinning for ${pkg.name} - waiting for shares`);
         } else {
             // Add spinning robot icon
             const robotDiv = document.createElement('div');
             robotDiv.className = 'block-found-indicator auto-buy-robot waiting';
-            robotDiv.title = 'Auto-buy active (waiting)';
+            robotDiv.title = getTooltip(false, true);
             robotDiv.textContent = '🤖';
             const titleDiv = card.querySelector('.buy-package-title');
             if (titleDiv) {
@@ -20267,6 +20887,27 @@ function createTeamPackageRecommendationCard(pkg) {
         }
     })();
 
+    // Check if auto-shares is active (team packages only)
+    const isAutoSharesActiveLocal = (() => {
+        if (pkg.isTeam) {
+            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            return teamAutoShares[pkg.name]?.enabled === true;
+        }
+        return false;
+    })();
+
+    // Either bot feature being active counts
+    const isBotActive = isAutoBuyActive || isAutoSharesActiveLocal;
+
+    // Build tooltip based on active features
+    const getBotTooltip = (state) => {
+        const features = [];
+        if (isAutoBuyActive) features.push('auto-buy');
+        if (isAutoSharesActiveLocal) features.push('auto-shares');
+        const featureStr = features.join(' + ');
+        return `${featureStr} ${state}`;
+    };
+
     // Robot icon HTML - with share detection and cleanup
     let robotHtml = '';
     if (pkg.isTeam) {
@@ -20274,23 +20915,23 @@ function createTeamPackageRecommendationCard(pkg) {
         const packageId = pkg.apiData?.id || pkg.id;
         const myShares = getMyTeamShares(packageId) || 0;
 
-        if (isAutoBuyActive && myShares === 0 && !isAutoBought) {
-            // Auto-buy active but no shares yet: spinning robot (waiting)
-            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Auto-buy enabled, no shares`);
-        } else if (isAutoBuyActive && myShares > 0) {
-            // Has shares and auto-buy enabled: solid robot
+        if (isBotActive && myShares === 0 && !isAutoBought) {
+            // Bot active but no shares yet: spinning robot (waiting)
+            robotHtml = `<div class="block-found-indicator auto-buy-robot waiting" title="${getBotTooltip('active (waiting)')}">🤖</div>`;
+            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Bot enabled, no shares`);
+        } else if (isBotActive && myShares > 0) {
+            // Has shares and bot enabled: solid robot
             if (isCountdown) {
-                robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-buy active (starting soon)">🤖</div>';
+                robotHtml = `<div class="block-found-indicator auto-buy-robot countdown" title="${getBotTooltip('active (starting soon)')}">🤖</div>`;
                 console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - ${myShares} shares owned`);
             } else {
-                robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+                robotHtml = `<div class="block-found-indicator auto-buy-robot" title="${getBotTooltip('active (shares owned)')}">🤖</div>`;
                 console.log(`🤖 Robot icon (solid) added to ${pkg.name} alert - ${myShares} shares owned`);
             }
         }
-        // Else: no shares and no auto-buy = no robot (automatic cleanup)
+        // Else: no shares and no bot = no robot (automatic cleanup)
     } else {
-        // SOLO packages
+        // SOLO packages (no auto-shares for solo)
         if (isAutoBuyActive && !isAutoBought) {
             // Auto-buy active but not purchased: spinning robot (waiting)
             robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
@@ -27139,10 +27780,33 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         }
     })();
 
+    // Check if auto-shares is active (team packages only)
+    const isAutoSharesActiveBuyPage = (() => {
+        if (pkg.isTeam) {
+            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            return teamAutoShares[pkg.name]?.enabled === true;
+        }
+        return false;
+    })();
+
+    // Either bot feature being active counts
+    const isBotActiveBuyPage = isAutoBuyActive || isAutoSharesActiveBuyPage;
+
+    // Build tooltip based on active features
+    const getBotTooltipBuyPage = (state) => {
+        const features = [];
+        if (isAutoBuyActive) features.push('auto-buy');
+        if (isAutoSharesActiveBuyPage) features.push('auto-shares');
+        const featureStr = features.join(' + ');
+        return `${featureStr} ${state}`;
+    };
+
     // Debug logging for robot icon decision
     if (pkg.isTeam) {
         console.log(`🔍 Robot Icon Decision for "${pkg.name}":`, {
             isAutoBuyActive,
+            isAutoSharesActive: isAutoSharesActiveBuyPage,
+            isBotActive: isBotActiveBuyPage,
             isAutoBought: !!isAutoBought,
             matchMethod,
             pkgActive: pkg.active,
@@ -27156,25 +27820,25 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         const packageId = pkg.apiData?.id || pkg.id;
         const myShares = getMyTeamShares(packageId) || 0;
 
-        if (isAutoBuyActive && myShares === 0 && !isAutoBought) {
-            // Auto-buy active but no shares yet: spinning robot (waiting)
-            robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Auto-buy enabled, no shares`);
-        } else if (isAutoBuyActive && myShares > 0) {
-            // Has shares and auto-buy enabled: solid robot
+        if (isBotActiveBuyPage && myShares === 0 && !isAutoBought) {
+            // Bot active but no shares yet: spinning robot (waiting)
+            robotHtml = `<div class="block-found-indicator auto-buy-robot waiting" title="${getBotTooltipBuyPage('active (waiting)')}">🤖</div>`;
+            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Bot enabled, no shares`);
+        } else if (isBotActiveBuyPage && myShares > 0) {
+            // Has shares and bot enabled: solid robot
             if (isCountdown) {
-                robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-buy active (starting soon)">🤖</div>';
+                robotHtml = `<div class="block-found-indicator auto-buy-robot countdown" title="${getBotTooltipBuyPage('active (starting soon)')}">🤖</div>`;
                 console.log(`🤖 Robot icon (countdown) added to ${pkg.name} - ${myShares} shares owned`);
             } else {
-                robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-buy active (shares owned)">🤖</div>';
+                robotHtml = `<div class="block-found-indicator auto-buy-robot" title="${getBotTooltipBuyPage('active (shares owned)')}">🤖</div>`;
                 console.log(`🤖 Robot icon (solid) added to ${pkg.name} - ${myShares} shares owned`);
             }
         } else {
             // No robot shown - log why
-            console.log(`❌ No robot icon for ${pkg.name} - Reason: ${!isAutoBuyActive ? 'Auto-buy disabled' : isAutoBought ? `Already bought (${matchMethod})` : `Has ${myShares} shares but no auto-buy`}`);
+            console.log(`❌ No robot icon for ${pkg.name} - Reason: ${!isBotActiveBuyPage ? 'No bot features active' : isAutoBought ? `Already bought (${matchMethod})` : `Has ${myShares} shares but no bot`}`);
         }
     } else {
-        // SOLO packages
+        // SOLO packages (no auto-shares for solo)
         if (isAutoBuyActive && !isAutoBought) {
             // Auto-buy active but not purchased: spinning robot (waiting)
             robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
