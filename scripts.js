@@ -4274,7 +4274,7 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
     checkbox.checked = true;
 
     console.log(`✅ Auto-shares enabled for ${packageName}: ${percentage}%, primary=${primaryShares}, secondary=${secondaryShares}`);
-    alert(`Auto-shares enabled for ${packageName}!\n\nTarget: ${percentage}%\nPrimary: ${primaryShares} shares\nSecondary: ${secondaryShares} shares\n\nOnly activates when participants > 5 and total shares > 15.`);
+    alert(`Auto-shares enabled for ${packageName}!\n\nTarget: ${percentage}%\nPrimary: ${primaryShares} shares\nSecondary: ${secondaryShares} shares\n\nOnly activates when participants >= 5 and total shares >= 15.`);
 
     // Start background polling immediately so auto-shares works app-wide
     startAutoSharesBackgroundPolling();
@@ -19582,11 +19582,12 @@ async function executeAutoSharesTeam(teamPackages) {
         }
 
         const participants = pkg.numberOfParticipants || 0;
-        const totalSharesBought = pkg.sharesBoughtTotal || pkg.totalSharesBought || 0;
+        // Calculate total shares from addedAmount (same as rest of codebase)
+        const totalSharesBought = Math.round((pkg.addedAmount || 0) * 10000);
         const myShares = getMyTeamShares(packageId) || 0;
         const targetShares = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
 
-        console.log(`🔍 ${pkg.name}: participants=${participants}, totalShares=${totalSharesBought}, myShares=${myShares}, target=${targetShares} (${settings.percentage}%)`);
+        console.log(`🔍 ${pkg.name}: participants=${participants}, totalShares=${totalSharesBought}, myShares=${myShares}, target=${targetShares} (${settings.percentage}%), addedAmount=${pkg.addedAmount}`);
 
         // Track state per package ID
         const trackedIds = settings.trackedPackageIds || {};
@@ -19636,9 +19637,9 @@ async function executeAutoSharesTeam(teamPackages) {
         trackedIds[packageId] = trackState;
         settings.trackedPackageIds = trackedIds;
 
-        // Check preconditions: participants > 5 AND total shares > 15
-        if (participants <= 5 || totalSharesBought <= 15) {
-            console.log(`⏸️ ${pkg.name}: Waiting for conditions (participants: ${participants}/5, shares: ${totalSharesBought}/15)`);
+        // Check preconditions: participants >= 5 AND total shares >= 15
+        if (participants < 5 || totalSharesBought < 15) {
+            console.log(`⏸️ ${pkg.name}: Waiting for conditions (participants: ${participants}/5+, shares: ${totalSharesBought}/15+)`);
             continue; // Not ready yet
         }
 
@@ -19691,13 +19692,14 @@ async function executeAutoSharesTeam(teamPackages) {
     }
 
     const participants = pkg.numberOfParticipants || 0;
-    const totalSharesBought = pkg.sharesBoughtTotal || pkg.totalSharesBought || 0;
+    // Calculate total shares from addedAmount (same as rest of codebase)
+    const totalSharesBought = Math.round((pkg.addedAmount || 0) * 10000);
     const myShares = getMyTeamShares(packageId) || 0;
     const targetShares = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
 
-    // Check preconditions
-    if (participants <= 5 || totalSharesBought <= 15) {
-        console.log(`⏸️ ${pkg.name}: Waiting for conditions (participants: ${participants}/5, shares: ${totalSharesBought}/15)`);
+    // Check preconditions: participants >= 5 AND total shares >= 15
+    if (participants < 5 || totalSharesBought < 15) {
+        console.log(`⏸️ ${pkg.name}: Waiting for conditions (participants: ${participants}/5+, shares: ${totalSharesBought}/15+)`);
         return; // Keep as current, wait for conditions
     }
 
