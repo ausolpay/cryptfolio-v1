@@ -17818,8 +17818,10 @@ function displayActivePackages() {
         let robotHtml = '';
 
         // Robot icon logic with share detection and cleanup
-        // Active packages: FLASHING robot (to show it's mining)
+        // Active packages: FLASHING robot (to show it's mining) - ONLY if bot feature is currently active
         // Completed/Buy page packages: SOLID robot (to show ownership)
+        // IMPORTANT: Robot should ONLY show on active packages if bot features are enabled
+        // Name-timestamp matching alone is NOT sufficient (it may match old completed packages)
         if (pkg.isTeam) {
             // TEAM packages: check for owned shares
             const packageId = pkg.id || pkg.apiData?.id;
@@ -17827,23 +17829,22 @@ function displayActivePackages() {
 
             if (isBotActiveCard && myShares > 0) {
                 if (pkg.active) {
-                    // Active team package with shares: FLASHING robot (mining in progress)
+                    // Active team package with shares AND bot enabled: FLASHING robot (mining in progress)
                     robotHtml = `<div class="block-found-indicator flashing auto-buy-robot" title="${getBotTooltipCard('active (mining)')}">🤖</div>`;
                 } else {
-                    // Completed team package with shares: SOLID robot
+                    // Completed team package with shares AND bot enabled: SOLID robot
                     robotHtml = `<div class="block-found-indicator auto-buy-robot" title="${getBotTooltipCard('active (shares owned)')}">🤖</div>`;
                 }
             } else if (isBotActiveCard && myShares === 0) {
                 // Bot active but no shares yet: spinning robot (waiting for conditions)
                 robotHtml = `<div class="block-found-indicator auto-buy-robot waiting" title="${getBotTooltipCard('active (waiting for conditions)')}">🤖</div>`;
-            } else if (isAutoBought && pkg.active) {
-                // Active auto-bought team package (matched by name/timestamp): FLASHING robot
-                robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot (mining)">🤖</div>';
             }
+            // NOTE: Removed isAutoBought fallback - robot only shows when bot features are CURRENTLY enabled
+            // This prevents showing robot on packages that were auto-bought but bot is now disabled
         } else {
             // SOLO packages (no auto-shares for solo)
-            if (isAutoBought && pkg.active) {
-                // Active auto-bought solo package: FLASHING robot
+            if (isAutoBuyActive && isAutoBought && pkg.active) {
+                // Active auto-bought solo package with auto-buy STILL enabled: FLASHING robot
                 robotHtml = '<div class="block-found-indicator flashing auto-buy-robot" title="Auto-bought by bot">🤖</div>';
             }
             // Note: Spinning robot never shows on active packages (only on buy page/alerts)
@@ -18286,25 +18287,26 @@ function smartUpdateActivePackageCards() {
 }
 
 // Validate and fix robot icons on active and completed packages
-// Active packages: flashing robot (mining in progress)
-// Completed packages: solid robot (to identify auto-bought packages)
+// Active packages: flashing robot ONLY if bot features enabled AND has shares
+// Completed packages: solid robot ONLY if bot features enabled AND has shares
+// IMPORTANT: Robot should NOT show just because a package was previously auto-bought
 function validateActivePackageRobotIcons() {
     const container = document.getElementById('active-packages-container');
     if (!container) return;
 
-    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
     const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
-    // Only validate if we have auto-buy data
-    if (Object.keys(autoBoughtPackages).length === 0 &&
-        Object.keys(teamAutoBuy).length === 0 &&
+    // Only validate if we have any bot settings
+    if (Object.keys(teamAutoBuy).length === 0 &&
+        Object.keys(teamAutoShares).length === 0 &&
         Object.keys(soloAutoBuy).length === 0) {
         return;
     }
 
-    let fixedActiveCount = 0;
-    let fixedCompletedCount = 0;
+    let fixedCount = 0;
+    let removedCount = 0;
     const packageCards = container.querySelectorAll('.package-card');
 
     packageCards.forEach(card => {
@@ -18318,65 +18320,64 @@ function validateActivePackageRobotIcons() {
 
         // Check if robot icon already exists
         const existingRobot = card.querySelector('.auto-buy-robot');
-        if (existingRobot) return; // Robot already present
 
         // Check if this card has a flashing rocket (indicates active package)
         const hasFlashingRocket = card.querySelector('.block-found-indicator.flashing:not(.auto-buy-robot)');
         const isActivePackage = !!hasFlashingRocket;
 
-        // Check if this package should have a robot icon
-        // 1. Check if auto-buy is enabled for this package type
+        // Check if bot features are CURRENTLY enabled for this package
         const isTeamPackage = packageName.toLowerCase().includes('team');
-        const autoBuySettings = isTeamPackage ? teamAutoBuy : soloAutoBuy;
-        const isAutoBuyActive = autoBuySettings[packageName]?.enabled === true;
+        const isAutoBuyActive = isTeamPackage
+            ? teamAutoBuy[packageName]?.enabled === true
+            : soloAutoBuy[packageName]?.enabled === true;
+        const isAutoSharesActive = isTeamPackage
+            ? teamAutoShares[packageName]?.enabled === true
+            : false;
+        const isBotActive = isAutoBuyActive || isAutoSharesActive;
 
-        // 2. Check if package was auto-bought (various matching methods)
-        let isAutoBought = false;
+        // Check if user has shares (card would show "My Shares" stat)
+        const hasShares = Array.from(card.querySelectorAll('.package-card-stat')).some(stat =>
+            stat.textContent.includes('My Shares:')
+        );
 
-        // Check by package name in autoBoughtPackages
-        for (const entry of Object.values(autoBoughtPackages)) {
-            if (entry.packageName === packageName) {
-                isAutoBought = true;
-                break;
+        // Build tooltip
+        const getBotTooltip = (state) => {
+            const features = [];
+            if (isAutoBuyActive) features.push('auto-buy');
+            if (isAutoSharesActive) features.push('auto-shares');
+            return features.length > 0 ? `${features.join(' + ')} ${state}` : state;
+        };
+
+        // STRICT RULE: Only show robot if bot features are CURRENTLY enabled AND package has shares
+        // This prevents showing robot on packages that were auto-bought but bot is now disabled
+        if (isBotActive && hasShares) {
+            if (!existingRobot) {
+                // Need to add robot
+                const robotIcon = document.createElement('div');
+                robotIcon.textContent = '🤖';
+
+                if (isActivePackage) {
+                    robotIcon.className = 'block-found-indicator flashing auto-buy-robot';
+                    robotIcon.title = getBotTooltip('active (mining)');
+                } else {
+                    robotIcon.className = 'block-found-indicator auto-buy-robot';
+                    robotIcon.title = getBotTooltip('active (shares owned)');
+                }
+
+                card.insertBefore(robotIcon, card.firstChild);
+                fixedCount++;
+                console.log(`🤖 Added robot to ${packageName} - bot active with shares`);
             }
-        }
-
-        // For team packages with shares and auto-buy enabled
-        if (isTeamPackage && isAutoBuyActive) {
-            // Check if user has shares (card would show "My Shares" stat)
-            const hasShares = Array.from(card.querySelectorAll('.package-card-stat')).some(stat =>
-                stat.textContent.includes('My Shares:')
-            );
-            if (hasShares) {
-                isAutoBought = true;
-            }
-        }
-
-        // Add robot icon if this was an auto-bought package
-        if (isAutoBought || (isAutoBuyActive && isTeamPackage)) {
-            const robotIcon = document.createElement('div');
-            robotIcon.textContent = '🤖';
-
-            if (isActivePackage) {
-                // Active package: FLASHING robot
-                robotIcon.className = 'block-found-indicator flashing auto-buy-robot';
-                robotIcon.title = 'Auto-buy active (mining)';
-                fixedActiveCount++;
-                console.log(`🤖 Added missing flashing robot to active package: ${packageName}`);
-            } else {
-                // Completed package: SOLID robot
-                robotIcon.className = 'block-found-indicator auto-buy-robot';
-                robotIcon.title = 'Auto-bought package (completed)';
-                fixedCompletedCount++;
-                console.log(`🤖 Added solid robot to completed package: ${packageName}`);
-            }
-
-            card.insertBefore(robotIcon, card.firstChild);
+        } else if (existingRobot && !isBotActive) {
+            // Robot exists but bot features are disabled - remove it
+            existingRobot.remove();
+            removedCount++;
+            console.log(`🤖 Removed robot from ${packageName} - bot features disabled`);
         }
     });
 
-    if (fixedActiveCount > 0 || fixedCompletedCount > 0) {
-        console.log(`🤖 Package validation: Added ${fixedActiveCount} flashing + ${fixedCompletedCount} solid robot icons`);
+    if (fixedCount > 0 || removedCount > 0) {
+        console.log(`🤖 Active package validation: Added ${fixedCount}, removed ${removedCount} robot icons`);
     }
 }
 
@@ -26522,14 +26523,29 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
 
 /**
  * Update robot icon on Buy Packages page team cards
- * - No shares + auto-buy active = spinning (waiting)
- * - Has shares + auto-buy active = solid (owned)
- * - No auto-buy = no robot
+ * - No shares + bot active = spinning (waiting)
+ * - Has shares + bot active = solid (owned)
+ * - No bot features = no robot
  */
 function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
     // Check if auto-buy is active for this team package
     const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
     const isAutoBuyActive = teamAutoBuy[pkg.name]?.enabled === true;
+
+    // Check if auto-shares is active for this team package
+    const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const isAutoSharesActive = teamAutoShares[pkg.name]?.enabled === true;
+
+    // Either bot feature being active counts
+    const isBotActive = isAutoBuyActive || isAutoSharesActive;
+
+    // Build tooltip based on active features
+    const getBotTooltip = (state) => {
+        const features = [];
+        if (isAutoBuyActive) features.push('auto-buy');
+        if (isAutoSharesActive) features.push('auto-shares');
+        return `${features.join(' + ')} ${state}`;
+    };
 
     // Check if this is a countdown package
     const isCountdown = pkg.lifeTimeTill && (new Date(pkg.lifeTimeTill) - new Date() > 0);
@@ -26537,32 +26553,32 @@ function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
     // Find existing robot icon
     const existingRobot = card.querySelector('.auto-buy-robot');
 
-    if (!isAutoBuyActive) {
-        // No auto-buy = remove robot if exists
+    if (!isBotActive) {
+        // No bot features = remove robot if exists
         if (existingRobot) {
             existingRobot.remove();
-            console.log(`🤖 [Buy Page] Removed robot icon from ${pkg.name} - auto-buy disabled`);
+            console.log(`🤖 [Buy Page] Removed robot icon from ${pkg.name} - no bot features active`);
         }
         return;
     }
 
-    // Auto-buy is active - determine correct state
+    // Bot feature is active - determine correct state
     if (myBoughtShares > 0) {
         // Has shares - robot should be solid (not spinning)
         if (existingRobot) {
             existingRobot.classList.remove('waiting', 'flashing');
             if (isCountdown) {
                 existingRobot.classList.add('countdown');
-                existingRobot.title = 'Auto-buy active (starting soon)';
+                existingRobot.title = getBotTooltip('active (starting soon)');
             } else {
                 existingRobot.classList.remove('countdown');
-                existingRobot.title = 'Auto-buy active (shares owned)';
+                existingRobot.title = getBotTooltip('active (shares owned)');
             }
         } else {
             // Add solid robot icon
             const robotDiv = document.createElement('div');
             robotDiv.className = `block-found-indicator auto-buy-robot${isCountdown ? ' countdown' : ''}`;
-            robotDiv.title = isCountdown ? 'Auto-buy active (starting soon)' : 'Auto-buy active (shares owned)';
+            robotDiv.title = isCountdown ? getBotTooltip('active (starting soon)') : getBotTooltip('active (shares owned)');
             robotDiv.textContent = '🤖';
             const titleDiv = card.querySelector('.buy-package-title');
             if (titleDiv) {
@@ -26574,12 +26590,12 @@ function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
         if (existingRobot) {
             existingRobot.classList.remove('countdown', 'flashing');
             existingRobot.classList.add('waiting');
-            existingRobot.title = 'Auto-buy active (waiting)';
+            existingRobot.title = getBotTooltip('active (waiting)');
         } else {
             // Add spinning robot icon
             const robotDiv = document.createElement('div');
             robotDiv.className = 'block-found-indicator auto-buy-robot waiting';
-            robotDiv.title = 'Auto-buy active (waiting)';
+            robotDiv.title = getBotTooltip('active (waiting)');
             robotDiv.textContent = '🤖';
             const titleDiv = card.querySelector('.buy-package-title');
             if (titleDiv) {
