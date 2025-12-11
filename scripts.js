@@ -19624,8 +19624,8 @@ async function executeAutoSharesTeam(teamPackages) {
             if (myShares < newTarget) {
                 console.log(`📈 ${pkg.name}: Total shares increased (${lastSeenTotal} → ${totalSharesBought}), re-queuing (new target: ${newTarget})`);
                 trackState.completed = false;
-                // Reset to secondary for next buy to end on secondary
-                trackState.isPrimary = false;
+                // Keep isPrimary as-is, the end-on-secondary logic will handle it
+                // when target is reached again (it will do a final secondary if needed)
                 trackedIds[packageId] = trackState;
                 settings.trackedPackageIds = trackedIds;
                 localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
