@@ -5297,15 +5297,16 @@ async function fetchPrices() {
             // Always recalculate AUD value, even if price hasn't changed
             // This ensures holdings updates are reflected immediately
             // For Bitcoin, read from display element (includes NiceHash balance)
-            // For other cryptos, read from localStorage
+            // For other cryptos, use getTotalActiveHoldings to subtract sells
             let holdings = 0;
             if (crypto.id === 'bitcoin') {
                 const holdingsElement = document.getElementById('bitcoin-holdings');
                 holdings = holdingsElement ? parseFloat(holdingsElement.textContent.replace(/,/g, '')) || 0 : 0;
                 console.log(`📖 fetchPrices reading ${crypto.id} from display: ${holdings} (includes NiceHash)`);
             } else {
-                holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
-                console.log(`📖 fetchPrices reading ${crypto.id} from localStorage: ${holdings}`);
+                // Use getTotalActiveHoldings to account for sells in holdings tracker
+                holdings = getTotalActiveHoldings(crypto.id);
+                console.log(`📖 fetchPrices reading ${crypto.id} (buys - sells): ${holdings}`);
             }
 
             const localValue = holdings * priceLocal;
@@ -9771,13 +9772,14 @@ function updateCryptoValue(cryptoId) {
     const priceAud = parseFloat(document.getElementById(`${cryptoId}-price-aud`).textContent.replace(/,/g, '').replace('$', '')) || 0;
 
     // For Bitcoin, read from display element (includes NiceHash balance)
-    // For other cryptos, read from localStorage
+    // For other cryptos, use getTotalActiveHoldings to subtract sells
     let holdings = 0;
     if (cryptoId === 'bitcoin') {
         const holdingsElement = document.getElementById('bitcoin-holdings');
         holdings = holdingsElement ? parseFloat(holdingsElement.textContent.replace(/,/g, '')) || 0 : 0;
     } else {
-        holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
+        // Use getTotalActiveHoldings to account for sells in holdings tracker
+        holdings = getTotalActiveHoldings(cryptoId);
     }
 
     const currentValue = holdings * priceAud;
@@ -9836,7 +9838,10 @@ function initFloatingIcons() {
     // Calculate total portfolio value and per-crypto values
     const cryptoData = cryptos.map(crypto => {
         const price = cryptoPrices[crypto.id]?.aud || 0;
-        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        // Use getTotalActiveHoldings to account for sells in holdings tracker
+        const holdings = crypto.id === 'bitcoin'
+            ? (parseFloat(document.getElementById('bitcoin-holdings')?.textContent.replace(/,/g, '')) || 0)
+            : getTotalActiveHoldings(crypto.id);
         const value = price * holdings;
         const change24h = Math.abs(cryptoPriceChanges[crypto.id] || 0);
         const sentiment = getStoredSentiment(crypto.id) || 50; // 0-100, 50 is neutral
@@ -9947,7 +9952,10 @@ function updateFloatingIcons() {
     // Calculate current crypto data
     const cryptoData = cryptos.map(crypto => {
         const price = cryptoPrices[crypto.id]?.aud || 0;
-        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        // Use getTotalActiveHoldings to account for sells in holdings tracker
+        const holdings = crypto.id === 'bitcoin'
+            ? (parseFloat(document.getElementById('bitcoin-holdings')?.textContent.replace(/,/g, '')) || 0)
+            : getTotalActiveHoldings(crypto.id);
         const value = price * holdings;
         const change24h = Math.abs(cryptoPriceChanges[crypto.id] || 0);
         const sentiment = getStoredSentiment(crypto.id) || 50;
@@ -10246,7 +10254,10 @@ function refreshStripFloatingIcons() {
     // Calculate current crypto data
     const cryptoData = cryptos.map(crypto => {
         const price = cryptoPrices[crypto.id]?.aud || 0;
-        const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+        // Use getTotalActiveHoldings to account for sells in holdings tracker
+        const holdings = crypto.id === 'bitcoin'
+            ? (parseFloat(document.getElementById('bitcoin-holdings')?.textContent.replace(/,/g, '')) || 0)
+            : getTotalActiveHoldings(crypto.id);
         const value = price * holdings;
         return { id: crypto.id, thumb: crypto.thumb, value };
     }).filter(c => c.thumb && c.value > 0);
@@ -10307,7 +10318,10 @@ function addEasyMiningBtcIcon(container, type = 'strip') {
     if (loggedInUser && users[loggedInUser]?.cryptos) {
         users[loggedInUser].cryptos.forEach(crypto => {
             const price = cryptoPrices[crypto.id]?.aud || 0;
-            const holdings = parseFloat(getStorageItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+            // Use getTotalActiveHoldings to account for sells in holdings tracker
+            const holdings = crypto.id === 'bitcoin'
+                ? (parseFloat(document.getElementById('bitcoin-holdings')?.textContent.replace(/,/g, '')) || 0)
+                : getTotalActiveHoldings(crypto.id);
             totalValue += price * holdings;
         });
     }
@@ -12612,16 +12626,17 @@ function debounceUpdateUI(cryptoId, priceInAud) {
     updateTimeout = setTimeout(() => {
         const priceElement = document.getElementById(`${cryptoId}-price-aud`);
         if (priceElement) {
-            // Get holdings - for Bitcoin, include NiceHash balance if EasyMining is enabled
+            // Get holdings - for Bitcoin, read from display element (includes NiceHash balance)
+            // For other cryptos, use getTotalActiveHoldings to subtract sells
             let holdings;
-            if (cryptoId === 'bitcoin' && easyMiningSettings && (easyMiningSettings.includeAvailableBTC || easyMiningSettings.includePendingBTC)) {
-                // For Bitcoin with EasyMining, get the total from the display (which includes NiceHash balance)
+            if (cryptoId === 'bitcoin') {
+                // For Bitcoin, get the total from the display (which includes NiceHash balance)
                 const btcHoldingsElement = document.getElementById('bitcoin-holdings');
                 holdings = btcHoldingsElement ? parseFloat(btcHoldingsElement.textContent.replace(/,/g, '')) : 0;
             } else {
-                // For other cryptos, get from localStorage
-                holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${cryptoId}Holdings`)) || 0;
-                console.log(`📖 debounceUpdateUI reading ${cryptoId} from localStorage: ${holdings}`);
+                // For other cryptos, use getTotalActiveHoldings to account for sells in holdings tracker
+                holdings = getTotalActiveHoldings(cryptoId);
+                console.log(`📖 debounceUpdateUI reading ${cryptoId} (buys - sells): ${holdings}`);
             }
 
             const audValue = holdings * priceInAud;
