@@ -30137,7 +30137,7 @@ Do you want to continue?
             successMessage = `✅ Team package "${pkg.name}" purchase complete!\n\n`;
             successMessage += `✅ Purchased: ${shares} ${shares === 1 ? 'share' : 'shares'}\n`;
             successMessage += `📊 Your total shares: ${desiredTotalShares}\n`;
-            successMessage += `💰 Amount paid: ${totalAmount} BTC\n`;
+            successMessage += `💰 Amount paid: ${(shares * sharePrice).toFixed(8)} BTC\n`;
             successMessage += `\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}`;
 
             if (!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress)) {
