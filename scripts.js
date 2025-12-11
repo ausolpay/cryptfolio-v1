@@ -19881,6 +19881,11 @@ async function executeAutoSharesTeam(teamPackages) {
         const result = await response.json();
         console.log(`✅ AUTO-SHARES: ${pkg.name} - bought ${actualSharesToBuy} shares, expecting total ${newTotalShares}`);
 
+        // Save to localStorage and update UI inputs
+        saveMyTeamShares(packageId, newTotalShares);
+        syncTeamShareInputs(packageId, pkg.name, newTotalShares);
+        console.log(`💾 Saved ${newTotalShares} shares for ${pkg.name} (ID: ${packageId})`);
+
         // Update tracking state
         trackState.lastBuyTime = Date.now();
         trackState.isPrimary = !trackState.isPrimary; // Toggle for next buy
