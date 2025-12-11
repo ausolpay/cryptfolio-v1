@@ -4839,8 +4839,10 @@ body.light-mode .package-tab.active {
     background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
     color: white;
     border: none;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 8px;
     font-size: 24px;
     cursor: pointer;
@@ -4850,12 +4852,22 @@ body.light-mode .package-tab.active {
     align-items: center;
     justify-content: center;
     font-weight: bold;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 165, 0, 0.3);
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .package-arrow:hover:not(:disabled) {
     background: linear-gradient(135deg, #ff8c00 0%, #ff7700 100%);
     box-shadow: 0 4px 12px rgba(255, 165, 0, 0.5);
     transform: translateY(-2px);
+}
+
+.package-arrow:active:not(:disabled) {
+    background: linear-gradient(135deg, #ff7700 0%, #ff6600 100%);
+    transform: scale(0.95);
+    box-shadow: 0 2px 6px rgba(255, 165, 0, 0.4);
 }
 
 .package-arrow:disabled {

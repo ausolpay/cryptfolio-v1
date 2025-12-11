@@ -15082,10 +15082,13 @@ function prevRewardsPage() {
     }
 }
 
-// DESKTOP: Navigate to next page of packages
+// Navigate to next page of packages (works on both desktop and mobile)
 function nextPackagePage() {
     const filtered = getFilteredPackages(); // Get current filtered packages
-    const totalPages = Math.ceil(filtered.length / packagesPerPage);
+    // Use same mobile-aware logic as displayActivePackages()
+    const isDesktop = window.innerWidth > 600;
+    const cardsPerPage = isDesktop ? 6 : 3;
+    const totalPages = Math.ceil(filtered.length / cardsPerPage);
 
     if (currentPackagePage < totalPages) {
         currentPackagePage++;
@@ -15093,7 +15096,7 @@ function nextPackagePage() {
     }
 }
 
-// DESKTOP: Navigate to previous page of packages
+// Navigate to previous page of packages (works on both desktop and mobile)
 function prevPackagePage() {
     if (currentPackagePage > 1) {
         currentPackagePage--;
