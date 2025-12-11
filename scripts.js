@@ -25544,21 +25544,31 @@ function updateTeamPackageButtonStates(card, input, shares, myBoughtShares, tota
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
+            buyButton.textContent = 'Buy Shares';
         } else if (newShares > 0 && availableBalance < currentShareCost) {
             // Can't afford
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
-        } else if (newShares <= 0) {
-            // No new shares to buy
+            buyButton.textContent = 'Buy Shares';
+        } else if (newShares === 0) {
+            // No change - same as owned
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
-        } else {
-            // Can afford and shares available
+            buyButton.textContent = 'Buy Shares';
+        } else if (newShares < 0) {
+            // Reducing shares - enable button with "Remove" text
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
+            buyButton.textContent = `Remove ${Math.abs(newShares)} Share${Math.abs(newShares) > 1 ? 's' : ''}`;
+        } else {
+            // Can afford and shares available - buying new shares
+            buyButton.disabled = false;
+            buyButton.style.opacity = '1';
+            buyButton.style.cursor = 'pointer';
+            buyButton.textContent = 'Buy Shares';
         }
     }
 }
@@ -27332,18 +27342,28 @@ function updateAllBuyButtonStates() {
                 buyButton.disabled = true;
                 buyButton.style.opacity = '0.5';
                 buyButton.style.cursor = 'not-allowed';
+                buyButton.textContent = 'Buy';
             } else if (newShares > 0 && availableBalance < currentShareCost) {
                 buyButton.disabled = true;
                 buyButton.style.opacity = '0.5';
                 buyButton.style.cursor = 'not-allowed';
-            } else if (newShares <= 0) {
+                buyButton.textContent = 'Buy';
+            } else if (newShares === 0) {
                 buyButton.disabled = true;
                 buyButton.style.opacity = '0.5';
                 buyButton.style.cursor = 'not-allowed';
+                buyButton.textContent = 'Buy';
+            } else if (newShares < 0) {
+                // Reducing shares - enable button with "Remove" text
+                buyButton.disabled = false;
+                buyButton.style.opacity = '1';
+                buyButton.style.cursor = 'pointer';
+                buyButton.textContent = `Remove ${Math.abs(newShares)}`;
             } else {
                 buyButton.disabled = false;
                 buyButton.style.opacity = '1';
                 buyButton.style.cursor = 'pointer';
+                buyButton.textContent = 'Buy';
             }
         }
     });
@@ -27393,18 +27413,28 @@ function updateAllBuyButtonStates() {
                     buyButton.disabled = true;
                     buyButton.style.opacity = '0.5';
                     buyButton.style.cursor = 'not-allowed';
+                    buyButton.textContent = 'Buy Shares';
                 } else if (newShares > 0 && availableBalance < currentShareCost) {
                     buyButton.disabled = true;
                     buyButton.style.opacity = '0.5';
                     buyButton.style.cursor = 'not-allowed';
-                } else if (newShares <= 0) {
+                    buyButton.textContent = 'Buy Shares';
+                } else if (newShares === 0) {
                     buyButton.disabled = true;
                     buyButton.style.opacity = '0.5';
                     buyButton.style.cursor = 'not-allowed';
+                    buyButton.textContent = 'Buy Shares';
+                } else if (newShares < 0) {
+                    // Reducing shares - enable button with "Remove" text
+                    buyButton.disabled = false;
+                    buyButton.style.opacity = '1';
+                    buyButton.style.cursor = 'pointer';
+                    buyButton.textContent = `Remove ${Math.abs(newShares)} Share${Math.abs(newShares) > 1 ? 's' : ''}`;
                 } else {
                     buyButton.disabled = false;
                     buyButton.style.opacity = '1';
                     buyButton.style.cursor = 'pointer';
+                    buyButton.textContent = 'Buy Shares';
                 }
             }
         });
@@ -28560,7 +28590,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 type="number"
                 id="shares-${pkg.name.replace(/\s+/g, '-')}"
                 value="${initialShareValue}"
-                min="${myBoughtShares || 1}"
+                min="1"
                 max="${totalAvailableShares}"
                 class="share-adjuster-input"
                 readonly
