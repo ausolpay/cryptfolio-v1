@@ -4005,10 +4005,10 @@ async function loadTeamAlerts() {
                            id="team-autoshares-${pkg.name.replace(/\s+/g, '-')}"
                            data-package-name="${pkg.name}"
                            data-crypto="${isDualCrypto ? pkg.mainCrypto : pkg.crypto}"
-                           ${isDualCrypto ? `data-merge-crypto="${pkg.mergeCrypto}"` : ''}
+                           data-merge-crypto="${isDualCrypto ? pkg.mergeCrypto : ''}"
                            data-is-dual-crypto="${isDualCrypto}"
                            ${autoSharesEnabled ? 'checked' : ''}
-                           onclick="handleAutoSharesCheckboxClick(event, '${pkg.name.replace(/'/g, "\\'")}', '${isDualCrypto ? pkg.mainCrypto : pkg.crypto}', ${isDualCrypto ? `'${pkg.mergeCrypto}'` : 'null'}, ${isDualCrypto})">
+                           onchange="handleAutoSharesCheckboxChange(this)">
                     <span id="autoshares-status-${pkg.name.replace(/\s+/g, '-')}" style="color: ${autoSharesEnabled ? '#4CAF50' : '#888'}; font-size: 12px; min-width: 60px;">
                         ${autoSharesEnabled ? '✓ Enabled' : 'Disabled'}
                     </span>
@@ -4124,17 +4124,21 @@ async function loadTeamAlerts() {
 }
 
 /**
- * Handle auto-shares checkbox click - using inline onclick for reliability
+ * Handle auto-shares checkbox change - reads data from data-* attributes
  */
-function handleAutoSharesCheckboxClick(event, packageName, crypto, mergeCrypto, isDualCrypto) {
-    const checkbox = event.target;
+function handleAutoSharesCheckboxChange(checkbox) {
+    const packageName = checkbox.dataset.packageName;
+    const crypto = checkbox.dataset.crypto;
+    const mergeCrypto = checkbox.dataset.mergeCrypto || null;
+    const isDualCrypto = checkbox.dataset.isDualCrypto === 'true';
+
+    console.log('🔧 Auto-shares checkbox changed:', { packageName, crypto, mergeCrypto, isDualCrypto, checked: checkbox.checked });
 
     if (checkbox.checked) {
         // Show configuration modal instead of enabling directly
         showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypto);
         // Uncheck temporarily - will be checked if user confirms in modal
         checkbox.checked = false;
-        event.preventDefault();
     } else {
         // Disable auto-shares
         disableAutoShares(packageName);
@@ -19217,9 +19221,12 @@ let pendingAutoSharesModal = null; // Store pending modal data
  * Show the auto-shares configuration modal
  */
 function showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypto) {
+    console.log('📋 showAutoSharesConfigModal called:', { packageName, crypto, mergeCrypto, isDualCrypto });
+
     const modal = document.getElementById('auto-shares-config-modal');
     if (!modal) {
-        console.error('Auto-shares config modal not found');
+        console.error('❌ Auto-shares config modal not found in DOM');
+        alert('Error: Auto-shares modal not found. Please refresh the page.');
         return;
     }
 
@@ -19231,14 +19238,24 @@ function showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypt
     const existingSettings = savedAutoShares[packageName] || {};
 
     // Update modal content
-    document.getElementById('auto-shares-package-name').textContent = packageName;
-    document.getElementById('auto-shares-package-name-hidden').value = packageName;
-    document.getElementById('auto-shares-fraction').value = existingSettings.fraction || 2;
-    document.getElementById('auto-shares-primary').value = existingSettings.primaryShares || 2;
-    document.getElementById('auto-shares-secondary').value = existingSettings.secondaryShares || 1;
+    const packageNameEl = document.getElementById('auto-shares-package-name');
+    const packageNameHiddenEl = document.getElementById('auto-shares-package-name-hidden');
+    const fractionEl = document.getElementById('auto-shares-fraction');
+    const primaryEl = document.getElementById('auto-shares-primary');
+    const secondaryEl = document.getElementById('auto-shares-secondary');
 
-    modal.style.display = 'block';
-    console.log(`📋 Showing auto-shares config modal for ${packageName}`);
+    if (packageNameEl) packageNameEl.textContent = packageName;
+    if (packageNameHiddenEl) packageNameHiddenEl.value = packageName;
+    if (fractionEl) fractionEl.value = existingSettings.fraction || 2;
+    if (primaryEl) primaryEl.value = existingSettings.primaryShares || 2;
+    if (secondaryEl) secondaryEl.value = existingSettings.secondaryShares || 1;
+
+    // Show modal with flex for proper centering on mobile
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+
+    console.log(`✅ Auto-shares config modal displayed for ${packageName}`);
 }
 
 /**
