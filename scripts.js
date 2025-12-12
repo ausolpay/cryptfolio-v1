@@ -28907,18 +28907,50 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             }
         }
 
-        // Update reward value display (use myBoughtShares calculated at top)
-        const rewardValueEl = card.querySelector(`#reward-value-${packageIdForElements}`);
-        if (rewardValueEl && rewardAUD > 0) {
-            const myShares = myBoughtShares > 0 ? myBoughtShares : 1; // Use owned shares or 1 for preview
-            const othersBought = totalBoughtShares - myBoughtShares;
-            const totalShares = othersBought + myShares;
+        // Update reward value display using INPUT value (for preview) or owned shares
+        const shareInputForReward = card.querySelector(`#shares-${packageIdForElements}`) ||
+                                    card.querySelector('.share-adjuster-input');
+        const inputValueForReward = shareInputForReward ? parseInt(shareInputForReward.value) || 0 : 0;
+        const mySharesForReward = inputValueForReward > 0 ? inputValueForReward : (myBoughtShares || 1);
 
-            if (totalShares > 0) {
-                const myRewardAUD = (rewardAUD / totalShares) * myShares;
-                rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
+        // Formula: blockReward / totalBoughtShares * myShares
+        // Use CURRENT totalBoughtShares from API
+        const effectiveTotalSharesForReward = totalBoughtShares > 0 ? totalBoughtShares : mySharesForReward;
+
+        const rewardValueEl = card.querySelector(`#reward-value-${packageIdForElements}`);
+        if (rewardValueEl && rewardAUD > 0 && effectiveTotalSharesForReward > 0) {
+            const myRewardAUD = (rewardAUD / effectiveTotalSharesForReward) * mySharesForReward;
+            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
+        }
+
+        // Update main crypto reward amount
+        const mainRewardEl = card.querySelector(`#team-reward-main-${packageIdForElements}`) ||
+                             card.querySelector(`#team-reward-${packageIdForElements}`);
+        if (mainRewardEl && pkg.blockReward && effectiveTotalSharesForReward > 0) {
+            const myMainReward = (pkg.blockReward / effectiveTotalSharesForReward) * mySharesForReward;
+            const mainDecimals = ['BTC', 'BCH'].includes(pkg.mainCrypto || pkg.crypto) ? 4 : 2;
+            mainRewardEl.textContent = myMainReward.toFixed(mainDecimals);
+        }
+
+        // Update merge crypto reward amount (for dual-crypto like Palladium)
+        if (pkg.isDualCrypto) {
+            const mergeRewardEl = card.querySelector(`#team-reward-merge-${packageIdForElements}`);
+            if (mergeRewardEl && pkg.mergeBlockReward && effectiveTotalSharesForReward > 0) {
+                const myMergeReward = (pkg.mergeBlockReward / effectiveTotalSharesForReward) * mySharesForReward;
+                const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
+                mergeRewardEl.textContent = myMergeReward.toFixed(mergeDecimals);
             }
         }
+
+        // Update price display based on input value
+        const priceEl = card.querySelector(`#team-price-${packageIdForElements}`);
+        if (priceEl) {
+            const sharePrice = 0.0001; // 1 share = 0.0001 BTC
+            const priceLocal = convertBTCtoAUD(mySharesForReward * sharePrice);
+            priceEl.textContent = `$${priceLocal.toFixed(2)}`;
+        }
+
+        console.log(`📊 ${pkg.name} live update: inputValue=${inputValueForReward}, myShares=${mySharesForReward}, totalBought=${totalBoughtShares}, reward=$${(rewardAUD / effectiveTotalSharesForReward * mySharesForReward).toFixed(2)}`);
 
         // Update probability - for dual crypto (Palladium), first element shows DOGE (merge), second shows LTC (main)
         const probabilityEl = card.querySelector(`#team-probability-${packageIdForElements}`) ||
@@ -28988,6 +29020,14 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             shareInput.dataset.myBought = myBoughtShares;
             shareInput.min = 1;
 
+            // Update block reward data (for adjustShares calculations)
+            shareInput.dataset.blockReward = pkg.blockReward || 0;
+            shareInput.dataset.mergeBlockReward = pkg.mergeBlockReward || 0;
+            shareInput.dataset.isDualCrypto = pkg.isDualCrypto || false;
+            shareInput.dataset.mainCrypto = pkg.mainCrypto || pkg.crypto || '';
+            shareInput.dataset.mergeCrypto = pkg.mergeCrypto || '';
+            shareInput.dataset.fullRewardAud = rewardAUD; // Full block reward in AUD
+
             // Set max to remaining available shares (what's left to buy)
             const remainingShares = totalAvailableShares - totalBoughtShares + myBoughtShares;
             shareInput.max = remainingShares > 0 ? remainingShares : 1;
@@ -29006,6 +29046,23 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
                 shareInput.value = myBoughtShares;
             }
         }
+
+        // ✅ Update window.packageBaseValues for adjustShares function
+        if (!window.packageBaseValues) window.packageBaseValues = {};
+        const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
+        const pricePerShareAUD = 0.0001 * btcPrice;
+        window.packageBaseValues[pkg.name] = {
+            packageId: packageId,
+            priceAUD: pricePerShareAUD,
+            totalRewardAUD: rewardAUD,
+            totalMainReward: pkg.blockReward || 0,
+            totalMergeReward: pkg.mergeBlockReward || 0,
+            totalBoughtShares: totalBoughtShares,
+            myBoughtShares: myBoughtShares,
+            mainCrypto: pkg.mainCrypto || pkg.crypto,
+            mergeCrypto: pkg.mergeCrypto || null,
+            isDualCrypto: pkg.isDualCrypto || false
+        };
 
         // ✅ Update + button state (disabled ONLY when input >= max available shares)
         const plusButton = card.querySelector(`#plus-${packageIdForElements}`) ||
