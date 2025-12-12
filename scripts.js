@@ -4533,7 +4533,7 @@ async function loadTeamAlerts() {
 
         if (isDualCrypto) {
             // For Palladium, find the small package (has both LTC and DOGE probabilities)
-            const palladiumSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium S' || sp.name === 'Palladium DOGE S' || sp.name === 'Palladium LTC S');
+            const palladiumSmallPkg = soloPackages?.find(sp => sp.name === 'Palladium S');
 
             if (palladiumSmallPkg) {
                 // LTC probability - use probabilityPrecision or formatted probability
@@ -4642,7 +4642,7 @@ async function loadTeamAlerts() {
             smallPackageProbabilityInputs = `
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F7931A;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <label style="color: #aaa; font-size: 14px;">📦 DOGE Small Package Probability (Palladium DOGE S)</label>
+                        <label style="color: #aaa; font-size: 14px;">📦 DOGE Probability (Palladium S merge)</label>
                         <span style="color: #4CAF50; font-size: 13px;">Current: ${dogeSmallProbFormatted}</span>
                     </div>
                     <input type="number"
@@ -4656,7 +4656,7 @@ async function loadTeamAlerts() {
 
                 <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #C3A634;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <label style="color: #aaa; font-size: 14px;">📦 LTC Small Package Probability (Palladium LTC S)</label>
+                        <label style="color: #aaa; font-size: 14px;">📦 LTC Probability (Palladium S main)</label>
                         <span style="color: #4CAF50; font-size: 13px;">Current: ${ltcSmallProbFormatted}</span>
                     </div>
                     <input type="number"
@@ -5526,7 +5526,7 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
 
         if (isDualCryptoPackage && (alert.smallPackageProbability_DOGE || alert.smallPackageProbability_LTC) && soloPackages && soloPackages.length > 0) {
             // Dual-crypto: Find Palladium S package (has both LTC and DOGE probabilities)
-            const palladiumSmallPackage = soloPackages.find(sp => sp.name === 'Palladium S' || sp.name === 'Palladium DOGE S' || sp.name === 'Palladium LTC S');
+            const palladiumSmallPackage = soloPackages.find(sp => sp.name === 'Palladium S');
 
             let meetsAllSmallPackageThresholds = true;
 
@@ -18102,11 +18102,16 @@ function generateMockPackages() {
         { name: 'Gold L', crypto: 'BTC', reward: 0.00005 },
         { name: 'Silver S', crypto: 'BCH', reward: 0.01 },
         { name: 'Silver M', crypto: 'BCH', reward: 0.02 },
+        { name: 'Silver L', crypto: 'BCH', reward: 0.05 },
         { name: 'Chromium S', crypto: 'RVN', reward: 100 },
         { name: 'Chromium M', crypto: 'RVN', reward: 200 },
-        { name: 'Pal DOGE S', crypto: 'DOGE', reward: 10 },
-        { name: 'Pal LTC S', crypto: 'LTC', reward: 0.01 },
-        { name: 'Titanium KAS S', crypto: 'KAS', reward: 10 }
+        { name: 'Chromium L', crypto: 'RVN', reward: 500 },
+        { name: 'Palladium S', crypto: 'LTC', reward: 0.01 },
+        { name: 'Palladium M', crypto: 'LTC', reward: 0.02 },
+        { name: 'Palladium L', crypto: 'LTC', reward: 0.05 },
+        { name: 'Titanium S', crypto: 'KAS', reward: 10 },
+        { name: 'Titanium M', crypto: 'KAS', reward: 20 },
+        { name: 'Titanium L', crypto: 'KAS', reward: 50 }
     ];
     
     const teamTypes = [
@@ -26564,7 +26569,7 @@ async function fetchAvailableSoloPackages() {
             },
             {
                 id: 'titanium-s-mock',
-                name: 'Titanium KAS S',
+                name: 'Titanium S',
                 price: 0.00013,
                 probability: '1:160',
                 duration: 86400,
@@ -28135,7 +28140,7 @@ function getRecommendedPackages() {
     const recommended = [
         'Gold M',          // Best BTC solo package - good probability and price
         'Silver Team',     // Best BCH team package - low entry, good shares
-        'Titanium KAS S'   // Best KAS solo package - fastest block times
+        'Titanium S'       // Best KAS solo package - fastest block times
     ];
 
     return recommended;
@@ -33422,15 +33427,18 @@ let backgroundMetricsInterval = null;
 function startBackgroundMetricsCapture() {
     stopBackgroundMetricsCapture();
 
-    console.log('📊 Starting background metrics capture (2 min interval)...');
+    // Use the shorter interval (team) to ensure snapshots are captured on time
+    const captureIntervalMs = Math.min(metricsSettings.teamIntervalMins, metricsSettings.singleIntervalMins) * 60 * 1000;
+
+    console.log(`📊 Starting background metrics capture (${Math.min(metricsSettings.teamIntervalMins, metricsSettings.singleIntervalMins)} min interval)...`);
 
     // Capture immediately on start
     captureBackgroundMetrics();
 
-    // Then capture every 2 minutes (reduced from 30s to avoid rate limiting)
+    // Then capture at the configured interval
     backgroundMetricsInterval = setInterval(() => {
         captureBackgroundMetrics();
-    }, 120000);
+    }, captureIntervalMs);
 }
 
 function stopBackgroundMetricsCapture() {
@@ -33446,17 +33454,21 @@ function stopBackgroundMetricsCapture() {
  * This fetches package data and stores metrics without updating the UI
  */
 async function captureBackgroundMetrics() {
-    // Skip if already on Buy Packages page (it has its own polling)
+    // Skip if already on Buy Packages page (it has its own polling via loadBuyPackagesDataOnPage)
     const buyPackagesPage = document.getElementById('buy-packages-page');
     if (buyPackagesPage && buyPackagesPage.style.display !== 'none') {
+        console.log('📊 Skipping background capture - Buy Packages page has its own polling');
         return;
     }
 
-    // Skip if already on Averages page (it has its own polling)
+    // Skip if already on Averages page (it has its own polling via fetchAndUpdateAverages)
     const averagesPage = document.getElementById('averages-page');
     if (averagesPage && averagesPage.style.display !== 'none') {
+        console.log('📊 Skipping background capture - Averages page has its own polling');
         return;
     }
+
+    // Continue capturing on EasyMining section - it needs background metrics too
 
     try {
         console.log('📊 Background metrics capture starting...');
@@ -33471,10 +33483,16 @@ async function captureBackgroundMetrics() {
                 { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
                 { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
                 { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+                { name: 'Silver L', crypto: 'BCH', probability: '1:45', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'SHA256', hashrate: '4 TH/s', blockReward: 3.125 },
                 { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
-                { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
-                { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
-                { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
+                { name: 'Chromium M', crypto: 'RVN', probability: '1:100', priceBTC: 0.001, priceAUD: '20.00', duration: '24h', algorithm: 'KawPow', hashrate: '200 MH/s', blockReward: 2500 },
+                { name: 'Chromium L', crypto: 'RVN', probability: '1:50', priceBTC: 0.01, priceAUD: '40.00', duration: '24h', algorithm: 'KawPow', hashrate: '400 MH/s', blockReward: 2500 },
+                { name: 'Palladium S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25, mergeProbability: '1:220' },
+                { name: 'Palladium M', crypto: 'LTC', probability: '1:105', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'Scrypt', hashrate: '1 GH/s', blockReward: 6.25, mergeProbability: '1:110' },
+                { name: 'Palladium L', crypto: 'LTC', probability: '1:52', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'Scrypt', hashrate: '2 GH/s', blockReward: 6.25, mergeProbability: '1:55' },
+                { name: 'Titanium S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 },
+                { name: 'Titanium M', crypto: 'KAS', probability: '1:80', priceBTC: 0.001, priceAUD: '26.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '2 TH/s', blockReward: 3.8890873 },
+                { name: 'Titanium L', crypto: 'KAS', probability: '1:40', priceBTC: 0.01, priceAUD: '52.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '4 TH/s', blockReward: 3.8890873 }
             ];
         }
 
@@ -33570,19 +33588,60 @@ function pauseBuyPackagesPolling() {
 
 // Storage key for package metrics
 const PACKAGE_METRICS_STORAGE_KEY = 'packageMetricsHistory';
+const METRICS_SETTINGS_STORAGE_KEY = 'packageMetricsSettings';
 
-// Snapshot configuration
-const SNAPSHOT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes between snapshots
-const MAX_SNAPSHOTS_PER_PACKAGE = 2000; // Circular buffer size
-const SNAPSHOT_QUEUE_DELAY_MS = 500; // 500ms delay between each package snapshot
+// Default snapshot configuration
+const DEFAULT_SINGLE_INTERVAL_MINS = 10; // 10 minutes for single packages
+const DEFAULT_TEAM_INTERVAL_MINS = 5;    // 5 minutes for team packages
+const DEFAULT_MAX_SNAPSHOTS = 1000;      // Circular buffer size (overwrites oldest when full)
+const SNAPSHOT_QUEUE_DELAY_MS = 500;     // 500ms delay between each package snapshot
+
+// User-configurable settings (loaded from localStorage)
+let metricsSettings = {
+    singleIntervalMins: DEFAULT_SINGLE_INTERVAL_MINS,
+    teamIntervalMins: DEFAULT_TEAM_INTERVAL_MINS,
+    maxSnapshots: DEFAULT_MAX_SNAPSHOTS
+};
 
 // Tracking variables for snapshot queue
-let lastSnapshotTime = 0;
+let lastSingleSnapshotTime = 0;
+let lastTeamSnapshotTime = 0;
 let snapshotQueue = [];
 let isProcessingSnapshotQueue = false;
 
 // Interval for updating averages (5 seconds)
 let packageMetricsAverageInterval = null;
+
+// Load metrics settings from localStorage
+function loadMetricsSettings() {
+    try {
+        const stored = localStorage.getItem(METRICS_SETTINGS_STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            metricsSettings = {
+                singleIntervalMins: parsed.singleIntervalMins || DEFAULT_SINGLE_INTERVAL_MINS,
+                teamIntervalMins: parsed.teamIntervalMins || DEFAULT_TEAM_INTERVAL_MINS,
+                maxSnapshots: parsed.maxSnapshots || DEFAULT_MAX_SNAPSHOTS
+            };
+            console.log('📊 Loaded metrics settings:', metricsSettings);
+        }
+    } catch (e) {
+        console.error('Error loading metrics settings:', e);
+    }
+}
+
+// Save metrics settings to localStorage
+function saveMetricsSettings() {
+    try {
+        localStorage.setItem(METRICS_SETTINGS_STORAGE_KEY, JSON.stringify(metricsSettings));
+        console.log('📊 Saved metrics settings:', metricsSettings);
+    } catch (e) {
+        console.error('Error saving metrics settings:', e);
+    }
+}
+
+// Initialize settings on load
+loadMetricsSettings();
 
 // =============================================================================
 // PERSISTENT FLOATING ICONS SYSTEM
@@ -34068,7 +34127,7 @@ function savePackageMetricsHistory(history) {
  * Keeps only the most recent snapshots per package (half of max for emergency trim)
  */
 function trimPackageMetricsHistory(history) {
-    const TRIM_TO = Math.floor(MAX_SNAPSHOTS_PER_PACKAGE / 2); // Trim to half during emergency
+    const TRIM_TO = Math.floor(metricsSettings.maxSnapshots / 2); // Trim to half during emergency
 
     Object.keys(history).forEach(name => {
         if (history[name].snapshots && history[name].snapshots.length > TRIM_TO) {
@@ -34129,7 +34188,7 @@ function parseProbability(probabilityVal) {
 
 /**
  * Capture current metrics for all packages
- * Only captures if 15 minutes have passed since last snapshot
+ * Uses separate intervals for single packages (default 10min) and team packages (default 5min)
  * Processes packages one at a time with delays to avoid overwhelming the system
  */
 function capturePackageMetrics(packages) {
@@ -34140,27 +34199,52 @@ function capturePackageMetrics(packages) {
         return;
     }
 
-    // Check if 15 minutes have passed since last snapshot
     const now = Date.now();
-    const timeSinceLastSnapshot = now - lastSnapshotTime;
+    const singleIntervalMs = metricsSettings.singleIntervalMins * 60 * 1000;
+    const teamIntervalMs = metricsSettings.teamIntervalMins * 60 * 1000;
 
-    if (lastSnapshotTime > 0 && timeSinceLastSnapshot < SNAPSHOT_INTERVAL_MS) {
-        const minutesRemaining = Math.ceil((SNAPSHOT_INTERVAL_MS - timeSinceLastSnapshot) / 60000);
-        console.log(`📊 Skipping snapshot - only ${Math.floor(timeSinceLastSnapshot / 60000)} minutes since last snapshot. Next in ${minutesRemaining} minutes.`);
+    // Separate packages by type
+    const singlePackages = packages.filter(p => !p.isTeam);
+    const teamPackages = packages.filter(p => p.isTeam);
+
+    // Check intervals separately
+    const timeSinceSingleSnapshot = now - lastSingleSnapshotTime;
+    const timeSinceTeamSnapshot = now - lastTeamSnapshotTime;
+
+    const captureSingle = lastSingleSnapshotTime === 0 || timeSinceSingleSnapshot >= singleIntervalMs;
+    const captureTeam = lastTeamSnapshotTime === 0 || timeSinceTeamSnapshot >= teamIntervalMs;
+
+    if (!captureSingle && !captureTeam) {
+        const singleRemaining = Math.ceil((singleIntervalMs - timeSinceSingleSnapshot) / 60000);
+        const teamRemaining = Math.ceil((teamIntervalMs - timeSinceTeamSnapshot) / 60000);
+        console.log(`📊 Skipping snapshot - Single: ${singleRemaining}min remaining, Team: ${teamRemaining}min remaining`);
         return;
     }
 
-    // Update last snapshot time
-    lastSnapshotTime = now;
+    // Build queue of packages to capture
+    const toCapture = [];
 
-    // Log package breakdown
-    const soloCount = packages.filter(p => !p.isTeam).length;
-    const teamCount = packages.filter(p => p.isTeam).length;
-    console.log(`📊 Package breakdown: ${soloCount} solo, ${teamCount} team`);
-    console.log(`📊 Queuing ${packages.length} packages for snapshot (processing with ${SNAPSHOT_QUEUE_DELAY_MS}ms delays)...`);
+    if (captureSingle && singlePackages.length > 0) {
+        lastSingleSnapshotTime = now;
+        toCapture.push(...singlePackages);
+        console.log(`📊 Capturing ${singlePackages.length} single packages (interval: ${metricsSettings.singleIntervalMins}min)`);
+    }
+
+    if (captureTeam && teamPackages.length > 0) {
+        lastTeamSnapshotTime = now;
+        toCapture.push(...teamPackages);
+        console.log(`📊 Capturing ${teamPackages.length} team packages (interval: ${metricsSettings.teamIntervalMins}min)`);
+    }
+
+    if (toCapture.length === 0) {
+        console.log('📊 No packages ready for snapshot');
+        return;
+    }
+
+    console.log(`📊 Queuing ${toCapture.length} packages for snapshot (processing with ${SNAPSHOT_QUEUE_DELAY_MS}ms delays)...`);
 
     // Add packages to queue
-    snapshotQueue = [...packages];
+    snapshotQueue = [...toCapture];
 
     // Start processing queue if not already processing
     if (!isProcessingSnapshotQueue) {
@@ -34197,7 +34281,7 @@ function processSnapshotQueue() {
 
 /**
  * Capture a snapshot for a single package
- * Uses circular buffer - overwrites oldest when reaching MAX_SNAPSHOTS_PER_PACKAGE
+ * Uses circular buffer - overwrites oldest when reaching maxSnapshots setting
  */
 function captureSinglePackageSnapshot(pkg) {
     const name = pkg.name;
@@ -34250,7 +34334,7 @@ function captureSinglePackageSnapshot(pkg) {
     }
 
     // Circular buffer - if at max, overwrite oldest (shift and push)
-    if (history[name].snapshots.length >= MAX_SNAPSHOTS_PER_PACKAGE) {
+    if (history[name].snapshots.length >= metricsSettings.maxSnapshots) {
         history[name].snapshots.shift(); // Remove oldest
     }
     history[name].snapshots.push(snapshot);
@@ -34259,7 +34343,7 @@ function captureSinglePackageSnapshot(pkg) {
     savePackageMetricsHistory(history);
 
     const snapshotCount = history[name].snapshots.length;
-    console.log(`📊 Captured snapshot for ${name} (${snapshotCount}/${MAX_SNAPSHOTS_PER_PACKAGE} snapshots)`);
+    console.log(`📊 Captured snapshot for ${name} (${snapshotCount}/${metricsSettings.maxSnapshots} snapshots)`);
 }
 
 /**
@@ -34682,14 +34766,59 @@ function showAveragesPage() {
     // Show averages page
     document.getElementById('averages-page').style.display = 'block';
 
+    // Populate metrics settings inputs
+    populateMetricsSettingsInputs();
+
     // Immediately display any existing stored data
     updateAveragesDisplay();
 
     // Fetch fresh data and update display on page load
     fetchAndUpdateAverages();
 
-    // Start polling every 15 minutes (matches snapshot interval)
+    // Start polling based on the shorter interval (team interval)
     startAveragesPolling();
+}
+
+/**
+ * Populate the metrics settings input fields with current values
+ */
+function populateMetricsSettingsInputs() {
+    const singleInput = document.getElementById('metrics-single-interval');
+    const teamInput = document.getElementById('metrics-team-interval');
+    const maxSnapshotsInput = document.getElementById('metrics-max-snapshots');
+
+    if (singleInput) singleInput.value = metricsSettings.singleIntervalMins;
+    if (teamInput) teamInput.value = metricsSettings.teamIntervalMins;
+    if (maxSnapshotsInput) maxSnapshotsInput.value = metricsSettings.maxSnapshots;
+}
+
+/**
+ * Update a metrics setting from the input fields
+ * @param {string} setting - The setting name (singleIntervalMins, teamIntervalMins, maxSnapshots)
+ * @param {string} value - The new value from the input
+ */
+function updateMetricsSetting(setting, value) {
+    const numValue = parseInt(value, 10);
+
+    if (setting === 'singleIntervalMins') {
+        metricsSettings.singleIntervalMins = Math.max(1, Math.min(60, numValue || DEFAULT_SINGLE_INTERVAL_MINS));
+    } else if (setting === 'teamIntervalMins') {
+        metricsSettings.teamIntervalMins = Math.max(1, Math.min(60, numValue || DEFAULT_TEAM_INTERVAL_MINS));
+    } else if (setting === 'maxSnapshots') {
+        metricsSettings.maxSnapshots = Math.max(100, Math.min(10000, numValue || DEFAULT_MAX_SNAPSHOTS));
+    }
+
+    // Save to localStorage
+    saveMetricsSettings();
+
+    // Update the input to show validated value
+    populateMetricsSettingsInputs();
+
+    // Restart polling with new interval
+    stopAveragesPolling();
+    startAveragesPolling();
+
+    console.log(`📊 Updated metrics setting: ${setting} = ${metricsSettings[setting]}`);
 }
 
 /**
@@ -34711,10 +34840,16 @@ async function fetchAndUpdateAverages() {
                 { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
                 { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
                 { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
+                { name: 'Silver L', crypto: 'BCH', probability: '1:45', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'SHA256', hashrate: '4 TH/s', blockReward: 3.125 },
                 { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
-                { name: 'Palladium DOGE S', crypto: 'DOGE', probability: '1:220', priceBTC: 0.0001, priceAUD: '11.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 10000 },
-                { name: 'Palladium LTC S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25 },
-                { name: 'Titanium KAS S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 }
+                { name: 'Chromium M', crypto: 'RVN', probability: '1:100', priceBTC: 0.001, priceAUD: '20.00', duration: '24h', algorithm: 'KawPow', hashrate: '200 MH/s', blockReward: 2500 },
+                { name: 'Chromium L', crypto: 'RVN', probability: '1:50', priceBTC: 0.01, priceAUD: '40.00', duration: '24h', algorithm: 'KawPow', hashrate: '400 MH/s', blockReward: 2500 },
+                { name: 'Palladium S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25, mergeProbability: '1:220' },
+                { name: 'Palladium M', crypto: 'LTC', probability: '1:105', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'Scrypt', hashrate: '1 GH/s', blockReward: 6.25, mergeProbability: '1:110' },
+                { name: 'Palladium L', crypto: 'LTC', probability: '1:52', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'Scrypt', hashrate: '2 GH/s', blockReward: 6.25, mergeProbability: '1:55' },
+                { name: 'Titanium S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 },
+                { name: 'Titanium M', crypto: 'KAS', probability: '1:80', priceBTC: 0.001, priceAUD: '26.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '2 TH/s', blockReward: 3.8890873 },
+                { name: 'Titanium L', crypto: 'KAS', probability: '1:40', priceBTC: 0.01, priceAUD: '52.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '4 TH/s', blockReward: 3.8890873 }
             ];
         }
 
@@ -34743,16 +34878,19 @@ async function fetchAndUpdateAverages() {
 
 /**
  * Start polling for averages updates
+ * Uses the shorter of the two intervals (team interval) to ensure both are captured
  */
 function startAveragesPolling() {
     stopAveragesPolling();
 
-    // Poll every 15 minutes to match snapshot interval
+    // Poll at the team interval (shorter) to ensure both team and single snapshots are captured
+    const pollingIntervalMs = Math.min(metricsSettings.teamIntervalMins, metricsSettings.singleIntervalMins) * 60 * 1000;
+
     averagesPollingInterval = setInterval(() => {
         fetchAndUpdateAverages();
-    }, SNAPSHOT_INTERVAL_MS); // 15 minutes
+    }, pollingIntervalMs);
 
-    console.log('📊 Started averages polling (15 min interval)');
+    console.log(`📊 Started averages polling (${Math.min(metricsSettings.teamIntervalMins, metricsSettings.singleIntervalMins)} min interval)`);
 }
 
 /**
