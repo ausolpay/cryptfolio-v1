@@ -1737,17 +1737,27 @@
 @media (max-width: 480px) {
     .section-header {
         margin-bottom: 40px;
+        padding: 0 8px;
     }
 
     .about-hero {
-        padding: 80px 16px 40px;
+        padding: 80px 20px 40px;
     }
 
     .preview-section,
     .features-section,
     .cta-section,
     .company-section {
-        padding: 60px 16px;
+        padding: 60px 20px;
+    }
+
+    .preview-section.alt-bg {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .preview-features {
+        padding: 0 4px;
     }
 
     .hero-title .title-line {
@@ -1811,11 +1821,11 @@
     }
 
     .about-footer {
-        padding: 20px 16px;
+        padding: 20px 20px;
     }
 
     .company-section {
-        padding: 40px 16px;
+        padding: 40px 20px;
     }
 
     .company-logo {
