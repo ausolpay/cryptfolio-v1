@@ -569,25 +569,36 @@ body.light-mode .global-orb-3 {
     opacity: 0.1;
 }
 
-/* Semi-transparent containers - let background show through */
+/* Semi-transparent containers - let background show through (glass effect) */
 .crypto-container,
 .total-holdings,
 .total-holdings-content,
+.portfolio-strip,
 .portfolio-stats-grid,
 .portfolio-pnl-grid,
 .settings-section,
+.settings-page-content,
 .easymining-settings-form,
-.package-detail-page-content,
-.buy-packages-content,
-.averages-content,
-.deposits-content,
-.withdraw-content,
-.modal-content,
+.easymining-content,
 .easymining-box,
 .balance-box,
+.balance-card,
 .packages-section,
 .recommendations-section,
-.rewards-section {
+.rewards-section,
+.package-detail-page-content,
+.buy-packages-content,
+.buy-packages-container-page,
+.averages-content,
+.averages-section,
+.deposits-content,
+.deposit-section,
+.withdraw-content,
+.withdraw-section,
+.modal-content,
+.coingecko-settings-content,
+.api-keys-content,
+.account-settings-content {
     background-color: rgba(30, 30, 30, 0.85) !important;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -596,24 +607,52 @@ body.light-mode .global-orb-3 {
 body.light-mode .crypto-container,
 body.light-mode .total-holdings,
 body.light-mode .total-holdings-content,
+body.light-mode .portfolio-strip,
 body.light-mode .portfolio-stats-grid,
 body.light-mode .portfolio-pnl-grid,
 body.light-mode .settings-section,
+body.light-mode .settings-page-content,
 body.light-mode .easymining-settings-form,
-body.light-mode .package-detail-page-content,
-body.light-mode .buy-packages-content,
-body.light-mode .averages-content,
-body.light-mode .deposits-content,
-body.light-mode .withdraw-content,
-body.light-mode .modal-content,
+body.light-mode .easymining-content,
 body.light-mode .easymining-box,
 body.light-mode .balance-box,
+body.light-mode .balance-card,
 body.light-mode .packages-section,
 body.light-mode .recommendations-section,
-body.light-mode .rewards-section {
+body.light-mode .rewards-section,
+body.light-mode .package-detail-page-content,
+body.light-mode .buy-packages-content,
+body.light-mode .buy-packages-container-page,
+body.light-mode .averages-content,
+body.light-mode .averages-section,
+body.light-mode .deposits-content,
+body.light-mode .deposit-section,
+body.light-mode .withdraw-content,
+body.light-mode .withdraw-section,
+body.light-mode .modal-content,
+body.light-mode .coingecko-settings-content,
+body.light-mode .api-keys-content,
+body.light-mode .account-settings-content {
     background-color: rgba(245, 245, 245, 0.85) !important;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+}
+
+/* Glass effect for Add Crypto input and button only */
+.header-row .add-crypto input[type="text"],
+.header-row .add-crypto button {
+    background-color: rgba(30, 30, 30, 0.85) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.light-mode .header-row .add-crypto input[type="text"],
+body.light-mode .header-row .add-crypto button {
+    background-color: rgba(245, 245, 245, 0.85) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 /* Static Page Styles */
