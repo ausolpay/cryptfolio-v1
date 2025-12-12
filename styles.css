@@ -447,6 +447,99 @@ body.light-mode .mobile-menu-divider {
     margin-top: 60px; /* Space from top (10px gap + 50px nav) */
 }
 
+/* App Page Background Animation */
+#app-page {
+    position: relative;
+    overflow: hidden;
+}
+
+.app-bg-animation {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 50px);
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.app-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.25;
+    animation: app-float 25s ease-in-out infinite;
+}
+
+.app-orb-1 {
+    width: 500px;
+    height: 500px;
+    background: #ff9800;
+    top: -200px;
+    right: -150px;
+    animation-delay: 0s;
+}
+
+.app-orb-2 {
+    width: 400px;
+    height: 400px;
+    background: #666666;
+    bottom: -100px;
+    left: -100px;
+    animation-delay: -8s;
+}
+
+.app-orb-3 {
+    width: 350px;
+    height: 350px;
+    background: #ff9800;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-delay: -16s;
+    opacity: 0.15;
+}
+
+@keyframes app-float {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    25% {
+        transform: translate(30px, -30px) scale(1.05);
+    }
+    50% {
+        transform: translate(-20px, 20px) scale(0.95);
+    }
+    75% {
+        transform: translate(-30px, -20px) scale(1.02);
+    }
+}
+
+/* Ensure app content is above background */
+#app-page > *:not(.app-bg-animation) {
+    position: relative;
+    z-index: 1;
+}
+
+/* Light mode app orbs - softer colors */
+body.light-mode .app-orb {
+    opacity: 0.15;
+}
+
+body.light-mode .app-orb-1 {
+    background: #ff9800;
+}
+
+body.light-mode .app-orb-2 {
+    background: #999999;
+}
+
+body.light-mode .app-orb-3 {
+    background: #ffb74d;
+    opacity: 0.1;
+}
+
 /* Static Page Styles */
 .static-page {
     min-height: calc(100vh - 60px);
@@ -11417,18 +11510,18 @@ body.has-mobile-ad {
 
 /* Pricing Page Styles - About Page Theme */
 #pricing-page {
-    min-height: 100vh;
+    min-height: calc(100vh - 50px);
     padding: 0;
     background: #0d0d0d;
     position: fixed;
-    top: 0;
+    top: 50px;
     left: 0;
     right: 0;
     bottom: 0;
     overflow-x: hidden;
     overflow-y: auto;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    z-index: 9999;
+    z-index: 900;
 }
 
 /* Animated Background Orbs */
