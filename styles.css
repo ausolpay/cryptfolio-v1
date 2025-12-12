@@ -8783,6 +8783,29 @@ body.light-mode .easymining-settings-form input[type="number"] {
         padding: 2px;
         width: 50px;
     }
+
+    /* EasyMining team alerts - even tighter share adjuster on mobile */
+    #team-alerts-container .share-adjuster,
+    .easymining-section .share-adjuster {
+        gap: 0;
+    }
+
+    #team-alerts-container .share-adjuster-btn,
+    .easymining-section .share-adjuster-btn {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        min-height: 26px;
+        font-size: 14px;
+    }
+
+    #team-alerts-container .share-adjuster-input,
+    .easymining-section .share-adjuster-input {
+        width: 45px;
+        min-width: 45px;
+        padding: 2px 0;
+        margin: 0;
+    }
 }
 
 /* =============================================================================
