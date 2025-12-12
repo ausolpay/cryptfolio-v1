@@ -210,6 +210,56 @@ body.light-mode .dropdown-divider {
     color: #fff;
 }
 
+/* Auth Buttons (Login/Register when logged out) */
+.auth-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-login-link,
+.nav-register-link {
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+}
+
+.nav-login-link {
+    color: #ff9800;
+    border: 1px solid #ff9800;
+    background: transparent;
+}
+
+.nav-login-link:hover {
+    background: rgba(255, 152, 0, 0.1);
+    color: #ff9800;
+}
+
+.nav-register-link {
+    background-color: #ff9800;
+    color: #fff;
+    border: 1px solid #ff9800;
+}
+
+.nav-register-link:hover {
+    background-color: #e68900;
+    border-color: #e68900;
+    color: #fff;
+}
+
+body.light-mode .nav-login-link {
+    color: #ff9800;
+    border-color: #ff9800;
+}
+
+body.light-mode .nav-login-link:hover {
+    background: rgba(255, 152, 0, 0.1);
+}
+
 /* Nav Logo */
 .nav-logo {
     height: 30px;

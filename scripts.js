@@ -859,6 +859,12 @@ function navLogin() {
     showLoginPage();
 }
 
+// Nav register - show register page
+function navRegister() {
+    closeProfileDropdown();
+    showRegisterPage();
+}
+
 // Nav logout - logout and show login page
 function navLogout() {
     closeProfileDropdown();
@@ -867,22 +873,50 @@ function navLogout() {
 
 // Update nav auth buttons based on login state
 function updateNavAuthState() {
-    // Desktop buttons
-    const loginBtn = document.getElementById('nav-login-btn');
+    const isLoggedIn = !!loggedInUser;
+
+    // Desktop elements
+    const authButtons = document.getElementById('nav-auth-buttons');
+    const profileDropdown = document.getElementById('profile-dropdown');
     const logoutBtn = document.getElementById('nav-logout-btn');
-    // Mobile buttons
+
+    // Desktop logged-in-only menu items
+    const loggedInOnlyItems = document.querySelectorAll('.logged-in-only');
+
+    // Mobile elements
     const mobileLoginBtn = document.getElementById('mobile-login-btn');
+    const mobileRegisterBtn = document.getElementById('mobile-register-btn');
     const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
 
-    if (loggedInUser) {
-        if (loginBtn) loginBtn.style.display = 'none';
+    // Mobile logged-in-only menu items
+    const mobileLoggedInOnlyItems = document.querySelectorAll('.mobile-logged-in-only');
+
+    if (isLoggedIn) {
+        // Logged in: show profile dropdown, hide auth buttons
+        if (authButtons) authButtons.style.display = 'none';
+        if (profileDropdown) profileDropdown.style.display = 'flex';
         if (logoutBtn) logoutBtn.style.display = 'block';
+
+        // Show logged-in-only menu items
+        loggedInOnlyItems.forEach(item => item.style.display = '');
+        mobileLoggedInOnlyItems.forEach(item => item.style.display = '');
+
+        // Mobile: hide login/register, show logout
         if (mobileLoginBtn) mobileLoginBtn.style.display = 'none';
+        if (mobileRegisterBtn) mobileRegisterBtn.style.display = 'none';
         if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'block';
     } else {
-        if (loginBtn) loginBtn.style.display = 'block';
-        if (logoutBtn) logoutBtn.style.display = 'none';
+        // Logged out: hide profile dropdown, show auth buttons
+        if (authButtons) authButtons.style.display = 'flex';
+        if (profileDropdown) profileDropdown.style.display = 'none';
+
+        // Hide logged-in-only menu items
+        loggedInOnlyItems.forEach(item => item.style.display = 'none');
+        mobileLoggedInOnlyItems.forEach(item => item.style.display = 'none');
+
+        // Mobile: show login/register, hide logout
         if (mobileLoginBtn) mobileLoginBtn.style.display = 'block';
+        if (mobileRegisterBtn) mobileRegisterBtn.style.display = 'block';
         if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'none';
     }
 }
@@ -34319,10 +34353,10 @@ function initializeEasyMining() {
     // Restore rocket display from saved data (only if not cleared by midnight reset)
     restoreRockets();
 
-    // ✅ FIX: Only show section if EasyMining is enabled (hide by default until activated)
+    // ✅ FIX: Only show section if EasyMining is enabled AND API key is configured
     const section = document.getElementById('easymining-section');
     if (section) {
-        if (easyMiningSettings.enabled) {
+        if (easyMiningSettings.enabled && easyMiningSettings.apiKey) {
             // Hide section initially - it will be shown after loading bar completes
             section.style.display = 'none';
             // Start polling if EasyMining is enabled (section will be shown after loading bar completes)
@@ -34330,9 +34364,13 @@ function initializeEasyMining() {
             // Start missed rewards check (checks on load and every 30 seconds)
             startMissedRewardsCheck();
         } else {
-            // Hide section if not enabled
+            // Hide section if not enabled or no API key
             section.style.display = 'none';
-            console.log('🔒 EasyMining section hidden (not enabled)');
+            if (!easyMiningSettings.apiKey) {
+                console.log('🔒 EasyMining section hidden (no API key configured)');
+            } else {
+                console.log('🔒 EasyMining section hidden (not enabled)');
+            }
         }
     }
 

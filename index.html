@@ -41,8 +41,14 @@
 
             <!-- Right: Profile, Donate, Logo -->
             <div class="nav-right">
-                <!-- Profile Dropdown (Desktop) -->
-                <div class="profile-dropdown desktop-only">
+                <!-- Login/Register Buttons (shown when logged out) -->
+                <div class="auth-buttons desktop-only" id="nav-auth-buttons" style="display: none;">
+                    <a href="#" class="nav-login-link" onclick="navLogin(); return false;">Login</a>
+                    <a href="#" class="nav-register-link" onclick="navRegister(); return false;">Register</a>
+                </div>
+
+                <!-- Profile Dropdown (Desktop - shown when logged in) -->
+                <div class="profile-dropdown desktop-only" id="profile-dropdown">
                     <button class="profile-btn" onclick="toggleProfileDropdown()">
                         <div class="profile-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
@@ -51,12 +57,11 @@
                         </div>
                     </button>
                     <div class="dropdown-menu" id="profile-dropdown-menu">
-                        <a href="#" class="dropdown-item" onclick="showAccountSettingsPage(); closeProfileDropdown(); return false;">Account Settings</a>
-                        <a href="#" class="dropdown-item" onclick="showSettingsPage(); closeProfileDropdown(); return false;">App Settings</a>
-                        <a href="preferences.html" class="dropdown-item">Preferences</a>
-                        <a href="help.html" class="dropdown-item">Help</a>
-                        <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item" id="nav-login-btn" onclick="navLogin(); return false;" style="display: none;">Login</a>
+                        <a href="#" class="dropdown-item logged-in-only" id="nav-account-settings" onclick="showAccountSettingsPage(); closeProfileDropdown(); return false;">Account Settings</a>
+                        <a href="#" class="dropdown-item logged-in-only" id="nav-app-settings" onclick="showSettingsPage(); closeProfileDropdown(); return false;">App Settings</a>
+                        <a href="preferences.html" class="dropdown-item logged-in-only" id="nav-preferences">Preferences</a>
+                        <a href="help.html" class="dropdown-item logged-in-only" id="nav-help">Help</a>
+                        <div class="dropdown-divider logged-in-only" id="nav-divider"></div>
                         <a href="#" class="dropdown-item" id="nav-logout-btn" onclick="navLogout(); return false;">Logout</a>
                     </div>
                 </div>
@@ -77,13 +82,14 @@
             <a href="#" class="mobile-menu-link" onclick="goToAppPage(); closeMobileMenu(); return false;">CRYPTFOLIO WEB APP</a>
             <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
             <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
-            <div class="mobile-menu-divider"></div>
-            <a href="#" class="mobile-menu-link" onclick="showAccountSettingsPage(); closeMobileMenu(); return false;">Account Settings</a>
-            <a href="#" class="mobile-menu-link" onclick="showSettingsPage(); closeMobileMenu(); return false;">App Settings</a>
-            <a href="preferences.html" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
-            <a href="help.html" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
+            <div class="mobile-menu-divider mobile-logged-in-only" id="mobile-divider-settings"></div>
+            <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-account-settings" onclick="showAccountSettingsPage(); closeMobileMenu(); return false;">Account Settings</a>
+            <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-app-settings" onclick="showSettingsPage(); closeMobileMenu(); return false;">App Settings</a>
+            <a href="preferences.html" class="mobile-menu-link mobile-logged-in-only" id="mobile-preferences" onclick="closeMobileMenu()">Preferences</a>
+            <a href="help.html" class="mobile-menu-link mobile-logged-in-only" id="mobile-help" onclick="closeMobileMenu()">Help</a>
             <div class="mobile-menu-divider"></div>
             <a href="#" class="mobile-menu-link" id="mobile-login-btn" onclick="navLogin(); closeMobileMenu(); return false;" style="display: none;">Login</a>
+            <a href="#" class="mobile-menu-link" id="mobile-register-btn" onclick="navRegister(); closeMobileMenu(); return false;" style="display: none;">Register</a>
             <a href="#" class="mobile-menu-link" id="mobile-logout-btn" onclick="navLogout(); closeMobileMenu(); return false;">Logout</a>
             <div class="mobile-menu-divider"></div>
             <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
