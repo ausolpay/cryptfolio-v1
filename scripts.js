@@ -24315,6 +24315,7 @@ function stopPackageDetailPolling() {
 }
 
 // Add dynamic probability line SVG overlay to the chart
+// Positioned at 100% bar height so bars exceeding 100% cross over the line
 function addProbabilityLine(container, numBars, currentDifficulty, history, pkg = null) {
     // Remove existing line if present
     const existingLine = container.querySelector('.probability-line-svg');
@@ -24331,11 +24332,14 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
         svgHeight = isSmallMobile ? 150 : (isMobileView ? 200 : 300);
     }
 
-    // Scale factors for y positioning (base is 240px desktop)
-    const heightScale = svgHeight / 240;
-    const minY = 20 * heightScale;  // Top margin
-    const maxY = svgHeight - 20;     // Bottom margin (leave room for bars)
-    const yRange = maxY - minY;
+    // Calculate maxBarHeight the same way as bar rendering (line 25021-25022)
+    // This ensures the 100% line aligns with where 100% bars reach
+    const heightScale = isSmallMobile ? 0.6 : (isMobileView ? 0.75 : 1);
+    const maxBarHeight = 200 * heightScale;
+
+    // The 100% line Y position: bars grow from bottom, so 100% is at svgHeight - maxBarHeight
+    // Add small offset to account for bar container padding
+    const lineY100 = svgHeight - maxBarHeight - 5;
 
     // Create SVG element with responsive height
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -24361,16 +24365,7 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
         (pkg.name && pkg.name.toLowerCase().includes('palladium'))
     );
 
-    // Helper to calculate Y position from probability (scales with container)
-    function calcYFromProb(prob) {
-        // log10 scale: prob 10 → near bottom, prob 200 → near top
-        const logScale = Math.log10(prob);
-        // Normalize: log10(10)=1 → bottom, log10(200)≈2.3 → top
-        const normalized = Math.max(0, Math.min(1, (logScale - 1) / 1.5));
-        return maxY - (normalized * yRange);
-    }
-
-    // Helper to create a threshold line with label
+    // Helper to create a threshold line with label at the 100% mark
     function createThresholdLine(yPosition, color, label, probText) {
         // Create the line
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -24397,30 +24392,72 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
         svg.appendChild(labelText);
     }
 
+    // Helper to format probability precision with appropriate decimals
+    function formatProbPrecision(prob) {
+        if (prob >= 100) return Math.round(prob).toString();
+        if (prob >= 10) return prob.toFixed(1);
+        return prob.toFixed(2);
+    }
+
     if (isMergedMining) {
-        // Dual lines for merged mining (LTC harder, DOGE easier)
+        // For dual mining (Palladium), show both crypto labels on same 100% line
         const ltcProb = pkg.probabilityPrecision || 100;
         const dogeProb = pkg.mergeProbabilityPrecision || 50;
 
-        const ltcY = calcYFromProb(ltcProb);
-        const dogeY = calcYFromProb(dogeProb);
+        // Create single 100% threshold line with dual labels
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', '0');
+        line.setAttribute('y1', lineY100);
+        line.setAttribute('x2', '100%');
+        line.setAttribute('y2', lineY100);
+        line.setAttribute('stroke', '#ff6b6b');
+        line.setAttribute('stroke-width', strokeWidth.toString());
+        line.setAttribute('stroke-dasharray', isMobileView ? '4,2' : '5,3');
+        line.style.filter = 'drop-shadow(0 0 3px #ff6b6b40)';
+        svg.appendChild(line);
 
-        // LTC line (blue) - typically harder
-        createThresholdLine(ltcY, '#a8d4ff', 'LTC', `1:${Math.round(ltcProb)}`);
+        // LTC label (blue) on left
+        const ltcLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        ltcLabel.setAttribute('x', '2%');
+        ltcLabel.setAttribute('y', Math.max(fontSize + 2, lineY100 - 3));
+        ltcLabel.setAttribute('text-anchor', 'start');
+        ltcLabel.setAttribute('fill', '#a8d4ff');
+        ltcLabel.setAttribute('font-size', fontSize.toString());
+        ltcLabel.setAttribute('font-weight', 'bold');
+        ltcLabel.textContent = isMobileView ? 'LTC' : `LTC 1:${formatProbPrecision(ltcProb)}`;
+        svg.appendChild(ltcLabel);
 
-        // DOGE line (gold) - typically easier
-        createThresholdLine(dogeY, '#f4d03f', 'DOGE', `1:${Math.round(dogeProb)}`);
+        // DOGE label (gold) on right
+        const dogeLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        dogeLabel.setAttribute('x', '98%');
+        dogeLabel.setAttribute('y', Math.max(fontSize + 2, lineY100 - 3));
+        dogeLabel.setAttribute('text-anchor', 'end');
+        dogeLabel.setAttribute('fill', '#f4d03f');
+        dogeLabel.setAttribute('font-size', fontSize.toString());
+        dogeLabel.setAttribute('font-weight', 'bold');
+        dogeLabel.textContent = isMobileView ? 'DOGE' : `DOGE 1:${formatProbPrecision(dogeProb)}`;
+        svg.appendChild(dogeLabel);
 
-        console.log(`   - Dual lines: LTC y=${ltcY.toFixed(0)} (1:${ltcProb}), DOGE y=${dogeY.toFixed(0)} (1:${dogeProb}), height=${svgHeight}`);
+        // 100% label in center
+        const centerLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        centerLabel.setAttribute('x', '50%');
+        centerLabel.setAttribute('y', Math.max(fontSize + 2, lineY100 - 3));
+        centerLabel.setAttribute('text-anchor', 'middle');
+        centerLabel.setAttribute('fill', '#ff6b6b');
+        centerLabel.setAttribute('font-size', fontSize.toString());
+        centerLabel.setAttribute('font-weight', 'bold');
+        centerLabel.textContent = '100%';
+        svg.appendChild(centerLabel);
+
+        console.log(`   - 100% line at y=${lineY100.toFixed(0)}, LTC 1:${formatProbPrecision(ltcProb)}, DOGE 1:${formatProbPrecision(dogeProb)}, height=${svgHeight}`);
     } else {
-        // Single probability line
+        // Single probability line at 100% bar height
         const prob = pkg?.probabilityPrecision || currentDifficulty || 100;
-        const yPosition = calcYFromProb(prob);
 
-        // Create single red threshold line
-        createThresholdLine(yPosition, '#ff6b6b', '100%', `1:${Math.round(prob)}`);
+        // Create 100% threshold line with precision probability
+        createThresholdLine(lineY100, '#ff6b6b', '100%', `1:${formatProbPrecision(prob)}`);
 
-        console.log(`   - Single line: y=${yPosition.toFixed(0)} (1:${prob}), height=${svgHeight}`);
+        console.log(`   - 100% line at y=${lineY100.toFixed(0)} (1:${formatProbPrecision(prob)}), height=${svgHeight}, maxBarHeight=${maxBarHeight}`);
     }
 
     // Also add probability history line if we have history data
@@ -25097,14 +25134,17 @@ function updateMiningProgressChart(pkg) {
                     height = isSmallMobile ? 6 : (isMobileView ? 8 : 5); // Taller on mobile for visibility
                     bar.dataset.percentage = '0';
                 } else if (isCurrentSlot && pkg.active) {
-                    // Current active slot - flashing
-                    if (slotDataPoints.length > 0) {
-                        // Use average of data points in slot
-                        const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
-                        basePercent = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 10 - 5)));
-                    } else {
-                        basePercent = Math.min(95, Math.max(10, hashrateRatio * 80));
+                    // Current active slot - flashes at stable position (no random variance)
+                    // Store the percentage once when slot starts, keep it stable during the interval
+                    if (!chartData[`currentSlotPercent_${i}`]) {
+                        if (slotDataPoints.length > 0) {
+                            const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
+                            chartData[`currentSlotPercent_${i}`] = Math.min(95, Math.max(10, avgRatio * 80));
+                        } else {
+                            chartData[`currentSlotPercent_${i}`] = Math.min(95, Math.max(10, hashrateRatio * 80));
+                        }
                     }
+                    basePercent = chartData[`currentSlotPercent_${i}`];
                     barClass += ' current-mining';
                     height = (basePercent / 100) * maxBarHeight; // Scale for mobile
                     bar.dataset.percentage = basePercent.toFixed(0);
@@ -25113,13 +25153,18 @@ function updateMiningProgressChart(pkg) {
                     if (basePercent > highestBar.percentage) {
                         highestBar = { index: i, percentage: basePercent, element: bar };
                     }
+
+                    // Update dice with current bar's percentage and interval
+                    if (typeof updateDiceBarPercent === 'function') {
+                        updateDiceBarPercent(basePercent, INTERVAL_SECONDS);
+                    }
                 } else if (slotDataPoints.length > 0) {
-                    // Past slot with data - render based on collected data
+                    // Past slot with data - render based on collected data (no random variance)
                     const avgRatio = slotDataPoints.reduce((sum, p) => sum + (p.hashrateRatio || 0), 0) / slotDataPoints.length;
 
                     // Use stored percentage for this slot if available (keeps bars stable)
                     if (!chartData[`barPercent_${i}`]) {
-                        chartData[`barPercent_${i}`] = Math.min(95, Math.max(10, avgRatio * 80 + (Math.random() * 5 - 2.5)));
+                        chartData[`barPercent_${i}`] = Math.min(95, Math.max(10, avgRatio * 80));
                     }
                     basePercent = chartData[`barPercent_${i}`];
 
@@ -25478,6 +25523,13 @@ let diceBlockCount = 0;
 let diceRewardTimeout = null;
 let dicePollCycleTimeout = null;
 
+// Dice timing sync with bar chart (default 30s bar intervals)
+let diceBarInterval = 30; // seconds - matches bar chart interval
+let diceRollCycleInterval = null;
+let diceRollStartTime = null;
+let diceCurrentBarPercent = 0; // Current bar's percentage being displayed
+let diceIntermediateUpdateInterval = null; // For updating dice faces during roll
+
 // Track dice groups for dual-mining (e.g., Palladium LTC+DOGE)
 let diceGroups = {
     primary: { crypto: null, dice: [], count: 0 },
@@ -25638,8 +25690,8 @@ function initDiceSection(pkg) {
         diceViewport.addEventListener('mouseleave', handleDiceMouseLeave);
     }
 
-    // Start rolling immediately
-    startDiceRolling();
+    // Start synchronized roll cycle (syncs with bar chart intervals)
+    startDiceSyncCycle();
 
     // Start position animation loop
     startDicePositionAnimation();
@@ -25753,6 +25805,147 @@ function startDiceRolling() {
     });
 
     console.log('🎲 Dice rolling started');
+}
+
+// Start synchronized dice roll cycle (syncs with bar chart intervals)
+// Roll for ~25s, stop and show result for 5s, repeat
+function startDiceSyncCycle() {
+    // Clear any existing cycle
+    stopDiceSyncCycle();
+
+    // Get bar interval from chart data if available
+    const pkg = currentDetailPackage;
+    if (pkg && miningChartDataStore[pkg.id]) {
+        // Try to get the bar interval from the last chart render
+        diceBarInterval = window.currentBarInterval || 30;
+    }
+
+    console.log(`🎲 Starting dice sync cycle (${diceBarInterval}s bar interval)`);
+
+    // Start the roll/stop cycle
+    diceRollStartTime = Date.now();
+    startDiceRolling();
+
+    // Start intermediate percentage updates during rolling (every 2 seconds)
+    diceIntermediateUpdateInterval = setInterval(() => {
+        if (isDiceRolling && diceRollStartTime) {
+            // Calculate simulated progress through the current bar slot
+            const elapsed = (Date.now() - diceRollStartTime) / 1000;
+            const slotProgress = Math.min(100, (elapsed / diceBarInterval) * 100);
+
+            // Generate intermediate percentage that builds toward the target
+            // Mix random variation with progressive building toward target
+            const basePercent = diceCurrentBarPercent || 50;
+            const buildingPercent = basePercent * (slotProgress / 100);
+            const randomVariation = (Math.random() - 0.5) * 20;
+            const intermediatePercent = Math.max(5, Math.min(95, buildingPercent + randomVariation));
+
+            // Update dice faces mid-roll to show intermediate numbers
+            updateDiceFacesMidRoll(intermediatePercent);
+        }
+    }, 2000);
+
+    // Set the main cycle: roll for (interval - 5) seconds, then show result for 5 seconds
+    const rollDuration = Math.max(10, (diceBarInterval - 5)) * 1000; // Roll time
+    const showDuration = 5000; // Show result for 5 seconds
+
+    function runCycle() {
+        // Stop after roll duration and show result
+        diceRollCycleInterval = setTimeout(() => {
+            // Get the current bar's percentage from chart data
+            const pkg = currentDetailPackage;
+            let finalPercent = diceCurrentBarPercent || 50;
+
+            if (pkg && miningChartDataStore[pkg.id]) {
+                const chartData = miningChartDataStore[pkg.id];
+                finalPercent = chartData.highestBar?.percentage || calculateCloseToRewardPercent(pkg, chartData);
+            }
+
+            // Stop dice and show the percentage
+            clearInterval(diceIntermediateUpdateInterval);
+            stopDiceRolling([], finalPercent);
+            console.log(`🎲 Dice stopped - showing ${finalPercent.toFixed(0)}% for 5s`);
+
+            // After showing for 5 seconds, start rolling again
+            diceRollCycleInterval = setTimeout(() => {
+                diceRollStartTime = Date.now();
+                startDiceRolling();
+
+                // Restart intermediate updates
+                diceIntermediateUpdateInterval = setInterval(() => {
+                    if (isDiceRolling && diceRollStartTime) {
+                        const elapsed = (Date.now() - diceRollStartTime) / 1000;
+                        const slotProgress = Math.min(100, (elapsed / diceBarInterval) * 100);
+                        const basePercent = diceCurrentBarPercent || 50;
+                        const buildingPercent = basePercent * (slotProgress / 100);
+                        const randomVariation = (Math.random() - 0.5) * 20;
+                        const intermediatePercent = Math.max(5, Math.min(95, buildingPercent + randomVariation));
+                        updateDiceFacesMidRoll(intermediatePercent);
+                    }
+                }, 2000);
+
+                // Schedule next stop after roll duration
+                runCycle();
+            }, showDuration);
+        }, rollDuration);
+    }
+
+    runCycle();
+}
+
+// Update dice faces mid-roll to show intermediate percentage numbers
+function updateDiceFacesMidRoll(percent) {
+    // Calculate what dice face values would represent this percentage
+    // Sum range 2-10: maps to 0-100%
+    const normalized = Math.max(0, Math.min(100, percent)) / 100;
+    const targetSum = Math.round(2 + normalized * 8);
+
+    // Briefly flash the target value on dice before continuing roll
+    // This creates the effect of numbers flying by during roll
+    const faceRotations = {
+        1: 'rotateX(0deg) rotateY(0deg)',
+        2: 'rotateX(-90deg) rotateY(0deg)',
+        3: 'rotateY(-90deg)',
+        4: 'rotateY(90deg)',
+        5: 'rotateX(90deg) rotateY(0deg)',
+        6: 'rotateY(180deg)'
+    };
+
+    // Don't update if we're showing a reward
+    if (diceRewardTimeout) return;
+
+    // Calculate dice pair for this percentage
+    const die1 = Math.min(5, Math.max(1, Math.ceil(targetSum / 2)));
+    const die2 = Math.min(5, Math.max(1, targetSum - die1));
+
+    // Apply brief transform flash to show the numbers
+    diceElements.forEach((dice, index) => {
+        const value = index % 2 === 0 ? die1 : die2;
+        // Add a brief highlight effect
+        dice.style.setProperty('--flash-value', value);
+    });
+}
+
+// Stop the synchronized dice cycle
+function stopDiceSyncCycle() {
+    if (diceRollCycleInterval) {
+        clearTimeout(diceRollCycleInterval);
+        diceRollCycleInterval = null;
+    }
+    if (diceIntermediateUpdateInterval) {
+        clearInterval(diceIntermediateUpdateInterval);
+        diceIntermediateUpdateInterval = null;
+    }
+    diceRollStartTime = null;
+}
+
+// Update dice current bar percentage (called from chart updates)
+function updateDiceBarPercent(percent, barInterval = 30) {
+    diceCurrentBarPercent = percent;
+    diceBarInterval = barInterval;
+
+    // Store globally for dice sync cycle
+    window.currentBarInterval = barInterval;
 }
 
 // Stop dice rolling and show result
@@ -26071,6 +26264,9 @@ function handleDiceMouseLeave() {
 
 // Cleanup dice section
 function cleanupDiceSection() {
+    // Stop synchronized roll cycle
+    stopDiceSyncCycle();
+
     // Cancel animation frame
     if (diceAnimationFrame) {
         cancelAnimationFrame(diceAnimationFrame);
