@@ -1715,6 +1715,34 @@
         display: none !important;
     }
 
+    .about-hero {
+        padding: 100px 24px 60px;
+    }
+
+    .preview-section,
+    .features-section,
+    .cta-section,
+    .company-section {
+        padding: 80px 24px;
+    }
+
+    .preview-section.alt-bg {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+
+    .section-header {
+        padding: 0 8px;
+    }
+
+    .preview-features {
+        padding: 0 8px;
+    }
+
+    .feature-card {
+        padding: 28px 24px;
+    }
+
     .demo-crypto-box,
     .demo-chart-modal,
     .demo-package-card,
@@ -1726,11 +1754,16 @@
     .footer-content {
         flex-direction: column;
         text-align: center;
+        padding: 0 24px;
     }
 
     .footer-links {
         flex-wrap: wrap;
         justify-content: center;
+    }
+
+    .about-footer {
+        padding: 30px 24px;
     }
 }
 
