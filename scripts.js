@@ -25923,9 +25923,10 @@ function startDiceSyncCycle() {
         }
     }, 5000);
 
-    // Set the main cycle: roll for (interval - 5) seconds, then show result for 5 seconds
-    const rollDuration = Math.max(10, (diceBarInterval - 5)) * 1000; // Roll time
-    const showDuration = 5000; // Show result for 5 seconds
+    // Set the main cycle: roll for (interval - 3) seconds, then show result for 3 seconds
+    // This keeps total cycle at 30s synced with bar chart polls
+    const showDuration = 3000; // Show result for 3 seconds
+    const rollDuration = Math.max(10, (diceBarInterval - 3)) * 1000; // Roll time (27s for 30s interval)
 
     function runCycle() {
         // Stop after roll duration and show result
@@ -25942,9 +25943,9 @@ function startDiceSyncCycle() {
             // Stop dice and show the percentage
             clearInterval(diceIntermediateUpdateInterval);
             stopDiceRolling([], finalPercent);
-            console.log(`🎲 Dice stopped - showing ${finalPercent.toFixed(0)}% for 5s`);
+            console.log(`🎲 Dice stopped - showing ${finalPercent.toFixed(0)}% for 3s`);
 
-            // After showing for 5 seconds, start rolling again
+            // After showing for 3 seconds, start rolling again
             diceRollCycleInterval = setTimeout(() => {
                 diceRollStartTime = Date.now();
                 startDiceRolling();
