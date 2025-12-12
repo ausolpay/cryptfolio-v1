@@ -13657,8 +13657,19 @@ let savedPackageProbabilities = {};
 // Note: easyMiningPollingInterval, easyMiningAlertsPollingInterval, buyPackagesPollingInterval,
 // buyPackagesPollingPaused, buyPackagesPauseTimer are declared at the top of the file
 let showAllPackages = false;
-let currentPackagePage = 1; // Arrow navigation pagination (Desktop: 6 per page, Mobile: 3 per page)
-const packagesPerPage = 6; // Desktop/Tablet cards per page (mobile uses 3)
+let currentPackagePage = 1; // Arrow navigation pagination (Desktop: 6 per page, Tablet: 2, Mobile: 2)
+
+// Get responsive cards per page for package pagination (matches visual layout)
+function getPackageCardsPerPage() {
+    const width = window.innerWidth;
+    if (width <= 600) {
+        return 2; // Mobile: 2 cards visible at a time
+    } else if (width <= 900) {
+        return 2; // Tablet: 2 cards visible at a time
+    } else {
+        return 6; // Desktop: 6 cards per page (3 per row × 2 rows)
+    }
+}
 let missedRewardsCheckInterval = null; // For checking missed rewards every 30 seconds
 
 // Error alert throttling with delayed alerts (prevent spam during reconnection)
@@ -15173,9 +15184,8 @@ function prevRewardsPage() {
 // Navigate to next page of packages (works on both desktop and mobile)
 function nextPackagePage() {
     const filtered = getFilteredPackages(); // Get current filtered packages
-    // Use same mobile-aware logic as displayActivePackages()
-    const isDesktop = window.innerWidth > 600;
-    const cardsPerPage = isDesktop ? 6 : 3;
+    // Use responsive cards per page (matches visual layout)
+    const cardsPerPage = getPackageCardsPerPage();
     const totalPages = Math.ceil(filtered.length / cardsPerPage);
 
     if (currentPackagePage < totalPages) {
@@ -17677,14 +17687,10 @@ function displayActivePackages() {
     document.getElementById('completed-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.active === false).length;
     document.getElementById('rewards-count').textContent = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true).length;
 
-    // Detect desktop/tablet vs mobile (600px breakpoint)
-    const isDesktop = window.innerWidth > 600;
+    // Get responsive cards per page (matches visual layout)
+    const cardsPerPage = getPackageCardsPerPage();
 
-    // Set cards per page based on screen size
-    // Desktop/Tablet: 6 cards per page, Mobile: 3 cards per page
-    const cardsPerPage = isDesktop ? 6 : 3;
-
-    // Paginate in groups (6 for desktop, 3 for mobile)
+    // Paginate in groups based on screen size
     const startIndex = (currentPackagePage - 1) * cardsPerPage;
     const endIndex = startIndex + cardsPerPage;
     const packagesToShow = filteredPackages.slice(startIndex, endIndex);
