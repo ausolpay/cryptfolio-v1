@@ -313,6 +313,11 @@ let autoSharesLastTotalShares = {}; // Track last seen total shares per package 
 let autoSharesBackgroundPolling = null; // Background polling interval for auto-shares (runs app-wide)
 let easyMiningHasBeenOpened = false; // Track if EasyMining section was opened (for deferred loading)
 
+// Smooth countdown interval for EasyMining (1-second updates independent of polling)
+let easyMiningCountdownInterval = null;
+let activePackageCountdowns = {}; // { packageId: remainingMs }
+let teamAlertCountdowns = {}; // { packageId: remainingMs }
+
 // Alert sound queue to prevent multiple sounds playing at once
 let alertSoundQueue = [];
 let isPlayingAlertSound = false;
@@ -15338,6 +15343,9 @@ async function fetchEasyMiningData() {
         // Update UI
         updateEasyMiningUI();
 
+        // Sync countdown values with fresh API data
+        syncCountdownsWithApiData();
+
         // Update mining chart on package detail page if viewing one
         if (currentDetailPackage && easyMiningData.activePackages) {
             const updatedPkg = easyMiningData.activePackages.find(p => p.id === currentDetailPackage.id);
@@ -16778,6 +16786,7 @@ async function fetchNiceHashOrders() {
                 name: order.packageName || `${order.soloMiningCoin} Package`, // Use packageName from API!
                 crypto: order.soloMiningCoin, // Direct from API (primary coin)
                 cryptoSecondary: order.soloMiningMergeCoin, // For dual mining (secondary coin)
+                isDualCrypto: !!order.soloMiningMergeCoin, // Flag for dual-mining packages (Palladium)
                 miningType: order.soloMiningMergeCoin ? `${order.soloMiningCoin}+${order.soloMiningMergeCoin}` : `${order.soloMiningCoin} Mining`,
                 reward: cryptoReward, // Primary crypto amount (user's share for team packages)
                 rewardSecondary: secondaryCryptoReward, // Secondary crypto amount for dual mining (user's share for team packages)
@@ -16838,6 +16847,12 @@ async function fetchNiceHashOrders() {
                     || order.currencyAlgoTicket?.probabilityPrecision
                     || order.soloTicket?.probabilityPrecision
                     || order.probabilityPrecision
+                    || null,
+                // Raw merge probability (for DOGE in Palladium dual-mining charts)
+                mergeProbabilityPrecision: order.sharedTicket?.currencyAlgoTicket?.mergeProbabilityPrecision
+                    || order.currencyAlgoTicket?.mergeProbabilityPrecision
+                    || order.soloTicket?.mergeProbabilityPrecision
+                    || order.mergeProbabilityPrecision
                     || null,
                 acceptedCurrentSpeed: order.acceptedCurrentSpeed || 0,
                 // For team packages, use projectedSpeed from sharedTicket
@@ -17899,12 +17914,12 @@ function displayActivePackages() {
                         ` : ''}
                         ${pkg.active ? `
                         <div class="stat-block">
-                            <span class="stat-value-medium">
+                            <span class="stat-value-medium" id="active-duration-${pkg.id}">
                                 <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"/>
                                     <polyline points="12,6 12,12 16,14"/>
                                 </svg>
-                                ${pkg.timeRemaining}
+                                <span class="duration-text">${pkg.timeRemaining}</span>
                             </span>
                         </div>
                         ${pkg.hashrate ? `
@@ -20539,6 +20554,17 @@ async function updateRecommendations() {
 
     // Refresh floating icons to ensure EasyMining balance icon is shown
     refreshStripFloatingIcons();
+
+    // Sync team alert countdowns with updated recommendations
+    if (currentTeamRecommendations && currentTeamRecommendations.length > 0) {
+        currentTeamRecommendations.forEach(pkg => {
+            if (pkg.lifeTimeTill && pkg.id) {
+                const startTime = new Date(pkg.lifeTimeTill).getTime();
+                const remaining = Math.max(0, startTime - Date.now());
+                teamAlertCountdowns[pkg.id] = remaining;
+            }
+        });
+    }
 
     console.log('✅ Recommendations updated successfully');
 }
@@ -23244,7 +23270,14 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
     svg.style.zIndex = '10';
 
     // Check if this is a merged mining package (Palladium - LTC/DOGE)
-    const isMergedMining = pkg && pkg.mergeProbabilityPrecision && pkg.mergeCurrencyAlgo;
+    // Check multiple indicators: isDualCrypto flag, mergeProbability fields, cryptoSecondary, or name contains "palladium"
+    const isMergedMining = pkg && (
+        pkg.isDualCrypto ||
+        pkg.cryptoSecondary ||
+        (pkg.mergeProbabilityPrecision && pkg.mergeProbabilityPrecision > 0) ||
+        (pkg.mergeProbability && pkg.mergeProbability !== 'N/A') ||
+        (pkg.name && pkg.name.toLowerCase().includes('palladium'))
+    );
 
     // Helper to create a threshold line with label
     function createThresholdLine(yPosition, color, label, probText) {
@@ -24385,12 +24418,11 @@ const diceCryptoIcons = {
 
 // Calculate number of dice based on probability (1:X)
 function calculateDiceCount(probability) {
-    // probability is the X in "1:X" - higher X means more dice needed
-    // Formula: Math.ceil(log6(probability)) gives us how many 6-sided dice we need
-    // 1:6 or less = 1 die, 1:36 = 2 dice, 1:216 = 3 dice, etc.
+    // probability is the X in "1:X" - divide by 6 and round to nearest
+    // 1:6 = 1 die, 1:12 = 2 dice, 1:30 = 5 dice, etc.
     if (!probability || probability <= 0) return 1;
-    const diceCount = Math.max(1, Math.ceil(Math.log(probability) / Math.log(6)));
-    return Math.min(diceCount, 4); // Cap at 4 dice per crypto for visual clarity
+    const diceCount = Math.max(1, Math.round(probability / 6));
+    return Math.min(diceCount, 8); // Cap at 8 dice per crypto for visual clarity
 }
 
 // Calculate accurate close-to-reward percentage using Poisson probability model
@@ -24547,6 +24579,43 @@ function createDiceForCrypto(container, group, crypto, count) {
 
     const iconUrl = diceCryptoIcons[crypto] || diceCryptoIcons.BTC;
 
+    // Dice dot patterns for a 3x3 grid (positions 0-8):
+    // [0][1][2]
+    // [3][4][5]
+    // [6][7][8]
+    // Standard dice patterns:
+    const dotPatterns = {
+        1: [4],                     // Center only
+        2: [0, 8],                  // Top-left, bottom-right (diagonal)
+        3: [0, 4, 8],               // Diagonal through center
+        4: [0, 2, 6, 8],            // Four corners
+        5: [0, 2, 4, 6, 8],         // Four corners + center
+        6: [0, 2, 3, 5, 6, 8]       // Six rockets (2 columns of 3)
+    };
+
+    // Generate HTML for dice face with crypto icon dots
+    function createDotPatternHTML(value, iconUrl, crypto) {
+        const rocketSvg = '<svg viewBox="0 0 24 24" fill="#ff9800" stroke="none"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>';
+
+        const pattern = dotPatterns[value];
+        let html = '<div class="crypto-dots">';
+        for (let i = 0; i < 9; i++) {
+            if (pattern.includes(i)) {
+                if (value === 6) {
+                    // Face 6 = Rockets (reward face)
+                    html += `<div class="crypto-dot">${rocketSvg}</div>`;
+                } else {
+                    // Faces 1-5: Crypto icons
+                    html += `<div class="crypto-dot"><img src="${iconUrl}" alt="${crypto}" onerror="this.style.display='none'"></div>`;
+                }
+            } else {
+                html += '<div class="crypto-dot hidden"></div>';
+            }
+        }
+        html += '</div>';
+        return html;
+    }
+
     for (let i = 0; i < count; i++) {
         const dice = document.createElement('div');
         dice.className = 'dice rolling';
@@ -24564,28 +24633,7 @@ function createDiceForCrypto(container, group, crypto, count) {
             const faceEl = document.createElement('div');
             faceEl.className = `dice-face ${face}`;
             faceEl.dataset.value = faceValues[faceIndex];
-
-            if (faceValues[faceIndex] === 6) {
-                // Face 6 (back) = Rocket (highest value = reward face)
-                faceEl.innerHTML = `
-                    <div class="rocket-icon">
-                        <svg viewBox="0 0 24 24" fill="#ff9800" stroke="none">
-                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-                        </svg>
-                    </div>
-                `;
-            } else {
-                // Faces 1-5 = Crypto icon
-                faceEl.innerHTML = `
-                    <div class="crypto-icon-face">
-                        <img src="${iconUrl}" alt="${crypto}" onerror="this.style.display='none'">
-                    </div>
-                `;
-            }
-
+            faceEl.innerHTML = createDotPatternHTML(faceValues[faceIndex], iconUrl, crypto);
             dice.appendChild(faceEl);
         });
 
@@ -24647,31 +24695,31 @@ function stopDiceRolling(rewardCryptos = [], closeToRewardPercent = 0) {
     };
 
     // Calculate dice values to show based on close-to-reward percentage
-    // Higher percentage = higher probability of showing higher values (closer to 6/rocket)
+    // Higher percentage = higher probability of showing higher values (1-5 only, never 6/rockets)
+    // Rockets (face 6) ONLY show when actual reward is found
     function getDiceValueForPercent(percent) {
         // Use weighted random: higher percent = higher expected value
-        // At 0%: mostly 1-2, at 100%: always 6 (rocket)
+        // Range is 1-5 only - rockets (6) only show on actual reward
         const normalized = Math.max(0, Math.min(100, percent)) / 100;
 
-        // Exponential weighting to make 6 rare until close to 100%
-        // Only show 6 (rocket) at very high percentages
-        if (normalized >= 0.95) return 6; // 95%+ always shows rocket
-
-        // For lower percentages, weighted random from 1-5
-        // Higher percent = higher average value
+        // For all percentages, weighted random from 1-5
+        // Higher percent = higher average value (closer to 5)
         const rand = Math.random();
         const threshold = normalized * normalized; // Exponential curve
 
-        if (rand < threshold * 0.8) {
-            // High roll zone - return 4 or 5
+        if (rand < threshold * 0.6) {
+            // High roll zone - return 5
+            return 5;
+        } else if (rand < threshold * 0.8) {
+            // Medium-high roll zone - return 4 or 5
             return Math.random() < 0.5 ? 5 : 4;
-        } else if (rand < threshold * 0.9 + 0.3) {
+        } else if (rand < threshold * 0.9 + 0.2) {
             // Medium roll zone - return 3 or 4
             return Math.random() < 0.5 ? 4 : 3;
         } else {
             // Low roll zone - return 1, 2, or 3 based on percent
             const lowRoll = 1 + Math.floor(normalized * 2 + Math.random() * 2);
-            return Math.min(5, lowRoll);
+            return Math.min(5, lowRoll); // Never exceed 5
         }
     }
 
@@ -31712,6 +31760,9 @@ function startEasyMiningPolling() {
     // Start watchdog to ensure polling stays alive
     startPollingWatchdog();
 
+    // Start smooth countdown interval (1-second updates independent of polling)
+    startEasyMiningCountdownInterval();
+
     console.log('✅ EasyMining polling started with watchdog');
 }
 
@@ -31729,6 +31780,169 @@ function stopEasyMiningPolling() {
 
     // Stop background metrics capture
     stopBackgroundMetricsCapture();
+
+    // Stop smooth countdown interval
+    stopEasyMiningCountdownInterval();
+}
+
+// =============================================================================
+// SMOOTH COUNTDOWN INTERVAL FOR EASYMINING
+// Updates duration displays every 1 second independent of API polling
+// =============================================================================
+
+function startEasyMiningCountdownInterval() {
+    // Stop any existing countdown interval
+    if (easyMiningCountdownInterval) {
+        clearInterval(easyMiningCountdownInterval);
+    }
+
+    // Initialize countdowns from current data
+    initializeCountdownValues();
+
+    // Update every second
+    easyMiningCountdownInterval = setInterval(() => {
+        updateEasyMiningCountdowns();
+    }, 1000);
+
+    console.log('⏱️ EasyMining smooth countdown interval started');
+}
+
+function stopEasyMiningCountdownInterval() {
+    if (easyMiningCountdownInterval) {
+        clearInterval(easyMiningCountdownInterval);
+        easyMiningCountdownInterval = null;
+        console.log('⏱️ EasyMining smooth countdown interval stopped');
+    }
+}
+
+// Initialize countdown values from current package data
+function initializeCountdownValues() {
+    // Initialize active package countdowns
+    if (easyMiningData.activePackages) {
+        easyMiningData.activePackages.forEach(pkg => {
+            if (pkg.active && pkg.id) {
+                // Use estimateDurationInSeconds for active packages
+                if (pkg.estimateDurationInSeconds > 0) {
+                    activePackageCountdowns[pkg.id] = pkg.estimateDurationInSeconds * 1000;
+                } else if (pkg.endTime) {
+                    activePackageCountdowns[pkg.id] = Math.max(0, new Date(pkg.endTime).getTime() - Date.now());
+                }
+            }
+        });
+    }
+
+    // Initialize team alert countdowns from current recommendations
+    if (currentTeamRecommendations) {
+        currentTeamRecommendations.forEach(pkg => {
+            if (pkg.lifeTimeTill) {
+                const startTime = new Date(pkg.lifeTimeTill).getTime();
+                const remaining = Math.max(0, startTime - Date.now());
+                teamAlertCountdowns[pkg.id] = remaining;
+            }
+        });
+    }
+
+    console.log(`⏱️ Initialized countdowns: ${Object.keys(activePackageCountdowns).length} active packages, ${Object.keys(teamAlertCountdowns).length} team alerts`);
+}
+
+// Sync countdown values with fresh API data
+function syncCountdownsWithApiData() {
+    // Sync active package countdowns
+    if (easyMiningData.activePackages) {
+        easyMiningData.activePackages.forEach(pkg => {
+            if (pkg.active && pkg.id) {
+                if (pkg.estimateDurationInSeconds > 0) {
+                    // Use fresh API value
+                    activePackageCountdowns[pkg.id] = pkg.estimateDurationInSeconds * 1000;
+                } else if (pkg.endTime) {
+                    activePackageCountdowns[pkg.id] = Math.max(0, new Date(pkg.endTime).getTime() - Date.now());
+                }
+            }
+        });
+    }
+
+    // Sync team alert countdowns
+    if (currentTeamRecommendations) {
+        currentTeamRecommendations.forEach(pkg => {
+            if (pkg.lifeTimeTill) {
+                const startTime = new Date(pkg.lifeTimeTill).getTime();
+                const remaining = Math.max(0, startTime - Date.now());
+                teamAlertCountdowns[pkg.id] = remaining;
+            }
+        });
+    }
+}
+
+// Update all countdown displays (runs every 1 second)
+function updateEasyMiningCountdowns() {
+    // Update active package duration displays
+    Object.keys(activePackageCountdowns).forEach(pkgId => {
+        // Decrement by 1 second
+        activePackageCountdowns[pkgId] = Math.max(0, activePackageCountdowns[pkgId] - 1000);
+        const remainingMs = activePackageCountdowns[pkgId];
+
+        // Find and update the display element
+        const durationEl = document.getElementById(`active-duration-${pkgId}`);
+        if (durationEl) {
+            const textEl = durationEl.querySelector('.duration-text');
+            if (textEl) {
+                textEl.textContent = formatDurationSmooth(remainingMs);
+            }
+        }
+    });
+
+    // Update team alert countdown displays
+    Object.keys(teamAlertCountdowns).forEach(pkgId => {
+        // Decrement by 1 second
+        teamAlertCountdowns[pkgId] = Math.max(0, teamAlertCountdowns[pkgId] - 1000);
+        const remainingMs = teamAlertCountdowns[pkgId];
+
+        // Find and update the display element
+        const countdownEl = document.getElementById(`countdown-${pkgId}`);
+        if (countdownEl && !countdownEl.classList.contains('mining-lobby-fade')) {
+            // Don't update if it's showing "Mining Lobby" or "Starting Soon!"
+            const currentText = countdownEl.textContent;
+            if (currentText !== 'Mining Lobby' && currentText !== 'Starting Soon!') {
+                if (remainingMs > 0) {
+                    countdownEl.textContent = formatCountdownSmooth(remainingMs);
+                    countdownEl.style.color = '#FFA500';
+                } else {
+                    countdownEl.textContent = 'Starting Soon!';
+                    countdownEl.style.color = '#4CAF50';
+                    countdownEl.style.fontWeight = 'bold';
+                }
+            }
+        }
+    });
+}
+
+// Format duration for active packages (smooth countdown)
+function formatDurationSmooth(ms) {
+    if (ms <= 0) return 'Completed';
+
+    const totalSeconds = Math.floor(ms / 1000);
+    const days = Math.floor(totalSeconds / (60 * 60 * 24));
+    const hours = Math.floor((totalSeconds % (60 * 60 * 24)) / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (days > 0) {
+        return `${days}d ${hours}h`;
+    }
+    // When hours present: show h m format, when only minutes: show m s format
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`;
+}
+
+// Format countdown for team alerts (smooth countdown)
+function formatCountdownSmooth(ms) {
+    if (ms <= 0) return 'Starting Soon!';
+
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = totalSeconds % 60;
+
+    return hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
 }
 
 // =============================================================================
