@@ -447,13 +447,8 @@ body.light-mode .mobile-menu-divider {
     margin-top: 60px; /* Space from top (10px gap + 50px nav) */
 }
 
-/* App Page Background Animation */
-#app-page {
-    position: relative;
-    overflow: hidden;
-}
-
-.app-bg-animation {
+/* Global Background Animation - visible on all pages */
+.global-bg-animation {
     position: fixed;
     top: 0;
     left: 0;
@@ -464,42 +459,42 @@ body.light-mode .mobile-menu-divider {
     overflow: hidden;
 }
 
-.app-orb {
+.global-orb {
     position: absolute;
     border-radius: 50%;
     filter: blur(120px);
     opacity: 0.25;
 }
 
-.app-orb-1 {
+.global-orb-1 {
     width: 500px;
     height: 500px;
     background: #ff9800;
     top: -150px;
     right: -100px;
-    animation: app-float-1 20s ease-in-out infinite;
+    animation: global-float-1 20s ease-in-out infinite;
 }
 
-.app-orb-2 {
+.global-orb-2 {
     width: 450px;
     height: 450px;
     background: #666666;
     bottom: -150px;
     left: -100px;
-    animation: app-float-2 25s ease-in-out infinite;
+    animation: global-float-2 25s ease-in-out infinite;
 }
 
-.app-orb-3 {
+.global-orb-3 {
     width: 400px;
     height: 400px;
     background: #ff9800;
     top: 40%;
     left: 30%;
     opacity: 0.15;
-    animation: app-float-3 30s ease-in-out infinite;
+    animation: global-float-3 30s ease-in-out infinite;
 }
 
-@keyframes app-float-1 {
+@keyframes global-float-1 {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
@@ -517,7 +512,7 @@ body.light-mode .mobile-menu-divider {
     }
 }
 
-@keyframes app-float-2 {
+@keyframes global-float-2 {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
@@ -532,7 +527,7 @@ body.light-mode .mobile-menu-divider {
     }
 }
 
-@keyframes app-float-3 {
+@keyframes global-float-3 {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
@@ -550,28 +545,75 @@ body.light-mode .mobile-menu-divider {
     }
 }
 
-/* Ensure app content is above background */
-#app-page > *:not(.app-bg-animation) {
+/* Ensure all page content is above background */
+.container {
     position: relative;
     z-index: 1;
 }
 
-/* Light mode app orbs - softer colors */
-body.light-mode .app-orb {
+/* Light mode global orbs - softer colors */
+body.light-mode .global-orb {
     opacity: 0.15;
 }
 
-body.light-mode .app-orb-1 {
+body.light-mode .global-orb-1 {
     background: #ff9800;
 }
 
-body.light-mode .app-orb-2 {
+body.light-mode .global-orb-2 {
     background: #999999;
 }
 
-body.light-mode .app-orb-3 {
+body.light-mode .global-orb-3 {
     background: #ffb74d;
     opacity: 0.1;
+}
+
+/* Semi-transparent containers - let background show through */
+.crypto-container,
+.total-holdings,
+.total-holdings-content,
+.portfolio-stats-grid,
+.portfolio-pnl-grid,
+.settings-section,
+.easymining-settings-form,
+.package-detail-page-content,
+.buy-packages-content,
+.averages-content,
+.deposits-content,
+.withdraw-content,
+.modal-content,
+.easymining-box,
+.balance-box,
+.packages-section,
+.recommendations-section,
+.rewards-section {
+    background-color: rgba(30, 30, 30, 0.85) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+body.light-mode .crypto-container,
+body.light-mode .total-holdings,
+body.light-mode .total-holdings-content,
+body.light-mode .portfolio-stats-grid,
+body.light-mode .portfolio-pnl-grid,
+body.light-mode .settings-section,
+body.light-mode .easymining-settings-form,
+body.light-mode .package-detail-page-content,
+body.light-mode .buy-packages-content,
+body.light-mode .averages-content,
+body.light-mode .deposits-content,
+body.light-mode .withdraw-content,
+body.light-mode .modal-content,
+body.light-mode .easymining-box,
+body.light-mode .balance-box,
+body.light-mode .packages-section,
+body.light-mode .recommendations-section,
+body.light-mode .rewards-section {
+    background-color: rgba(245, 245, 245, 0.85) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 /* Static Page Styles */
