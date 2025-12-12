@@ -21593,16 +21593,18 @@ function updateTeamAlertCardValues(pkg) {
     // Use input value if user is previewing more shares, otherwise use owned shares
     const myShares = inputValue > 0 ? inputValue : (myBoughtShares || 1);
 
-    // Formula: blockReward / totalBoughtShares * myShares
-    // Use CURRENT totalBoughtShares from API (not adjusted for preview)
-    // If totalBoughtShares is 0, fall back to myShares (I'm the only potential buyer)
-    const effectiveTotalShares = totalBoughtShares > 0 ? totalBoughtShares : myShares;
+    // Formula must match adjustShares: blockReward / (othersBought + myShares) * myShares
+    // This correctly projects the reward AFTER purchase when previewing more shares
+    // totalBoughtShares from API includes my already bought shares, so subtract them first
+    const othersBought = totalBoughtShares - myBoughtShares;
+    const effectiveTotalShares = othersBought + myShares;
 
     console.log(`📊 Live reward update for ${pkg.name}:`, {
         myBoughtShares,
         inputValue,
         myShares,
         totalBoughtShares,
+        othersBought,
         effectiveTotalShares,
         blockReward: pkg.blockReward
     });
@@ -28913,9 +28915,11 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         const inputValueForReward = shareInputForReward ? parseInt(shareInputForReward.value) || 0 : 0;
         const mySharesForReward = inputValueForReward > 0 ? inputValueForReward : (myBoughtShares || 1);
 
-        // Formula: blockReward / totalBoughtShares * myShares
-        // Use CURRENT totalBoughtShares from API
-        const effectiveTotalSharesForReward = totalBoughtShares > 0 ? totalBoughtShares : mySharesForReward;
+        // Formula must match adjustShares: blockReward / (othersBought + myShares) * myShares
+        // This correctly projects the reward AFTER purchase when previewing more shares
+        // totalBoughtShares from API includes my already bought shares, so subtract them first
+        const othersBoughtForReward = totalBoughtShares - myBoughtShares;
+        const effectiveTotalSharesForReward = othersBoughtForReward + mySharesForReward;
 
         const rewardValueEl = card.querySelector(`#reward-value-${packageIdForElements}`);
         if (rewardValueEl && rewardAUD > 0 && effectiveTotalSharesForReward > 0) {
@@ -31722,8 +31726,9 @@ function adjustShares(packageName, delta, buttonElement) {
             console.warn(`⚠️ Price element not found for alert: ${packageName}`);
         }
 
-        // Calculate rewards using formula: blockReward / totalBoughtShares * myShares
+        // Calculate rewards using formula: blockReward / (othersBought + myShares) * myShares
         const totalBoughtShares = parseInt(input.dataset?.totalBought) || 0;
+        const myBoughtSharesFromData = parseInt(input.dataset?.myBought) || 0;
         const blockReward = parseFloat(input.dataset?.blockReward) || 0;
         const mergeBlockReward = parseFloat(input.dataset?.mergeBlockReward) || 0;
         const isDualCrypto = input.dataset?.isDualCrypto === 'true';
@@ -31732,20 +31737,24 @@ function adjustShares(packageName, delta, buttonElement) {
         const fullRewardAUD = parseFloat(input.dataset?.fullRewardAud) || 0;
         const myShares = newValue;
 
+        // Formula must match adjustShares main path and smart updates
+        // This correctly projects the reward AFTER purchase when previewing more shares
+        const othersBought = totalBoughtShares - myBoughtSharesFromData;
+        const effectiveTotalShares = othersBought + myShares;
+
         console.log(`💰 Alert reward calculation:`, {
             blockReward,
             mergeBlockReward,
             totalBoughtShares,
+            myBoughtSharesFromData,
+            othersBought,
             myShares,
+            effectiveTotalShares,
             isDualCrypto,
             mainCrypto,
             mergeCrypto,
             fullRewardAUD
         });
-
-        // Calculate my reward share: blockReward / totalBoughtShares * myShares
-        // If totalBoughtShares is 0, use myShares as the denominator (I'm the only buyer)
-        const effectiveTotalShares = totalBoughtShares > 0 ? totalBoughtShares : myShares;
 
         if (effectiveTotalShares > 0) {
             // Calculate main crypto reward
