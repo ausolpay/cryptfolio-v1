@@ -19,8 +19,35 @@
   gtag('config', 'G-C7DZD5J9D7');
 </script>
     <link rel="stylesheet" href="styles.css">
+    <!-- Google AdSense (Free tier only) -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
 </head>
 <body class="dark-mode">
+    <!-- Ad Containers (shown for Free tier only) -->
+    <div id="ad-skyscraper-left" class="ad-container ad-skyscraper ad-left" style="display: none;">
+        <ins class="adsbygoogle"
+             style="display:inline-block;width:300px;height:600px"
+             data-ad-client="ca-pub-XXXXXXXXXX"
+             data-ad-slot="XXXXXXXXXX"></ins>
+    </div>
+    <div id="ad-skyscraper-right" class="ad-container ad-skyscraper ad-right" style="display: none;">
+        <ins class="adsbygoogle"
+             style="display:inline-block;width:300px;height:600px"
+             data-ad-client="ca-pub-XXXXXXXXXX"
+             data-ad-slot="XXXXXXXXXX"></ins>
+    </div>
+    <div id="ad-banner-tablet" class="ad-container ad-banner-tablet" style="display: none;">
+        <ins class="adsbygoogle"
+             style="display:inline-block;width:728px;height:90px"
+             data-ad-client="ca-pub-XXXXXXXXXX"
+             data-ad-slot="XXXXXXXXXX"></ins>
+    </div>
+    <div id="ad-banner-mobile" class="ad-container ad-banner-mobile" style="display: none;">
+        <ins class="adsbygoogle"
+             style="display:inline-block;width:320px;height:50px"
+             data-ad-client="ca-pub-XXXXXXXXXX"
+             data-ad-slot="XXXXXXXXXX"></ins>
+    </div>
     <!-- Top Navigation Strip -->
     <nav class="top-nav" id="top-nav">
         <div class="nav-content">
@@ -35,6 +62,7 @@
             <div class="nav-links">
                 <a href="about.html" class="nav-link">ABOUT</a>
                 <a href="#" class="nav-link" onclick="goToAppPage(); return false;">CRYPTFOLIO WEB APP</a>
+                <a href="#" class="nav-link" onclick="showPricingPage(); return false;">PRICING</a>
                 <a href="docs.html" class="nav-link">DOCS</a>
                 <a href="contact.html" class="nav-link">CONTACT</a>
             </div>
@@ -82,6 +110,7 @@
             <a href="#" class="mobile-menu-link" onclick="goToAppPage(); closeMobileMenu(); return false;">CRYPTFOLIO WEB APP</a>
             <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
             <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
+            <a href="#" class="mobile-menu-link" onclick="showPricingPage(); closeMobileMenu(); return false;">PRICING</a>
             <div class="mobile-menu-divider mobile-logged-in-only" id="mobile-divider-settings"></div>
             <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-account-settings" onclick="showAccountSettingsPage(); closeMobileMenu(); return false;">Account Settings</a>
             <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-app-settings" onclick="showSettingsPage(); closeMobileMenu(); return false;">App Settings</a>
@@ -2423,6 +2452,31 @@
                 </div>
             </div>
 
+            <!-- Subscription Section -->
+            <div class="settings-section">
+                <h3 class="settings-section-title">Subscription</h3>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Current Plan</span>
+                            <span class="settings-row-desc">Your active subscription tier</span>
+                        </div>
+                        <div class="current-tier-badge" id="current-tier-badge">
+                            <span id="account-tier-name">Free</span>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-info">
+                            <span class="settings-row-label">Crypto Tracking</span>
+                            <span class="settings-row-desc" id="tier-crypto-limit">Tracking 0 of 8 cryptocurrencies</span>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="upgrade-tier-row" style="justify-content: flex-end; border-bottom: none;">
+                        <button class="settings-action-btn" id="upgrade-tier-btn" onclick="showPricingPage()" style="background-color: #4CAF50;">Upgrade Plan</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Danger Zone -->
             <div class="settings-section">
                 <h3 class="settings-section-title danger">Danger Zone</h3>
@@ -2439,6 +2493,87 @@
 
             <!-- Back Button -->
             <button class="back-btn" onclick="closeAccountSettingsPage()" style="margin-top: 30px;">← Back</button>
+        </div>
+    </div>
+
+    <!-- Pricing Page -->
+    <div id="pricing-page" class="page" style="display: none;">
+        <div class="pricing-page-container">
+            <div class="pricing-header">
+                <h1>Choose Your Plan</h1>
+                <p>Track your crypto portfolio with the features you need</p>
+            </div>
+            <div class="pricing-cards-container">
+                <!-- Free Card -->
+                <div class="pricing-card" data-tier="free">
+                    <h2>Free</h2>
+                    <div class="tier-price" data-usd="0">
+                        <span class="price-amount">$0</span>
+                    </div>
+                    <p class="price-period">Forever free</p>
+                    <ul class="pricing-features">
+                        <li class="included">Track up to 8 cryptos</li>
+                        <li class="included">Real-time prices</li>
+                        <li class="included">Charts & history</li>
+                        <li class="included">Holdings tracking</li>
+                        <li class="excluded">EasyMining access</li>
+                        <li class="excluded">Package alerts</li>
+                        <li class="excluded">Bot automation</li>
+                        <li class="note">Includes ads</li>
+                    </ul>
+                    <button class="pricing-btn" onclick="selectFreeTier()">Get Started Free</button>
+                </div>
+                <!-- Premium Card -->
+                <div class="pricing-card pricing-popular" data-tier="premium">
+                    <span class="pricing-badge">Most Popular</span>
+                    <h2>Premium</h2>
+                    <div class="tier-price" data-usd="9.99">
+                        <span class="price-amount">$9.99</span>
+                        <span class="price-currency">USD</span>
+                        <span class="price-aud"></span>
+                    </div>
+                    <p class="price-period">per month</p>
+                    <div class="trial-badge">7-Day Free Trial</div>
+                    <ul class="pricing-features">
+                        <li class="included">Track up to 20 cryptos</li>
+                        <li class="included">Real-time prices</li>
+                        <li class="included">Charts & history</li>
+                        <li class="included">Holdings tracking</li>
+                        <li class="included">Full EasyMining access</li>
+                        <li class="included">Package alerts</li>
+                        <li class="excluded">Bot automation</li>
+                        <li class="highlight">No ads</li>
+                    </ul>
+                    <button class="pricing-btn pricing-btn-primary" onclick="initiateStripeCheckout('premium')">Start Free Trial</button>
+                </div>
+                <!-- Elite Card -->
+                <div class="pricing-card pricing-elite" data-tier="elite">
+                    <span class="pricing-badge gold">Elite</span>
+                    <h2>Elite</h2>
+                    <div class="tier-price" data-usd="24.99">
+                        <span class="price-amount">$24.99</span>
+                        <span class="price-currency">USD</span>
+                        <span class="price-aud"></span>
+                    </div>
+                    <p class="price-period">per month</p>
+                    <div class="trial-badge gold">7-Day Free Trial</div>
+                    <ul class="pricing-features">
+                        <li class="included"><strong>Unlimited</strong> cryptos</li>
+                        <li class="included">Real-time prices</li>
+                        <li class="included">Charts & history</li>
+                        <li class="included">Holdings tracking</li>
+                        <li class="included">Full EasyMining access</li>
+                        <li class="included">Package alerts</li>
+                        <li class="included"><strong>Full Bot automation</strong></li>
+                        <li class="highlight">VIP early access</li>
+                        <li class="highlight">Support development</li>
+                        <li class="highlight">No ads</li>
+                    </ul>
+                    <button class="pricing-btn pricing-btn-elite" onclick="initiateStripeCheckout('elite')">Start Free Trial</button>
+                </div>
+            </div>
+            <p class="pricing-footer">Secure payments powered by Stripe</p>
+            <button class="back-btn" onclick="closePricingPage()" style="margin-top: 30px;">← Back</button>
         </div>
     </div>
 
@@ -3041,5 +3176,41 @@
             }
         });
     </script>
+
+    <!-- Upgrade Modal -->
+    <div id="upgrade-modal" class="modal" style="display: none;">
+        <div class="modal-content upgrade-modal-content">
+            <span class="close" onclick="closeUpgradeModal()">&times;</span>
+            <h2>Upgrade Your Plan</h2>
+            <p id="upgrade-modal-message">Unlock more features with a premium subscription.</p>
+            <div class="upgrade-modal-tiers">
+                <div class="upgrade-tier-card" data-tier="premium">
+                    <div class="upgrade-trial-badge">7-Day Free Trial</div>
+                    <h3>Premium</h3>
+                    <p class="upgrade-tier-price">$9.99/mo</p>
+                    <ul>
+                        <li>20 tracked cryptos</li>
+                        <li>Full EasyMining</li>
+                        <li>Package alerts</li>
+                        <li>No ads</li>
+                    </ul>
+                    <button class="upgrade-btn" onclick="initiateStripeCheckout('premium')">Start Free Trial</button>
+                </div>
+                <div class="upgrade-tier-card upgrade-tier-elite" data-tier="elite">
+                    <div class="upgrade-trial-badge gold">7-Day Free Trial</div>
+                    <h3>Elite</h3>
+                    <p class="upgrade-tier-price">$24.99/mo</p>
+                    <ul>
+                        <li>Unlimited cryptos</li>
+                        <li>Full EasyMining</li>
+                        <li>Bot automation</li>
+                        <li>VIP early access</li>
+                    </ul>
+                    <button class="upgrade-btn upgrade-btn-elite" onclick="initiateStripeCheckout('elite')">Start Free Trial</button>
+                </div>
+            </div>
+            <a href="#" class="upgrade-modal-link" onclick="showPricingPage(); closeUpgradeModal(); return false;">View full comparison</a>
+        </div>
+    </div>
 </body>
 </html>

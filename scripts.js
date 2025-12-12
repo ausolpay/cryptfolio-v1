@@ -10,6 +10,737 @@ let apiKeys = []; // User must configure their own API keys
 let currentApiKeyIndex = 0;
 
 // =============================================================================
+// SUBSCRIPTION TIER SYSTEM
+// =============================================================================
+
+// Admin accounts automatically get Elite tier
+const ADMIN_EMAILS = [
+    'hannahbelles801@gmail.com',
+    'hannah@cairnscitygraphics.com.au'
+];
+
+// Tier configuration for subscription system
+const TIER_CONFIG = {
+    free: {
+        name: 'free',
+        displayName: 'Free',
+        maxCryptos: 8,
+        easyMiningAccess: false,
+        packageAlerts: false,
+        botFeatures: false,
+        showAds: true,
+        priceUSD: 0,
+        stripePriceId: null,
+        trialDays: 0
+    },
+    premium: {
+        name: 'premium',
+        displayName: 'Premium',
+        maxCryptos: 20,
+        easyMiningAccess: true,
+        packageAlerts: true,
+        botFeatures: false,
+        showAds: false,
+        priceUSD: 9.99,
+        stripePriceId: 'price_PREMIUM_PLACEHOLDER',
+        trialDays: 7
+    },
+    elite: {
+        name: 'elite',
+        displayName: 'Elite',
+        maxCryptos: Infinity,
+        easyMiningAccess: true,
+        packageAlerts: true,
+        botFeatures: true,
+        showAds: false,
+        priceUSD: 24.99,
+        stripePriceId: 'price_ELITE_PLACEHOLDER',
+        trialDays: 7
+    }
+};
+
+// Stripe configuration (placeholders for future integration)
+const STRIPE_CONFIG = {
+    publishableKey: 'pk_live_PLACEHOLDER',
+    pricingTableId: null
+};
+
+// =============================================================================
+// TIER UTILITY FUNCTIONS
+// =============================================================================
+
+/**
+ * Get user's current tier (accounts for admin override)
+ * @param {string} email - User email (defaults to loggedInUser)
+ * @returns {string} 'free', 'premium', or 'elite'
+ */
+function getUserTier(email = loggedInUser) {
+    if (!email) return 'free';
+    // Admin accounts always get Elite
+    if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+        return 'elite';
+    }
+    return users[email]?.tier || 'free';
+}
+
+/**
+ * Get tier configuration for current user
+ * @returns {object} Tier config object
+ */
+function getCurrentTierConfig() {
+    const tier = getUserTier();
+    return TIER_CONFIG[tier] || TIER_CONFIG.free;
+}
+
+/**
+ * Check if user can perform a specific action based on tier
+ * @param {string} feature - Feature to check ('easyMining', 'packageAlerts', 'botFeatures', 'addCrypto')
+ * @returns {boolean} Whether user has access
+ */
+function canUserAccess(feature) {
+    const config = getCurrentTierConfig();
+    switch(feature) {
+        case 'easyMining':
+            return config.easyMiningAccess;
+        case 'packageAlerts':
+            return config.packageAlerts;
+        case 'botFeatures':
+            return config.botFeatures;
+        case 'addCrypto':
+            const currentCount = users[loggedInUser]?.cryptos?.length || 0;
+            return currentCount < config.maxCryptos;
+        default:
+            return true;
+    }
+}
+
+/**
+ * Check if user is an admin
+ * @param {string} email - User email (defaults to loggedInUser)
+ * @returns {boolean} Whether user is admin
+ */
+function isAdminUser(email = loggedInUser) {
+    if (!email) return false;
+    return ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+/**
+ * Check crypto limit before adding
+ * @returns {boolean} Whether user can add more cryptos
+ */
+function checkCryptoLimit() {
+    const config = getCurrentTierConfig();
+    const currentCount = users[loggedInUser]?.cryptos?.length || 0;
+
+    if (currentCount >= config.maxCryptos) {
+        showUpgradeModal('cryptoLimit', config.maxCryptos);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Get remaining crypto slots for current tier
+ * @returns {number} Remaining slots (Infinity for elite)
+ */
+function getRemainingCryptoSlots() {
+    const config = getCurrentTierConfig();
+    const currentCount = users[loggedInUser]?.cryptos?.length || 0;
+
+    if (config.maxCryptos === Infinity) {
+        return Infinity;
+    }
+    return Math.max(0, config.maxCryptos - currentCount);
+}
+
+/**
+ * Update user tier (for Stripe webhook or manual override)
+ * @param {string} email - User email
+ * @param {string} newTier - New tier ('free', 'premium', 'elite')
+ * @param {string} source - Source of change ('default', 'admin', 'stripe')
+ * @param {object} subscriptionData - Stripe subscription data
+ */
+function updateUserTier(email, newTier, source = 'stripe', subscriptionData = {}) {
+    if (users[email]) {
+        users[email].tier = newTier;
+        users[email].tierSource = source;
+        users[email].stripeCustomerId = subscriptionData.customerId || users[email].stripeCustomerId;
+        users[email].stripeSubscriptionId = subscriptionData.subscriptionId || users[email].stripeSubscriptionId;
+        users[email].subscriptionStatus = subscriptionData.status || users[email].subscriptionStatus;
+        users[email].subscriptionEndDate = subscriptionData.endDate || users[email].subscriptionEndDate;
+        setStorageItem('users', JSON.stringify(users));
+
+        // Refresh UI if this is current user
+        if (email === loggedInUser) {
+            refreshTierUI();
+        }
+    }
+}
+
+/**
+ * Refresh all tier-dependent UI elements
+ */
+function refreshTierUI() {
+    updateAdDisplay();
+    updateEasyMiningAccess();
+    updateBotFeaturesAccess();
+    updateAccountSettingsTier();
+}
+
+/**
+ * Show upgrade prompt modal
+ * @param {string} reason - Why upgrade is needed ('cryptoLimit', 'easyMining', 'botFeatures', 'packageAlerts')
+ * @param {*} context - Additional context (e.g., limit number)
+ */
+function showUpgradeModal(reason, context = null) {
+    const modal = document.getElementById('upgrade-modal');
+    const messageEl = document.getElementById('upgrade-modal-message');
+    if (!modal || !messageEl) return;
+
+    const currentTier = getUserTier();
+    let message = '';
+    let recommendedTier = 'premium';
+
+    switch(reason) {
+        case 'cryptoLimit':
+            message = `You've reached the ${context} crypto limit on your ${TIER_CONFIG[currentTier].displayName} plan. Upgrade to track more cryptocurrencies!`;
+            recommendedTier = currentTier === 'free' ? 'premium' : 'elite';
+            break;
+        case 'easyMining':
+            message = 'EasyMining features are available on Premium and Elite plans. Upgrade to access mining package tracking and rewards!';
+            recommendedTier = 'premium';
+            break;
+        case 'botFeatures':
+            message = 'Bot automation features (auto-buy, auto-shares, auto-clear) are exclusive to Elite members. Upgrade to automate your mining!';
+            recommendedTier = 'elite';
+            break;
+        case 'packageAlerts':
+            message = 'Package alerts are available on Premium and Elite plans. Never miss a block find again!';
+            recommendedTier = 'premium';
+            break;
+        default:
+            message = 'Upgrade your plan to access this feature!';
+    }
+
+    messageEl.textContent = message;
+    highlightRecommendedTier(recommendedTier);
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close upgrade modal
+ */
+function closeUpgradeModal() {
+    const modal = document.getElementById('upgrade-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Highlight recommended tier in upgrade modal
+ * @param {string} tier - Tier to highlight
+ */
+function highlightRecommendedTier(tier) {
+    document.querySelectorAll('.upgrade-modal-tier-card').forEach(card => {
+        card.classList.remove('recommended');
+    });
+    const recommendedCard = document.querySelector(`.upgrade-modal-tier-card[data-tier="${tier}"]`);
+    if (recommendedCard) {
+        recommendedCard.classList.add('recommended');
+    }
+}
+
+/**
+ * Navigate to pricing page from upgrade modal
+ */
+function goToPricingPage() {
+    closeUpgradeModal();
+    showPricingPage();
+}
+
+/**
+ * Gate EasyMining access based on tier
+ */
+function updateEasyMiningAccess() {
+    const hasAccess = canUserAccess('easyMining');
+    const easyMiningSection = document.getElementById('easymining-section');
+    const easyMiningSettingsBtn = document.querySelector('[onclick*="showEasyMiningSettingsPage"]');
+
+    // Add tier-locked class to EasyMining elements if no access
+    if (easyMiningSection) {
+        if (!hasAccess) {
+            easyMiningSection.classList.add('tier-locked-section');
+        } else {
+            easyMiningSection.classList.remove('tier-locked-section');
+        }
+    }
+}
+
+/**
+ * Gate bot features based on tier
+ */
+function updateBotFeaturesAccess() {
+    const hasAccess = canUserAccess('botFeatures');
+
+    // Find all bot feature toggles and controls
+    const botFeatureSelectors = [
+        '#auto-buy-toggle-page',
+        '#auto-buy-cooldown-toggle-page',
+        '#auto-clear-team-shares-toggle-page',
+        '#auto-clear-exclude-team-gold',
+        '#auto-clear-active-shares-toggle-page',
+        '.auto-shares-toggle',
+        '.auto-shares-on-alert-toggle',
+        '#reward-and-bail-toggle-page',
+        '#reward-and-bail-include-manual-toggle-page'
+    ];
+
+    botFeatureSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+            if (!hasAccess) {
+                el.disabled = true;
+                el.classList.add('tier-locked');
+                // Add Elite badge if not already present
+                const label = el.closest('label') || el.closest('.toggle-row') || el.parentElement;
+                if (label && !label.querySelector('.elite-badge')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'elite-badge';
+                    badge.textContent = 'Elite';
+                    label.appendChild(badge);
+                }
+            } else {
+                el.disabled = false;
+                el.classList.remove('tier-locked');
+                const label = el.closest('label') || el.closest('.toggle-row') || el.parentElement;
+                const badge = label?.querySelector('.elite-badge');
+                if (badge) badge.remove();
+            }
+        });
+    });
+}
+
+/**
+ * Update account settings tier display
+ */
+function updateAccountSettingsTier() {
+    const tier = getUserTier();
+    const config = TIER_CONFIG[tier];
+
+    const badge = document.getElementById('current-tier-badge');
+    const nameEl = document.getElementById('account-tier-name');
+    const limitEl = document.getElementById('tier-crypto-limit');
+    const upgradeBtn = document.getElementById('upgrade-tier-btn');
+
+    if (badge) {
+        badge.className = 'current-tier-badge tier-' + tier;
+    }
+    if (nameEl) {
+        nameEl.textContent = config.displayName;
+    }
+    if (limitEl) {
+        const count = users[loggedInUser]?.cryptos?.length || 0;
+        const max = config.maxCryptos === Infinity ? 'Unlimited' : config.maxCryptos;
+        limitEl.textContent = `Tracking ${count} of ${max} cryptocurrencies`;
+    }
+    if (upgradeBtn) {
+        upgradeBtn.style.display = tier === 'elite' ? 'none' : 'block';
+    }
+}
+
+// =============================================================================
+// AD DISPLAY SYSTEM
+// =============================================================================
+
+/**
+ * Initialize ad display based on user tier
+ */
+function initializeAds() {
+    const config = getCurrentTierConfig();
+
+    if (!config.showAds) {
+        hideAllAds();
+        document.body.classList.remove('has-ads-desktop', 'has-ads-mobile');
+        return;
+    }
+
+    showAdsForViewport();
+    window.addEventListener('resize', debounce(showAdsForViewport, 250));
+}
+
+/**
+ * Show appropriate ads based on viewport size
+ */
+function showAdsForViewport() {
+    const config = getCurrentTierConfig();
+    if (!config.showAds) return;
+
+    hideAllAds();
+    const width = window.innerWidth;
+
+    if (width >= 1200) {
+        // Desktop: Show skyscraper ads on sides
+        showDesktopAds();
+        document.body.classList.add('has-ads-desktop');
+        document.body.classList.remove('has-ads-mobile');
+    } else if (width >= 768) {
+        // Tablet: Show banner under header
+        showTabletAd();
+        document.body.classList.remove('has-ads-desktop', 'has-ads-mobile');
+    } else {
+        // Mobile: Show fixed bottom banner
+        showMobileAd();
+        document.body.classList.add('has-ads-mobile');
+        document.body.classList.remove('has-ads-desktop');
+    }
+}
+
+function showDesktopAds() {
+    const leftAd = document.getElementById('ad-skyscraper-left');
+    const rightAd = document.getElementById('ad-skyscraper-right');
+    if (leftAd) leftAd.style.display = 'flex';
+    if (rightAd) rightAd.style.display = 'flex';
+    // Trigger AdSense
+    try {
+        (adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {}
+}
+
+function showTabletAd() {
+    const tabletAd = document.getElementById('ad-banner-tablet');
+    if (tabletAd) tabletAd.style.display = 'flex';
+    try {
+        (adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {}
+}
+
+function showMobileAd() {
+    const mobileAd = document.getElementById('ad-banner-mobile');
+    if (mobileAd) mobileAd.style.display = 'flex';
+    try {
+        (adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {}
+}
+
+function hideAllAds() {
+    document.querySelectorAll('.ad-container').forEach(ad => {
+        ad.style.display = 'none';
+    });
+}
+
+function updateAdDisplay() {
+    const config = getCurrentTierConfig();
+    if (config.showAds) {
+        showAdsForViewport();
+    } else {
+        hideAllAds();
+        document.body.classList.remove('has-ads-desktop', 'has-ads-mobile');
+    }
+}
+
+// =============================================================================
+// PRICING PAGE FUNCTIONS
+// =============================================================================
+
+/**
+ * Show pricing page
+ */
+function showPricingPage() {
+    window.scrollTo(0, 0);
+
+    // Hide all other pages
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('register-page').style.display = 'none';
+    document.getElementById('app-page').style.display = 'none';
+    document.getElementById('settings-page').style.display = 'none';
+    document.getElementById('account-settings-page').style.display = 'none';
+    document.getElementById('easymining-settings-page').style.display = 'none';
+    document.getElementById('coingecko-settings-page').style.display = 'none';
+
+    // Show pricing page
+    const pricingPage = document.getElementById('pricing-page');
+    if (pricingPage) {
+        pricingPage.style.display = 'block';
+    }
+
+    // Update pricing display with live rates
+    updatePricingDisplay();
+    highlightCurrentTier();
+}
+
+/**
+ * Close pricing page and return to app
+ */
+function closePricingPage() {
+    document.getElementById('pricing-page').style.display = 'none';
+    if (loggedInUser) {
+        showAppPage();
+    } else {
+        showLoginPage();
+    }
+}
+
+/**
+ * Fetch USD to AUD rate from CoinGecko
+ * @returns {Promise<number>} Exchange rate
+ */
+async function fetchUsdToAudRate() {
+    try {
+        // Use a simple approach - get BTC price in both currencies and calculate rate
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=aud,usd');
+        const data = await response.json();
+        if (data.tether && data.tether.aud && data.tether.usd) {
+            return data.tether.aud / data.tether.usd;
+        }
+        return 1.55; // Fallback rate
+    } catch (error) {
+        console.error('Error fetching USD/AUD rate:', error);
+        return 1.55; // Fallback rate
+    }
+}
+
+/**
+ * Update pricing display with live AUD conversion
+ */
+async function updatePricingDisplay() {
+    const audRate = await fetchUsdToAudRate();
+
+    document.querySelectorAll('.tier-price').forEach(el => {
+        const usd = parseFloat(el.dataset.usd);
+        if (usd > 0) {
+            const aud = (usd * audRate).toFixed(2);
+            const audSpan = el.querySelector('.price-aud');
+            if (audSpan) {
+                audSpan.textContent = `~$${aud} AUD`;
+            }
+        }
+    });
+}
+
+/**
+ * Highlight user's current tier on pricing page
+ */
+function highlightCurrentTier() {
+    const currentTier = getUserTier();
+
+    document.querySelectorAll('.pricing-card').forEach(card => {
+        card.classList.remove('current-tier');
+        const btn = card.querySelector('.pricing-btn');
+        if (btn) {
+            btn.disabled = false;
+            // Reset button text based on tier
+            const cardTier = card.dataset.tier;
+            if (cardTier === 'free') {
+                btn.textContent = 'Get Started Free';
+            } else if (cardTier === 'premium') {
+                btn.textContent = 'Upgrade to Premium';
+            } else if (cardTier === 'elite') {
+                btn.textContent = 'Go Elite';
+            }
+        }
+    });
+
+    const currentCard = document.querySelector(`.pricing-card[data-tier="${currentTier}"]`);
+    if (currentCard) {
+        currentCard.classList.add('current-tier');
+        const btn = currentCard.querySelector('.pricing-btn');
+        if (btn) {
+            btn.textContent = 'Current Plan';
+            btn.disabled = true;
+        }
+    }
+}
+
+/**
+ * Select free tier (for first-time users)
+ */
+function selectFreeTier() {
+    completeFirstTimeFlow();
+    // Proceed to CoinGecko API settings
+    showCoinGeckoApiSettingsPage();
+}
+
+// =============================================================================
+// STRIPE CHECKOUT FUNCTIONS
+// =============================================================================
+
+/**
+ * Initiate Stripe checkout for a tier
+ * @param {string} tier - Tier to purchase ('premium' or 'elite')
+ */
+async function initiateStripeCheckout(tier) {
+    const tierConfig = TIER_CONFIG[tier];
+    const priceId = tierConfig?.stripePriceId;
+    const trialDays = tierConfig?.trialDays || 0;
+
+    if (!priceId || priceId.includes('PLACEHOLDER')) {
+        // Stripe not yet configured
+        console.log('Stripe checkout data prepared:', {
+            priceId,
+            customerEmail: loggedInUser,
+            tier,
+            trialDays
+        });
+        const trialMsg = trialDays > 0 ? ` Your ${trialDays}-day free trial will begin once payment is set up.` : '';
+        showModal('Payment processing coming soon!' + trialMsg + ' Contact support for manual upgrade.');
+        return;
+    }
+
+    // Show loading state
+    const trialText = trialDays > 0 ? ` (${trialDays}-day free trial)` : '';
+    showModal('Redirecting to checkout...' + trialText);
+
+    try {
+        // This would call backend to create checkout session
+        const checkoutData = {
+            priceId: priceId,
+            customerEmail: loggedInUser,
+            successUrl: window.location.origin + '?checkout=success&tier=' + tier,
+            cancelUrl: window.location.origin + '?checkout=canceled',
+            // Stripe trial configuration
+            trialPeriodDays: trialDays,
+            subscriptionData: {
+                trial_period_days: trialDays
+            },
+            metadata: {
+                userEmail: loggedInUser,
+                tier: tier,
+                trialDays: trialDays
+            }
+        };
+
+        console.log('Stripe checkout data:', checkoutData);
+
+        // TODO: Replace with actual Stripe integration
+        // const response = await fetch('/api/create-checkout-session', {
+        //     method: 'POST',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify(checkoutData)
+        // });
+        // const session = await response.json();
+        // window.location.href = session.url;
+
+    } catch (error) {
+        console.error('Stripe checkout error:', error);
+        showModal('Error initiating checkout. Please try again.');
+    }
+}
+
+/**
+ * Check URL for checkout result on page load
+ */
+function checkCheckoutResult() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const checkoutResult = urlParams.get('checkout');
+    const tier = urlParams.get('tier');
+
+    if (checkoutResult === 'success' && tier && loggedInUser) {
+        // Update local tier (webhook will confirm server-side)
+        updateUserTier(loggedInUser, tier, 'stripe', { status: 'active' });
+        showModal(`Welcome to ${TIER_CONFIG[tier].displayName}! Your upgrade is now active.`);
+
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (checkoutResult === 'canceled') {
+        showModal('Checkout was canceled. You can upgrade anytime from Settings.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+// =============================================================================
+// FIRST-TIME USER FLOW
+// =============================================================================
+
+/**
+ * Check if user needs first-time flow
+ * @returns {boolean} Whether user needs first-time flow
+ */
+function needsFirstTimeFlow() {
+    const user = users[loggedInUser];
+    return user && !user.firstLoginComplete;
+}
+
+/**
+ * Start first-time user flow
+ */
+function startFirstTimeFlow() {
+    showPricingPage();
+    showModal('Welcome! Choose a plan to get started, or continue with Free.');
+}
+
+/**
+ * Complete first-time flow
+ */
+function completeFirstTimeFlow() {
+    if (users[loggedInUser]) {
+        users[loggedInUser].firstLoginComplete = true;
+        setStorageItem('users', JSON.stringify(users));
+    }
+}
+
+/**
+ * Handle post-login flow (first-time or returning user)
+ */
+function handlePostLoginFlow() {
+    if (needsFirstTimeFlow()) {
+        startFirstTimeFlow();
+    } else {
+        // Load user's API keys
+        const userKeys = loadUserApiKeys();
+
+        // If no API keys configured, show CoinGecko API settings page
+        if (userKeys.length === 0) {
+            console.log('⚠️ No CoinGecko API keys configured - showing settings page');
+            showCoinGeckoApiSettingsPage();
+            alert('⚠️ Welcome back!\n\nPlease configure your CoinGecko API keys to use the app.\n\nAt least one API key is required to fetch cryptocurrency data.');
+            return;
+        }
+
+        // User has API keys - proceed to app
+        setStorageItem('modalMessage', 'Successfully logged in!');
+        showAppPage();
+        updateAppContent();
+    }
+}
+
+// =============================================================================
+// USER MIGRATION FOR EXISTING USERS
+// =============================================================================
+
+/**
+ * Migrate existing users to include tier properties
+ */
+function migrateExistingUsers() {
+    let migrated = false;
+
+    for (const email in users) {
+        if (!users[email].tier) {
+            // Check if admin
+            if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+                users[email].tier = 'elite';
+                users[email].tierSource = 'admin';
+            } else {
+                users[email].tier = 'free';
+                users[email].tierSource = 'default';
+            }
+            users[email].stripeCustomerId = null;
+            users[email].stripeSubscriptionId = null;
+            users[email].subscriptionStatus = null;
+            users[email].subscriptionEndDate = null;
+            users[email].createdAt = users[email].createdAt || new Date().toISOString();
+            users[email].firstLoginComplete = true; // Existing users skip first-time flow
+            migrated = true;
+        }
+    }
+
+    if (migrated) {
+        setStorageItem('users', JSON.stringify(users));
+        console.log('User tier migration completed');
+    }
+}
+
+// =============================================================================
 // COINGECKO DYNAMIC RATE LIMITING SYSTEM
 // =============================================================================
 
@@ -968,12 +1699,21 @@ document.addEventListener('click', function(event) {
 });
 
 function initializeApp() {
+    // Migrate existing users to include tier properties
+    migrateExistingUsers();
+
     // Initialize top navigation scroll behavior
     initTopNavScrollBehavior();
     // Update nav auth state (login/logout buttons)
     updateNavAuthState();
     // Update nav profile icon with user's selected emoji
     updateNavProfileIcon();
+
+    // Initialize ads based on user tier
+    initializeAds();
+
+    // Check for Stripe checkout results
+    checkCheckoutResult();
 
     const notificationPermission = getStorageItem('notificationPermission');
     if (notificationPermission !== 'granted') {
@@ -1010,6 +1750,22 @@ function initializeApp() {
         showAppPage();
         clearCryptoContainers();
         loadUserData();
+
+        // Check if user came from about page wanting to see pricing
+        if (localStorage.getItem('showPricing') === 'true') {
+            localStorage.removeItem('showPricing');
+            setTimeout(() => showPricingPage(), 100);
+        }
+        // Check if user came from about page wanting to see account settings
+        if (localStorage.getItem('showAccountSettings') === 'true') {
+            localStorage.removeItem('showAccountSettings');
+            setTimeout(() => showAccountSettingsPage(), 100);
+        }
+        // Check if user came from about page wanting to see app settings
+        if (localStorage.getItem('showSettings') === 'true') {
+            localStorage.removeItem('showSettings');
+            setTimeout(() => showSettingsPage(), 100);
+        }
 
         updateApiUrl();
 
@@ -4872,25 +5628,30 @@ function login() {
         loggedInUser = email;
         setStorageItem('loggedInUser', loggedInUser);
 
-        // Load user's API keys
-        const userKeys = loadUserApiKeys();
-
-        // If no API keys configured, show CoinGecko API settings page
-        if (userKeys.length === 0) {
-            console.log('⚠️ No CoinGecko API keys configured - showing settings page');
-            showCoinGeckoApiSettingsPage();
-            updateNavAuthState(); // Update nav login/logout buttons
-            updateNavProfileIcon(); // Update nav profile icon
-            alert('⚠️ Welcome!\n\nPlease configure your CoinGecko API keys to use the app.\n\nAt least one API key is required to fetch cryptocurrency data.');
-            return;
+        // Migrate user if missing tier data
+        if (!users[email].tier) {
+            if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+                users[email].tier = 'elite';
+                users[email].tierSource = 'admin';
+            } else {
+                users[email].tier = 'free';
+                users[email].tierSource = 'default';
+            }
+            users[email].stripeCustomerId = null;
+            users[email].stripeSubscriptionId = null;
+            users[email].subscriptionStatus = null;
+            users[email].subscriptionEndDate = null;
+            users[email].createdAt = users[email].createdAt || new Date().toISOString();
+            users[email].firstLoginComplete = true; // Existing users skip first-time flow
+            setStorageItem('users', JSON.stringify(users));
         }
 
-        // User has API keys - proceed to app
-        setStorageItem('modalMessage', 'Successfully logged in!');
-        showAppPage();
-        updateAppContent(); // New function call
-        updateNavAuthState(); // Update nav login/logout buttons
-        updateNavProfileIcon(); // Update nav profile icon
+        // Update nav state
+        updateNavAuthState();
+        updateNavProfileIcon();
+
+        // Handle first-time user flow or proceed to app
+        handlePostLoginFlow();
     } else {
         showModal('Invalid email or password. Please try again.');
     }
@@ -4952,7 +5713,16 @@ function register() {
         currency: countryData.currency,
         language: countryData.language,
         cryptos: [],
-        percentageThresholds: {}
+        percentageThresholds: {},
+        // Tier system properties
+        tier: ADMIN_EMAILS.includes(email.toLowerCase()) ? 'elite' : 'free',
+        tierSource: ADMIN_EMAILS.includes(email.toLowerCase()) ? 'admin' : 'default',
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        subscriptionStatus: null,
+        subscriptionEndDate: null,
+        createdAt: new Date().toISOString(),
+        firstLoginComplete: false
     };
     localStorage.setItem('users', JSON.stringify(users));
 
@@ -9516,6 +10286,11 @@ window.onclick = function(event) {
 };
 
 async function addCrypto() {
+    // Check tier crypto limit before adding
+    if (!checkCryptoLimit()) {
+        return; // User shown upgrade modal
+    }
+
     const cryptoId = document.getElementById('crypto-id-input').value.trim().toLowerCase();
     if (!cryptoId) return;
 
@@ -22446,6 +23221,11 @@ window.manualTriggerAutoUpdate = async function() {
 
 // Helper function to add crypto by ID programmatically
 async function addCryptoById(cryptoId) {
+    // Check tier crypto limit before adding
+    if (!checkCryptoLimit()) {
+        return false; // User shown upgrade modal
+    }
+
     try {
         // Fetch crypto details from CoinGecko
         const response = await fetch(`${getApiBaseUrl()}/coins/${cryptoId}?${getApiKeyParam()}`);

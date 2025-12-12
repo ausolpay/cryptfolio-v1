@@ -53,6 +53,7 @@
                 <a href="index.html" class="nav-link">CRYPTFOLIO WEB APP</a>
                 <a href="docs.html" class="nav-link">DOCS</a>
                 <a href="contact.html" class="nav-link">CONTACT</a>
+                <a href="index.html" class="nav-link" onclick="localStorage.setItem('showPricing', 'true');">PRICING</a>
             </div>
 
             <!-- Right: Profile, Donate, Logo -->
@@ -93,6 +94,7 @@
             <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">CRYPTFOLIO WEB APP</a>
             <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
             <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
+            <a href="index.html" class="mobile-menu-link" onclick="localStorage.setItem('showPricing', 'true'); closeMobileMenu();">PRICING</a>
             <div class="mobile-menu-divider"></div>
             <a href="index.html" class="mobile-menu-link" onclick="localStorage.setItem('showAccountSettings', 'true'); closeMobileMenu();">Account Settings</a>
             <a href="index.html" class="mobile-menu-link" onclick="localStorage.setItem('showSettings', 'true'); closeMobileMenu();">App Settings</a>
@@ -114,7 +116,7 @@
             <div class="hero-content">
                 <div class="hero-badge">
                     <span class="badge-dot"></span>
-                    <span>Free & Open Source</span>
+                    <span>Free Plan Available</span>
                 </div>
                 <h1 class="hero-title">
                     <span class="title-line">Your Complete</span>
@@ -148,8 +150,8 @@
                         <span class="stat-label">WebSocket Updates</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-value">100%</span>
-                        <span class="stat-label">Free to Use</span>
+                        <span class="stat-value">3 Plans</span>
+                        <span class="stat-label">Free, Premium, Elite</span>
                     </div>
                 </div>
             </div>
@@ -214,12 +216,12 @@
                         </svg>
                     </div>
                     <h3>Portfolio Tracking</h3>
-                    <p>Add unlimited cryptocurrencies to your portfolio. Track holdings, calculate total value in your local currency, and monitor performance over time.</p>
+                    <p>Track your cryptocurrency portfolio with powerful tools. Calculate total value in your local currency and monitor performance over time.</p>
                     <ul class="feature-list">
                         <li>14,000+ cryptocurrencies supported</li>
+                        <li>Free: 8 cryptos | Premium: 20 | Elite: Unlimited</li>
                         <li>Multi-currency support (AUD, USD, EUR, etc.)</li>
                         <li>Real-time portfolio valuation</li>
-                        <li>Holdings history tracking</li>
                     </ul>
                 </div>
 
@@ -281,7 +283,7 @@
 
                 <!-- NiceHash Mining -->
                 <div class="feature-card featured">
-                    <div class="feature-badge">FEATURED</div>
+                    <div class="feature-badge">PREMIUM+</div>
                     <div class="feature-icon-wrap orange">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -290,14 +292,14 @@
                         </svg>
                     </div>
                     <h3>NiceHash EasyMining</h3>
-                    <p>Full integration with NiceHash EasyMining. Track your mining packages, monitor hashrate, view blocks found, and manage rewards.</p>
+                    <p>Full integration with NiceHash EasyMining. Track your mining packages, monitor hashrate, view blocks found, and manage rewards. <em>Available with Premium & Elite plans.</em></p>
                     <ul class="feature-list">
                         <li>Active package monitoring</li>
                         <li>Real-time hashrate tracking</li>
                         <li>Block discovery notifications</li>
-                        <li>Auto-update crypto holdings</li>
+                        <li>Package alerts (Premium+)</li>
+                        <li>Bot automation: Auto-buy, Auto-shares, Auto-clear (Elite only)</li>
                         <li>Smart package recommendations</li>
-                        <li>Probability alerts</li>
                     </ul>
                 </div>
 
@@ -681,11 +683,75 @@
             </div>
         </section>
 
+        <!-- Pricing Section -->
+        <section class="pricing-section" id="pricing">
+            <div class="section-header">
+                <span class="section-tag">PRICING</span>
+                <h2 class="section-title">Choose Your Plan</h2>
+                <p class="section-subtitle">Start free, upgrade when you need more power</p>
+            </div>
+
+            <div class="about-pricing-cards">
+                <!-- Free Plan -->
+                <div class="about-pricing-card">
+                    <h3>Free</h3>
+                    <div class="about-price">$0</div>
+                    <p class="about-price-period">Forever free</p>
+                    <ul class="about-pricing-features">
+                        <li class="included">Track up to 8 cryptos</li>
+                        <li class="included">Real-time prices</li>
+                        <li class="included">Charts & history</li>
+                        <li class="included">Holdings tracking</li>
+                        <li class="excluded">EasyMining access</li>
+                        <li class="excluded">Bot automation</li>
+                        <li class="note">Includes ads</li>
+                    </ul>
+                    <a href="index.html" class="about-pricing-btn">Get Started Free</a>
+                </div>
+
+                <!-- Premium Plan -->
+                <div class="about-pricing-card popular">
+                    <span class="about-pricing-badge">Most Popular</span>
+                    <h3>Premium</h3>
+                    <div class="about-price">$9.99<span>/mo</span></div>
+                    <p class="about-price-period">~$15.49 AUD</p>
+                    <div class="about-trial-badge">7-Day Free Trial</div>
+                    <ul class="about-pricing-features">
+                        <li class="included">Track up to 20 cryptos</li>
+                        <li class="included">Full EasyMining access</li>
+                        <li class="included">Package alerts</li>
+                        <li class="excluded">Bot automation</li>
+                        <li class="highlight">No ads</li>
+                    </ul>
+                    <a href="index.html" onclick="localStorage.setItem('showPricing', 'true');" class="about-pricing-btn primary">Start Free Trial</a>
+                </div>
+
+                <!-- Elite Plan -->
+                <div class="about-pricing-card elite">
+                    <span class="about-pricing-badge gold">Elite</span>
+                    <h3>Elite</h3>
+                    <div class="about-price">$24.99<span>/mo</span></div>
+                    <p class="about-price-period">~$38.74 AUD</p>
+                    <div class="about-trial-badge gold">7-Day Free Trial</div>
+                    <ul class="about-pricing-features">
+                        <li class="included"><strong>Unlimited</strong> cryptos</li>
+                        <li class="included">Full EasyMining access</li>
+                        <li class="included">Package alerts</li>
+                        <li class="included"><strong>Full Bot automation</strong></li>
+                        <li class="highlight">VIP early access</li>
+                        <li class="highlight">Support development</li>
+                        <li class="highlight">No ads</li>
+                    </ul>
+                    <a href="index.html" onclick="localStorage.setItem('showPricing', 'true');" class="about-pricing-btn elite">Start Free Trial</a>
+                </div>
+            </div>
+        </section>
+
         <!-- CTA Section -->
         <section class="cta-section">
             <div class="cta-content">
                 <h2>Ready to Take Control?</h2>
-                <p>Start tracking your cryptocurrency portfolio with CryptFolio today. It's free, powerful, and designed for serious investors.</p>
+                <p>Start tracking your cryptocurrency portfolio with CryptFolio today. Choose a plan that fits your needs and get started in minutes.</p>
                 <a href="index.html" class="btn-cta">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>

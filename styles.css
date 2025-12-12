@@ -11356,3 +11356,714 @@ body.light-mode .team-alert-checkbox:checked {
         font-size: 16px;
     }
 }
+
+/* ===== PRICING & TIER SYSTEM STYLES ===== */
+
+/* Ad Container Styles */
+.ad-container {
+    position: fixed;
+    z-index: 100;
+    background: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.ad-skyscraper {
+    width: 300px;
+    height: 600px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.ad-skyscraper.ad-left {
+    left: 10px;
+}
+
+.ad-skyscraper.ad-right {
+    right: 10px;
+}
+
+.ad-banner-tablet {
+    width: 728px;
+    height: 90px;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.ad-banner-mobile {
+    width: 320px;
+    height: 50px;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Adjust body padding for ads */
+body.has-desktop-ads {
+    padding-left: 320px;
+    padding-right: 320px;
+}
+
+body.has-tablet-ad {
+    padding-top: 170px;
+}
+
+body.has-mobile-ad {
+    padding-bottom: 60px;
+}
+
+/* Pricing Page Styles */
+#pricing-page {
+    min-height: 100vh;
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.pricing-page-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.pricing-header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.pricing-header h1 {
+    font-size: 2.5rem;
+    color: #fff;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #00ccff, #4CAF50);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.pricing-header p {
+    font-size: 1.1rem;
+    color: #888;
+}
+
+.pricing-cards-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.pricing-card {
+    background: #1e1e2e;
+    border-radius: 20px;
+    padding: 35px 30px;
+    width: 320px;
+    position: relative;
+    border: 2px solid #333;
+    transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.pricing-card:hover {
+    transform: translateY(-10px);
+    border-color: #4CAF50;
+    box-shadow: 0 20px 40px rgba(76, 175, 80, 0.2);
+}
+
+.pricing-card h2 {
+    font-size: 1.8rem;
+    color: #fff;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.pricing-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.pricing-badge.gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+.tier-price {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.price-amount {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.price-currency {
+    font-size: 1rem;
+    color: #888;
+    margin-left: 5px;
+}
+
+.price-aud {
+    display: block;
+    font-size: 0.9rem;
+    color: #00ccff;
+    margin-top: 5px;
+}
+
+.price-period {
+    text-align: center;
+    color: #888;
+    margin-bottom: 10px;
+}
+
+/* Trial Badge Styles */
+.trial-badge {
+    text-align: center;
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    display: inline-block;
+    width: auto;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    animation: pulse-trial 2s ease-in-out infinite;
+}
+
+.trial-badge.gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+@keyframes pulse-trial {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 15px 5px rgba(76, 175, 80, 0.2);
+    }
+}
+
+.trial-badge.gold {
+    animation: pulse-trial-gold 2s ease-in-out infinite;
+}
+
+@keyframes pulse-trial-gold {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.2);
+    }
+}
+
+/* Upgrade Modal Trial Badge */
+.upgrade-trial-badge {
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.upgrade-trial-badge.gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+.pricing-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 30px 0;
+}
+
+.pricing-features li {
+    padding: 12px 0;
+    border-bottom: 1px solid #333;
+    color: #ccc;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pricing-features li:last-child {
+    border-bottom: none;
+}
+
+.pricing-features li.included::before {
+    content: "✓";
+    color: #4CAF50;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.pricing-features li.excluded {
+    color: #666;
+}
+
+.pricing-features li.excluded::before {
+    content: "✗";
+    color: #f44336;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.pricing-features li.highlight {
+    color: #FFD700;
+}
+
+.pricing-features li.highlight::before {
+    content: "★";
+    color: #FFD700;
+    font-size: 1.1rem;
+}
+
+.pricing-features li.note {
+    color: #888;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.pricing-features li.note::before {
+    content: "•";
+    color: #888;
+}
+
+.pricing-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #333;
+    color: #fff;
+}
+
+.pricing-btn:hover {
+    background: #444;
+    transform: scale(1.02);
+}
+
+.pricing-btn-primary {
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    color: #fff;
+}
+
+.pricing-btn-primary:hover {
+    background: linear-gradient(135deg, #5cbf60, #42a5f5);
+    box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+}
+
+.pricing-btn-elite {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+.pricing-btn-elite:hover {
+    background: linear-gradient(135deg, #ffdf33, #ffb833);
+    box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+}
+
+.pricing-popular {
+    border-color: #4CAF50;
+    transform: scale(1.05);
+}
+
+.pricing-popular:hover {
+    transform: scale(1.08);
+}
+
+.pricing-elite {
+    border-color: #FFD700;
+}
+
+.pricing-elite:hover {
+    border-color: #FFD700;
+    box-shadow: 0 20px 40px rgba(255, 215, 0, 0.2);
+}
+
+.pricing-footer {
+    text-align: center;
+    color: #666;
+    margin-top: 40px;
+    font-size: 0.9rem;
+}
+
+/* Upgrade Modal Styles */
+.upgrade-modal-content {
+    max-width: 600px;
+    text-align: center;
+}
+
+.upgrade-modal-content h2 {
+    color: #4CAF50;
+    margin-bottom: 15px;
+}
+
+#upgrade-modal-message {
+    color: #ccc;
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+.upgrade-modal-tiers {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 25px;
+}
+
+.upgrade-tier-card {
+    background: #1e1e2e;
+    border: 2px solid #333;
+    border-radius: 15px;
+    padding: 25px;
+    width: 220px;
+    transition: all 0.3s;
+}
+
+.upgrade-tier-card:hover {
+    border-color: #4CAF50;
+    transform: translateY(-5px);
+}
+
+.upgrade-tier-elite {
+    border-color: #FFD700;
+}
+
+.upgrade-tier-elite:hover {
+    border-color: #FFD700;
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
+}
+
+.upgrade-tier-card h3 {
+    color: #fff;
+    margin-bottom: 10px;
+    font-size: 1.3rem;
+}
+
+.upgrade-tier-price {
+    color: #4CAF50;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.upgrade-tier-elite .upgrade-tier-price {
+    color: #FFD700;
+}
+
+.upgrade-tier-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+    text-align: left;
+}
+
+.upgrade-tier-card ul li {
+    color: #aaa;
+    padding: 5px 0;
+    font-size: 0.9rem;
+}
+
+.upgrade-tier-card ul li::before {
+    content: "✓ ";
+    color: #4CAF50;
+}
+
+.upgrade-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    color: #fff;
+}
+
+.upgrade-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.upgrade-btn-elite {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+.upgrade-btn-elite:hover {
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+.upgrade-modal-link {
+    color: #00ccff;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.upgrade-modal-link:hover {
+    text-decoration: underline;
+}
+
+/* Account Settings Tier Badge */
+.current-tier-badge {
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.current-tier-badge.tier-free {
+    background: linear-gradient(135deg, #333, #555);
+    color: #fff;
+}
+
+.current-tier-badge.tier-premium {
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    color: #fff;
+}
+
+.current-tier-badge.tier-elite {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+}
+
+/* Tier Locked Feature Styling */
+.tier-locked {
+    opacity: 0.5;
+    pointer-events: none;
+    position: relative;
+}
+
+.tier-locked::after {
+    content: "🔒";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+}
+
+.tier-locked-message {
+    color: #f44336;
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+/* EasyMining Disabled State for Free Tier */
+.easymining-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.easymining-disabled::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: inherit;
+    z-index: 10;
+}
+
+/* Bot Features Disabled State for Free/Premium */
+.bot-feature-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.bot-feature-disabled label {
+    color: #666 !important;
+}
+
+.elite-only-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.premium-required-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #4CAF50, #2196F3);
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Responsive Styles for Pricing */
+@media (max-width: 1200px) {
+    body.has-desktop-ads {
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+
+@media (max-width: 992px) {
+    .pricing-cards-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .pricing-card {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .pricing-popular {
+        transform: scale(1);
+        order: -1;
+    }
+
+    .pricing-popular:hover {
+        transform: translateY(-10px);
+    }
+}
+
+@media (max-width: 768px) {
+    .pricing-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .pricing-page-container {
+        padding: 20px 10px;
+    }
+
+    .upgrade-modal-tiers {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .upgrade-tier-card {
+        width: 100%;
+        max-width: 280px;
+    }
+}
+
+@media (max-width: 480px) {
+    .pricing-card {
+        padding: 25px 20px;
+    }
+
+    .price-amount {
+        font-size: 2rem;
+    }
+
+    .pricing-features li {
+        font-size: 0.9rem;
+        padding: 10px 0;
+    }
+}
+
+/* Light Mode Adjustments for Pricing */
+body.light-mode .pricing-card {
+    background: #fff;
+    border-color: #ddd;
+}
+
+body.light-mode .pricing-card:hover {
+    border-color: #4CAF50;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .pricing-card h2 {
+    color: #333;
+}
+
+body.light-mode .pricing-features li {
+    color: #555;
+    border-bottom-color: #eee;
+}
+
+body.light-mode .pricing-features li.excluded {
+    color: #999;
+}
+
+body.light-mode .pricing-btn {
+    background: #eee;
+    color: #333;
+}
+
+body.light-mode .pricing-btn:hover {
+    background: #ddd;
+}
+
+body.light-mode .upgrade-tier-card {
+    background: #fff;
+    border-color: #ddd;
+}
+
+body.light-mode .upgrade-tier-card h3 {
+    color: #333;
+}
+
+body.light-mode .upgrade-tier-card ul li {
+    color: #555;
+}
+
+body.light-mode #upgrade-modal-message {
+    color: #555;
+}
+
+body.light-mode .current-tier-badge.tier-free {
+    background: linear-gradient(135deg, #888, #aaa);
+}
+
+body.light-mode #pricing-page {
+    background: linear-gradient(135deg, #f0f4f8 0%, #e8ecf0 100%);
+}
+
+body.light-mode .pricing-header p {
+    color: #666;
+}
+
+body.light-mode .ad-container {
+    background: #f5f5f5;
+}
