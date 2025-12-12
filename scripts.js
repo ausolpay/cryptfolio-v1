@@ -21167,11 +21167,10 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
             robotDiv.className = `block-found-indicator auto-buy-robot${isCountdown ? ' countdown' : ''}`;
             robotDiv.title = getTooltip(true, false);
             robotDiv.textContent = '🤖';
-            const titleDiv = card.querySelector('.buy-package-title');
-            if (titleDiv) {
-                titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
-                console.log(`🤖 Added solid robot icon to ${pkg.name} - ${myBoughtShares} shares owned`);
-            }
+            // Try multiple formats: h4 title, .package-header, or card itself
+            const titleDiv = card.querySelector('h4')?.parentElement || card.querySelector('.package-header') || card;
+            titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
+            console.log(`🤖 Added solid robot icon to ${pkg.name} - ${myBoughtShares} shares owned`);
         }
     } else {
         // No shares yet - robot should be spinning (waiting)
@@ -21186,11 +21185,10 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
             robotDiv.className = 'block-found-indicator auto-buy-robot waiting';
             robotDiv.title = getTooltip(false, true);
             robotDiv.textContent = '🤖';
-            const titleDiv = card.querySelector('.buy-package-title');
-            if (titleDiv) {
-                titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
-                console.log(`🤖 Added spinning robot icon to ${pkg.name} - waiting for shares`);
-            }
+            // Try multiple formats: h4 title, .package-header, or card itself
+            const titleDiv = card.querySelector('h4')?.parentElement || card.querySelector('.package-header') || card;
+            titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
+            console.log(`🤖 Added spinning robot icon to ${pkg.name} - waiting for shares`);
         }
     }
 }
@@ -21260,7 +21258,7 @@ function initializeAlertCardButtonStates(packageName, myBoughtShares, totalBough
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
-            buyButton.textContent = `Remove ${Math.abs(newShares)}`;
+            buyButton.textContent = `Buy -${Math.abs(newShares)}`;
         } else {
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
@@ -25611,7 +25609,7 @@ function updateTeamPackageButtonStates(card, input, shares, myBoughtShares, tota
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
-            buyButton.textContent = `Remove ${Math.abs(newShares)}`;
+            buyButton.textContent = `Buy -${Math.abs(newShares)}`;
         } else {
             // Can afford and shares available - buying new shares
             buyButton.disabled = false;
@@ -27142,12 +27140,12 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
                 buyButton.textContent = 'Buy';
                 buyButton.title = 'No new shares to buy';
             } else if (newSharesToBuy < 0) {
-                // Reducing shares - enable with "Remove" text
+                // Reducing shares - enable with "Buy -x" text
                 buyButton.disabled = false;
                 buyButton.style.opacity = '1';
                 buyButton.style.cursor = 'pointer';
-                buyButton.textContent = `Remove ${Math.abs(newSharesToBuy)}`;
-                buyButton.title = `Remove ${Math.abs(newSharesToBuy)} share(s)`;
+                buyButton.textContent = `Buy -${Math.abs(newSharesToBuy)}`;
+                buyButton.title = `Reduce by ${Math.abs(newSharesToBuy)} share(s)`;
             } else {
                 // Can afford the new shares
                 buyButton.disabled = false;
@@ -27231,7 +27229,8 @@ function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
             robotDiv.className = `block-found-indicator auto-buy-robot${isCountdown ? ' countdown' : ''}`;
             robotDiv.title = isCountdown ? getBotTooltip('active (starting soon)') : getBotTooltip('active (shares owned)');
             robotDiv.textContent = '🤖';
-            const titleDiv = card.querySelector('.buy-package-title');
+            // Try both old (.buy-package-title) and new (.package-header) formats
+            const titleDiv = card.querySelector('.buy-package-title') || card.querySelector('.package-header');
             if (titleDiv) {
                 titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
             }
@@ -27248,7 +27247,8 @@ function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
             robotDiv.className = 'block-found-indicator auto-buy-robot waiting';
             robotDiv.title = getBotTooltip('active (waiting)');
             robotDiv.textContent = '🤖';
-            const titleDiv = card.querySelector('.buy-package-title');
+            // Try both old (.buy-package-title) and new (.package-header) formats
+            const titleDiv = card.querySelector('.buy-package-title') || card.querySelector('.package-header');
             if (titleDiv) {
                 titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
             }
@@ -27452,7 +27452,7 @@ function updateAllBuyButtonStates() {
                 buyButton.disabled = false;
                 buyButton.style.opacity = '1';
                 buyButton.style.cursor = 'pointer';
-                buyButton.textContent = `Remove ${Math.abs(newShares)}`;
+                buyButton.textContent = `Buy -${Math.abs(newShares)}`;
             } else {
                 buyButton.disabled = false;
                 buyButton.style.opacity = '1';
@@ -27523,7 +27523,7 @@ function updateAllBuyButtonStates() {
                     buyButton.disabled = false;
                     buyButton.style.opacity = '1';
                     buyButton.style.cursor = 'pointer';
-                    buyButton.textContent = `Remove ${Math.abs(newShares)}`;
+                    buyButton.textContent = `Buy -${Math.abs(newShares)}`;
                 } else {
                     buyButton.disabled = false;
                     buyButton.style.opacity = '1';
@@ -27902,16 +27902,19 @@ function validateAndFixAutoBuyRobotIcons() {
     // Validate solo packages
     const soloCards = singleContainer.querySelectorAll('.buy-package-card');
     soloCards.forEach(card => {
-        const packageNameElement = card.querySelector('.buy-package-title');
+        // Try both old (.buy-package-title) and new (.package-header h4) formats
+        const packageNameElement = card.querySelector('.buy-package-title') || card.querySelector('.package-header h4');
         if (!packageNameElement) return;
 
-        const packageName = packageNameElement.textContent.trim();
+        // Remove star emoji if present
+        const packageName = packageNameElement.textContent.replace(/⭐/g, '').trim();
         const isAutoBuyActive = soloAutoBuy[packageName]?.enabled === true;
         const robotIcon = card.querySelector('.auto-buy-robot');
 
         if (isAutoBuyActive && !robotIcon) {
             // Auto-buy enabled but no robot icon - add spinning robot
-            const titleDiv = card.querySelector('.buy-package-title').parentElement;
+            const titleDiv = card.querySelector('.buy-package-title')?.parentElement || card.querySelector('.package-header');
+            if (!titleDiv) return;
             const spinningRobot = document.createElement('div');
             spinningRobot.className = 'block-found-indicator auto-buy-robot waiting';
             spinningRobot.title = 'Auto-buy active (waiting)';
@@ -27930,10 +27933,12 @@ function validateAndFixAutoBuyRobotIcons() {
     // Validate team packages
     const teamCards = teamContainer.querySelectorAll('.buy-package-card');
     teamCards.forEach(card => {
-        const packageNameElement = card.querySelector('.buy-package-title');
+        // Try both old (.buy-package-title) and new (.package-header h4) formats
+        const packageNameElement = card.querySelector('.buy-package-title') || card.querySelector('.package-header h4');
         if (!packageNameElement) return;
 
-        const packageName = packageNameElement.textContent.trim();
+        // Remove star emoji and team icon SVG if present
+        const packageName = packageNameElement.textContent.replace(/⭐/g, '').trim();
         const isAutoBuyActive = teamAutoBuy[packageName]?.enabled === true;
         const isAutoSharesActive = teamAutoShares[packageName]?.enabled === true;
         const isAutoSharesOnAlertActive = teamAutoSharesOnAlert[packageName]?.enabled === true;
@@ -27955,7 +27960,8 @@ function validateAndFixAutoBuyRobotIcons() {
 
         if (isBotActive && !robotIcon) {
             // Bot feature enabled but no robot icon - add appropriate robot
-            const titleDiv = card.querySelector('.buy-package-title').parentElement;
+            const titleDiv = card.querySelector('.buy-package-title')?.parentElement || card.querySelector('.package-header');
+            if (!titleDiv) return;
             const robot = document.createElement('div');
             robot.className = 'block-found-indicator auto-buy-robot';
             robot.textContent = '🤖';
@@ -29390,13 +29396,11 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                         <span class="price-value" id="team-price-${packageIdForElements}">$${pricePerShareAUD}</span>
                     </div>
                     ${teamShareSelector}
-                    ${myBoughtShares > 0 ? `
-                    <div class="buy-button-row">
+                    <div class="buy-button-row" id="buy-clear-shares-container-${packageIdForElements}" style="${myBoughtShares > 0 ? '' : 'display: none;'}">
                         <button class="buy-now-btn clear-shares-btn" onclick="clearTeamSharesManual('${pkg.apiData?.id || pkg.id}', '${pkg.name}')">
                             Clear Shares
                         </button>
                     </div>
-                    ` : ''}
                 </div>
             </div>
         `;
@@ -29841,7 +29845,7 @@ function adjustShares(packageName, delta, buttonElement) {
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
-            buyButton.textContent = `Remove ${Math.abs(newShares)}`;
+            buyButton.textContent = `Buy -${Math.abs(newShares)}`;
             console.log(`🛒 Buy button ENABLED - removing ${Math.abs(newShares)} shares (input: ${newValue}, owned: ${myBoughtShares})`);
         } else {
             // Can afford the new shares and shares are available
