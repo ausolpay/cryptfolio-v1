@@ -18229,7 +18229,8 @@ function generateMockBlocks() {
 // =============================================================================
 
 // Track previous package list for smart update detection
-let previousActivePackageIds = [];
+let previousActivePackageSignature = '';
+let previousTabCounts = { active: 0, completed: 0, rewards: 0 };
 
 function updateEasyMiningUI() {
     // Update balances (BTC) - include BTC suffix for new balance card format
@@ -18255,16 +18256,31 @@ function updateEasyMiningUI() {
     document.getElementById('easymining-pending-aud').textContent = `$${formatNumber(pendingAUD.toFixed(2))}`;
 
     // Check if package list has changed (needs full re-render) or just values changed (smart update)
-    const currentPackageIds = (easyMiningData.activePackages || []).map(p => p.id).sort().join(',');
-    const packageListChanged = currentPackageIds !== previousActivePackageIds.join(',');
+    // Include active status in the signature so completed packages trigger re-render
+    const currentPackageSignature = (easyMiningData.activePackages || [])
+        .map(p => `${p.id}:${p.active}`)
+        .sort()
+        .join(',');
+    const packageListChanged = currentPackageSignature !== previousActivePackageSignature;
     const container = document.getElementById('active-packages-container');
     const hasExistingCards = container && container.querySelectorAll('.package-card').length > 0;
 
-    if (packageListChanged || !hasExistingCards) {
-        // Full re-render needed (package list changed or first load)
-        console.log('🔄 Full re-render: Package list changed or first load');
+    // Also check if the displayed tab's content would change
+    const activeCount = easyMiningData.activePackages.filter(pkg => pkg.active === true).length;
+    const completedCount = easyMiningData.activePackages.filter(pkg => pkg.active === false).length;
+    const rewardsCount = easyMiningData.activePackages.filter(pkg => pkg.blockFound === true).length;
+    const tabCountChanged = (
+        activeCount !== previousTabCounts.active ||
+        completedCount !== previousTabCounts.completed ||
+        rewardsCount !== previousTabCounts.rewards
+    );
+
+    if (packageListChanged || tabCountChanged || !hasExistingCards) {
+        // Full re-render needed (package list changed, status changed, or first load)
+        console.log('🔄 Full re-render: Package list/status changed or first load');
         displayActivePackages();
-        previousActivePackageIds = (easyMiningData.activePackages || []).map(p => p.id).sort();
+        previousActivePackageSignature = currentPackageSignature;
+        previousTabCounts = { active: activeCount, completed: completedCount, rewards: rewardsCount };
     } else {
         // Smart update - just update values in place
         console.log('⚡ Smart update: Updating values in place');
@@ -30141,7 +30157,8 @@ function updateTeamPackageCountdowns() {
                 const container = document.getElementById('active-packages-container');
                 if (container) container.innerHTML = '';
                 // Reset tracking to force full re-render
-                previousActivePackageIds = [];
+                previousActivePackageSignature = '';
+                previousTabCounts = { active: 0, completed: 0, rewards: 0 };
                 // Display packages - this will render the cards
                 displayActivePackages();
             } catch (err) {
