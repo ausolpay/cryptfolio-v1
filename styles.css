@@ -1646,11 +1646,19 @@ body.light-mode .portfolio-stats-toggle:hover .toggle-text {
     justify-content: center;
     padding: 10px 8px;
     margin: 0;
+    gap: 0;
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
     width: 100%;
     box-sizing: border-box;
+}
+
+/* Ensure tight stacking of value and label in portfolio stats */
+.portfolio-stats-grid .stat-item .stat-value,
+.portfolio-stats-grid .stat-item .stat-label {
+    margin: 0;
+    padding: 0;
 }
 
 /* Ensure all portfolio stat cards have consistent height */
@@ -1754,11 +1762,19 @@ body.light-mode .stat-value.highlight-green {
     justify-content: center;
     padding: 10px 8px;
     margin: 0;
+    gap: 0;
     background-color: rgba(50, 50, 50, 0.4);
     border-radius: 8px;
     text-align: center;
     width: 100%;
     box-sizing: border-box;
+}
+
+/* Ensure tight stacking of value and label in pnl items */
+.portfolio-pnl-grid .pnl-item .pnl-value,
+.portfolio-pnl-grid .pnl-item .pnl-label {
+    margin: 0;
+    padding: 0;
 }
 
 /* Ensure pnl cards match stat card height */
