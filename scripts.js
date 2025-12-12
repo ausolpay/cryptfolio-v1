@@ -1311,6 +1311,17 @@ function showAppPage() {
     if (easyMiningContent && easyMiningContent.style.display !== 'none' && easyMiningSettings?.enabled) {
         console.log('📦 EasyMining section is open, restarting alerts polling...');
         startEasyMiningAlertsPolling();
+
+        // Also refresh active packages when returning to app page
+        console.log('🔄 Refreshing active packages after navigation...');
+        fetchEasyMiningData().then(() => {
+            if (typeof displayActivePackages === 'function') {
+                displayActivePackages();
+                console.log('✅ Active packages refreshed after navigation');
+            }
+        }).catch(err => {
+            console.error('Failed to refresh packages after navigation:', err);
+        });
     }
 
     // Start auto-shares background polling if any auto-shares is enabled
@@ -17619,6 +17630,7 @@ let currentPackageTab = 'active';
 
 // Switch package tab
 function switchPackageTab(tab) {
+    const wasAlreadyActive = currentPackageTab === tab;
     currentPackageTab = tab;
     showAllPackages = false; // Reset to collapsed view when switching tabs
 
@@ -17631,11 +17643,13 @@ function switchPackageTab(tab) {
     });
     event.target.closest('.package-tab').classList.add('active');
 
-    // If switching to Active tab, fetch fresh data to catch newly active packages
+    // Always fetch fresh data when clicking Active tab (even if already on it)
+    // This allows users to refresh by clicking the Active tab again
     if (tab === 'active') {
-        console.log('🔄 Active tab clicked - refreshing package data...');
+        console.log(`🔄 Active tab clicked${wasAlreadyActive ? ' (refresh)' : ''} - fetching fresh package data...`);
         fetchEasyMiningData().then(() => {
             displayActivePackages();
+            console.log('✅ Active packages refreshed');
         }).catch(err => {
             console.error('Failed to refresh on active tab:', err);
             displayActivePackages(); // Still display with existing data
@@ -17644,6 +17658,19 @@ function switchPackageTab(tab) {
         // Refresh display
         displayActivePackages();
     }
+}
+
+// Force refresh active packages (can be called after navigation or long idle periods)
+function refreshActivePackages() {
+    console.log('🔄 Force refreshing active packages...');
+    return fetchEasyMiningData().then(() => {
+        if (currentPackageTab === 'active') {
+            displayActivePackages();
+        }
+        console.log('✅ Active packages force refreshed');
+    }).catch(err => {
+        console.error('Failed to force refresh packages:', err);
+    });
 }
 
 window.switchPackageTab = switchPackageTab;
@@ -33681,7 +33708,13 @@ if (!visibilityChangeListenerAdded) {
                 // If more than 2x polling interval since last poll, fetch immediately
                 if (timeSinceLastPoll > resumeThreshold) {
                     console.log(`👁️ Page visible again - fetching fresh EasyMining data...`);
-                    fetchEasyMiningData();
+                    fetchEasyMiningData().then(() => {
+                        // Refresh the active packages display after fetching new data
+                        if (typeof displayActivePackages === 'function') {
+                            displayActivePackages();
+                            console.log('✅ Active packages refreshed after visibility change');
+                        }
+                    });
                     lastEasyMiningPollTime = Date.now();
                 }
             }
