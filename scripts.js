@@ -327,25 +327,37 @@ function updateBotFeaturesAccess() {
 function updateAccountSettingsTier() {
     const tier = getUserTier();
     const config = TIER_CONFIG[tier];
+    const isAdmin = isAdminUser();
 
     const badge = document.getElementById('current-tier-badge');
     const nameEl = document.getElementById('account-tier-name');
     const limitEl = document.getElementById('tier-crypto-limit');
     const upgradeBtn = document.getElementById('upgrade-tier-btn');
+    const upgradeRow = document.getElementById('upgrade-tier-row');
 
     if (badge) {
-        badge.className = 'current-tier-badge tier-' + tier;
+        // Add admin class if user is admin
+        badge.className = 'current-tier-badge tier-' + tier + (isAdmin ? ' tier-admin' : '');
     }
     if (nameEl) {
-        nameEl.textContent = config.displayName;
+        // Show "Admin" badge for admin users, otherwise show tier name
+        if (isAdmin) {
+            nameEl.innerHTML = config.displayName + ' <span class="admin-indicator">ADMIN</span>';
+        } else {
+            nameEl.textContent = config.displayName;
+        }
     }
     if (limitEl) {
         const count = users[loggedInUser]?.cryptos?.length || 0;
         const max = config.maxCryptos === Infinity ? 'Unlimited' : config.maxCryptos;
         limitEl.textContent = `Tracking ${count} of ${max} cryptocurrencies`;
     }
+    // Hide upgrade button for elite users (including admins)
     if (upgradeBtn) {
         upgradeBtn.style.display = tier === 'elite' ? 'none' : 'block';
+    }
+    if (upgradeRow) {
+        upgradeRow.style.display = tier === 'elite' ? 'none' : 'flex';
     }
 }
 
@@ -457,6 +469,18 @@ function showPricingPage() {
     document.getElementById('account-settings-page').style.display = 'none';
     document.getElementById('easymining-settings-page').style.display = 'none';
     document.getElementById('coingecko-settings-page').style.display = 'none';
+    document.getElementById('api-keys-page').style.display = 'none';
+    document.getElementById('google-settings-page').style.display = 'none';
+    document.getElementById('brave-settings-page').style.display = 'none';
+    document.getElementById('cryptocompare-settings-page').style.display = 'none';
+    document.getElementById('reddit-settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('withdrawal-addresses-page').style.display = 'none';
+    document.getElementById('package-alerts-page').style.display = 'none';
+    document.getElementById('travel-data-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('withdraw-page').style.display = 'none';
 
     // Show pricing page
     const pricingPage = document.getElementById('pricing-page');
@@ -9515,6 +9539,7 @@ function showAccountSettingsPage() {
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
+    document.getElementById('pricing-page').style.display = 'none';
 
     // Show account settings page
     document.getElementById('account-settings-page').style.display = 'block';
@@ -9561,6 +9586,9 @@ function loadAccountSettings() {
     if (languageDisplay) {
         languageDisplay.textContent = user?.language || '-';
     }
+
+    // Update tier display in account settings
+    updateAccountSettingsTier();
 }
 
 // Save user information (first name, last name, country, currency, language)

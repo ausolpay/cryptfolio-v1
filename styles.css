@@ -11420,9 +11420,15 @@ body.has-mobile-ad {
     min-height: 100vh;
     padding: 0;
     background: #0d0d0d;
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     overflow-x: hidden;
+    overflow-y: auto;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    z-index: 9999;
 }
 
 /* Animated Background Orbs */
@@ -12136,6 +12142,24 @@ body.has-mobile-ad {
 .current-tier-badge.tier-elite {
     background: linear-gradient(135deg, #FFD700, #FFA500);
     color: #000;
+}
+
+/* Admin indicator in tier badge */
+.admin-indicator {
+    display: inline-block;
+    background: rgba(255, 0, 0, 0.8);
+    color: #fff;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+.current-tier-badge.tier-admin {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
 /* Tier Locked Feature Styling */
