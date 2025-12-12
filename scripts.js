@@ -19225,7 +19225,8 @@ async function executeAutoBuyTeam(recommendations) {
         let actualSharesToBuy = sharesToBuy;
         let newTotalShares = currentShares + actualSharesToBuy;
         let costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
-        let totalAmountForAPI = newTotalShares * sharePrice;    // Total value to send in API
+        // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
+        let totalAmountForAPI = Number((newTotalShares * sharePrice).toFixed(8));    // Total value to send in API
 
         // 💰 Balance check skipped - API will validate, we send total amount but only pay for new shares
         const availableBalance = window.niceHashBalance?.available || 0;
@@ -20238,7 +20239,8 @@ async function executeAutoSharesTeam(teamPackages) {
         const sharePrice = 0.0001;
         const newTotalShares = myShares + actualSharesToBuy;
         const costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
-        const totalAmountForAPI = newTotalShares * sharePrice;    // Total value to send in API
+        // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
+        const totalAmountForAPI = Number((newTotalShares * sharePrice).toFixed(8));    // Total value to send in API
 
         console.log(`💰 Auto-shares amount calc:`, {
             currentOwned: myShares,
@@ -25918,7 +25920,8 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         let orderData;
         if (isDecrease) {
             // DECREASE: Send total amount and total shares (new values after reduction)
-            const totalAmount = desiredTotalShares * sharePrice;
+            // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
+            const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
             console.log(`📉 DECREASE: Reducing to ${desiredTotalShares} shares (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,
@@ -25935,7 +25938,8 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             };
         } else {
             // INCREASE: Send NEW TOTAL amount and NEW TOTAL shares count
-            const totalAmount = desiredTotalShares * sharePrice;
+            // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
+            const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
             console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares, new total: ${desiredTotalShares} (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,  // New total amount
@@ -30091,7 +30095,8 @@ Do you want to continue?
 
         if (isDecrease) {
             // DECREASE: Send total amount and total shares (new values after reduction)
-            const totalAmount = desiredTotalShares * sharePrice;
+            // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
+            const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
             console.log(`📉 DECREASE: Reducing to ${desiredTotalShares} shares (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,
@@ -30108,7 +30113,8 @@ Do you want to continue?
             };
         } else {
             // INCREASE: Send NEW TOTAL amount and NEW TOTAL shares count
-            const totalAmount = desiredTotalShares * sharePrice;
+            // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
+            const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
             console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares, new total: ${desiredTotalShares} (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,  // New total amount
