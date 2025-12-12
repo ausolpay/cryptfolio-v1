@@ -17116,11 +17116,13 @@ function calculateTimeRemaining(orderOrTimestamp) {
         const days = Math.floor(remainingSeconds / (60 * 60 * 24));
         const hours = Math.floor((remainingSeconds % (60 * 60 * 24)) / (60 * 60));
         const minutes = Math.floor((remainingSeconds % (60 * 60)) / 60);
+        const seconds = remainingSeconds % 60;
 
         if (days > 0) {
             return `${days}d ${hours}h`;
         }
-        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        // When hours present: show h m format, when only minutes: show m s format
+        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`;
     }
 
     // Fallback to endTimestamp calculation for completed packages or if estimateDurationInSeconds is not available
@@ -17146,11 +17148,13 @@ function calculateTimeRemaining(orderOrTimestamp) {
     const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
     const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 
     if (days > 0) {
         return `${days}d ${hours}h`;
     }
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    // When hours present: show h m format, when only minutes: show m s format
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
 // Helper function to calculate progress percentage
