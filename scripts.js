@@ -19272,11 +19272,11 @@ async function executeAutoBuyTeam(recommendations) {
                 }
             }
 
-            // Create order payload: both amount and shares.small are TOTAL values
+            // Create order payload: amount is ADDED shares value, shares.small is new TOTAL
             const bodyData = {
-                amount: totalAmountForAPI,  // Total value (all shares × 0.0001)
+                amount: costForNewShares,  // Added shares value (actualSharesToBuy × 0.0001)
                 shares: {
-                    small: newTotalShares,  // Total shares count
+                    small: newTotalShares,  // New total shares count
                     medium: 0,
                     large: 0,
                     couponSmall: 0,
@@ -19292,7 +19292,7 @@ async function executeAutoBuyTeam(recommendations) {
                 bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
             }
 
-            console.log(`📡 Auto-buy request: buying ${actualSharesToBuy} shares, setting total to ${newTotalShares} (API amount: ${totalAmountForAPI} BTC)`, {
+            console.log(`📡 Auto-buy request: adding ${actualSharesToBuy} shares (amount: ${costForNewShares} BTC), new total: ${newTotalShares}`, {
                 isDualCrypto: isDualCrypto,
                 mainCrypto: mainCrypto,
                 mainWallet: mainWalletAddress.substring(0, 10) + '...',
@@ -19306,52 +19306,8 @@ async function executeAutoBuyTeam(recommendations) {
                 bodyData: bodyData
             });
 
-            // ========== TWO-STEP PROCESS: CLEAR THEN BUY ==========
-            // Step 1: If user owns ANY shares, clear them first
-            if (currentShares > 0) {
-                console.log(`🗑️ AUTO-BUY STEP 1: Clearing ${currentShares} existing shares before buying ${newTotalShares} total...`);
-
-                const clearData = { clear: true };
-                const clearBody = JSON.stringify(clearData);
-                const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
-
-                let clearResponse;
-                if (USE_VERCEL_PROXY) {
-                    clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            endpoint: endpoint,
-                            method: 'POST',
-                            headers: clearHeaders,
-                            body: clearData
-                        })
-                    });
-                } else {
-                    clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                        method: 'POST',
-                        headers: clearHeaders,
-                        body: clearBody
-                    });
-                }
-
-                if (!clearResponse.ok) {
-                    const clearError = await clearResponse.text();
-                    console.error('❌ AUTO-BUY: Failed to clear existing shares:', clearError);
-                    throw new Error(`Failed to clear existing shares: ${clearError}`);
-                }
-
-                console.log(`✅ AUTO-BUY STEP 1 COMPLETE: Cleared ${currentShares} shares successfully`);
-
-                // Small delay to ensure API processes the clear
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Re-sync time before the buy request
-                await syncNiceHashTime();
-            }
-
-            // ========== STEP 2: BUY NEW TOTAL ==========
-            console.log(`🛒 AUTO-BUY STEP 2: Buying ${newTotalShares} shares (fresh purchase after clear)...`);
+            // ========== SINGLE-STEP: ADD SHARES ==========
+            console.log(`🛒 AUTO-BUY: Adding ${actualSharesToBuy} shares, new total: ${newTotalShares}...`);
 
             const body = JSON.stringify(bodyData);
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -20261,15 +20217,13 @@ async function executeAutoSharesTeam(teamPackages) {
         const sharePrice = 0.0001;
         const newTotalShares = myShares + actualSharesToBuy;
         const costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
-        const totalAmountForAPI = newTotalShares * sharePrice;    // Total value to send in API
 
         console.log(`💰 Auto-shares amount calc:`, {
             currentOwned: myShares,
             buyingThisRound: actualSharesToBuy,
             totalAfter: newTotalShares,
             costForNewShares: costForNewShares,
-            totalAmountForAPI: totalAmountForAPI,
-            formula: `API amount = ${newTotalShares} total shares × ${sharePrice} BTC = ${totalAmountForAPI} BTC`
+            formula: `API amount = ${actualSharesToBuy} added shares × ${sharePrice} BTC = ${costForNewShares} BTC`
         });
 
         // Check balance - we only need to afford the NEW shares being bought
@@ -20279,10 +20233,11 @@ async function executeAutoSharesTeam(teamPackages) {
             return; // Keep as current, wait for balance
         }
 
+        // Create order payload: amount is ADDED shares value, shares.small is new TOTAL
         const bodyData = {
-            amount: totalAmountForAPI,  // Total value (all shares × 0.0001)
+            amount: costForNewShares,  // Added shares value (actualSharesToBuy × 0.0001)
             shares: {
-                small: newTotalShares,  // Total shares count
+                small: newTotalShares,  // New total shares count
                 medium: 0,
                 large: 0,
                 couponSmall: 0,
@@ -20297,57 +20252,13 @@ async function executeAutoSharesTeam(teamPackages) {
             bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
         }
 
-        // ========== TWO-STEP PROCESS: CLEAR THEN BUY ==========
-        // Step 1: If user owns ANY shares, clear them first
-        if (myShares > 0) {
-            console.log(`🗑️ AUTO-SHARES STEP 1: Clearing ${myShares} existing shares before buying ${newTotalShares} total...`);
-
-            const clearData = { clear: true };
-            const clearBody = JSON.stringify(clearData);
-            const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
-
-            let clearResponse;
-            if (USE_VERCEL_PROXY) {
-                clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        endpoint: endpoint,
-                        method: 'POST',
-                        headers: clearHeaders,
-                        body: clearData
-                    })
-                });
-            } else {
-                clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                    method: 'POST',
-                    headers: clearHeaders,
-                    body: clearBody
-                });
-            }
-
-            if (!clearResponse.ok) {
-                const clearError = await clearResponse.text();
-                console.error('❌ AUTO-SHARES: Failed to clear existing shares:', clearError);
-                throw new Error(`Failed to clear existing shares: ${clearError}`);
-            }
-
-            console.log(`✅ AUTO-SHARES STEP 1 COMPLETE: Cleared ${myShares} shares successfully`);
-
-            // Small delay to ensure API processes the clear
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Re-sync time before the buy request
-            await syncNiceHashTime();
-        }
-
-        // ========== STEP 2: BUY NEW TOTAL ==========
-        console.log(`🛒 AUTO-SHARES STEP 2: Buying ${newTotalShares} shares (fresh purchase after clear)...`);
+        // ========== SINGLE-STEP: ADD SHARES ==========
+        console.log(`🛒 AUTO-SHARES: Adding ${actualSharesToBuy} shares, new total: ${newTotalShares}...`);
 
         const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        // ✅ VERIFICATION: Both amount and shares.small are being sent
+        // ✅ VERIFICATION: amount is ADDED shares, shares.small is new TOTAL
         console.log(`📡 Auto-shares API request:`, {
             endpoint: endpoint,
             previousOwned: myShares,
@@ -20355,7 +20266,7 @@ async function executeAutoSharesTeam(teamPackages) {
             totalSharesAfter: newTotalShares,
             'body.amount': bodyData.amount,
             'body.shares.small': bodyData.shares.small,
-            verification: `✅ amount (${bodyData.amount} BTC) = ${newTotalShares} total shares × 0.0001 BTC`
+            verification: `✅ amount (${bodyData.amount} BTC) = ${actualSharesToBuy} added shares × 0.0001 BTC, new total: ${newTotalShares}`
         });
         console.log(`📄 Full request body:`, JSON.stringify(bodyData, null, 2));
 
@@ -25979,72 +25890,58 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         // 6. Sync NiceHash time
         await syncNiceHashTime();
 
-        // 7. TWO-STEP PROCESS: Clear existing shares first, then buy new total
-        console.log(`🛒 Purchasing ${sharesToPurchase} share(s), updating total to ${desiredTotalShares}...`);
+        // 7. SINGLE-STEP PROCESS: Add shares or reduce with clear
+        console.log(`🛒 ${isDecrease ? 'Reducing' : 'Purchasing'} ${Math.abs(sharesToPurchase)} share(s), updating total to ${desiredTotalShares}...`);
 
         const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
 
-        // ========== TWO-STEP PROCESS: CLEAR THEN BUY ==========
-        // Step 1: If user owns ANY shares, clear them first
-        if (currentShares > 0) {
-            console.log(`🗑️ STEP 1: Clearing ${currentShares} existing shares before ${isDecrease ? 'reducing to' : 'buying'} ${desiredTotalShares} total...`);
+        // Build order data based on increase vs decrease
+        let orderData;
 
-            const clearData = { clear: true };
-            const clearBody = JSON.stringify(clearData);
-            const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
+        if (isDecrease) {
+            // DECREASE: Send clear: true with amount to remove and new total
+            const sharesToRemove = Math.abs(sharesToPurchase);
+            const amountToRemove = sharesToRemove * sharePrice;
 
-            let clearResponse;
-            if (USE_VERCEL_PROXY) {
-                clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        endpoint: endpoint,
-                        method: 'POST',
-                        headers: clearHeaders,
-                        body: clearData
-                    })
-                });
-            } else {
-                clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                    method: 'POST',
-                    headers: clearHeaders,
-                    body: clearBody
-                });
-            }
+            console.log(`📉 DECREASE: Removing ${sharesToRemove} shares (amount: ${amountToRemove} BTC), new total: ${desiredTotalShares}`);
 
-            if (!clearResponse.ok) {
-                const clearError = await clearResponse.text();
-                console.error('❌ Failed to clear existing shares:', clearError);
-                throw new Error(`Failed to clear existing shares: ${clearError}`);
-            }
+            orderData = {
+                clear: true,
+                amount: amountToRemove,  // Amount of shares being removed
+                shares: {
+                    small: desiredTotalShares,  // New total after removal
+                    medium: 0,
+                    large: 0,
+                    couponSmall: 0,
+                    couponMedium: 0,
+                    couponLarge: 0,
+                    massBuy: 0
+                },
+                soloMiningRewardAddr: mainWalletAddress.trim()
+            };
+        } else {
+            // INCREASE: Send just the added amount and new total (no clearing)
+            const sharesToAdd = sharesToPurchase;
+            const amountToAdd = sharesToAdd * sharePrice;
 
-            console.log(`✅ STEP 1 COMPLETE: Cleared ${currentShares} shares successfully`);
+            console.log(`📈 INCREASE: Adding ${sharesToAdd} shares (amount: ${amountToAdd} BTC), new total: ${desiredTotalShares}`);
 
-            // Small delay to ensure API processes the clear
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Re-sync time before the buy request
-            await syncNiceHashTime();
+            orderData = {
+                amount: amountToAdd,  // Amount of shares being added
+                shares: {
+                    small: desiredTotalShares,  // New total after addition
+                    medium: 0,
+                    large: 0,
+                    couponSmall: 0,
+                    couponMedium: 0,
+                    couponLarge: 0,
+                    massBuy: 0
+                },
+                soloMiningRewardAddr: mainWalletAddress.trim()
+            };
         }
 
-        // ========== STEP 2: BUY NEW TOTAL ==========
-        console.log(`🛒 STEP 2: Buying ${desiredTotalShares} shares (fresh purchase after clear)...`);
-
-        // Request body: BOTH amount and shares.small should be TOTAL values
-        const orderData = {
-            amount: totalAmountForAPI, // TOTAL value (all shares × 0.0001)
-            shares: {
-                small: desiredTotalShares,  // TOTAL shares count
-                medium: 0,
-                large: 0,
-                couponSmall: 0,
-                couponMedium: 0,
-                couponLarge: 0,
-                massBuy: 0
-            },
-            soloMiningRewardAddr: mainWalletAddress.trim()
-        };
+        console.log(`🛒 ${isDecrease ? 'Reducing to' : 'Buying'} ${desiredTotalShares} shares...`);
 
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -30177,26 +30074,52 @@ Do you want to continue?
             mergeWallet: mergeWalletAddress
         });
 
-        // Create order payload for team mining package
-        // Both amount and shares.small use TOTAL values
-        // Amount = total shares × 0.0001 BTC (0 for decreases)
-        // Amount is ALWAYS total shares × price - even for decreases we buy the new total after clearing
-        const totalAmountForAPI = desiredTotalShares * sharePrice;
+        // Build order data based on increase vs decrease
+        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        let orderData;
 
-        // NiceHash API expects total values for both amount and shares.small
-        const orderData = {
-            amount: totalAmountForAPI,  // Total value (all shares × 0.0001)
-            shares: {
-                small: desiredTotalShares,  // Total shares count
-                medium: 0,
-                large: 0,
-                couponSmall: 0,
-                couponMedium: 0,
-                couponLarge: 0,
-                massBuy: 0
-            },
-            soloMiningRewardAddr: mainWalletAddress.trim() // Main crypto address
-        };
+        if (isDecrease) {
+            // DECREASE: Send clear: true with amount to remove and new total
+            const sharesToRemove = Math.abs(sharesToPurchase);
+            const amountToRemove = sharesToRemove * sharePrice;
+
+            console.log(`📉 DECREASE: Removing ${sharesToRemove} shares (amount: ${amountToRemove} BTC), new total: ${desiredTotalShares}`);
+
+            orderData = {
+                clear: true,
+                amount: amountToRemove,  // Amount of shares being removed
+                shares: {
+                    small: desiredTotalShares,  // New total after removal
+                    medium: 0,
+                    large: 0,
+                    couponSmall: 0,
+                    couponMedium: 0,
+                    couponLarge: 0,
+                    massBuy: 0
+                },
+                soloMiningRewardAddr: mainWalletAddress.trim()
+            };
+        } else {
+            // INCREASE: Send just the added amount and new total (no clearing)
+            const sharesToAdd = sharesToPurchase;
+            const amountToAdd = sharesToAdd * sharePrice;
+
+            console.log(`📈 INCREASE: Adding ${sharesToAdd} shares (amount: ${amountToAdd} BTC), new total: ${desiredTotalShares}`);
+
+            orderData = {
+                amount: amountToAdd,  // Amount of shares being added
+                shares: {
+                    small: desiredTotalShares,  // New total after addition
+                    medium: 0,
+                    large: 0,
+                    couponSmall: 0,
+                    couponMedium: 0,
+                    couponLarge: 0,
+                    massBuy: 0
+                },
+                soloMiningRewardAddr: mainWalletAddress.trim()
+            };
+        }
 
         // Add merge address for dual-crypto packages (Palladium DOGE)
         if (isDualCrypto && mergeWalletAddress) {
@@ -30204,13 +30127,14 @@ Do you want to continue?
         }
 
         console.log('📦 Team package purchase:', {
-            endpoint: `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`,
+            endpoint: endpoint,
             method: 'POST',
             currentShares: currentShares,
             sharesBeingBought: sharesToPurchase,
             desiredTotalShares: desiredTotalShares,
-            'body.amount': totalAmountForAPI + ' BTC',
+            'body.amount': orderData.amount + ' BTC',
             'body.shares.small': desiredTotalShares,
+            'body.clear': orderData.clear || false,
             sharePrice: sharePrice + ' BTC per share',
             soloMiningRewardAddr: orderData.soloMiningRewardAddr.substring(0, 10) + '...',
             mergeSoloMiningRewardAddr: orderData.mergeSoloMiningRewardAddr || '(not set)',
@@ -30220,63 +30144,9 @@ Do you want to continue?
 
         // Log the actual JSON that will be sent
         console.log('📄 Request body:', JSON.stringify(orderData, null, 2));
-        console.log('🔴 FINAL VALUES TO API:', {
-            'shares.small': orderData.shares.small,
-            'amount': orderData.amount,
-            'expectedAmount': desiredTotalShares * sharePrice,
-            'desiredTotalShares': desiredTotalShares,
-            'currentSharesOwned': currentShares,
-            'sharesToPurchase': sharesToPurchase
-        });
 
-        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
-
-        // ========== TWO-STEP PROCESS: CLEAR THEN BUY ==========
-        // Step 1: If user owns ANY shares, clear them first
-        if (currentShares > 0) {
-            console.log(`🗑️ STEP 1: Clearing ${currentShares} existing shares before ${isDecrease ? 'reducing to' : 'buying'} ${desiredTotalShares} total...`);
-
-            const clearData = { clear: true };
-            const clearBody = JSON.stringify(clearData);
-            const clearHeaders = generateNiceHashAuthHeaders('POST', endpoint, clearBody);
-
-            let clearResponse;
-            if (USE_VERCEL_PROXY) {
-                clearResponse = await fetch(VERCEL_PROXY_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        endpoint: endpoint,
-                        method: 'POST',
-                        headers: clearHeaders,
-                        body: clearData
-                    })
-                });
-            } else {
-                clearResponse = await fetch(`https://api2.nicehash.com${endpoint}`, {
-                    method: 'POST',
-                    headers: clearHeaders,
-                    body: clearBody
-                });
-            }
-
-            if (!clearResponse.ok) {
-                const clearError = await clearResponse.text();
-                console.error('❌ Failed to clear existing shares:', clearError);
-                throw new Error(`Failed to clear existing shares: ${clearError}`);
-            }
-
-            console.log(`✅ STEP 1 COMPLETE: Cleared ${currentShares} shares successfully`);
-
-            // Small delay to ensure API processes the clear
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Re-sync time before the buy request
-            await syncNiceHashTime();
-        }
-
-        // ========== STEP 2: BUY NEW TOTAL ==========
-        console.log(`🛒 STEP 2: Buying ${desiredTotalShares} shares (fresh purchase after clear)...`);
+        // ========== SINGLE-STEP: ADD OR REMOVE SHARES ==========
+        console.log(`🛒 ${isDecrease ? 'Reducing to' : 'Buying'} ${desiredTotalShares} shares...`);
 
         // Generate fresh auth headers for the buy request
         const body = JSON.stringify(orderData);
