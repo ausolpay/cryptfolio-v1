@@ -1718,6 +1718,18 @@ body.light-mode .stat-value.highlight-green {
     color: #388E3C;
 }
 
+/* Portfolio stat labels - consistent styling for all 8 cards */
+.portfolio-stats-grid .stat-label,
+.portfolio-pnl-grid .pnl-label,
+.portfolio-pnl-grid .performer-label {
+    font-size: 11px !important;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    width: 100%;
+}
+
 .stat-label {
     font-size: 11px;
     color: #888;

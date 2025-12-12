@@ -1283,13 +1283,21 @@ function showAppPage() {
     document.getElementById('settings-page').style.display = 'none';
     document.getElementById('account-settings-page').style.display = 'none';
 
-    // EasyMining alerts polling - restart if section is already open
-    // This ensures polling continues after returning from other pages
-    const easyMiningContent = document.getElementById('easymining-content');
-    if (easyMiningContent && easyMiningContent.style.display !== 'none' && easyMiningSettings?.enabled) {
-        startEasyMiningAlertsPolling();
+    // EasyMining polling - ensure main polling is running if enabled
+    if (easyMiningSettings?.enabled) {
+        // Restart main EasyMining polling if it stopped
+        if (!easyMiningPollingInterval) {
+            console.log('🔄 EasyMining main polling was stopped - restarting on app page return...');
+            startEasyMiningPolling();
+        }
 
-        // Also refresh active packages when returning to app page
+        // EasyMining alerts polling - restart if section is already open
+        const easyMiningContent = document.getElementById('easymining-content');
+        if (easyMiningContent && easyMiningContent.style.display !== 'none') {
+            startEasyMiningAlertsPolling();
+        }
+
+        // Always refresh active packages when returning to app page
         fetchEasyMiningData().then(() => {
             if (typeof displayActivePackages === 'function') {
                 displayActivePackages();
@@ -33075,14 +33083,21 @@ function startPollingWatchdog() {
 if (!visibilityChangeListenerAdded) {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && easyMiningSettings?.enabled) {
-            // Resume main EasyMining polling
-            if (easyMiningPollingInterval) {
+            console.log('👁️ Page became visible - resuming EasyMining updates...');
+
+            // Restart main EasyMining polling if it was stopped
+            if (!easyMiningPollingInterval) {
+                console.log('🔄 EasyMining polling was stopped - restarting...');
+                startEasyMiningPolling();
+            } else {
+                // Polling exists - check if we need an immediate refresh
                 const timeSinceLastPoll = Date.now() - lastEasyMiningPollTime;
                 const pollingInterval = getPollingInterval();
                 const resumeThreshold = pollingInterval * 2; // 2x polling interval = refetch on visible
 
                 // If more than 2x polling interval since last poll, fetch immediately
                 if (timeSinceLastPoll > resumeThreshold) {
+                    console.log(`🔄 Stale data detected (${Math.round(timeSinceLastPoll / 1000)}s since last poll) - fetching fresh data...`);
                     fetchEasyMiningData().then(() => {
                         // Refresh the active packages display after fetching new data
                         if (typeof displayActivePackages === 'function') {
@@ -33091,6 +33106,11 @@ if (!visibilityChangeListenerAdded) {
                     });
                     lastEasyMiningPollTime = Date.now();
                 }
+            }
+
+            // Always refresh active packages display on visibility change
+            if (typeof displayActivePackages === 'function') {
+                displayActivePackages();
             }
 
             // Resume alerts polling if EasyMining section is open
