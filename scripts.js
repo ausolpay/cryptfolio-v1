@@ -3017,6 +3017,10 @@ function showDepositsPage() {
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('withdraw-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('account-settings-page').style.display = 'none';
+    document.getElementById('pricing-page').style.display = 'none';
 
     // Show deposits page
     document.getElementById('deposits-page').style.display = 'block';
@@ -3719,6 +3723,10 @@ function showWithdrawPage() {
     document.getElementById('travel-data-page').style.display = 'none';
     document.getElementById('deposits-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
+    document.getElementById('buy-packages-page').style.display = 'none';
+    document.getElementById('package-detail-page').style.display = 'none';
+    document.getElementById('account-settings-page').style.display = 'none';
+    document.getElementById('pricing-page').style.display = 'none';
 
     // Show withdraw page
     document.getElementById('withdraw-page').style.display = 'block';
@@ -5636,6 +5644,10 @@ function showBuyPackagesPage() {
     document.getElementById('package-detail-page').style.display = 'none';
     document.getElementById('package-alerts-page').style.display = 'none';
     document.getElementById('settings-page').style.display = 'none';
+    document.getElementById('deposits-page').style.display = 'none';
+    document.getElementById('withdraw-page').style.display = 'none';
+    document.getElementById('account-settings-page').style.display = 'none';
+    document.getElementById('pricing-page').style.display = 'none';
 
     // Show Buy Packages page
     document.getElementById('buy-packages-page').style.display = 'block';
