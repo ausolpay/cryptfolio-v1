@@ -25918,12 +25918,8 @@ function startDiceSyncCycle() {
     // These are purely random - the real close-to-reward value only shows at the 30s poll
     diceIntermediateUpdateInterval = setInterval(() => {
         if (isDiceRolling && diceRollStartTime) {
-            // Generate purely random percentage for intermediate rolls
-            // Real close-to-reward value is only shown when dice stop at poll time
-            const randomPercent = Math.floor(Math.random() * 91) + 5; // Random 5-95%
-
             // Update dice faces mid-roll with random numbers
-            updateDiceFacesMidRoll(randomPercent);
+            updateDiceFacesMidRoll();
         }
     }, 5000);
 
@@ -25956,9 +25952,7 @@ function startDiceSyncCycle() {
                 // Restart intermediate updates with purely random values
                 diceIntermediateUpdateInterval = setInterval(() => {
                     if (isDiceRolling && diceRollStartTime) {
-                        // Generate purely random percentage for intermediate rolls
-                        const randomPercent = Math.floor(Math.random() * 91) + 5; // Random 5-95%
-                        updateDiceFacesMidRoll(randomPercent);
+                        updateDiceFacesMidRoll();
                     }
                 }, 5000);
 
@@ -25971,36 +25965,16 @@ function startDiceSyncCycle() {
     runCycle();
 }
 
-// Update dice faces mid-roll to show intermediate percentage numbers
-function updateDiceFacesMidRoll(percent) {
-    // Calculate what dice face values would represent this percentage
-    // Sum range 2-10: maps to 0-100%
-    const normalized = Math.max(0, Math.min(100, percent)) / 100;
-    const targetSum = Math.round(2 + normalized * 8);
-
-    // Briefly flash the target value on dice before continuing roll
-    // This creates the effect of numbers flying by during roll
-    const faceRotations = {
-        1: 'rotateX(0deg) rotateY(0deg)',
-        2: 'rotateX(-90deg) rotateY(0deg)',
-        3: 'rotateY(-90deg)',
-        4: 'rotateY(90deg)',
-        5: 'rotateX(90deg) rotateY(0deg)',
-        6: 'rotateY(180deg)'
-    };
-
+// Update dice faces mid-roll to show random numbers (intermediate rolls)
+function updateDiceFacesMidRoll() {
     // Don't update if we're showing a reward
     if (diceRewardTimeout) return;
 
-    // Calculate dice pair for this percentage
-    const die1 = Math.min(5, Math.max(1, Math.ceil(targetSum / 2)));
-    const die2 = Math.min(5, Math.max(1, targetSum - die1));
-
-    // Apply brief transform flash to show the numbers
-    diceElements.forEach((dice, index) => {
-        const value = index % 2 === 0 ? die1 : die2;
-        // Add a brief highlight effect
-        dice.style.setProperty('--flash-value', value);
+    // For intermediate rolls, generate truly random dice values (1-5, not 6 which is reserved for rewards)
+    // Each die gets its own independent random value
+    diceElements.forEach((dice) => {
+        const randomValue = Math.floor(Math.random() * 5) + 1; // Random 1-5
+        dice.style.setProperty('--flash-value', randomValue);
     });
 }
 
