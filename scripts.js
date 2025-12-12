@@ -21581,13 +21581,31 @@ function updateTeamAlertCardValues(pkg) {
         shareDistEl.textContent = `(${myBoughtShares}/${totalBoughtShares}/${totalAvailable})`;
     }
 
-    // Calculate reward values using current share count
+    // Calculate reward values using current INPUT value (for preview) or owned shares
     const apiPackageId = pkg.apiData?.id || pkg.id;
     const myBoughtShares = getMyTeamShares(apiPackageId) || 0;
-    const myShares = myBoughtShares || 1; // Show reward for owned shares, or 1 if none
     const totalBoughtShares = Math.round((pkg.addedAmount || 0) * 10000);
-    const othersBought = totalBoughtShares - myBoughtShares;
-    const totalShares = othersBought + myShares;
+    const totalAvailableShares = Math.round((pkg.fullAmount || 0) * 10000);
+
+    // Get current input value - use this for preview calculation
+    const shareInput = document.getElementById(`shares-${packageId}`);
+    const inputValue = shareInput ? parseInt(shareInput.value) || 0 : 0;
+    // Use input value if user is previewing more shares, otherwise use owned shares
+    const myShares = inputValue > 0 ? inputValue : (myBoughtShares || 1);
+
+    // Formula: blockReward / totalBoughtShares * myShares
+    // Use CURRENT totalBoughtShares from API (not adjusted for preview)
+    // If totalBoughtShares is 0, fall back to myShares (I'm the only potential buyer)
+    const effectiveTotalShares = totalBoughtShares > 0 ? totalBoughtShares : myShares;
+
+    console.log(`📊 Live reward update for ${pkg.name}:`, {
+        myBoughtShares,
+        inputValue,
+        myShares,
+        totalBoughtShares,
+        effectiveTotalShares,
+        blockReward: pkg.blockReward
+    });
 
     // Get crypto prices for reward calculation
     const prices = window.packageCryptoPrices || {};
@@ -21600,8 +21618,8 @@ function updateTeamAlertCardValues(pkg) {
         const mainRewardEl = document.getElementById(`alert-reward-main-${packageId}`) ||
                              document.getElementById(`alert-main-reward-${packageId}`);
 
-        if (mergeRewardEl && totalShares > 0) {
-            const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
+        if (mergeRewardEl && effectiveTotalShares > 0) {
+            const myMergeReward = ((pkg.mergeBlockReward || 0) / effectiveTotalShares) * myShares;
             const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
             // Check if element has crypto symbol (old style) or just number (new style)
             const hasSymbol = mergeRewardEl.textContent.includes(pkg.mergeCrypto);
@@ -21609,8 +21627,8 @@ function updateTeamAlertCardValues(pkg) {
                 ? `${myMergeReward.toFixed(mergeDecimals)} ${pkg.mergeCrypto}`
                 : myMergeReward.toFixed(mergeDecimals);
         }
-        if (mainRewardEl && totalShares > 0) {
-            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+        if (mainRewardEl && effectiveTotalShares > 0) {
+            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
             const mainDecimals = pkg.mainCrypto === 'LTC' ? 2 : (pkg.mainCrypto === 'BTC' ? 4 : 0);
             // Check if element has crypto symbol (old style) or just number (new style)
             const hasSymbol = mainRewardEl.textContent.includes(pkg.mainCrypto);
@@ -21621,11 +21639,11 @@ function updateTeamAlertCardValues(pkg) {
 
         // Update combined reward value in local currency
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
-        if (rewardValueEl && totalShares > 0) {
+        if (rewardValueEl && effectiveTotalShares > 0) {
             const mergePrice = getPriceFromObject(prices[pkg.mergeCrypto?.toLowerCase()]);
             const mainPrice = getPriceFromObject(prices[pkg.mainCrypto?.toLowerCase()]);
-            const myMergeReward = ((pkg.mergeBlockReward || 0) / totalShares) * myShares;
-            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+            const myMergeReward = ((pkg.mergeBlockReward || 0) / effectiveTotalShares) * myShares;
+            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
             const myRewardLocal = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
             // Check if element has ≈ prefix (new style) or just $ (old style)
             const hasApprox = rewardValueEl.textContent.includes('≈');
@@ -21638,8 +21656,8 @@ function updateTeamAlertCardValues(pkg) {
         const mainRewardEl = document.getElementById(`alert-reward-${packageId}`) ||
                              document.getElementById(`alert-reward-main-${packageId}`) ||
                              document.getElementById(`alert-main-reward-${packageId}`);
-        if (mainRewardEl && totalShares > 0) {
-            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+        if (mainRewardEl && effectiveTotalShares > 0) {
+            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
             const decimals = ['BTC', 'BCH'].includes(pkg.crypto) ? 4 : 2;
             // Check if element has crypto symbol (old style) or just number (new style)
             const hasSymbol = mainRewardEl.textContent.includes(pkg.crypto);
@@ -21650,9 +21668,9 @@ function updateTeamAlertCardValues(pkg) {
 
         // Update reward value in local currency
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
-        if (rewardValueEl && totalShares > 0) {
+        if (rewardValueEl && effectiveTotalShares > 0) {
             const cryptoPrice = getPriceFromObject(prices[pkg.crypto?.toLowerCase()]);
-            const myMainReward = ((pkg.blockReward || 0) / totalShares) * myShares;
+            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
             const myRewardLocal = myMainReward * cryptoPrice;
             // Check if element has ≈ prefix (new style) or just $ (old style)
             const hasApprox = rewardValueEl.textContent.includes('≈');
@@ -21672,12 +21690,33 @@ function updateTeamAlertCardValues(pkg) {
 
     // ✅ Update data attributes only - DON'T overwrite input value during polling
     // This preserves user's intended purchase selection while updating underlying data
-    const shareInput = document.getElementById(`shares-${packageId}`);
+    // Note: shareInput is already declared above for getting input value
     if (shareInput) {
         shareInput.min = 1;  // Always allow decreasing to minimum of 1
         shareInput.dataset.myBought = myBoughtShares;
         shareInput.dataset.totalBought = totalBoughtShares;
-        shareInput.dataset.totalAvailable = Math.round((pkg.fullAmount || 0) * 10000);
+        shareInput.dataset.totalAvailable = totalAvailableShares;
+
+        // Update block reward data (for adjustShares calculations)
+        shareInput.dataset.blockReward = pkg.blockReward || 0;
+        shareInput.dataset.mergeBlockReward = pkg.mergeBlockReward || 0;
+        shareInput.dataset.isDualCrypto = pkg.isDualCrypto || false;
+        shareInput.dataset.mainCrypto = pkg.mainCrypto || pkg.crypto || '';
+        shareInput.dataset.mergeCrypto = pkg.mergeCrypto || '';
+
+        // Calculate full reward AUD for the entire block
+        const prices = window.packageCryptoPrices || {};
+        let fullRewardAUD = 0;
+        if (pkg.isDualCrypto) {
+            const mergePrice = getPriceFromObject(prices[pkg.mergeCrypto?.toLowerCase()]);
+            const mainPrice = getPriceFromObject(prices[pkg.mainCrypto?.toLowerCase()]);
+            fullRewardAUD = ((pkg.mergeBlockReward || 0) * mergePrice) + ((pkg.blockReward || 0) * mainPrice);
+        } else {
+            const cryptoPrice = getPriceFromObject(prices[pkg.crypto?.toLowerCase()]);
+            fullRewardAUD = (pkg.blockReward || 0) * cryptoPrice;
+        }
+        shareInput.dataset.fullRewardAud = fullRewardAUD;
+
         // Update cached value too (for data tracking, not UI)
         if (window.packageShareValues) {
             window.packageShareValues[pkg.name] = myBoughtShares;
