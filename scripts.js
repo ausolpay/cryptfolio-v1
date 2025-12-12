@@ -19227,23 +19227,9 @@ async function executeAutoBuyTeam(recommendations) {
         let costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
         let totalAmountForAPI = newTotalShares * sharePrice;    // Total value to send in API
 
-        // 💰 Balance check: Can we afford the configured shares?
+        // 💰 Balance check skipped - API will validate, we send total amount but only pay for new shares
         const availableBalance = window.niceHashBalance?.available || 0;
-        const maxAffordableShares = Math.floor(availableBalance / sharePrice);
-
-        if (maxAffordableShares <= 0) {
-            console.log(`⏸️ ${pkg.name}: Cannot afford any shares. Balance: ${availableBalance.toFixed(8)} BTC, need ${sharePrice} BTC per share`);
-            continue; // Skip this package, try next one
-        }
-
-        if (maxAffordableShares < sharesToBuy) {
-            // Partial purchase: buy what we can afford
-            actualSharesToBuy = maxAffordableShares;
-            newTotalShares = currentShares + actualSharesToBuy;
-            costForNewShares = actualSharesToBuy * sharePrice;
-            totalAmountForAPI = newTotalShares * sharePrice;
-            console.log(`💰 ${pkg.name}: Partial purchase - can afford ${actualSharesToBuy} of ${sharesToBuy} shares (balance: ${availableBalance.toFixed(8)} BTC)`);
-        }
+        console.log(`💰 ${pkg.name}: Balance ${availableBalance.toFixed(8)} BTC, buying ${actualSharesToBuy} new shares (cost: ${costForNewShares} BTC), total will be ${newTotalShares}`);
 
         console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (buying ${actualSharesToBuy} shares, total will be ${newTotalShares}, API amount ${totalAmountForAPI} BTC)`);
 
@@ -20263,12 +20249,9 @@ async function executeAutoSharesTeam(teamPackages) {
             formula: `API amount = ${newTotalShares} total shares × ${sharePrice} BTC = ${totalAmountForAPI} BTC`
         });
 
-        // Check balance - we only need to afford the NEW shares being bought
+        // 💰 Balance check skipped - API will validate, we send total amount but only pay for new shares
         const availableBalance = window.niceHashBalance?.available || 0;
-        if (availableBalance < costForNewShares) {
-            console.log(`💰 ${pkg.name}: Insufficient balance (need ${costForNewShares} BTC for ${actualSharesToBuy} new shares, have ${availableBalance} BTC)`);
-            return; // Keep as current, wait for balance
-        }
+        console.log(`💰 ${pkg.name}: Balance ${availableBalance.toFixed(8)} BTC, buying ${actualSharesToBuy} new shares (cost: ${costForNewShares} BTC), total will be ${newTotalShares}`);
 
         // Create order payload: amount and shares.small are NEW TOTAL values
         const bodyData = {
