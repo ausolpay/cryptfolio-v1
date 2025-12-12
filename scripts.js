@@ -226,16 +226,6 @@ function calculateDynamicRateLimits() {
     // Crypto info interval (modal): faster on paid
     const cryptoInfoInterval = tier === 'paid' ? 15000 : 30000; // 15s vs 30s
 
-    console.log(`📊 Dynamic Rate Limits Calculated:`, {
-        tier,
-        cryptoCount,
-        availableCalls: `${availableCalls}/min`,
-        sentimentInterval: `${sentimentInterval / 1000}s`,
-        delayBetweenCalls: `${finalDelay}ms`,
-        conversionInterval: `${conversionInterval / 60000}min`,
-        cryptoInfoInterval: `${cryptoInfoInterval / 1000}s`
-    });
-
     return {
         sentimentInterval,
         delayBetweenCalls: finalDelay,
@@ -378,7 +368,6 @@ function getTradingViewSymbol(symbol) {
 
 // Initialize TradingView widget
 function initializeTradingViewChart(cryptoSymbol, interval) {
-    console.log(`📊 Initializing TradingView chart for ${cryptoSymbol} with interval ${interval}`);
 
     // Destroy existing widget if present
     if (tradingViewWidget) {
@@ -423,7 +412,6 @@ function initializeTradingViewChart(cryptoSymbol, interval) {
             hide_volume: false
         });
 
-        console.log(`✅ TradingView widget initialized for ${tradingViewSymbol}`);
     } catch (error) {
         console.error('Error initializing TradingView widget:', error);
     }
@@ -454,7 +442,6 @@ function switchApiKey() {
 
     // If tier changed, invalidate cache and restart polling with new limits
     if (oldTier !== newTier) {
-        console.log(`📊 Tier changed: ${oldTier} → ${newTier} - restarting polling intervals`);
         invalidateRateLimitsCache();
         restartPollingWithNewLimits();
     }
@@ -472,7 +459,6 @@ const storedOHLCDataPerCrypto = {};
 // Store full sentiment score for a crypto (called from modal sentiment calculation)
 function storeCryptoSentiment(cryptoId, score) {
     storedSentimentScores[cryptoId] = score;
-    console.log(`📊 Stored sentiment for ${cryptoId}: ${score.toFixed(1)}`);
 }
 
 // Store RSI value for a crypto
@@ -630,7 +616,6 @@ async function fetchCoinDataForSentiment(cryptoId) {
 async function fetchAllCryptoSentiments() {
     if (!loggedInUser || !users[loggedInUser]?.cryptos) return;
 
-    console.log('📊 Fetching full sentiment for all cryptos...');
 
     for (const crypto of users[loggedInUser].cryptos) {
         try {
@@ -665,11 +650,16 @@ async function fetchAllCryptoSentiments() {
         }
     }
 
-    console.log('📊 Finished fetching all crypto sentiments');
 }
 
 // Start sentiment refresh cycle (called on app load)
 function startSentimentRefresh() {
+    // Clear any existing interval first to prevent duplicates
+    if (sentimentRefreshInterval) {
+        clearInterval(sentimentRefreshInterval);
+        sentimentRefreshInterval = null;
+    }
+
     // Initial fetch after a short delay to let UI load first
     setTimeout(() => {
         fetchAllCryptoSentiments();
@@ -680,7 +670,6 @@ function startSentimentRefresh() {
 
     // Refresh at dynamic interval
     sentimentRefreshInterval = setInterval(fetchAllCryptoSentiments, limits.sentimentInterval);
-    console.log(`📊 Sentiment refresh started (every ${limits.sentimentInterval / 1000}s - ${limits.tier} tier)`);
 }
 
 // Stop sentiment refresh (called on logout)
@@ -688,7 +677,6 @@ function stopSentimentRefresh() {
     if (sentimentRefreshInterval) {
         clearInterval(sentimentRefreshInterval);
         sentimentRefreshInterval = null;
-        console.log('📊 Sentiment refresh stopped');
     }
 }
 
@@ -698,14 +686,12 @@ function stopSentimentRefresh() {
  */
 function restartPollingWithNewLimits() {
     const limits = getRateLimits();
-    console.log(`🔄 Restarting polling intervals with ${limits.tier} tier limits`);
 
     // Stop existing sentiment refresh
     stopSentimentRefresh();
 
     // Restart sentiment refresh with new interval
     sentimentRefreshInterval = setInterval(fetchAllCryptoSentiments, limits.sentimentInterval);
-    console.log(`📊 Sentiment refresh restarted (every ${limits.sentimentInterval / 1000}s)`);
 
     // Note: Conversion rate interval is handled elsewhere in the codebase
     // This function focuses on sentiment which is the most API-intensive operation
@@ -745,7 +731,6 @@ async function fetchWithFallback(url) {
             if (!response.ok) {
                 throw new Error('Failed to fetch data');
             }
-            console.log(`Successfully fetched data with API key: ${apiKey} (${getCurrentApiTier()} tier)`);
             return await response.json();
         } catch (error) {
             console.error(`Error with API key ${apiKey}:`, error);
@@ -775,7 +760,6 @@ async function fetchWithApiKeyRotation(url) {
                 throw new Error(`Failed to fetch data: ${response.status}`);
             }
 
-            console.log(`Successfully fetched data with API key: ${apiKey} (${getCurrentApiTier()} tier)`);
             return await response.json(); // Return the fetched data if successful
 
         } catch (error) {
@@ -838,7 +822,6 @@ function initTopNavScrollBehavior() {
         }
     }, { passive: true });
 
-    console.log('✅ Top nav scroll behavior initialized');
 }
 
 function toggleProfileDropdown() {
@@ -1158,9 +1141,7 @@ function checkAndRequestNotificationPermission() {
     if (!notificationPermission) {
         requestNotificationPermission();
     } else if (notificationPermission === 'granted') {
-        console.log('Notification permission already granted.');
     } else {
-        console.log('Notification permission previously denied.');
     }
 }
 
@@ -1169,9 +1150,7 @@ function requestNotificationPermission() {
     Notification.requestPermission().then(permission => {
         localStorage.setItem('notificationPermission', permission);
         if (permission === 'granted') {
-            console.log('Notification permission granted.');
         } else {
-            console.log('Notification permission denied.');
         }
     });
 }
@@ -1227,7 +1206,6 @@ function loadUserData() {
                 if (crypto.id === 'bitcoin') {
                     // No formatting for BTC - use raw number with 8 decimals
                     holdingsElement.textContent = holdings.toFixed(8);
-                    console.log(`📖 Loaded Bitcoin holdings (buys - sells): ${holdings.toFixed(8)} (EasyMining balance will be added when it loads)`);
 
                     // Don't load stored AUD value - will be recalculated with current price
                 } else {
@@ -1309,15 +1287,12 @@ function showAppPage() {
     // This ensures polling continues after returning from other pages
     const easyMiningContent = document.getElementById('easymining-content');
     if (easyMiningContent && easyMiningContent.style.display !== 'none' && easyMiningSettings?.enabled) {
-        console.log('📦 EasyMining section is open, restarting alerts polling...');
         startEasyMiningAlertsPolling();
 
         // Also refresh active packages when returning to app page
-        console.log('🔄 Refreshing active packages after navigation...');
         fetchEasyMiningData().then(() => {
             if (typeof displayActivePackages === 'function') {
                 displayActivePackages();
-                console.log('✅ Active packages refreshed after navigation');
             }
         }).catch(err => {
             console.error('Failed to refresh packages after navigation:', err);
@@ -1371,7 +1346,6 @@ function hasUnsavedEasyMiningSettings() {
     // Compare each key
     for (const key of Object.keys(easyMiningSettingsSnapshot)) {
         if (easyMiningSettingsSnapshot[key] !== currentSettings[key]) {
-            console.log(`📝 Unsaved change detected: ${key} changed from "${easyMiningSettingsSnapshot[key]}" to "${currentSettings[key]}"`);
             return true;
         }
     }
@@ -1489,7 +1463,6 @@ function showEasyMiningSettingsPage() {
 
     // Take snapshot of current settings for unsaved changes detection
     easyMiningSettingsSnapshot = getEasyMiningSettingsFromForm();
-    console.log('📸 EasyMining settings snapshot taken');
 }
 
 // Toggle function for "Exclude Team Gold from Auto-Clear" checkbox
@@ -1540,7 +1513,6 @@ function showWithdrawalAddressesPage() {
 }
 
 function loadWithdrawalAddresses() {
-    console.log('Loading withdrawal addresses...');
 
     // Get saved addresses from localStorage
     const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
@@ -1583,11 +1555,9 @@ function loadWithdrawalAddresses() {
         container.appendChild(addressDiv);
     });
 
-    console.log('Loaded withdrawal addresses:', savedAddresses);
 }
 
 function saveWithdrawalAddresses() {
-    console.log('Saving withdrawal addresses...');
 
     const cryptos = ['BTC', 'BCH', 'KAS', 'RVN', 'DOGE', 'LTC'];
     const addresses = {};
@@ -1603,7 +1573,6 @@ function saveWithdrawalAddresses() {
     // Save to localStorage
     localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(addresses));
 
-    console.log('Saved withdrawal addresses:', addresses);
     alert(`✅ Withdrawal addresses saved successfully!\n\n${Object.keys(addresses).length} addresses saved.`);
 
     // Reload to update status messages
@@ -1612,7 +1581,6 @@ function saveWithdrawalAddresses() {
 
 // ✅ NEW: Load withdrawal addresses from NiceHash saved addresses
 async function loadNiceHashSavedAddresses() {
-    console.log('🔄 Loading NiceHash saved withdrawal addresses...');
 
     // Check if we have API credentials
     if (!easyMiningSettings.apiKey || !easyMiningSettings.apiSecret || !easyMiningSettings.orgId) {
@@ -1637,7 +1605,6 @@ async function loadNiceHashSavedAddresses() {
         // Generate auth headers
         const headers = generateNiceHashAuthHeaders(method, endpoint, null);
 
-        console.log('📡 Fetching saved addresses from NiceHash API...');
 
         // Make request via proxy
         const response = await fetch(VERCEL_PROXY_ENDPOINT, {
@@ -1657,7 +1624,6 @@ async function loadNiceHashSavedAddresses() {
         }
 
         const data = await response.json();
-        console.log('✅ Received NiceHash saved addresses:', data);
 
         // Parse the addresses
         // Expected format: { list: [ { currency: 'BTC', address: '...' }, ... ] }
@@ -1681,7 +1647,6 @@ async function loadNiceHashSavedAddresses() {
             const currency = item.currency;
             const address = item.address;
 
-            console.log(`   📍 Found ${currency}: ${address}`);
 
             // Map to our crypto symbol
             const symbol = currencyMapping[currency];
@@ -1690,7 +1655,6 @@ async function loadNiceHashSavedAddresses() {
                 if (input) {
                     input.value = address;
                     foundCount++;
-                    console.log(`   ✅ Set ${symbol} address`);
                 }
             }
         });
@@ -1705,7 +1669,6 @@ async function loadNiceHashSavedAddresses() {
         if (foundCount === 0) {
             alert('ℹ️ No withdrawal addresses found in your NiceHash account.\n\nPlease add addresses in NiceHash first.');
         } else {
-            console.log(`✅ Successfully loaded ${foundCount} addresses from NiceHash`);
         }
 
     } catch (error) {
@@ -1730,7 +1693,6 @@ function clearWithdrawalAddresses() {
     // Clear from localStorage
     localStorage.removeItem(`${loggedInUser}_withdrawalAddresses`);
 
-    console.log('Cleared all withdrawal addresses');
     alert('All withdrawal addresses have been cleared.');
 
     // Reload to show empty fields
@@ -1748,7 +1710,6 @@ function saveWithdrawalAddress(crypto, address) {
     const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
     savedAddresses[crypto] = address;
     localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
-    console.log(`💾 Saved ${crypto} withdrawal address:`, address);
 }
 
 // ========================================
@@ -1835,7 +1796,6 @@ const COUNTRY_LIST = [
  */
 async function fetchNiceHashVasps() {
     try {
-        console.log('🔄 Fetching VASPs from NiceHash API...');
 
         const endpoint = '/main/api/v2/accounting/travelrule/vasps';
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
@@ -1862,7 +1822,6 @@ async function fetchNiceHashVasps() {
 
         const data = await response.json();
 
-        console.log('🔍 API Response structure:', data);
 
         // NiceHash API returns { vasps: [...] }
         if (!data.vasps || !Array.isArray(data.vasps)) {
@@ -1870,7 +1829,6 @@ async function fetchNiceHashVasps() {
             throw new Error('Invalid response: expected { vasps: [...] }');
         }
 
-        console.log(`🔍 Found ${data.vasps.length} VASPs in response`);
 
         // Transform API response to our format: { name, id }
         VASP_LIST = data.vasps.map(vasp => ({
@@ -1878,7 +1836,6 @@ async function fetchNiceHashVasps() {
             id: vasp.id
         }));
 
-        console.log(`✅ Loaded ${VASP_LIST.length} VASPs from NiceHash API`);
 
     } catch (error) {
         console.error('❌ Error fetching VASPs:', error);
@@ -1891,7 +1848,6 @@ async function fetchNiceHashVasps() {
  */
 async function showTravelDataPage() {
     window.scrollTo(0, 0);
-    console.log('📍 Showing Travel Data Management Page');
 
     // Stop polling
     stopAveragesPolling();
@@ -1935,7 +1891,6 @@ function populateVaspDropdown() {
         vaspSelect.appendChild(option);
     });
 
-    console.log('✅ Populated VASP dropdown with', VASP_LIST.length, 'VASPs');
 }
 
 /**
@@ -2284,7 +2239,6 @@ function startDepositsBalancePolling() {
         // Only update if deposits page is visible
         const depositsPage = document.getElementById('deposits-page');
         if (depositsPage && depositsPage.style.display !== 'none') {
-            console.log('🔄 Deposits page: Refreshing balance...');
             fetchAndUpdateDepositsBalance();
         } else {
             // Stop polling if page is hidden
@@ -2292,7 +2246,6 @@ function startDepositsBalancePolling() {
         }
     }, 30000); // 30 seconds
 
-    console.log('✅ Deposits balance polling started (30s interval)');
 }
 
 /**
@@ -2302,7 +2255,6 @@ function stopDepositsBalancePolling() {
     if (depositsBalanceInterval) {
         clearInterval(depositsBalanceInterval);
         depositsBalanceInterval = null;
-        console.log('⏹️ Deposits balance polling stopped');
     }
 }
 
@@ -2310,7 +2262,6 @@ function stopDepositsBalancePolling() {
  * Fetch fresh balance data from NiceHash and update deposits page
  */
 async function fetchAndUpdateDepositsBalance() {
-    console.log('💰 Fetching fresh balance data for deposits page...');
 
     try {
         // Fetch fresh balance from NiceHash API
@@ -2330,7 +2281,6 @@ async function fetchAndUpdateDepositsBalance() {
         // Fetch fresh BTC price if not available or stale
         const currencyKey = getCoinGeckoCurrency();
         if (!getPriceFromObject(window.packageCryptoPrices?.['btc'])) {
-            console.log(`💱 Fetching BTC price for ${currencyKey.toUpperCase()} conversion...`);
             try {
                 const priceUrl = `${getApiBaseUrl()}/simple/price?ids=bitcoin&vs_currencies=${currencyKey}&${getApiKeyParam()}`;
                 const priceData = await fetchWithApiKeyRotation(priceUrl);
@@ -2464,7 +2414,6 @@ function updateDepositsBalance() {
             `;
         }
 
-        console.log('✅ Deposits balance section updated');
 
     } catch (error) {
         console.error('❌ Error updating deposits balance:', error);
@@ -2570,7 +2519,6 @@ function convertBtcToAud() {
     if (btcPriceAud > 0) {
         const audAmount = btcAmount * btcPriceAud;
         audInput.value = audAmount.toFixed(2);
-        console.log(`💱 Converted ${btcAmount} BTC to $${audAmount.toFixed(2)} AUD (price: $${btcPriceAud})`);
     } else {
         console.warn('⚠️ BTC price not available for conversion. Add Bitcoin to your portfolio first.');
     }
@@ -2594,7 +2542,6 @@ function convertAudToBtc() {
     if (btcPriceAud > 0) {
         const btcAmount = audAmount / btcPriceAud;
         btcInput.value = btcAmount.toFixed(8);
-        console.log(`💱 Converted $${audAmount} AUD to ${btcAmount.toFixed(8)} BTC (price: $${btcPriceAud})`);
     } else {
         console.warn('⚠️ BTC price not available for conversion. Add Bitcoin to your portfolio first.');
     }
@@ -2709,7 +2656,6 @@ async function generateLightningAddress() {
  * Fetch deposit address from NiceHash API (via Vercel proxy to avoid CORS)
  */
 async function fetchNiceHashDepositAddress(amount, endpointConfig) {
-    console.log('📡 Fetching deposit address from NiceHash API...');
 
     // Build request URL with query parameters based on configuration
     const path = '/main/api/v2/accounting/depositAddress/ln';
@@ -2755,9 +2701,6 @@ async function fetchNiceHashDepositAddress(amount, endpointConfig) {
     }
     // Self-custodial mode or both unchecked: empty body fields (already initialized above)
 
-    console.log('📤 POST request to NiceHash (via Vercel proxy)');
-    console.log('📤 Endpoint:', endpoint);
-    console.log('📤 Request body:', requestBody);
 
     // Generate NiceHash authentication headers using the standard function
     const headers = generateNiceHashAuthHeaders('POST', endpoint, requestBody);
@@ -2782,7 +2725,6 @@ async function fetchNiceHashDepositAddress(amount, endpointConfig) {
         }
 
         const data = await response.json();
-        console.log('✅ NiceHash API response:', data);
 
         // Extract address from response
         // Response format: { type: { code: "LIGHTNING" }, address: "lightning:lnbc...", currency: "BTC" }
@@ -2817,7 +2759,6 @@ async function generateQrCode(lightningAddress) {
     console.log('📤 QR code POST request (via Vercel proxy)');
     console.log('📤 QR code text:', addressOnly.substring(0, 50) + '...');
     console.log('📤 Using token index:', currentQrTokenIndex);
-    console.log('📤 Request body:', requestBody);
 
     try {
         // Call QR code API via Vercel proxy to avoid CORS
@@ -2904,7 +2845,6 @@ function displayDepositResults(lightningAddress, qrCodeSvg) {
         }
     }, 100); // Small delay to ensure DOM is updated
 
-    console.log('✅ Deposit address displayed successfully');
 }
 
 /**
@@ -2987,7 +2927,6 @@ function showWithdrawPage() {
  * Fetch withdrawal addresses from NiceHash API and populate dropdown
  */
 async function fetchWithdrawalAddresses() {
-    console.log('🔄 Fetching withdrawal addresses from NiceHash...');
 
     const dropdown = document.getElementById('withdraw-address-select');
 
@@ -3109,7 +3048,6 @@ function convertBtcToAudWithdraw() {
     if (btcPriceAud > 0) {
         const audAmount = btcAmount * btcPriceAud;
         audInput.value = audAmount.toFixed(2);
-        console.log(`💱 Converted ${btcAmount} BTC to $${audAmount.toFixed(2)} AUD`);
     } else {
         console.warn('⚠️ BTC price not available. Add Bitcoin to portfolio first.');
     }
@@ -3135,7 +3073,6 @@ function convertAudToBtcWithdraw() {
     if (btcPriceAud > 0) {
         const btcAmount = audAmount / btcPriceAud;
         btcInput.value = btcAmount.toFixed(8);
-        console.log(`💱 Converted $${audAmount} AUD to ${btcAmount.toFixed(8)} BTC`);
     } else {
         console.warn('⚠️ BTC price not available. Add Bitcoin to portfolio first.');
     }
@@ -3373,9 +3310,6 @@ async function callNiceHashWithdrawal(amount, addressData, note) {
         walletType: addressData.walletType
     };
 
-    console.log('📤 POST request to NiceHash (via Vercel proxy)');
-    console.log('📤 Endpoint:', endpoint);
-    console.log('📤 Request body:', requestBody);
 
     // Generate NiceHash authentication headers
     const headers = generateNiceHashAuthHeaders('POST', endpoint, requestBody);
@@ -3400,7 +3334,6 @@ async function callNiceHashWithdrawal(amount, addressData, note) {
         }
 
         const data = await response.json();
-        console.log('✅ NiceHash API response:', data);
 
         return data;
 
@@ -3435,7 +3368,6 @@ function displayWithdrawSuccess(result, addressData) {
         </div>
     `;
 
-    console.log('✅ Withdrawal success displayed');
 }
 
 // ========================================
@@ -3705,7 +3637,6 @@ async function loadSoloAlerts() {
                     if (autoBuySettings[packageName]) {
                         autoBuySettings[packageName].enabled = false;
                         localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
-                        console.log(`❌ Auto-buy disabled for ${packageName}`);
 
                         // Update status text
                         const statusSpan = this.nextElementSibling;
@@ -3736,7 +3667,6 @@ async function loadTeamAlerts() {
 
     // Fetch solo packages to get current small package probabilities
     const soloPackages = await fetchNiceHashSoloPackages();
-    console.log(`📦 Fetched ${soloPackages?.length || 0} solo packages for current probability display`);
 
     // Get saved team alerts
     const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
@@ -4150,7 +4080,6 @@ async function loadTeamAlerts() {
                     if (autoBuySettings[packageName]) {
                         autoBuySettings[packageName].enabled = false;
                         localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
-                        console.log(`❌ Auto-buy disabled for ${packageName}`);
 
                         // Update status text
                         const statusSpan = this.nextElementSibling;
@@ -4314,7 +4243,6 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
     // Keep checkbox checked
     checkbox.checked = true;
 
-    console.log(`✅ Auto-shares enabled for ${packageName}: ${percentage}%, primary=${primaryShares}, secondary=${secondaryShares}`);
     alert(`Auto-shares enabled for ${packageName}!\n\nTarget: ${percentage}%\nPrimary: ${primaryShares} shares\nSecondary: ${secondaryShares} shares\n\nOnly activates when participants >= 5 and total shares >= 15.`);
 
     // Start background polling immediately so auto-shares works app-wide
@@ -4580,16 +4508,12 @@ async function checkPackageRecommendations(soloPackages = null) {
 
             if (mainThreshold && mainProbabilityValue !== null && mainProbabilityValue <= mainThreshold) {
                 mainMeetsThreshold = true;
-                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue.toFixed(1)} ≤ Threshold 1:${mainThreshold}`);
             } else if (mainThreshold) {
-                console.log(`❌ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue?.toFixed(1) || 'N/A'} > Threshold 1:${mainThreshold}`);
             }
 
             if (mergeThreshold && mergeProbabilityValue !== null && mergeProbabilityValue <= mergeThreshold) {
                 mergeMeetsThreshold = true;
-                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue.toFixed(1)} ≤ Threshold 1:${mergeThreshold}`);
             } else if (mergeThreshold) {
-                console.log(`❌ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue?.toFixed(1) || 'N/A'} > Threshold 1:${mergeThreshold}`);
             }
 
             // Recommend if EITHER threshold is met
@@ -4610,10 +4534,8 @@ async function checkPackageRecommendations(soloPackages = null) {
 
             // Check if probability meets threshold (lower is better)
             if (probabilityValue !== null && probabilityValue <= threshold) {
-                console.log(`✅ ${pkg.name}: Current 1:${probabilityValue.toFixed(1)} ≤ Threshold 1:${threshold} - RECOMMENDED`);
                 recommendations.push(pkg);
             } else {
-                console.log(`❌ ${pkg.name}: Current 1:${probabilityValue?.toFixed(1) || 'N/A'} > Threshold 1:${threshold} - Not recommended`);
             }
         }
     });
@@ -4687,14 +4609,12 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
             if (mainThreshold && mainProbabilityValue !== null && mainProbabilityValue <= mainThreshold) {
                 meetsAnyThreshold = true;
                 reasons.push(`${mainCrypto} probability 1:${mainProbabilityValue.toFixed(1)} ≤ 1:${mainThreshold}`);
-                console.log(`✅ ${pkg.name} (${mainCrypto}): Current 1:${mainProbabilityValue.toFixed(1)} ≤ Threshold 1:${mainThreshold}`);
             }
 
             // Check merge crypto probability
             if (mergeThreshold && mergeProbabilityValue !== null && mergeProbabilityValue <= mergeThreshold) {
                 meetsAnyThreshold = true;
                 reasons.push(`${mergeCrypto} probability 1:${mergeProbabilityValue.toFixed(1)} ≤ 1:${mergeThreshold}`);
-                console.log(`✅ ${pkg.name} (${mergeCrypto}): Current 1:${mergeProbabilityValue.toFixed(1)} ≤ Threshold 1:${mergeThreshold}`);
             }
         } else {
             // Single crypto package - check single probability
@@ -4707,7 +4627,6 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
                 if (probabilityValue !== null && probabilityValue <= threshold) {
                     meetsAnyThreshold = true;
                     reasons.push(`Probability 1:${probabilityValue.toFixed(1)} ≤ 1:${threshold}`);
-                    console.log(`✅ ${pkg.name}: Current 1:${probabilityValue.toFixed(1)} ≤ Threshold 1:${threshold}`);
                 }
             }
         }
@@ -4718,7 +4637,6 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
             if (currentShares >= alert.shares) {
                 meetsAnyThreshold = true;
                 reasons.push(`Share ${currentShares.toFixed(2)}% ≥ ${alert.shares}%`);
-                console.log(`✅ ${pkg.name}: Share ${currentShares.toFixed(2)}% ≥ Threshold ${alert.shares}%`);
             }
         }
 
@@ -5045,7 +4963,6 @@ function updateRecordDisplay() {
 function updateApiUrl() {
     const ids = users[loggedInUser].cryptos.map(crypto => crypto.id);
     apiUrl = `${getApiBaseUrl()}/simple/price?ids=${ids.join(',')}&vs_currencies=${getCoinGeckoCurrency()}&${getApiKeyParam()}`;
-    console.log('API URL updated:', apiUrl);
 }
 
 function updateHoldings(crypto) {
@@ -5093,7 +5010,6 @@ function updateHoldings(crypto) {
         // Refresh floating icons in Total Holdings modal
         refreshFloatingIcons();
 
-        console.log(`✅ Added ${amountToAdd} ${crypto.toUpperCase()} at $${livePrice.toFixed(2)} AUD`);
     } else if (!isNaN(amountToAdd) && amountToAdd < 0) {
         // NEGATIVE: Create a sell entry
         const sellAmount = Math.abs(amountToAdd);
@@ -5132,7 +5048,6 @@ function updateHoldings(crypto) {
 
         const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
 
-        console.log(`📊 Quick Sell Avg Cost: totalCost=${totalCost}, totalAmount=${totalAmount}, avgBuyCost=${avgBuyCost}, livePrice=${livePrice}`);
 
         // NOTE: Buy entries are NOT modified - they remain as historical records
         // Holdings are calculated as: Total Buys - Total Sells
@@ -5168,7 +5083,6 @@ function updateHoldings(crypto) {
         // Refresh floating icons
         refreshFloatingIcons();
 
-        console.log(`✅ Sold ${sellAmount} ${crypto.toUpperCase()} at $${livePrice.toFixed(2)} AUD`);
     } else if (!isNaN(amountToAdd) && amountToAdd === 0) {
         // Clear input if 0 entered
         input.value = '';
@@ -5215,7 +5129,6 @@ async function fetchPricesFromUniswap(symbol) {
         if (!priceInUsd || isNaN(priceInUsd)) {
             throw new Error(`Invalid price data from Uniswap for ${symbol}`);
         }
-        console.log(`Uniswap price for ${symbol}: $${priceInUsd} USD`);
         return priceInUsd;
     } catch (error) {
         console.error(`Error fetching Uniswap price for ${symbol}:`, error);
@@ -5234,17 +5147,14 @@ async function fetchPrices() {
         return;
     }
 
-    console.log('Fetching prices from CoinGecko...');
     const currencyKey = getCoinGeckoCurrency();
     const currencySymbol = getUserCurrencySymbol();
     try {
         const data = await fetchWithFallback(apiUrl); // Primary fetch from CoinGecko
-        console.log('Prices fetched:', data);
 
         // Store prices in global cryptoPrices object for use by other functions
         if (data && typeof data === 'object') {
             Object.assign(cryptoPrices, data);
-            console.log('💰 cryptoPrices updated:', cryptoPrices);
         }
 
         let pricesChanged = false;
@@ -5268,7 +5178,6 @@ async function fetchPrices() {
                 const uniswapPriceUsd = await fetchPricesFromUniswap(crypto.symbol);
                 if (uniswapPriceUsd) {
                     priceLocal = uniswapPriceUsd * conversionRate; // Conversion from USD to local currency
-                    console.log(`Uniswap price for ${crypto.symbol}: ${priceLocal} ${currencyKey.toUpperCase()}`);
                 }
             }
 
@@ -5313,11 +5222,9 @@ async function fetchPrices() {
             if (crypto.id === 'bitcoin') {
                 const holdingsElement = document.getElementById('bitcoin-holdings');
                 holdings = holdingsElement ? parseFloat(holdingsElement.textContent.replace(/,/g, '')) || 0 : 0;
-                console.log(`📖 fetchPrices reading ${crypto.id} from display: ${holdings} (includes NiceHash)`);
             } else {
                 // Use getTotalActiveHoldings to account for sells in holdings tracker
                 holdings = getTotalActiveHoldings(crypto.id);
-                console.log(`📖 fetchPrices reading ${crypto.id} (buys - sells): ${holdings}`);
             }
 
             const localValue = holdings * priceLocal;
@@ -5344,11 +5251,9 @@ async function fetchPrices() {
                     // SAVE Bitcoin value to localStorage when price is valid
                     if (crypto.id === 'bitcoin') {
                         setStorageItem(`${loggedInUser}_bitcoin_displayValue`, localValue);
-                        console.log(`🔄 fetchPrices BTC - Updated & saved value: ${localValue.toFixed(2)} (holdings: ${holdings}, price: ${priceLocal})`);
                     }
                 }
             }
-            console.log(`🔄 fetchPrices updated ${crypto.id} value: ${localValue.toFixed(2)} (holdings: ${holdings}, price: ${priceLocal})`);
         }
 
         if (pricesChanged) {
@@ -5383,7 +5288,6 @@ async function fetchPricesFromUniswap(symbol) {
         if (!priceInUsd || isNaN(priceInUsd)) {
             throw new Error(`Invalid price data from Uniswap for ${symbol}`);
         }
-        console.log(`Uniswap price for ${symbol}: $${priceInUsd} USD`);
         return priceInUsd;
     } catch (error) {
         console.error(`Error fetching Uniswap price for ${symbol}:`, error);
@@ -5567,7 +5471,6 @@ function recalculateAddedToday() {
                     entry.boughtPrice = livePrice;
                     entry.audValueAtAdd = entry.amount * livePrice;
                     entriesNeedSave = true;
-                    console.log(`      🔧 AUTO-FIX: Set boughtPrice=$${livePrice.toFixed(2)}, audValueAtAdd=$${entry.audValueAtAdd.toFixed(2)}`);
                 }
             }
 
@@ -5579,7 +5482,6 @@ function recalculateAddedToday() {
                 const entryValue = entry.audValueAtAdd || (entry.amount * (entry.boughtPrice || 0)) || 0;
                 totalAddedToday += entryValue;
                 entriesAddedToday++;
-                console.log(`      ✅ ADDED TODAY (${entry.status}): +$${entryValue.toFixed(2)} (audValueAtAdd=${entry.audValueAtAdd}, boughtPrice=${entry.boughtPrice})`);
             }
         });
 
@@ -5595,7 +5497,6 @@ function recalculateAddedToday() {
     console.log('🔍 ========== SCAN COMPLETE ==========');
     console.log(`   Total entries scanned: ${totalEntriesScanned}`);
     console.log(`   Entries added today: ${entriesAddedToday}`);
-    console.log(`   📊 ADDED TODAY TOTAL: $${dailyAddedValue.toFixed(2)}`);
     updateAddedTodayDisplay();
 }
 
@@ -5758,7 +5659,6 @@ function notifyRecordHigh() {
 function notifyRecordLow() {
     const now = Date.now();
     if (now - lastNotificationTimestamp < notificationCooldown) {
-        console.log('Record Low notification suppressed due to cooldown.');
         return; // Exit if cooldown period hasn't passed
     }
 
@@ -5786,7 +5686,6 @@ function notifyPortfolioChange(change) {
 function notifyMilestone(milestone) {
     const now = Date.now();
     if (now - lastNotificationTimestamp < notificationCooldown) {
-        console.log('Record Low notification suppressed due to cooldown.');
         return; // Exit if cooldown period hasn't passed
     }
 
@@ -6457,7 +6356,6 @@ function updateHoldingsEntry(cryptoId, entryId, updates) {
     if (index !== -1) {
         entries[index] = { ...entries[index], ...updates };
         saveHoldingsEntries(cryptoId, entries);
-        console.log(`✅ Updated holdings entry ${entryId}:`, entries[index]);
         return entries[index];
     }
     return null;
@@ -6521,7 +6419,6 @@ function calculateTotalPnL(cryptoId) {
         const user = users[loggedInUser];
         if (!user || !user.cryptos) return { totalUnrealized: 0, totalRealized: 0 };
 
-        console.log(`📈 Calculating total PnL across ${user.cryptos.length} cryptos`);
         for (const crypto of user.cryptos) {
             const entries = getHoldingsEntries(crypto.id);
             console.log(`   ${crypto.id}: ${entries.length} entries`);
@@ -6641,7 +6538,6 @@ function trackNewBlock(blockData, livePrice) {
             existingBlock.totalPackageReward = newTotalReward;
             saveTrackedBlocks(blocks);
             const costBasis = (newPackagePriceAUD / newTotalReward).toFixed(2);
-            console.log(`   🔄 UPDATED COST BASIS for ${blockKey}: $${newPackagePriceAUD.toFixed(2)} / ${newTotalReward} = $${costBasis}/coin`);
         } else {
             console.log(`   ⏭️ Block already tracked: ${blockKey}`);
         }
@@ -6672,7 +6568,6 @@ function trackNewBlock(blockData, livePrice) {
     const costBasis = (trackedBlock.packagePriceAUD > 0 && trackedBlock.totalPackageReward > 0)
         ? (trackedBlock.packagePriceAUD / trackedBlock.totalPackageReward).toFixed(2)
         : 'N/A';
-    console.log(`   ✅ NEW BLOCK TRACKED: ${blockKey} - ${blockData.amount} ${blockData.crypto} @ $${livePrice.toFixed(2)} (cost basis: $${costBasis})`);
     return trackedBlock;
 }
 
@@ -6824,7 +6719,6 @@ function fixMissingBoughtPrices() {
 
         // Get live price once for this crypto
         const livePrice = getPriceFromObject(cryptoPrices[crypto.id]) || 0;
-        console.log(`   📦 ${crypto.id}: ${entries.length} entries, livePrice=$${livePrice.toFixed(2)}`);
 
         entries.forEach((entry, idx) => {
             // Check for missing/zero boughtPrice OR missing/zero audValueAtAdd
@@ -6832,7 +6726,6 @@ function fixMissingBoughtPrices() {
             const hasMissingValue = !entry.audValueAtAdd || entry.audValueAtAdd === 0 || entry.audValueAtAdd === null || entry.audValueAtAdd === undefined;
 
             if (hasMissingPrice || hasMissingValue) {
-                console.log(`   🔍 Entry ${idx + 1} needs fix: boughtPrice=${entry.boughtPrice}, audValueAtAdd=${entry.audValueAtAdd}`);
                 console.log(`      Amount: ${entry.amount}, Source: ${entry.source || 'unknown'}, PackageId: ${entry.packageId || 'none'}, PackageName: ${entry.packageName || 'none'}`);
 
                 let newBoughtPrice = entry.boughtPrice || 0;
@@ -6872,7 +6765,6 @@ function fixMissingBoughtPrices() {
                     entry.audValueAtAdd = entry.amount * newBoughtPrice;
                     entriesUpdated = true;
                     fixedCount++;
-                    console.log(`      ✅ Fixed: boughtPrice=$${newBoughtPrice.toFixed(2)} (${priceSource}), audValueAtAdd=$${entry.audValueAtAdd.toFixed(2)}`);
                 } else {
                     skippedCount++;
                     console.warn(`      ❌ No price available for ${crypto.id} - entry remains unfixed (livePrice=${livePrice})`);
@@ -6883,7 +6775,6 @@ function fixMissingBoughtPrices() {
         // Save updated entries
         if (entriesUpdated) {
             saveHoldingsEntries(crypto.id, entries);
-            console.log(`   💾 Saved updated entries for ${crypto.id}`);
         }
     }
 
@@ -6905,7 +6796,6 @@ function findCostBasisForEntry(entry) {
         const trackedBlock = trackedBlocks[entry.blockHash];
         if (trackedBlock && trackedBlock.packagePriceAUD > 0 && trackedBlock.totalPackageReward > 0) {
             const costBasis = trackedBlock.packagePriceAUD / trackedBlock.totalPackageReward;
-            console.log(`      📦 Found in tracked blocks: $${trackedBlock.packagePriceAUD.toFixed(2)} / ${trackedBlock.totalPackageReward} = $${costBasis.toFixed(2)}/coin`);
             return costBasis;
         }
     }
@@ -6946,7 +6836,6 @@ function findCostBasisForEntry(entry) {
         // Convert BTC to AUD
         const btcPriceAUD = getPriceFromObject(cryptoPrices['bitcoin']) || 0;
         packageCostAUD = packageCostBTC * btcPriceAUD;
-        console.log(`      📦 Package cost: ${packageCostBTC.toFixed(8)} BTC × $${btcPriceAUD.toFixed(2)} = $${packageCostAUD.toFixed(2)} AUD`);
     } else {
         // Try other AUD fields
         packageCostAUD = parseFloat(pkg.priceAUD) || parseFloat(pkg.packagePriceAUD) || 0;
@@ -6954,11 +6843,9 @@ function findCostBasisForEntry(entry) {
 
     const totalReward = parseFloat(pkg.reward) || parseFloat(pkg.totalReward) || parseFloat(pkg.totalPackageReward) || 0;
 
-    console.log(`      📦 Found package: ${pkg.name}, cost=$${packageCostAUD.toFixed(2)} AUD, reward=${totalReward}`);
 
     if (packageCostAUD > 0 && totalReward > 0) {
         const costBasis = packageCostAUD / totalReward;
-        console.log(`      📦 Calculated costBasis=$${costBasis.toFixed(2)}/coin`);
         return costBasis;
     }
 
@@ -7170,7 +7057,6 @@ function renderHoldingsEntryCard(entry, crypto) {
         if (idx !== -1) {
             entries[idx] = entry;
             saveHoldingsEntries(entry.cryptoId, entries);
-            console.log(`💾 Auto-fixed entry ${entry.id}: boughtPrice=$${displayBoughtPrice.toFixed(2)}, audValueAtAdd=$${displayAudValue.toFixed(2)}`);
         }
     }
 
@@ -7375,7 +7261,6 @@ function renderSellCard(sellEntry, crypto) {
     const realizedClass = realizedPnL >= 0 ? 'pnl-positive' : 'pnl-negative';
     const realizedSign = realizedPnL >= 0 ? '+' : '-';
 
-    console.log(`📊 Sell Card P&L: soldPrice=${soldPrice}, avgBuyCost=${avgBuyCost}, amount=${sellEntry.amount}, realizedPnL=${realizedPnL}`);
 
     return `
         <div class="sell-entry-card" data-entry-id="${sellEntry.id}">
@@ -7438,7 +7323,6 @@ function updateSellEntryPrice(cryptoId, entryId) {
         displayHistoryEntries(cryptoId);
         updateHoldingsTrackerPnL(cryptoId);
 
-        console.log(`✅ Updated sell entry ${entryId} price to $${newPrice.toFixed(2)}`);
     }
 }
 
@@ -7567,7 +7451,6 @@ function updateHoldingsEntryPrices(cryptoId, entryId) {
     // Refresh display
     displayHoldingsEntries(cryptoId);
 
-    console.log(`✅ Updated entry ${entryId}: amount=${newAmount}, bought=$${boughtPrice}, sold=$${soldPrice || 'n/a'}`);
 }
 
 // Delete holdings entry (requires sold price)
@@ -7600,7 +7483,6 @@ function deleteHoldingsEntryUI(cryptoId, entryId) {
         displayHoldingsEntries(cryptoId);
         updateHoldingsDisplayFromEntries(cryptoId);
 
-        console.log(`✅ Removed holding entry ${entryId} at $${soldPrice}`);
     }
 }
 
@@ -7758,7 +7640,6 @@ function sellBuyEntry(cryptoId, entryId, amount) {
     updateTotalHoldings();
     updateStripPnL();
 
-    console.log(`✅ Sold ${formatCryptoAmount(amount)} ${cryptoId.toUpperCase()} at $${formatPrice(livePrice)}`);
 }
 
 // Delete a buy entry with warning about potential negative holdings
@@ -7870,7 +7751,6 @@ function submitBuyEntry() {
     // Hide form and clear inputs
     hideAddBuyForm();
 
-    console.log(`✅ Added buy entry: ${amount} ${cryptoId.toUpperCase()} at $${boughtPrice.toFixed(2)}`);
 }
 
 // Submit a new sell entry (goes directly to history and reduces holdings)
@@ -7931,7 +7811,6 @@ function submitSellEntry() {
 
     const avgBuyCost = totalAmount > 0 ? totalCost / totalAmount : 0;
 
-    console.log(`📊 Sell Entry Avg Cost: totalCost=${totalCost}, totalAmount=${totalAmount}, avgBuyCost=${avgBuyCost}, soldPrice=${soldPrice}`);
 
     // NOTE: Buy entries are NOT modified - they remain as historical records
     // Holdings are calculated as: Total Buys - Total Sells
@@ -7965,7 +7844,6 @@ function submitSellEntry() {
     // Hide form and clear inputs
     hideAddSellForm();
 
-    console.log(`✅ Added sell entry: ${amount} ${cryptoId.toUpperCase()} at $${formatPrice(soldPrice)}`);
 }
 
 // Update total PnL display (legacy - calls new function)
@@ -8469,7 +8347,6 @@ function sendNotification(title, body, icon) {
             }
         });
     } else {
-        console.log('Notification permission not granted.');
     }
 }
 
@@ -8768,7 +8645,6 @@ function clearCryptoEntryPrices() {
         return;
     }
 
-    console.log(`🗑️ Resetting entry prices for ${cryptoName}...`);
 
     const entries = getHoldingsEntries(cryptoId);
     if (entries.length === 0) {
@@ -10109,7 +9985,6 @@ function startFloatingIconsPolling() {
     floatingIconsUpdateInterval = setInterval(() => {
         updateFloatingIcons();
     }, 5000);
-    console.log('🎨 Started floating icons polling');
 }
 
 /**
@@ -10119,7 +9994,6 @@ function stopFloatingIconsPolling() {
     if (floatingIconsUpdateInterval) {
         clearInterval(floatingIconsUpdateInterval);
         floatingIconsUpdateInterval = null;
-        console.log('🎨 Stopped floating icons polling');
     }
 }
 
@@ -10523,7 +10397,6 @@ document.getElementById('confirm-password').addEventListener('keyup', function(e
 
 // MEXC REST API polling for live prices (simple, reliable, JSON)
 function startMEXCPricePolling() {
-    console.log('🚀 Starting MEXC REST API price polling...');
 
     // Clear existing interval to prevent duplicates
     if (mexcPricePollingInterval) {
@@ -10569,7 +10442,6 @@ function stopMEXCPricePolling() {
     if (mexcPricePollingInterval) {
         clearInterval(mexcPricePollingInterval);
         mexcPricePollingInterval = null;
-        console.log('⏹️ MEXC polling stopped');
     }
 }
 
@@ -10597,7 +10469,6 @@ function startMEXCBTCPricePolling() {
     // Fetch immediately then every 2 seconds
     fetchBTCPrice();
     mexcBTCPriceInterval = setInterval(fetchBTCPrice, 2000);
-    console.log('📈 Started MEXC BTC price polling for mining charts');
 }
 
 function stopMEXCBTCPricePolling() {
@@ -10761,11 +10632,9 @@ function initializeWebSocket() {
 
     const wsEndpoint = 'wss://wbs-api.mexc.com/ws';
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('🚀 Initializing MEXC WebSocket connection...');
     console.log('   Endpoint:', wsEndpoint);
     console.log('   Protocol: Protocol Buffers (binary data)');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     socket = new WebSocket(wsEndpoint);
     lastWebSocketUpdate = Date.now();
 
@@ -11041,7 +10910,6 @@ function subscribeToSymbol(symbol) {
             "id": Date.now()
         });
 
-        console.log(`🔔 Subscribing to ${symbol.toUpperCase()}USDT price updates (trade stream)`);
         socket.send(subscriptionMessage);
     } else {
         console.log(`⚠️ WebSocket not ready (state: ${socket?.readyState}), subscription to ${symbol} will happen on next connection`);
@@ -11112,7 +10980,6 @@ function startConversionRateUpdate() {
         const conversionRate = await fetchUsdtToAudConversionRate();
         // Only log occasionally to reduce spam
         if (Math.random() < 0.2) {
-            console.log(`Updated USDT/AUD: ${conversionRate}`);
         }
     }, rateUpdateInterval);  // 15 minutes in milliseconds
 }
@@ -11194,7 +11061,6 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
 
     // Check if this is a new price
     if (lastPriceForCrypto[symbol] && lastPriceForCrypto[symbol] === priceInAud) {
-        console.log(`Price for ${symbol} has not changed. No update needed.`);
         return; // Exit if the price hasn't changed
     }
 
@@ -11266,7 +11132,6 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                     // For Bitcoin, save the AUD value to localStorage so it persists
                     if (coingeckoId === 'bitcoin' && priceInAud > 0) {
                         setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, holdingsValueAud);
-                        console.log(`💰 Saved Bitcoin AUD from WebSocket update: $${holdingsValueAud.toFixed(2)}`);
                     }
 
                     // Now update the chart modal holdings and value if it's open
@@ -11727,7 +11592,6 @@ async function fetchCryptoCompareNews(cryptoSymbol, cryptoName) {
         // Fetch news by category (symbol)
         const url = `https://min-api.cryptocompare.com/data/v2/news/?categories=${cryptoSymbol.toUpperCase()}&lang=EN${apiKeyParam}`;
 
-        console.log(`Fetching CryptoCompare news for ${cryptoSymbol} (${cryptoName})...`);
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -12529,7 +12393,6 @@ function updateSentimentUI(sentimentResult) {
         overallLabel.className = `sentiment-overall-label ${labelClass}`;
     }
 
-    console.log(`Sentiment UI updated: ${label} (${Math.round(bullishPercent)}% bullish)`);
 }
 
 /**
@@ -12579,7 +12442,6 @@ async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
             const ohlcResponse = await fetch(ohlcUrl);
             if (ohlcResponse.ok) {
                 ohlcData = await ohlcResponse.json();
-                console.log(`Fetched ${ohlcData.length} OHLC candles for RSI`);
 
                 // Store OHLC data globally for real-time RSI updates
                 storedOHLCData = ohlcData;
@@ -12655,7 +12517,6 @@ function debounceUpdateUI(cryptoId, priceInAud) {
             } else {
                 // For other cryptos, use getTotalActiveHoldings to account for sells in holdings tracker
                 holdings = getTotalActiveHoldings(cryptoId);
-                console.log(`📖 debounceUpdateUI reading ${cryptoId} (buys - sells): ${holdings}`);
             }
 
             const audValue = holdings * priceInAud;
@@ -12672,7 +12533,6 @@ function debounceUpdateUI(cryptoId, priceInAud) {
                     setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
                 }
 
-                console.log(`🔄 debounceUpdateUI updated ${cryptoId} AUD value: ${audValue.toFixed(2)} (holdings: ${holdings}, price: ${priceInAud})`);
             }
         }
 
@@ -12753,7 +12613,6 @@ async function checkWebSocketUpdate() {
 
         // Check if no WebSocket update for over 2 minutes
         if (!lastWebSocketUpdateForCrypto[symbol] || now - lastWebSocketUpdateForCrypto[symbol] > twoMinutes) {
-            console.log(`No WebSocket update for ${symbol} in 2 minutes. Fetching from CoinGecko...`);
 
             // Fallback to CoinGecko for this coin
             const geckoPrice = await fetchPricesFromCoinGecko(crypto.id);
@@ -12768,7 +12627,6 @@ async function checkWebSocketUpdate() {
                     priceElement.textContent = `$${formatAudPrice(priceInAud)}`;
                     updateCryptoValue(crypto.id);
                     updateTotalHoldings();
-                    console.log(`Fetched CoinGecko price for ${crypto.symbol}: $${priceInAud} AUD`);
                 }
             } else {
                 console.error(`Failed to get CoinGecko price for ${crypto.symbol}`);
@@ -12907,7 +12765,6 @@ async function fetchHistoricalData(cryptoId) {
     // Get days parameter based on selected interval
     const days = intervalConfigs[currentChartInterval].coingecko;
 
-    console.log(`📊 Fetching ${days} days of historical data for interval: ${currentChartInterval}`);
 
     const response = await fetch(`${getApiBaseUrl()}/coins/${cryptoId}/ohlc?vs_currency=usd&days=${days}&${getApiKeyParam()}`);
     if (!response.ok) {
@@ -12916,7 +12773,6 @@ async function fetchHistoricalData(cryptoId) {
     const data = await response.json();
     const conversionRate = 1.51; // Example conversion rate from USD to AUD
 
-    console.log(`✅ Fetched ${data.length} candles for ${currentChartInterval} interval`);
 
     return data.map(d => ({
         x: new Date(d[0]),
@@ -13013,7 +12869,6 @@ function handleChartMessage(message, symbol) {
     // Handle NEW aggre.deals format
     if (message.channel && message.channel.includes('aggre.deals') && message.data && message.data.price) {
         const price = parseFloat(message.data.price);
-        console.log(`📊 Chart price update for ${symbol}: $${price} USDT`);
 
         // Update the price only if the current modal is open and matches the symbol
         if (isModalOpen && currentModalCryptoSymbol === symbol) {
@@ -13026,7 +12881,6 @@ function handleChartMessage(message, symbol) {
         const firstDeal = deals[0];
         if (firstDeal && firstDeal.p !== undefined) {
             const price = parseFloat(firstDeal.p);
-            console.log(`📊 Chart price update for ${symbol}: $${price} USDT [OLD FORMAT]`);
 
             // Update the price only if the current modal is open and matches the symbol
             if (isModalOpen && currentModalCryptoSymbol === symbol) {
@@ -13409,7 +13263,6 @@ function formatCandlestickData(data) {
         const lastCandle = validData[validData.length - 1];
         const lastPrice = lastCandle.c / 1.52; // Convert back to USD
         lastValidChartPrice = lastPrice;
-        console.log(`💾 Stored last valid price: $${lastPrice}`);
     }
 
     return {
@@ -13456,7 +13309,6 @@ async function fetchCryptoList() {
     }
     
     try {
-        console.log('Fetching crypto list from CoinGecko...');
         const response = await fetch(`${getApiBaseUrl()}/coins/list?${getApiKeyParam()}`);
         if (!response.ok) {
             throw new Error('Failed to fetch crypto list');
@@ -14652,12 +14504,10 @@ function toggleEasyMining() {
 
         if (easyMiningSettings && easyMiningSettings.enabled) {
             // Start/restart alerts polling when section is opened
-            console.log('📦 EasyMining section opened, starting alerts polling...');
             startEasyMiningAlertsPolling();
             easyMiningHasBeenOpened = true;
 
             // Refresh active packages (catch newly active team packages)
-            console.log('🔄 EasyMining section opened - refreshing active packages...');
             fetchEasyMiningData().then(() => {
                 displayActivePackages();
             }).catch(err => {
@@ -14765,7 +14615,6 @@ function switchRewardsTab(crypto) {
  */
 function startRewardsPolling() {
     stopRewardsPolling();
-    console.log('🔄 Starting rewards polling (10s interval, parallel)');
 
     rewardsPollingInterval = setInterval(() => {
         if (rewardsExpanded) {
@@ -14781,7 +14630,6 @@ function stopRewardsPolling() {
     if (rewardsPollingInterval) {
         clearInterval(rewardsPollingInterval);
         rewardsPollingInterval = null;
-        console.log('⏹️ Stopped rewards polling');
     }
 }
 
@@ -14792,19 +14640,16 @@ function stopRewardsPolling() {
 async function fetchAllRewardsParallel() {
     // Skip if already running
     if (isRewardsPollRunning) {
-        console.log('⏭️ Rewards fetch already in progress, skipping');
         return;
     }
 
     // Wait if auto-buy or other priority operations are in progress
     if (isAutoBuyInProgress) {
-        console.log('⏳ Rewards fetch waiting for auto-buy to complete...');
         await new Promise(resolve => setTimeout(resolve, 1000));
         return fetchAllRewardsParallel(); // Retry after waiting
     }
 
     isRewardsPollRunning = true;
-    console.log('📦 Fetching all rewards in parallel...');
 
     try {
         // Fetch all cryptos in parallel
@@ -14909,7 +14754,6 @@ function saveRewardsToCache() {
  * Fetch rewards for a specific crypto from NiceHash API
  */
 async function fetchRewardsForCrypto(crypto) {
-    console.log(`📦 Fetching ${crypto} rewards...`);
 
     // Only show loading state if we have no cached data (initial load)
     const hasExistingData = recentRewardsData[crypto] && recentRewardsData[crypto].length > 0;
@@ -14967,7 +14811,6 @@ async function fetchRewardsForCrypto(crypto) {
                 // Add new rewards and sort by timestamp descending
                 recentRewardsData[crypto] = [...uniqueNew, ...recentRewardsData[crypto]]
                     .sort((a, b) => b.timestamp - a.timestamp);
-                console.log(`✅ Added ${uniqueNew.length} new ${crypto} rewards (total: ${recentRewardsData[crypto].length})`);
                 dataChanged = true;
             } else if (recentRewardsData[crypto].length === 0) {
                 // First load - just set the data
@@ -14975,7 +14818,6 @@ async function fetchRewardsForCrypto(crypto) {
                 console.log(`✅ Loaded ${newRewards.length} ${crypto} rewards`);
                 dataChanged = true;
             } else {
-                console.log(`📦 No new ${crypto} rewards (total: ${recentRewardsData[crypto].length})`);
             }
 
             // Save to cache only if data changed
@@ -15017,7 +14859,6 @@ function updateRewardsTabCount(crypto, newCount = null) {
     if (newCount !== null && newCount !== rewardsBlockCounts[crypto]) {
         rewardsBlockCounts[crypto] = newCount;
         saveBlockCountsToCache();
-        console.log(`📊 Updated ${crypto} block count: ${newCount}`);
     }
 
     // Display the cached count
@@ -15356,7 +15197,6 @@ function setEasyMiningLoadingTarget(target) {
 async function fetchEasyMiningData() {
     // Only log every 12th poll (once per minute at 5s intervals) to reduce console spam
     if (Math.random() < 0.08) {
-        console.log(`⚡ EasyMining poll - Enabled: ${easyMiningSettings.enabled}`);
     }
 
     if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey) {
@@ -15430,7 +15270,6 @@ async function fetchEasyMiningData() {
                 console.log('\n📦 PACKAGE BLOCK DETECTION DATA:');
                 easyMiningData.activePackages.forEach((pkg, index) => {
                     console.log(`  ${index + 1}. ${pkg.name}:`);
-                    console.log(`     - blockFound: ${pkg.blockFound}`);
                     console.log(`     - totalBlocks: ${pkg.totalBlocks || 0} (confirmed: ${pkg.confirmedBlocks || 0}, pending: ${pkg.pendingBlocks || 0})`);
                     console.log(`     - btcEarnings: ${pkg.btcEarnings || 0} BTC`);
                     console.log(`     - active: ${pkg.active}`);
@@ -15616,7 +15455,6 @@ async function fetchEasyMiningData() {
     } finally {
         // Always mark fetch as complete (allows next polling cycle to run)
         isFetchingEasyMiningData = false;
-        console.log('✅ Fetch cycle complete - ready for next poll');
     }
 }
 
@@ -15770,10 +15608,8 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     console.log('Path:', path);
     console.log('Query:', queryString || '(empty)');
     console.log('Body:', bodyString || '(empty)');
-    console.log('');
     console.log('📝 Message to sign (with \\0 shown as |):');
     console.log(message.replace(/\x00/g, '|'));
-    console.log('');
     console.log('Signature:', signature.substring(0, 16) + '...');
     console.log('Signature (full):', signature);
 
@@ -15807,7 +15643,6 @@ async function fetchMiningPayments(currency) {
         const endpoint = `/main/api/v2/accounting/hashpowerEarnings/${currency}?timestamp=${timestamp}&page=0&size=100`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
-        console.log(`⛏️ Fetching mining payments for ${currency}...`);
 
         let response;
 
@@ -15851,7 +15686,6 @@ async function fetchCurrencyBalanceExtended(currency) {
         const endpoint = `/main/api/v2/accounting/account2/${currency}?extendedResponse=true`;
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
-        console.log(`💰 Fetching extended balance for ${currency}...`);
 
         let response;
 
@@ -15913,7 +15747,6 @@ async function fetchNiceHashBalances() {
         const endpoint = '/main/api/v2/accounting/accounts2';
         const headers = generateNiceHashAuthHeaders('GET', endpoint);
 
-        console.log('📡 Fetching balances from NiceHash...');
 
         let response;
 
@@ -16238,7 +16071,6 @@ function determinePackageName(order, algoInfo) {
 // Fetch rewards for a specific order
 async function fetchOrderRewards(orderId) {
     console.log(`\n${'*'.repeat(80)}`);
-    console.log(`🚀🚀🚀 FETCHORDERREWARDS CALLED FOR ORDER: ${orderId} 🚀🚀🚀`);
     console.log(`${'*'.repeat(80)}\n`);
 
     try {
@@ -16284,12 +16116,10 @@ async function fetchOrderRewards(orderId) {
         console.log(`   Endpoint: GET /main/api/v2/hashpower/order/${orderId}/rewards`);
         console.log(`   Response Type: ${Array.isArray(data) ? 'Array' : typeof data}`);
         console.log(`   Array Length: ${Array.isArray(data) ? data.length : 'N/A'}`);
-        console.log(`${'='.repeat(80)}`);
 
         // Log the COMPLETE raw response - easy to copy
         console.log(`📋 COMPLETE RAW RESPONSE (copy this):`);
         console.log(JSON.stringify(data, null, 2));
-        console.log(`${'='.repeat(80)}\n`);
 
         // Additional detailed breakdown if data exists
         if (Array.isArray(data) && data.length > 0) {
@@ -16478,7 +16308,6 @@ async function fetchNiceHashOrders() {
 
         console.log(`\n${'='.repeat(80)}`);
         console.log('📦 MERGED SOLO MINING DATA');
-        console.log(`${'='.repeat(80)}`);
         console.log(`📋 Total unique packages: ${orders.length}`);
 
         if (orders.length > 0) {
@@ -16504,11 +16333,8 @@ async function fetchNiceHashOrders() {
             // Log team/share related fields for debugging
             console.log(`   📊 Team/Share Data:`);
             console.log(`      type: ${JSON.stringify(order.type)}`);
-            console.log(`      packagePrice: ${order.packagePrice}`);
             console.log(`      addedAmount: ${order.addedAmount}`);
             console.log(`      packageShares: ${order.packageShares}`);
-            console.log(`      ownedShares: ${order.ownedShares}`);
-            console.log(`      sharePrice: ${order.sharePrice}`);
             console.log(`      numberOfShares: ${order.numberOfShares}`);
             console.log(`      myShares: ${order.myShares}`);
             console.log(`   👥 Participant Data:`);
@@ -16531,7 +16357,6 @@ async function fetchNiceHashOrders() {
             // Check if this is a team package - detect by name starting with "team" (case-insensitive)
             const packageName = order.packageName || '';
             const isTeamPackage = packageName.toLowerCase().startsWith('team');
-            console.log(`   🔍 Team detection: "${packageName}" → isTeam: ${isTeamPackage}`);
 
             // Calculate block rewards from soloReward array
             // For dual mining (e.g., Palladium DOGE/LTC), track rewards by coin type
@@ -16606,8 +16431,6 @@ async function fetchNiceHashOrders() {
             console.log(`      Package: ${packageName}`);
             console.log(`      soloReward array length: ${soloRewards.length}`);
             console.log(`      Coins in soloReward: [${soloRewardCoins.join(', ')}]`);
-            console.log(`      Primary coin (${order.soloMiningCoin}): ${hasPrimaryReward ? '✅ WON' : '❌ NOT WON'}`);
-            console.log(`      Secondary coin (${order.soloMiningMergeCoin}): ${hasSecondaryReward ? '✅ WON' : '❌ NOT WON'}`);
             console.log(`      isDualMining: ${isDualMining}`);
             console.log(`   💎 Rewards by coin:`, rewardsByCoin);
             console.log(`   📊 Block counts by coin:`, blockCountByCoin); // ✅ FIX: Show individual block counts
@@ -16635,7 +16458,6 @@ async function fetchNiceHashOrders() {
                 const primaryCoinBlocks = blockCountByCoin[order.soloMiningCoin];
                 const primaryBlockCount = primaryCoinBlocks ? (primaryCoinBlocks.confirmed + primaryCoinBlocks.pending) : 0;
                 cryptoReward = primaryBlockCount > 0 ? blockReward * primaryBlockCount : 0;
-                console.log(`   💎 Using standard block reward: ${blockReward} × ${primaryBlockCount} blocks = ${cryptoReward} ${order.soloMiningCoin}`);
             }
 
             // For team packages, calculate user's share of costs and rewards
@@ -16666,9 +16488,6 @@ async function fetchNiceHashOrders() {
                     // CRITICAL: Use easyMiningSettings.orgId (the logged-in user's org ID), NOT order.organizationId
                     const userOrgId = easyMiningSettings.orgId;
                     const members = order.sharedTicket.members || [];
-                    console.log(`         User Org ID (from settings): ${userOrgId}`);
-                    console.log(`         Order owner Org ID: ${order.organizationId}`);
-                    console.log(`         Total members: ${members.length}`);
 
                     // Find user's member entry
                     userMember = members.find(m => m.organizationId === userOrgId);
@@ -16679,9 +16498,7 @@ async function fetchNiceHashOrders() {
 
                         // Extract crypto rewards from the rewards array (not rewardAmount which is BTC)
                         const memberRewards = userMember.rewards || [];
-                        console.log(`         User's addedAmount: ${addedAmount.toFixed(8)} BTC`);
                         console.log(`         User's member rewards array:`, JSON.stringify(memberRewards, null, 2));
-                        console.log(`         Number of rewards: ${memberRewards.length}`);
 
                         // Log each reward coin
                         memberRewards.forEach((r, idx) => {
@@ -16710,9 +16527,6 @@ async function fetchNiceHashOrders() {
                         const members = order.sharedTicket.members;
                         const userOrgId = easyMiningSettings.orgId; // Use logged-in user's org ID
 
-                        console.log(`         User Org ID (from settings): ${userOrgId}`);
-                        console.log(`         Order owner Org ID: ${order.organizationId}`);
-                        console.log(`         Total members: ${members.length}`);
 
                         // Find user's member entry
                         userMember = members.find(m => m.organizationId === userOrgId);
@@ -16720,7 +16534,6 @@ async function fetchNiceHashOrders() {
                         if (userMember) {
                             console.log(`         ✅ Found user in active team package members array`);
                             addedAmount = parseFloat(userMember.addedAmount || 0);
-                            console.log(`         User's addedAmount: ${addedAmount.toFixed(8)} BTC`);
 
                             // Log shares if available
                             if (userMember.shares) {
@@ -16731,7 +16544,6 @@ async function fetchNiceHashOrders() {
                             if (userMember.rewards && userMember.rewards.length > 0) {
                                 const memberRewards = userMember.rewards;
                                 console.log(`         ✅ Found rewards in active team package:`, JSON.stringify(memberRewards, null, 2));
-                                console.log(`         Number of rewards: ${memberRewards.length}`);
 
                                 // Extract primary reward (same as completed packages)
                                 const primaryRewardData = memberRewards.find(r => r.coin === order.soloMiningCoin);
@@ -16791,7 +16603,6 @@ async function fetchNiceHashOrders() {
                 // SHARES CALCULATION DEBUG
                 console.log(`   📊 SHARES CALCULATION DEBUG:`);
                 console.log(`      ownedShares (myShares): ${myShares} (type: ${typeof myShares})`);
-                console.log(`      totalShares: ${totalShares} (type: ${typeof totalShares})`);
                 console.log(`      Are values null? ownedShares=${myShares === null}, totalShares=${totalShares === null}`);
                 console.log(`      Are values > 0? ownedShares=${myShares > 0}, totalShares=${totalShares > 0}`);
 
@@ -16830,10 +16641,8 @@ async function fetchNiceHashOrders() {
                         const secondaryRewardData = userMember.rewards.find(r => r.coin === order.soloMiningMergeCoin);
                         if (secondaryRewardData) {
                             secondaryCryptoReward = parseFloat(secondaryRewardData.rewardAmount || 0);
-                            console.log(`      → ACTIVE TEAM: Secondary crypto (${order.soloMiningMergeCoin}) WON - reward: ${secondaryCryptoReward.toFixed(8)}`);
                         } else {
                             secondaryCryptoReward = 0;
-                            console.log(`      → ACTIVE TEAM: Secondary crypto (${order.soloMiningMergeCoin}) NOT won - reward: 0`);
                         }
                     }
                     // COMPLETED TEAM PACKAGES: Use original working logic
@@ -16843,10 +16652,8 @@ async function fetchNiceHashOrders() {
                         const secondaryRewardData = userMember.rewards.find(r => r.coin === order.soloMiningMergeCoin);
                         if (secondaryRewardData) {
                             secondaryCryptoReward = parseFloat(secondaryRewardData.rewardAmount || 0);
-                            console.log(`      → COMPLETED TEAM: Secondary crypto (${order.soloMiningMergeCoin}) reward: ${secondaryCryptoReward.toFixed(8)}`);
                         } else {
                             secondaryCryptoReward = 0;
-                            console.log(`      → COMPLETED TEAM: Secondary crypto (${order.soloMiningMergeCoin}) NOT won - reward: 0`);
                         }
                     }
                     // SOLO PACKAGES: Use package-level secondary rewards
@@ -16874,7 +16681,6 @@ async function fetchNiceHashOrders() {
             }
 
             console.log(`   💰 Financial Data:`);
-            console.log(`      packagePrice: ${order.packagePrice} BTC`);
             console.log(`      amount: ${order.amount} BTC`);
             console.log(`      payedAmount: ${order.payedAmount} BTC (already spent on hashpower)`);
             console.log(`      availableAmount: ${order.availableAmount} BTC (remaining)`);
@@ -16893,7 +16699,6 @@ async function fetchNiceHashOrders() {
 
             console.log(`   ⏱️  Time Remaining Data:`);
             console.log(`      alive: ${order.alive}`);
-            console.log(`      estimateDurationInSeconds: ${order.estimateDurationInSeconds}`);
             console.log(`      endTs: ${order.endTs}`);
             if (order.alive && order.estimateDurationInSeconds) {
                 console.log(`      → Using estimateDurationInSeconds for active package`);
@@ -16910,7 +16715,6 @@ async function fetchNiceHashOrders() {
 
             console.log(`   🕐 Active Status Check for ${order.packageName || order.id}:`);
             console.log(`      alive flag: ${order.alive}`);
-            console.log(`      estimateDurationInSeconds: ${order.estimateDurationInSeconds}`);
             console.log(`      status: ${order.status?.code || 'N/A'}`);
 
             // Package is NOT active if:
@@ -16953,9 +16757,7 @@ async function fetchNiceHashOrders() {
                     console.log(`      → Using fallback blockReward for ${order.soloMiningMergeCoin}: ${secondaryBlockReward}`);
                 }
 
-                console.log(`      Primary coin (${order.soloMiningCoin}) blockReward: ${primaryBlockReward}`);
                 if (order.soloMiningMergeCoin) {
-                    console.log(`      Secondary coin (${order.soloMiningMergeCoin}) blockReward: ${secondaryBlockReward}`);
                 }
 
                 if (isTeamPackage && totalShares > 0 && myShares > 0) {
@@ -17076,9 +16878,6 @@ async function fetchNiceHashOrders() {
             }
             if (pkg.isTeam) {
                 console.log(`   👥 TEAM PACKAGE - Final values stored in pkg object:`);
-                console.log(`      ownedShares: ${pkg.ownedShares}`);
-                console.log(`      totalShares: ${pkg.totalShares}`);
-                console.log(`      userSharePercentage: ${pkg.userSharePercentage}`);
             }
             if (pkg.probability) {
                 console.log(`   🎲 Probability: ${pkg.probability}${pkg.mergeProbability ? ` / ${pkg.mergeProbability}` : ''}`);
@@ -17190,12 +16989,10 @@ async function fetchNiceHashOrders() {
 
         console.log(`\n${'='.repeat(80)}`);
         console.log(`📊 FINAL SUMMARY`);
-        console.log(`   Total packages: ${packages.length}`);
         console.log(`   Active: ${packages.filter(p => p.active).length}`);
         console.log(`   Completed: ${packages.filter(p => !p.active).length}`);
         console.log(`   With blocks: ${packages.filter(p => p.blockFound).length}`);
         console.log(`   Total blocks found: ${packages.reduce((sum, p) => sum + p.totalBlocks, 0)}`);
-        console.log(`${'='.repeat(80)}\n`);
 
         return packages;
 
@@ -17469,7 +17266,6 @@ function generateMockPackages() {
 
         // Detect team packages by name (case-insensitive "team" prefix)
         const isTeam = typeData.name.toLowerCase().startsWith('team');
-        console.log(`   📦 Mock Package: "${typeData.name}" → isTeam: ${isTeam}`);
 
         // Calculate team package values using correct formula
         const SHARE_COST = 0.0001; // BTC per share
@@ -17496,9 +17292,7 @@ function generateMockPackages() {
 
             console.log(`      Team Package Calculations:`);
             console.log(`         addedAmount: ${addedAmount.toFixed(8)} BTC`);
-            console.log(`         packagePrice: ${packagePrice.toFixed(8)} BTC`);
             console.log(`         myShares: ${myShares.toFixed(2)}`);
-            console.log(`         totalShares: ${totalShares.toFixed(2)}`);
             console.log(`         sharePercentage: ${(userSharePercentage * 100).toFixed(2)}%`);
             console.log(`         myReward: ${calculatedReward.toFixed(8)} ${typeData.crypto}`);
         } else {
@@ -17646,10 +17440,8 @@ function switchPackageTab(tab) {
     // Always fetch fresh data when clicking Active tab (even if already on it)
     // This allows users to refresh by clicking the Active tab again
     if (tab === 'active') {
-        console.log(`🔄 Active tab clicked${wasAlreadyActive ? ' (refresh)' : ''} - fetching fresh package data...`);
         fetchEasyMiningData().then(() => {
             displayActivePackages();
-            console.log('✅ Active packages refreshed');
         }).catch(err => {
             console.error('Failed to refresh on active tab:', err);
             displayActivePackages(); // Still display with existing data
@@ -17662,12 +17454,10 @@ function switchPackageTab(tab) {
 
 // Force refresh active packages (can be called after navigation or long idle periods)
 function refreshActivePackages() {
-    console.log('🔄 Force refreshing active packages...');
     return fetchEasyMiningData().then(() => {
         if (currentPackageTab === 'active') {
             displayActivePackages();
         }
-        console.log('✅ Active packages force refreshed');
     }).catch(err => {
         console.error('Failed to force refresh packages:', err);
     });
@@ -17729,7 +17519,6 @@ function displayActivePackages() {
         const carouselControls = document.getElementById('package-carousel-controls');
         if (carouselControls) {
             carouselControls.style.display = 'none';
-            console.log(`✗ Arrow controls hidden (0 packages in ${currentPackageTab} tab)`);
         }
         return;
     }
@@ -17737,23 +17526,12 @@ function displayActivePackages() {
     packagesToShow.forEach(pkg => {
         // Debug team package data
         if (pkg.isTeam) {
-            console.log(`\n🔍 TEAM PACKAGE UI DATA: ${pkg.name}`);
-            console.log(`   isTeam: ${pkg.isTeam}`);
-            console.log(`   ownedShares: ${pkg.ownedShares} (type: ${typeof pkg.ownedShares})`);
-            console.log(`   totalShares: ${pkg.totalShares} (type: ${typeof pkg.totalShares})`);
-            console.log(`   userSharePercentage: ${pkg.userSharePercentage}`);
-            console.log(`   price: ${pkg.price}`);
-            console.log(`   reward: ${pkg.reward} ${pkg.crypto}`);
-            console.log(`   rewardSecondary: ${pkg.rewardSecondary} ${pkg.cryptoSecondary}`);
-            console.log(`   blockFound: ${pkg.blockFound}`);
 
             // Check if shares will be displayed
             const willShowShares = pkg.ownedShares !== null && pkg.ownedShares !== undefined &&
                                    pkg.totalShares !== null && pkg.totalShares !== undefined &&
                                    pkg.ownedShares > 0 && pkg.totalShares > 0;
-            console.log(`   📊 Shares will be displayed: ${willShowShares}`);
             if (!willShowShares) {
-                console.log(`      ❌ Reason: ownedShares=${pkg.ownedShares}, totalShares=${pkg.totalShares}`);
             }
         }
 
@@ -18286,7 +18064,6 @@ function displayActivePackages() {
             rightArrow.disabled = currentPackagePage >= totalPages;
         }
 
-        console.log(`✓ Arrow navigation: Page ${currentPackagePage} of ${totalPages} (${cardsPerPage} cards per page)`);
     } else {
         // Hide controls if all packages fit on one page
         if (carouselControls) carouselControls.style.display = 'none';
@@ -18516,18 +18293,15 @@ function validateActivePackageRobotIcons() {
 
                 card.insertBefore(robotIcon, card.firstChild);
                 fixedCount++;
-                console.log(`🤖 Added robot to ${packageName} - bot active with shares`);
             }
         } else if (existingRobot && !isBotActive) {
             // Robot exists but bot features are disabled - remove it
             existingRobot.remove();
             removedCount++;
-            console.log(`🤖 Removed robot from ${packageName} - bot features disabled`);
         }
     });
 
     if (fixedCount > 0 || removedCount > 0) {
-        console.log(`🤖 Active package validation: Added ${fixedCount}, removed ${removedCount} robot icons`);
     }
 }
 
@@ -18603,7 +18377,6 @@ async function updateActivePackageProbabilities() {
     });
 
     if (updatedCount > 0) {
-        console.log(`🎲 Updated ${updatedCount} live probability values on active packages`);
     }
 }
 
@@ -18612,7 +18385,6 @@ function updateStats() {
     const packages = easyMiningData.activePackages || [];
 
     // Log detailed package breakdown for debugging
-    console.log(`📊 Total packages: ${packages.length}`);
     const packagesWithEarnings = packages.filter(pkg => (pkg.btcEarnings || 0) > 0);
     const packagesWithBlockFound = packages.filter(pkg => pkg.blockFound === true);
     console.log(`💰 Packages with btcEarnings > 0: ${packagesWithEarnings.length}`);
@@ -18668,7 +18440,6 @@ function updateStats() {
     const pnlAUD = totalRewardAUD - totalSpentAUD;
 
     console.log(`\n💰 STATS CALCULATION (LIVE PRICES):`);
-    console.log(`   Total packages: ${packages.length}`);
     console.log(`   Packages with blocks: ${packagesWithBlocks.length}`);
     console.log(`   Total blocks found: ${totalBlocksAll}`);
     console.log(`   Total spent: ${totalSpentBTC.toFixed(8)} BTC = $${totalSpentAUD.toFixed(2)} AUD`);
@@ -18989,10 +18760,7 @@ async function executeAutoBuySolo(recommendations) {
         }
 
         // Execute auto-buy
-        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name}`);
         console.log(`   Package:`, pkg);
-        console.log(`   Crypto: ${pkg.crypto}`);
-        console.log(`   Price: ${pkg.price} BTC`);
 
         // Set lock to pause other package fetches during purchase
         isAutoBuyInProgress = true;
@@ -19007,7 +18775,6 @@ async function executeAutoBuySolo(recommendations) {
             }
 
             // ✅ FIX: Sync time with NiceHash server before purchase (critical for authentication)
-            console.log('⏰ Syncing time with NiceHash server...');
             await syncNiceHashTime();
 
             const ticketId = pkg.apiData?.id || pkg.ticketId || pkg.id;
@@ -19041,7 +18808,6 @@ async function executeAutoBuySolo(recommendations) {
                 }
             }
 
-            console.log('🛒 Creating NiceHash solo order...');
             console.log('   Ticket ID:', ticketId);
             console.log('   Main Crypto:', mainCrypto);
             console.log('   Merge Crypto:', mergeCrypto || 'N/A');
@@ -19121,8 +18887,6 @@ async function executeAutoBuySolo(recommendations) {
 
             console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name}`);
             console.log(`   Order ID: ${result.id || result.orderId || 'N/A'}`);
-            console.log(`   Crypto: ${pkg.crypto}`);
-            console.log(`   Price: ${pkg.price} BTC`);
             const cooldownHours = (cooldownMs / 3600000).toFixed(1);
             const cooldownType = smartCooldownsEnabled ? 'package duration' : '10min default';
             console.log(`   ⏳ Next auto-buy available in ${cooldownHours} hours (${cooldownType} cooldown)`);
@@ -19263,9 +19027,7 @@ async function executeAutoBuyTeam(recommendations) {
 
         // 💰 Balance check skipped - API will validate, we send total amount but only pay for new shares
         const availableBalance = window.niceHashBalance?.available || 0;
-        console.log(`💰 ${pkg.name}: Balance ${availableBalance.toFixed(8)} BTC, buying ${actualSharesToBuy} new shares (cost: ${costForNewShares} BTC), total will be ${newTotalShares}`);
 
-        console.log(`🤖 AUTO-BUY TRIGGERED: ${pkg.name} (buying ${actualSharesToBuy} shares, total will be ${newTotalShares}, API amount ${totalAmountForAPI} BTC)`);
 
         // Set lock to pause other package fetches during purchase
         isAutoBuyInProgress = true;
@@ -19362,7 +19124,6 @@ async function executeAutoBuyTeam(recommendations) {
             });
 
             // ========== SINGLE-STEP: ADD SHARES ==========
-            console.log(`🛒 AUTO-BUY: Adding ${actualSharesToBuy} shares, new total: ${newTotalShares}...`);
 
             const body = JSON.stringify(bodyData);
             const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -19644,7 +19405,6 @@ function saveAutoSharesConfig() {
         statusSpan.style.color = '#4CAF50';
     }
 
-    console.log(`✅ Auto-shares enabled for ${packageName}: ${fraction}/10, primary=${primaryShares}, secondary=${secondaryShares}`);
     alert(`Auto-shares enabled for ${packageName}!\n\nConfig: ${fraction}/10 | Primary: ${primaryShares} | Secondary: ${secondaryShares}`);
 
     closeAutoSharesConfigModal();
@@ -19868,7 +19628,6 @@ function disableAutoSharesOnAlert(packageName, skipUIUpdate = false) {
  * - Removes temporary entry from teamAutoShares
  */
 function cleanupOnAlertAutoShares(packageName, trackedIds) {
-    console.log(`🧹 ${packageName}: Cleaning up on-alert auto-shares...`);
 
     // Sync tracking back to on-alert storage
     const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
@@ -19955,7 +19714,6 @@ function disableOtherAutoOptions(packageName, selectedOption) {
                     statusSpan.style.color = '#888';
                 }
             }
-            console.log(`   ❌ Auto-buy disabled`);
         }
     }
 
@@ -20004,7 +19762,6 @@ async function executeAutoSharesTeam(teamPackages) {
     // Debug: Log auto-shares status
     const enabledPackages = Object.entries(autoSharesSettings).filter(([name, s]) => s.enabled).map(([name]) => name);
     if (enabledPackages.length > 0) {
-        console.log(`🤖 AUTO-SHARES: Checking ${teamPackages.length} team packages, ${enabledPackages.length} enabled: ${enabledPackages.join(', ')}`);
     }
 
     // Step 1: Check all enabled packages and manage queue
@@ -20076,7 +19833,6 @@ async function executeAutoSharesTeam(teamPackages) {
 
         // Check preconditions: participants >= 5 AND total shares >= 15
         if (participants < 5 || totalSharesBought < 15) {
-            console.log(`⏸️ ${pkg.name}: Waiting for conditions (participants: ${participants}/5+, shares: ${totalSharesBought}/15+)`);
             continue; // Not ready yet
         }
 
@@ -20136,7 +19892,6 @@ async function executeAutoSharesTeam(teamPackages) {
 
     // Check preconditions: participants >= 5 AND total shares >= 15
     if (participants < 5 || totalSharesBought < 15) {
-        console.log(`⏸️ ${pkg.name}: Waiting for conditions (participants: ${participants}/5+, shares: ${totalSharesBought}/15+)`);
         return; // Keep as current, wait for conditions
     }
 
@@ -20227,7 +19982,6 @@ async function executeAutoSharesTeam(teamPackages) {
     }
 
     // Execute the buy
-    console.log(`🤖 AUTO-SHARES: ${pkg.name} - buying ${actualSharesToBuy} shares (${trackState.isPrimary ? 'PRIMARY' : 'SECONDARY'}), current: ${myShares}, target: ${targetShares}, queue: ${autoSharesQueue.length}`);
 
     try {
         isAutoSharesInProgress = true;
@@ -20286,7 +20040,6 @@ async function executeAutoSharesTeam(teamPackages) {
 
         // 💰 Balance check skipped - API will validate, we send total amount but only pay for new shares
         const availableBalance = window.niceHashBalance?.available || 0;
-        console.log(`💰 ${pkg.name}: Balance ${availableBalance.toFixed(8)} BTC, buying ${actualSharesToBuy} new shares (cost: ${costForNewShares} BTC), total will be ${newTotalShares}`);
 
         // Create order payload: amount and shares.small are NEW TOTAL values
         const bodyData = {
@@ -20308,7 +20061,6 @@ async function executeAutoSharesTeam(teamPackages) {
         }
 
         // ========== SINGLE-STEP: SET TOTAL SHARES ==========
-        console.log(`🛒 AUTO-SHARES: Adding ${actualSharesToBuy} shares, setting total to ${newTotalShares} (amount: ${totalAmountForAPI} BTC)...`);
 
         const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -20425,7 +20177,6 @@ async function executeAutoSharesTeam(teamPackages) {
                                error.message?.includes('400');
 
         if (isTerminalError) {
-            console.log(`🚫 ${pkg.name}: Terminal error (${error.message}) - marking complete and moving to next`);
             // Mark as completed so we move to next in queue
             const packageId = pkg.id || pkg.ticketId || pkg.name;
             const autoSharesSettingsLocal = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
@@ -20681,7 +20432,6 @@ async function updateRecommendations() {
     // Clean up alerted packages that are no longer in recommendations (allows re-trigger)
     if (recommendations.length === 0) {
         if (alertedSoloPackages.size > 0) {
-            console.log(`🔕 All solo packages left threshold - will re-trigger when they return`);
         }
         alertedSoloPackages.clear();
     } else {
@@ -20689,14 +20439,12 @@ async function updateRecommendations() {
         alertedSoloPackages.forEach(name => {
             if (!currentSoloNames.has(name)) {
                 alertedSoloPackages.delete(name);
-                console.log(`🔕 ${name} left threshold - will re-trigger when it returns`);
             }
         });
     }
 
     if (teamRecommendations.length === 0) {
         if (alertedTeamPackages.size > 0) {
-            console.log(`🔕 All team packages left threshold - will re-trigger when they return`);
         }
         alertedTeamPackages.clear();
     } else {
@@ -20704,7 +20452,6 @@ async function updateRecommendations() {
         alertedTeamPackages.forEach(name => {
             if (!currentTeamNames.has(name)) {
                 alertedTeamPackages.delete(name);
-                console.log(`🔕 ${name} left threshold - will re-trigger when it returns`);
             }
         });
     }
@@ -20872,7 +20619,6 @@ function updateSoloAlertCardValues(pkg) {
         hashrateElement.textContent = pkg.hashrate;
     }
 
-    console.log(`✅ Updated values for ${pkg.name}: probability=${pkg.probability || `${pkg.mergeProbability}/${pkg.mainProbability}`}, hashrate=${pkg.hashrate}`);
 }
 
 /**
@@ -21064,7 +20810,6 @@ function updateTeamAlertCardValues(pkg) {
         // If no bot, preserve user's manual input value
         if (isBotActive && myBoughtShares > 0) {
             shareInput.value = myBoughtShares;
-            console.log(`🤖 Alert Card ${pkg.name}: Bot active, syncing input to owned shares: ${myBoughtShares}`);
         }
     }
 
@@ -21094,7 +20839,6 @@ function updateTeamAlertCardValues(pkg) {
         }
     }
 
-    console.log(`✅ Updated team alert values for ${pkg.name}: participants=${pkg.numberOfParticipants}, shares=${myBoughtShares}`);
 
     // ✅ Dynamically update Clear Shares button visibility
     updateClearSharesButtonVisibility(pkg.name, apiPackageId, myBoughtShares);
@@ -21164,7 +20908,6 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
         // No auto-buy or auto-shares = remove robot if exists
         if (existingRobot) {
             existingRobot.remove();
-            console.log(`🤖 Removed robot icon from ${pkg.name} - no bot features active`);
         }
         return;
     }
@@ -21193,7 +20936,6 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
                 existingRobot.classList.remove('countdown');
             }
             existingRobot.title = getTooltip(true, false);
-            console.log(`🤖 Updated robot icon to solid for ${pkg.name} - ${myBoughtShares} shares owned`);
         } else {
             // Add solid robot icon
             const robotDiv = document.createElement('div');
@@ -21203,7 +20945,6 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
             // Try multiple formats: h4 title, .package-header, or card itself
             const titleDiv = card.querySelector('h4')?.parentElement || card.querySelector('.package-header') || card;
             titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
-            console.log(`🤖 Added solid robot icon to ${pkg.name} - ${myBoughtShares} shares owned`);
         }
     } else {
         // No shares yet - robot should be spinning (waiting)
@@ -21211,7 +20952,6 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
             existingRobot.classList.remove('countdown', 'flashing');
             existingRobot.classList.add('waiting');
             existingRobot.title = getTooltip(false, true);
-            console.log(`🤖 Updated robot icon to spinning for ${pkg.name} - waiting for shares`);
         } else {
             // Add spinning robot icon
             const robotDiv = document.createElement('div');
@@ -21221,7 +20961,6 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
             // Try multiple formats: h4 title, .package-header, or card itself
             const titleDiv = card.querySelector('h4')?.parentElement || card.querySelector('.package-header') || card;
             titleDiv.insertBefore(robotDiv, titleDiv.firstChild);
-            console.log(`🤖 Added spinning robot icon to ${pkg.name} - waiting for shares`);
         }
     }
 }
@@ -21419,7 +21158,6 @@ function createTeamPackageRecommendationCard(pkg) {
         // Get LIVE BTC price from portfolio page (same as buy packages page)
         priceAUD = convertBTCtoAUD(sharePrice).toFixed(2);
     } catch (error) {
-        console.log('Could not calculate price AUD:', error);
         priceAUD = 0;
     }
 
@@ -21767,15 +21505,12 @@ function createTeamPackageRecommendationCard(pkg) {
         if (isBotActive && myShares === 0 && !isAutoBought) {
             // Bot active but no shares yet: spinning robot (waiting)
             robotHtml = `<div class="block-found-indicator auto-buy-robot waiting" title="${getBotTooltip('active (waiting)')}">🤖</div>`;
-            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Bot enabled, no shares`);
         } else if (isBotActive && myShares > 0) {
             // Has shares and bot enabled: solid robot
             if (isCountdown) {
                 robotHtml = `<div class="block-found-indicator auto-buy-robot countdown" title="${getBotTooltip('active (starting soon)')}">🤖</div>`;
-                console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - ${myShares} shares owned`);
             } else {
                 robotHtml = `<div class="block-found-indicator auto-buy-robot" title="${getBotTooltip('active (shares owned)')}">🤖</div>`;
-                console.log(`🤖 Robot icon (solid) added to ${pkg.name} alert - ${myShares} shares owned`);
             }
         }
         // Else: no shares and no bot = no robot (automatic cleanup)
@@ -21784,15 +21519,12 @@ function createTeamPackageRecommendationCard(pkg) {
         if (isAutoBuyActive && !isAutoBought) {
             // Auto-buy active but not purchased: spinning robot (waiting)
             robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} alert - Auto-buy enabled`);
         } else if (isAutoBought) {
             // Solo packages: solid robot when purchased
             if (isCountdown) {
                 robotHtml = '<div class="block-found-indicator auto-buy-robot countdown" title="Auto-bought by bot (starting soon)">🤖</div>';
-                console.log(`🤖 Robot icon (countdown) added to ${pkg.name} alert - Match: ${matchMethod}`);
             } else {
                 robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
-                console.log(`🤖 Robot icon (purchased) added to ${pkg.name} alert - Match: ${matchMethod}`);
             }
         }
         // Else: no auto-buy or not purchased = no robot (automatic cleanup)
@@ -22292,7 +22024,6 @@ function updateBTCHoldings() {
     // This prevents showing stale NiceHash balance from previous session
     const totalToDisplay = manualHoldings + niceHashBalance;
 
-    console.log(`💰 BTC Holdings: Manual ${manualHoldings.toFixed(8)} + NiceHash ${niceHashBalance.toFixed(8)} = Total ${totalToDisplay.toFixed(8)}`);
 
     // Update display (NO COMMAS for BTC - use raw number)
     btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
@@ -22313,7 +22044,6 @@ function updateBTCHoldings() {
         if (btcPriceAud > 0) {
             btcValueElement.textContent = formatNumber(btcValueAud.toFixed(2));
             setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, btcValueAud);
-            console.log(`💰 BTC AUD updated & saved: ${btcValueAud.toFixed(2)} (holdings: ${totalToDisplay}, price: ${btcPriceAud})`);
         } else {
             console.warn(`⚠️ updateBTCHoldings - NOT updating display/saving AUD because price is 0 (keeping stored value visible)`);
         }
@@ -22391,7 +22121,6 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 // Use live price as the bought price for EasyMining rewards
                 const livePrice = getPriceFromObject(cryptoPrices[cryptoId]) || 0;
                 const boughtPrice = livePrice;
-                console.log(`   💵 Block ${block.blockHash.substring(0, 12)}... Using live price: $${boughtPrice.toFixed(2)}/coin`);
 
                 // Create holdings entry for this individual block
                 const entryId = uuidv4();
@@ -22430,7 +22159,6 @@ async function autoUpdateCryptoHoldings(newBlocks) {
 
                 console.log(`   💰 Added block ${block.blockHash.substring(0, 12)}...`);
                 console.log(`      Amount: ${amount} ${block.crypto}`);
-                console.log(`      Cost basis price: $${boughtPrice.toFixed(2)} AUD`);
                 console.log(`      Package: ${block.packageName}`);
             }
 
@@ -22488,7 +22216,6 @@ async function autoUpdateCryptoHoldings(newBlocks) {
         console.log(`\n${'='.repeat(80)}`);
         console.log('✅ AUTO-UPDATE COMPLETE - BLOCK-LEVEL PROCESSING');
         console.log(`   Blocks processed: ${unprocessedBlocks.length}`);
-        console.log(`${'='.repeat(80)}\n`);
 
         // Update total portfolio value
         updateTotalHoldings();
@@ -22756,11 +22483,6 @@ function showPackageDetailPage(pkg) {
     // Debug team package data
     if (pkg.isTeam) {
         console.log(`\n🔍 TEAM PACKAGE DETAIL DATA: ${pkg.name}`);
-        console.log(`   isTeam: ${pkg.isTeam}`);
-        console.log(`   ownedShares: ${pkg.ownedShares}`);
-        console.log(`   totalShares: ${pkg.totalShares}`);
-        console.log(`   userSharePercentage: ${pkg.userSharePercentage}`);
-        console.log(`   price: ${pkg.price}`);
         console.log(`   reward: ${pkg.reward}`);
         console.log(`   btcEarnings: ${pkg.btcEarnings}`);
     }
@@ -23081,7 +22803,6 @@ function collectChartDataPoint(pkg) {
             index: chartData.dataPoints.length - 1,
             percentage: currentPercent
         };
-        console.log(`📊 [${pkg.name}] Updated highestBar: ${currentPercent.toFixed(1)}%`);
     }
 
     return chartData;
@@ -23904,9 +23625,7 @@ function updateMiningProgressChart(pkg) {
 
     console.log(`📊 [MINING CHART] Rendering chart for ${pkg.name || pkgId}`);
     console.log(`   - Package ID: ${pkg.id}`);
-    console.log(`   - blockFound: ${pkg.blockFound}, totalBlocks: ${pkg.totalBlocks}`);
     console.log(`   - probabilityPrecision: ${pkg.probabilityPrecision}, hashrate: ${currentHashrate}, projectedSpeed: ${pkg.projectedSpeed}`);
-    console.log(`   - estimateDurationInSeconds: ${pkg.estimateDurationInSeconds}`);
 
     // Calculate time-based values - use estimateDurationInSeconds for active packages
     const startTime = pkg.startTime ? new Date(pkg.startTime).getTime() : Date.now();
@@ -24486,9 +24205,7 @@ function updateMiningChartLive(pkg) {
     const pkgId = (pkg.id || 'default').replace(/[^a-zA-Z0-9]/g, '');
 
     console.log(`📊 [MINING CHART LIVE] Updating chart for ${pkg.name || pkgId}`);
-    console.log(`   - blockFound: ${pkg.blockFound}, totalBlocks: ${pkg.totalBlocks}, lastDisplayed: ${lastDisplayedBlockCount}`);
     console.log(`   - acceptedCurrentSpeed: ${pkg.acceptedCurrentSpeed}, projectedSpeed: ${pkg.projectedSpeed}`);
-    console.log(`   - probabilityPrecision: ${pkg.probabilityPrecision}, estimateDurationInSeconds: ${pkg.estimateDurationInSeconds}`);
 
     // CHECK FOR NEW BLOCKS - If block count increased, regenerate entire chart
     const currentBlockCount = pkg.totalBlocks || 0;
@@ -25060,7 +24777,6 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
         inputById.value = newShares;
         inputById.min = newShares > 0 ? 1 : 1;
         inputById.dataset.myBought = newShares;
-        console.log(`   ✅ Updated input by ID: shares-${packageIdForElements} = ${newShares}`);
     }
 
     // 2. Update all share inputs on cards that match this package
@@ -25082,7 +24798,6 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
             const totalBought = match[2];
             const totalAvailable = match[3];
             shareDistEl.textContent = `(${newShares}/${totalBought}/${totalAvailable})`;
-            console.log(`   ✅ Updated share distribution: (${newShares}/${totalBought}/${totalAvailable})`);
         }
     }
 
@@ -25096,7 +24811,6 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
     document.querySelectorAll(`input[data-package-id="${packageId}"]`).forEach(input => {
         input.value = newShares;
         input.dataset.myBought = newShares;
-        console.log(`   ✅ Updated input with data-package-id: ${input.id} = ${newShares}`);
     });
 
     // 6. Find and update Buy Packages page card by package name in title
@@ -25107,7 +24821,6 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
             if (cardInput) {
                 cardInput.value = newShares;
                 cardInput.dataset.myBought = newShares;
-                console.log(`   ✅ Updated card input for ${packageName} = ${newShares}`);
             }
         }
     });
@@ -25122,14 +24835,12 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
                            document.getElementById(`price-${packageIdForElements}`);
     if (buyPagePriceEl) {
         buyPagePriceEl.textContent = `$${priceAUD.toFixed(2)}`;
-        console.log(`   ✅ Updated buy page price: $${priceAUD.toFixed(2)} (${newShares} shares × ${sharePrice} BTC)`);
     }
 
     // Update Alert card price
     const alertPriceEl = document.getElementById(`alert-price-${packageIdForElements}`);
     if (alertPriceEl) {
         alertPriceEl.textContent = `$${priceAUD.toFixed(2)}`;
-        console.log(`   ✅ Updated alert price: $${priceAUD.toFixed(2)} (${newShares} shares × ${sharePrice} BTC)`);
     }
 
     console.log(`💵 Price sync: ${newShares} shares × ${sharePrice} BTC = ${totalBTC} BTC = $${priceAUD.toFixed(2)} AUD`);
@@ -25724,10 +25435,8 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
         console.log(`✓ Using ${crypto} withdrawal address:`, mainWalletAddress.substring(0, 10) + '...');
 
         // Sync time with NiceHash server before purchase
-        console.log('⏰ Syncing time with NiceHash server...');
         await syncNiceHashTime();
 
-        console.log('🛒 Creating NiceHash solo order...');
         console.log('   Ticket ID:', ticketId);
         console.log('   Crypto:', crypto);
         console.log('   Price:', packagePrice, 'BTC');
@@ -25742,7 +25451,6 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
         const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        console.log('📡 Endpoint:', endpoint);
         console.log('📡 Body:', { ticketId, soloMiningRewardAddr: mainWalletAddress.substring(0, 10) + '...' });
 
         let response;
@@ -25944,7 +25652,6 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         await syncNiceHashTime();
 
         // 7. SINGLE-STEP PROCESS: Send added amount and added shares for increases
-        console.log(`🛒 ${isDecrease ? 'Reducing' : 'Purchasing'} ${Math.abs(sharesToPurchase)} share(s), updating total to ${desiredTotalShares}...`);
 
         const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
 
@@ -25953,7 +25660,6 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             // DECREASE: Send total amount and total shares (new values after reduction)
             // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
             const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
-            console.log(`📉 DECREASE: Reducing to ${desiredTotalShares} shares (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,
                 shares: {
@@ -25971,7 +25677,6 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             // INCREASE: Send NEW TOTAL amount and NEW TOTAL shares count
             // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
             const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
-            console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares, new total: ${desiredTotalShares} (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,  // New total amount
                 shares: {
@@ -25987,7 +25692,6 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             };
         }
 
-        console.log(`🛒 Setting shares to ${desiredTotalShares} total...`);
 
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -26338,14 +26042,11 @@ async function fetchNiceHashSoloPackages() {
     try {
         const endpoint = '/main/api/v2/public/solo/package';
 
-        console.log('📡 Using Vercel Proxy:', USE_VERCEL_PROXY);
 
         let response;
 
         if (USE_VERCEL_PROXY) {
             // Use Vercel proxy with POST method
-            console.log('📡 Making POST request to Vercel proxy:', VERCEL_PROXY_ENDPOINT);
-            console.log('📡 Endpoint:', endpoint);
 
             response = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
@@ -26369,7 +26070,6 @@ async function fetchNiceHashSoloPackages() {
         } else {
             // Direct call to NiceHash API in development
             const url = `https://api2.nicehash.com${endpoint}`;
-            console.log('📡 Making direct GET request to:', url);
 
             response = await fetch(url, {
                 method: 'GET',
@@ -26382,7 +26082,6 @@ async function fetchNiceHashSoloPackages() {
             });
         }
 
-        console.log('📡 Response status:', response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -26528,14 +26227,11 @@ async function fetchNiceHashTeamPackages() {
     try {
         const endpoint = '/main/api/v2/public/solo/shared/order?onlyGold=false';
 
-        console.log('📡 Using Vercel Proxy:', USE_VERCEL_PROXY);
 
         let response;
 
         if (USE_VERCEL_PROXY) {
             // Use Vercel proxy with POST method
-            console.log('📡 Making POST request to Vercel proxy:', VERCEL_PROXY_ENDPOINT);
-            console.log('📡 Endpoint:', endpoint);
 
             response = await fetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
@@ -26559,7 +26255,6 @@ async function fetchNiceHashTeamPackages() {
         } else {
             // Direct call to NiceHash API in development
             const url = `https://api2.nicehash.com${endpoint}`;
-            console.log('📡 Making direct GET request to:', url);
 
             response = await fetch(url, {
                 method: 'GET',
@@ -26572,7 +26267,6 @@ async function fetchNiceHashTeamPackages() {
             });
         }
 
-        console.log('📡 Response status:', response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -26821,7 +26515,6 @@ function getBuyPackagePrice(symbol) {
     const currency = getUserCurrency();
     const cache = window.portfolioPriceCache || {};
     if (cache[key] && cache[key] > 0) {
-        console.log(`💰 getBuyPackagePrice(${symbol}): ${getUserCurrencySymbol()}${cache[key]} ${currency} (from portfolio cache)`);
         return cache[key];
     }
 
@@ -26829,7 +26522,6 @@ function getBuyPackagePrice(symbol) {
     const pkgPrices = window.packageCryptoPrices || {};
     const pkgPrice = getPriceFromObject(pkgPrices[key]);
     if (pkgPrice > 0) {
-        console.log(`💰 getBuyPackagePrice(${symbol}): ${getUserCurrencySymbol()}${pkgPrice} ${currency} (from CoinGecko cache)`);
         return pkgPrice;
     }
 
@@ -26838,7 +26530,6 @@ function getBuyPackagePrice(symbol) {
     if (cryptoId) {
         const livePrice = getCurrentCryptoPrice(cryptoId);
         if (livePrice > 0) {
-            console.log(`💰 getBuyPackagePrice(${symbol}): ${getUserCurrencySymbol()}${livePrice} ${currency} (from live DOM)`);
             return livePrice;
         }
     }
@@ -27040,7 +26731,6 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             const probValue = pkg.isDualCrypto && pkg.mergeProbability ? pkg.mergeProbability : pkg.probability;
             if (probValue) {
                 probabilityEl.textContent = probValue;
-                console.log(`   ✅ Updated probability: ${probValue}${pkg.isDualCrypto ? ' (DOGE/merge)' : ''}`);
             }
         }
 
@@ -27049,7 +26739,6 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
                            card.querySelector(`#main-probability-${packageIdForElements}`);
         if (mainProbEl && pkg.mainProbability) {
             mainProbEl.textContent = pkg.mainProbability;
-            console.log(`   ✅ Updated main probability: ${pkg.mainProbability} (LTC)`);
         }
 
         // Also check for merge-probability ID (used in some card formats)
@@ -27117,7 +26806,6 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             // If no bot, preserve user's manual input value
             if (isBotActive && myBoughtShares > 0) {
                 shareInput.value = myBoughtShares;
-                console.log(`🤖 ${pkg.name}: Bot active, syncing input to owned shares: ${myBoughtShares}`);
             }
         }
 
@@ -27239,7 +26927,6 @@ function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
         // No bot features = remove robot if exists
         if (existingRobot) {
             existingRobot.remove();
-            console.log(`🤖 [Buy Page] Removed robot icon from ${pkg.name} - no bot features active`);
         }
         return;
     }
@@ -27427,7 +27114,6 @@ function updateBalanceSectionBorderColor() {
 function updateAllBuyButtonStates() {
     const availableBalance = window.niceHashBalance?.available || 0;
     const sharePrice = 0.0001;
-    console.log(`💰 Updating all buy button states (balance: ${availableBalance.toFixed(8)} BTC)...`);
 
     // Update EasyMining alert cards (solo and team)
     const alertCards = document.querySelectorAll('.recommendations-container .buy-package-card');
@@ -27740,7 +27426,6 @@ async function loadBuyPackagesDataOnPage() {
     const btcPrice = getBuyPackagePrice('btc');
     const availableAUD = btcPrice > 0 ? (availableBalance * btcPrice).toFixed(2) : '0.00';
     const pendingAUD = btcPrice > 0 ? (pendingBalance * btcPrice).toFixed(2) : '0.00';
-    console.log(`💵 Balance section BTC price: $${btcPrice} AUD`);
 
     // Determine border color based on available balance (red if < 0.0001 BTC, green otherwise)
     const minShareCost = 0.0001; // Minimum cost for one share
@@ -27954,12 +27639,10 @@ function validateAndFixAutoBuyRobotIcons() {
             spinningRobot.textContent = '🤖';
             titleDiv.insertBefore(spinningRobot, titleDiv.firstChild);
             fixedCount++;
-            console.log(`✅ Added spinning robot to ${packageName}`);
         } else if (!isAutoBuyActive && robotIcon) {
             // Auto-buy disabled but robot icon exists - remove it
             robotIcon.remove();
             removedCount++;
-            console.log(`🗑️ Removed robot from ${packageName} (auto-buy disabled)`);
         }
     });
 
@@ -28003,11 +27686,9 @@ function validateAndFixAutoBuyRobotIcons() {
                 // No shares yet - spinning robot (waiting)
                 robot.classList.add('waiting');
                 robot.title = getBotTooltip('active (waiting)');
-                console.log(`✅ Added spinning robot to ${packageName} (no shares)`);
             } else {
                 // Has shares - solid robot
                 robot.title = getBotTooltip('active (shares owned)');
-                console.log(`✅ Added solid robot to ${packageName} (${myShares} shares)`);
             }
 
             titleDiv.insertBefore(robot, titleDiv.firstChild);
@@ -28024,11 +27705,9 @@ function validateAndFixAutoBuyRobotIcons() {
             // No bot features active but robot icon exists - remove it
             robotIcon.remove();
             removedCount++;
-            console.log(`🗑️ Removed robot from ${packageName} (no bot features active)`);
         }
     });
 
-    console.log(`🤖 Validation complete: ${fixedCount} icons added/fixed, ${removedCount} icons removed`);
 }
 
 // Track packages that were in countdown state (to detect when they become active)
@@ -28067,7 +27746,6 @@ function updateTeamPackageCountdowns() {
                 // Package just became active - check if user has shares
                 const myShares = getMyTeamShares(packageId) || 0;
                 if (myShares > 0) {
-                    console.log(`🚀 Team package "${pkg.name}" just became active with ${myShares} shares - triggering refresh!`);
                     shouldRefreshActivePackages = true;
                 }
                 // Remove from countdown tracking
@@ -28325,7 +28003,6 @@ function updateTeamPackageCountdowns() {
                 previousActivePackageIds = [];
                 // Display packages - this will render the cards
                 displayActivePackages();
-                console.log('✅ Active packages refreshed and displayed!');
             } catch (err) {
                 console.error('Failed to refresh active packages:', err);
             } finally {
@@ -28441,7 +28118,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 priceAUD: priceAUD
             });
         } catch (error) {
-            console.log('Could not calculate price AUD:', error);
             priceAUD = 0;
         }
     } else {
@@ -28852,15 +28528,12 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         if (isBotActiveBuyPage && myShares === 0 && !isAutoBought) {
             // Bot active but no shares yet: spinning robot (waiting)
             robotHtml = `<div class="block-found-indicator auto-buy-robot waiting" title="${getBotTooltipBuyPage('active (waiting)')}">🤖</div>`;
-            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Bot enabled, no shares`);
         } else if (isBotActiveBuyPage && myShares > 0) {
             // Has shares and bot enabled: solid robot
             if (isCountdown) {
                 robotHtml = `<div class="block-found-indicator auto-buy-robot countdown" title="${getBotTooltipBuyPage('active (starting soon)')}">🤖</div>`;
-                console.log(`🤖 Robot icon (countdown) added to ${pkg.name} - ${myShares} shares owned`);
             } else {
                 robotHtml = `<div class="block-found-indicator auto-buy-robot" title="${getBotTooltipBuyPage('active (shares owned)')}">🤖</div>`;
-                console.log(`🤖 Robot icon (solid) added to ${pkg.name} - ${myShares} shares owned`);
             }
         } else {
             // No robot shown - log why
@@ -28871,11 +28544,9 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         if (isAutoBuyActive && !isAutoBought) {
             // Auto-buy active but not purchased: spinning robot (waiting)
             robotHtml = '<div class="block-found-indicator auto-buy-robot waiting" title="Auto-buy active (waiting)">🤖</div>';
-            console.log(`🤖 Robot icon (waiting) added to ${pkg.name} - Auto-buy enabled`);
         } else if (isAutoBought) {
             // Solo packages: solid robot when purchased (not active yet on buy page)
             robotHtml = '<div class="block-found-indicator auto-buy-robot" title="Auto-bought by bot">🤖</div>';
-            console.log(`🤖 Robot icon (purchased) added to ${pkg.name} - Match: ${matchMethod}`);
         }
         // Else: no auto-buy or not purchased = no robot (automatic cleanup)
     }
@@ -28916,7 +28587,6 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                     ? mergeCrypto.thumb.replace('/thumb/', '/large/')
                     : (fallbackIcons[mergeId] || '');
 
-                console.log('🖼️ Palladium static icons:', { mainId, mergeId, mainIconUrl, mergeIconUrl });
 
                 // Two overlapping icons for Palladium
                 return `<div class="static-bg-icons palladium">
@@ -29727,7 +29397,6 @@ function adjustShares(packageName, delta, buttonElement) {
             rewardValueElement.textContent = hasApproxPrefix
                 ? `≈ $${formatNumber(myRewardAUD)}`
                 : `$${formatNumber(myRewardAUD)}`;
-            console.log(`✅ Updated reward value: ${oldReward} → ${rewardValueElement.textContent}`);
             // Verify the update actually happened
             console.log(`✔️ Verification - reward element now shows: "${rewardValueElement.textContent}"`);
         } else {
@@ -29737,7 +29406,6 @@ function adjustShares(packageName, delta, buttonElement) {
         if (priceElement) {
             const oldPrice = priceElement.textContent;
             priceElement.textContent = `$${newPriceAUD}`;
-            console.log(`✅ Updated price: ${oldPrice} → $${newPriceAUD}`);
             // Verify the update actually happened
             console.log(`✔️ Verification - price element now shows: "${priceElement.textContent}"`);
         } else {
@@ -29756,7 +29424,6 @@ function adjustShares(packageName, delta, buttonElement) {
             mainRewardElement.textContent = hasSymbol
                 ? `${myMainReward.toFixed(decimals)} ${baseValues.mainCrypto}`
                 : myMainReward.toFixed(decimals);
-            console.log(`✅ Updated main reward: ${myMainReward.toFixed(decimals)}`);
         }
 
         if (mergeRewardElement && totalMergeReward && baseValues.isDualCrypto) {
@@ -29769,19 +29436,7 @@ function adjustShares(packageName, delta, buttonElement) {
             mergeRewardElement.textContent = hasSymbol
                 ? `${myMergeReward.toFixed(mergeDecimals)} ${baseValues.mergeCrypto}`
                 : myMergeReward.toFixed(mergeDecimals);
-            console.log(`✅ Updated merge reward: ${myMergeReward.toFixed(mergeDecimals)}`);
         }
-
-        console.log(`📊 adjustShares Updated ${packageName}:`, {
-            totalBoughtShares: totalBoughtShares,
-            myBoughtShares: myBoughtShares,
-            myShares: myShares,
-            othersBought: othersBought,
-            totalShares: totalShares,
-            rewardPerShareAUD: rewardPerShareAUD.toFixed(2),
-            myRewardAUD: myRewardAUD,
-            priceAUD: newPriceAUD
-        });
     } else {
         // EASYMINING ALERTS: Simple price calculation when packageBaseValues not available
         console.log(`📋 EasyMining alert mode: Using simple price calculation`);
@@ -29858,35 +29513,30 @@ function adjustShares(packageName, delta, buttonElement) {
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
             buyButton.textContent = 'Buy';
-            console.log(`🛒 Buy button DISABLED - trying to buy ${newShares} but only ${sharesRemaining} available`);
         } else if (newShares > 0 && availableBalance < currentShareCost) {
             // Can't afford the new shares being requested
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
             buyButton.textContent = 'Buy';
-            console.log(`🛒 Buy button DISABLED - balance: ${availableBalance.toFixed(6)} < cost: ${currentShareCost.toFixed(6)} (${newShares} new shares)`);
         } else if (newShares === 0) {
             // No change - input equals owned shares
             buyButton.disabled = true;
             buyButton.style.opacity = '0.5';
             buyButton.style.cursor = 'not-allowed';
             buyButton.textContent = 'Buy';
-            console.log(`🛒 Buy button DISABLED - no change (input: ${newValue}, owned: ${myBoughtShares})`);
         } else if (newShares < 0) {
             // Reducing shares - enable with "Remove" text
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
             buyButton.textContent = `Buy -${Math.abs(newShares)}`;
-            console.log(`🛒 Buy button ENABLED - removing ${Math.abs(newShares)} shares (input: ${newValue}, owned: ${myBoughtShares})`);
         } else {
             // Can afford the new shares and shares are available
             buyButton.disabled = false;
             buyButton.style.opacity = '1';
             buyButton.style.cursor = 'pointer';
             buyButton.textContent = 'Buy';
-            console.log(`🛒 Buy button ENABLED - balance: ${availableBalance.toFixed(6)} >= cost: ${currentShareCost.toFixed(6)} (${newShares} new shares, ${sharesRemaining} available)`);
         }
     }
 }
@@ -30108,7 +29758,6 @@ Do you want to continue?
 
     try {
         // Sync time with NiceHash server before purchase
-        console.log('⏰ Syncing time with NiceHash server...');
         await syncNiceHashTime();
 
         // Determine which crypto(s) for logging
@@ -30134,7 +29783,6 @@ Do you want to continue?
             // DECREASE: Send total amount and total shares (new values after reduction)
             // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
             const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
-            console.log(`📉 DECREASE: Reducing to ${desiredTotalShares} shares (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,
                 shares: {
@@ -30152,7 +29800,6 @@ Do you want to continue?
             // INCREASE: Send NEW TOTAL amount and NEW TOTAL shares count
             // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
             const totalAmount = Number((desiredTotalShares * sharePrice).toFixed(8));
-            console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares, new total: ${desiredTotalShares} (amount: ${totalAmount} BTC)`);
             orderData = {
                 amount: totalAmount,  // New total amount
                 shares: {
@@ -30192,7 +29839,6 @@ Do you want to continue?
         console.log('📄 Request body:', JSON.stringify(orderData, null, 2));
 
         // ========== SINGLE-STEP: SET SHARES ==========
-        console.log(`🛒 ${isDecrease ? 'Reducing to' : 'Buying'} ${desiredTotalShares} shares...`);
 
         // Generate fresh auth headers for the buy request
         const body = JSON.stringify(orderData);
@@ -30908,7 +30554,6 @@ async function checkForHashrateRigsDrops(packages) {
 
 // Auto-clear team shares for packages that no longer meet alert thresholds
 async function autoClearTeamShares(packageId, packageName) {
-    console.log(`🤖 Auto-clearing shares for package: ${packageName} (ID: ${packageId})`);
 
     try {
         // Sync time with NiceHash server
@@ -30971,7 +30616,6 @@ async function autoClearTeamShares(packageId, packageName) {
 
         // Clear shares from stored data using the correct storage method
         saveMyTeamShares(packageId, 0);
-        console.log(`🗑️ Reset shares to 0 for package ${packageId}`);
 
         // Update UI - reset input value and share distribution display
         const inputId = `shares-${packageName.replace(/\s+/g, '-')}`;
@@ -31004,19 +30648,16 @@ async function autoClearTeamShares(packageId, packageName) {
             if (key === packageId) {
                 delete autoBoughtPackages[key];
                 removedEntries++;
-                console.log(`🗑️ Removed auto-buy entry (direct ID): ${key}`);
             }
             // Match by orderId or ticketId
             else if (entry.orderId === packageId || entry.ticketId === packageId) {
                 delete autoBoughtPackages[key];
                 removedEntries++;
-                console.log(`🗑️ Removed auto-buy entry (orderId/ticketId match): ${key}`);
             }
             // Match by package name for team packages (within 7 days)
             else if (entry.type === 'team' && entry.packageName === packageName) {
                 delete autoBoughtPackages[key];
                 removedEntries++;
-                console.log(`🗑️ Removed auto-buy entry (name match): ${key}`);
             }
         });
 
@@ -31031,7 +30672,6 @@ async function autoClearTeamShares(packageId, packageName) {
         if (boughtPackageIds[packageId]) {
             delete boughtPackageIds[packageId];
             localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
-            console.log(`🗑️ Removed teamBoughtPackageIds entry for ${packageId} - auto-buy can trigger again`);
         }
 
         // ✅ Also clear lastBuyTime from teamAutoBuy so smart cooldown is reset
@@ -31548,18 +31188,6 @@ Do you want to continue?
         const mainCryptoSymbol = isDualCrypto ? pkg.mainCrypto : pkg.crypto;
         const mergeCryptoSymbol = isDualCrypto ? pkg.mergeCrypto : null;
 
-        console.log('🛒 Creating NiceHash solo order:', {
-            packageId: packageId,
-            packageName: pkg.name,
-            isDualCrypto: isDualCrypto,
-            mainCrypto: mainCryptoSymbol,
-            mergeCrypto: mergeCryptoSymbol,
-            mainWalletAddress: mainWalletAddress,
-            mergeWalletAddress: mergeWalletAddress,
-            usingSavedMainAddress: usingSavedMainAddress,
-            usingSavedMergeAddress: usingSavedMergeAddress
-        });
-
         // Create order payload for solo mining package
         // For regular packages: only soloMiningRewardAddr
         // For Palladium: soloMiningRewardAddr = LTC address, mergeSoloMiningRewardAddr = DOGE address
@@ -31611,7 +31239,6 @@ Do you want to continue?
             });
         }
 
-        console.log('📡 Response status:', response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -32290,7 +31917,6 @@ function updateFloatingIconSpeeds() {
     });
 
     if (updatedCount > 0) {
-        console.log(`🎈 Updated icon speeds for ${updatedCount} packages`);
     }
 }
 
@@ -32711,7 +32337,6 @@ function updatePackageMetricsAverages() {
     });
 
     savePackageMetricsHistory(history);
-    console.log(`📈 Updated averages for ${updatedCount} packages at ${timestamp}`);
 }
 
 /**
@@ -32891,7 +32516,6 @@ function startEasyMiningAlertsPolling() {
 
     // Poll every 5 seconds
     easyMiningAlertsPollingInterval = setInterval(() => {
-        console.log('🔄 Refreshing EasyMining alerts...');
         updateRecommendations();
         lastAlertsPollTime = Date.now();
     }, 5000);
@@ -32928,7 +32552,6 @@ function startAlertsPollingWatchdog() {
             updateRecommendations();
             lastAlertsPollTime = Date.now();
             easyMiningAlertsPollingInterval = setInterval(() => {
-                console.log('🔄 Refreshing EasyMining alerts...');
                 updateRecommendations();
                 lastAlertsPollTime = Date.now();
             }, 5000);
@@ -33091,7 +32714,6 @@ function updateAveragesDisplay() {
 
         Object.keys(history).forEach(name => {
             const pkg = history[name];
-            console.log(`📊 Package: ${name}, isTeam: ${pkg.isTeam}, snapshots: ${pkg.snapshots?.length || 0}`);
             if (pkg.isTeam) {
                 teamPackages.push({ name, ...pkg });
             } else {
@@ -33707,12 +33329,10 @@ if (!visibilityChangeListenerAdded) {
 
                 // If more than 2x polling interval since last poll, fetch immediately
                 if (timeSinceLastPoll > resumeThreshold) {
-                    console.log(`👁️ Page visible again - fetching fresh EasyMining data...`);
                     fetchEasyMiningData().then(() => {
                         // Refresh the active packages display after fetching new data
                         if (typeof displayActivePackages === 'function') {
                             displayActivePackages();
-                            console.log('✅ Active packages refreshed after visibility change');
                         }
                     });
                     lastEasyMiningPollTime = Date.now();
@@ -33727,14 +33347,12 @@ if (!visibilityChangeListenerAdded) {
                 const alertsResumeThreshold = 10000; // 10 seconds = 2x the 5s interval
 
                 if (timeSinceLastAlertsPoll > alertsResumeThreshold) {
-                    console.log(`👁️ Page visible again - refreshing alerts data...`);
                     updateRecommendations();
                     lastAlertsPollTime = Date.now();
                 }
 
                 // Restart alerts polling if it was stopped
                 if (!easyMiningAlertsPollingInterval) {
-                    console.log(`👁️ Page visible - restarting alerts polling...`);
                     startEasyMiningAlertsPolling();
                 }
             }
@@ -33762,18 +33380,11 @@ function initializeEasyMining() {
         // Old stored balance values would be added to manual holdings before fresh data loads
         const { availableBTC, pendingBTC, ...dataToLoad } = savedData;
         easyMiningData = { ...easyMiningData, ...dataToLoad };
-        console.log(`📦 EasyMining data loaded from localStorage:`, {
-            availableBTC: easyMiningData.availableBTC, // Will be 0 (from initial state)
-            pendingBTC: easyMiningData.pendingBTC, // Will be 0 (from initial state)
-            packages: easyMiningData.activePackages?.length || 0
-        });
-        console.log(`   ℹ️ Note: availableBTC and pendingBTC NOT loaded from storage (will fetch fresh)`);
     }
 
     // CRITICAL: Update Bitcoin holdings to include NiceHash balance
     // This ensures manual + NiceHash is displayed and AUD is calculated correctly
     if (typeof updateBTCHoldings === 'function') {
-        console.log(`🔄 Calling updateBTCHoldings() to recalculate BTC total (manual + NiceHash)`);
         updateBTCHoldings();
     }
 
@@ -33794,7 +33405,6 @@ function initializeEasyMining() {
             startEasyMiningPolling();
             // Start missed rewards check (checks on load and every 30 seconds)
             startMissedRewardsCheck();
-            console.log('✅ EasyMining enabled - starting polling and missed rewards check (section will appear after loading)');
         } else {
             // Hide section if not enabled
             section.style.display = 'none';
@@ -33852,6 +33462,53 @@ function cleanupResources() {
     if (conversionRateInterval) {
         clearInterval(conversionRateInterval);
         conversionRateInterval = null;
+    }
+
+    // Stop MEXC BTC price polling
+    if (typeof stopMEXCBTCPricePolling === 'function') {
+        stopMEXCBTCPricePolling();
+    }
+
+    // Stop ticker polling
+    if (typeof stopTickerPolling === 'function') {
+        stopTickerPolling();
+    }
+
+    // Stop floating icons polling
+    if (typeof stopFloatingIconsPolling === 'function') {
+        stopFloatingIconsPolling();
+    }
+
+    // Stop deposits balance polling
+    if (typeof stopDepositsBalancePolling === 'function') {
+        stopDepositsBalancePolling();
+    }
+
+    // Stop rewards polling
+    if (typeof stopRewardsPolling === 'function') {
+        stopRewardsPolling();
+    }
+
+    // Stop auto-shares background polling
+    if (typeof stopAutoSharesBackgroundPolling === 'function') {
+        stopAutoSharesBackgroundPolling();
+    }
+
+    // Stop package detail polling
+    if (typeof stopPackageDetailPolling === 'function') {
+        stopPackageDetailPolling();
+    }
+
+    // Clear package detail update interval
+    if (packageDetailUpdateInterval) {
+        clearInterval(packageDetailUpdateInterval);
+        packageDetailUpdateInterval = null;
+    }
+
+    // Clear sentiment refresh interval
+    if (sentimentRefreshInterval) {
+        clearInterval(sentimentRefreshInterval);
+        sentimentRefreshInterval = null;
     }
 
     // Stop EasyMining polling
