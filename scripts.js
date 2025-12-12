@@ -25914,24 +25914,18 @@ function startDiceSyncCycle() {
     diceRollStartTime = Date.now();
     startDiceRolling();
 
-    // Start intermediate percentage updates during rolling (every 2 seconds)
+    // Start intermediate percentage updates during rolling (every 5 seconds)
+    // These are purely random - the real close-to-reward value only shows at the 30s poll
     diceIntermediateUpdateInterval = setInterval(() => {
         if (isDiceRolling && diceRollStartTime) {
-            // Calculate simulated progress through the current bar slot
-            const elapsed = (Date.now() - diceRollStartTime) / 1000;
-            const slotProgress = Math.min(100, (elapsed / diceBarInterval) * 100);
+            // Generate purely random percentage for intermediate rolls
+            // Real close-to-reward value is only shown when dice stop at poll time
+            const randomPercent = Math.floor(Math.random() * 91) + 5; // Random 5-95%
 
-            // Generate intermediate percentage that builds toward the target
-            // Mix random variation with progressive building toward target
-            const basePercent = diceCurrentBarPercent || 50;
-            const buildingPercent = basePercent * (slotProgress / 100);
-            const randomVariation = (Math.random() - 0.5) * 20;
-            const intermediatePercent = Math.max(5, Math.min(95, buildingPercent + randomVariation));
-
-            // Update dice faces mid-roll to show intermediate numbers
-            updateDiceFacesMidRoll(intermediatePercent);
+            // Update dice faces mid-roll with random numbers
+            updateDiceFacesMidRoll(randomPercent);
         }
-    }, 2000);
+    }, 5000);
 
     // Set the main cycle: roll for (interval - 5) seconds, then show result for 5 seconds
     const rollDuration = Math.max(10, (diceBarInterval - 5)) * 1000; // Roll time
@@ -25959,18 +25953,14 @@ function startDiceSyncCycle() {
                 diceRollStartTime = Date.now();
                 startDiceRolling();
 
-                // Restart intermediate updates
+                // Restart intermediate updates with purely random values
                 diceIntermediateUpdateInterval = setInterval(() => {
                     if (isDiceRolling && diceRollStartTime) {
-                        const elapsed = (Date.now() - diceRollStartTime) / 1000;
-                        const slotProgress = Math.min(100, (elapsed / diceBarInterval) * 100);
-                        const basePercent = diceCurrentBarPercent || 50;
-                        const buildingPercent = basePercent * (slotProgress / 100);
-                        const randomVariation = (Math.random() - 0.5) * 20;
-                        const intermediatePercent = Math.max(5, Math.min(95, buildingPercent + randomVariation));
-                        updateDiceFacesMidRoll(intermediatePercent);
+                        // Generate purely random percentage for intermediate rolls
+                        const randomPercent = Math.floor(Math.random() * 91) + 5; // Random 5-95%
+                        updateDiceFacesMidRoll(randomPercent);
                     }
-                }, 2000);
+                }, 5000);
 
                 // Schedule next stop after roll duration
                 runCycle();
