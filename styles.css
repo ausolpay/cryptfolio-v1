@@ -12358,7 +12358,6 @@ body.has-mobile-ad {
 
     .pricing-popular {
         transform: scale(1);
-        order: -1;
     }
 
     .pricing-popular:hover {
