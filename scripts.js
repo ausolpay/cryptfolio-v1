@@ -8185,7 +8185,7 @@ async function autoResetEasyMiningDaily() {
                 clearRockets();
 
                 // Save to localStorage
-                localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+                saveEasyMiningDataToStorage();
 
                 console.log("✅ EasyMining daily stats and rockets reset successfully at midnight");
             }
@@ -8209,7 +8209,7 @@ async function autoResetEasyMiningDaily() {
                 clearRockets();
 
                 // Save to localStorage
-                localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+                saveEasyMiningDataToStorage();
 
                 console.log("✅ Missed EasyMining daily reset completed (after midnight)");
             }
@@ -8250,7 +8250,7 @@ function checkMidnightResetOnInit() {
         easyMiningData.blocksFoundSession = 0;
 
         // Save to localStorage
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        saveEasyMiningDataToStorage();
 
         // Clear the UI element
         const rocketsElement = document.getElementById('blocks-found-rockets');
@@ -13611,6 +13611,41 @@ let easyMiningData = {
     lastBlockCount: 0
 };
 
+// Helper function to safely save easyMiningData to localStorage
+// Only saves essential stats, NOT activePackages (fetched fresh from API)
+function saveEasyMiningDataToStorage() {
+    try {
+        // Only save stats - activePackages is fetched fresh and can be huge
+        const dataToSave = {
+            availableBTC: easyMiningData.availableBTC,
+            pendingBTC: easyMiningData.pendingBTC,
+            allTimeStats: easyMiningData.allTimeStats,
+            todayStats: easyMiningData.todayStats,
+            blocksFoundSession: easyMiningData.blocksFoundSession,
+            lastBlockCount: easyMiningData.lastBlockCount
+        };
+        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(dataToSave));
+    } catch (e) {
+        if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
+            console.warn('⚠️ localStorage quota exceeded for easyMiningData, cleaning up...');
+            // Try to clear old data and save again
+            try {
+                localStorage.removeItem(`${loggedInUser}_easyMiningData`);
+                const minimalData = {
+                    allTimeStats: easyMiningData.allTimeStats,
+                    todayStats: easyMiningData.todayStats
+                };
+                localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(minimalData));
+                console.log('✅ Saved minimal easyMiningData after cleanup');
+            } catch (e2) {
+                console.error('❌ Failed to save even minimal easyMiningData:', e2);
+            }
+        } else {
+            console.error('❌ Error saving easyMiningData:', e);
+        }
+    }
+}
+
 // Track initial hashrate/rigs for drop detection (persisted to localStorage)
 let packageInitialValues = {};
 // Structure: { "packageId": { hashrate: "10 TH", hashrateNumeric: 10, rigs: 5, capturedAt: timestamp } }
@@ -15179,7 +15214,7 @@ function getFilteredPackages() {
 function clearRockets() {
     easyMiningData.blocksFoundSession = 0;
     document.getElementById('blocks-found-rockets').textContent = '';
-    localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+    saveEasyMiningDataToStorage();
 }
 
 function restoreRockets() {
@@ -19065,7 +19100,7 @@ async function executeAutoBuySolo(recommendations) {
 
             easyMiningData.allTimeStats.totalSpent += packagePrice * btcPrice;
             easyMiningData.todayStats.totalSpent += packagePrice * btcPrice;
-            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+            saveEasyMiningDataToStorage();
 
         } catch (error) {
             console.error(`❌ Auto-buy failed for ${pkg.name}:`, error.message, error);
@@ -19400,7 +19435,7 @@ async function executeAutoBuyTeam(recommendations) {
             const totalPriceAUD = costForNewShares * btcPrice;
             easyMiningData.allTimeStats.totalSpent += totalPriceAUD;
             easyMiningData.todayStats.totalSpent += totalPriceAUD;
-            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+            saveEasyMiningDataToStorage();
 
             // Show cooldown message (only when smart cooldowns are ON)
             if (smartCooldownsEnabled) {
@@ -22121,7 +22156,7 @@ function checkForNewBlocks() {
         }
 
         easyMiningData.lastBlockCount = currentBlockCount;
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        saveEasyMiningDataToStorage();
     } else if (currentBlockCount === easyMiningData.lastBlockCount) {
         console.log(`ℹ️ No new blocks detected (count unchanged)`);
     } else {
@@ -25731,7 +25766,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
         easyMiningData.allTimeStats.totalSpent += packagePrice * btcPrice;
         easyMiningData.todayStats.totalSpent += packagePrice * btcPrice;
 
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        saveEasyMiningDataToStorage();
 
         // Refresh package data
         await fetchEasyMiningData();
@@ -26007,7 +26042,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
         if (!isDecrease) {
             easyMiningData.allTimeStats.totalSpent += parseFloat(totalAUD);
             easyMiningData.todayStats.totalSpent += parseFloat(totalAUD);
-            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+            saveEasyMiningDataToStorage();
         }
 
         // Refresh data
@@ -26137,7 +26172,7 @@ async function buyPackage(pkg) {
         easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
         easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - parseFloat(pkg.price);
 
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        saveEasyMiningDataToStorage();
 
         // Refresh package data immediately to show the new order
         await fetchEasyMiningData();
@@ -30190,7 +30225,7 @@ Do you want to continue?
             easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
             easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - totalPriceAUD;
 
-            localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+            saveEasyMiningDataToStorage();
         }
 
         // Refresh package data immediately to show the new order
@@ -31543,7 +31578,7 @@ Do you want to continue?
         easyMiningData.allTimeStats.pnl = easyMiningData.allTimeStats.totalReward - easyMiningData.allTimeStats.totalSpent;
         easyMiningData.todayStats.pnl = easyMiningData.todayStats.pnl - pricePaid;
 
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
+        saveEasyMiningDataToStorage();
 
         // Refresh package data immediately to show the new order
         await fetchEasyMiningData();
