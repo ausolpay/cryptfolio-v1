@@ -23727,6 +23727,23 @@ function collectChartDataPoint(pkg) {
 function verifyUniquePackageData() {
     if (!easyMiningData.activePackages || easyMiningData.activePackages.length === 0) return;
 
+    // Log ALL active packages with their live values for verification
+    console.log('\n📊 ACTIVE PACKAGE DATA VERIFICATION');
+    console.log('=' .repeat(70));
+    easyMiningData.activePackages.filter(p => p.active).forEach((pkg, index) => {
+        console.log(`\n${index + 1}. ${pkg.name} [ID: ${pkg.id}]`);
+        console.log(`   🎲 Probability: ${pkg.probability || 'N/A'} (raw: ${pkg.probabilityPrecision || 'N/A'})`);
+        if (pkg.mergeProbability) {
+            console.log(`   🎲 Merge Prob:  ${pkg.mergeProbability} (raw: ${pkg.mergeProbabilityPrecision || 'N/A'})`);
+        }
+        console.log(`   ⚡ Hashrate: ${pkg.hashrate || 'N/A'} (live: ${pkg.acceptedCurrentSpeed}, projected: ${pkg.projectedSpeed})`);
+        console.log(`   💻 Rigs: ${pkg.rigsCount !== undefined ? pkg.rigsCount : 'N/A'}`);
+        if (pkg.isTeam) {
+            console.log(`   👥 Shares: ${pkg.ownedShares}/${pkg.totalShares} (${(pkg.userSharePercentage * 100).toFixed(2)}%)`);
+        }
+    });
+    console.log('=' .repeat(70));
+
     // Group packages by name
     const packagesByName = {};
     easyMiningData.activePackages.forEach(pkg => {
