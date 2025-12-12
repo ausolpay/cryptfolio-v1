@@ -7420,18 +7420,30 @@ body.light-mode .dice-block-counter {
         padding: 10px;
         width: 100%;
         box-sizing: border-box;
+        overflow: hidden;
+        margin: 10px 0;
     }
 
     .mining-chart-bars {
         min-height: 200px;
-        overflow-x: auto;
+        max-height: 200px;
+        overflow-x: hidden;
+        overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
         width: 100%;
+        position: relative;
+        box-sizing: border-box;
+    }
+
+    /* Ensure SVG probability line fits within container */
+    .mining-chart-bars .probability-line-svg {
+        max-height: 200px;
     }
 
     .mining-bar {
         min-width: 2px !important;
         min-height: 8px !important;
+        max-height: 180px !important;
     }
 
     /* Increase visibility of low-opacity bars on mobile */
@@ -7494,12 +7506,20 @@ body.light-mode .dice-block-counter {
 
     .mining-chart-bars {
         min-height: 150px;
+        max-height: 150px;
         width: 100%;
+        overflow: hidden;
+    }
+
+    /* Ensure SVG probability line fits within smaller container */
+    .mining-chart-bars .probability-line-svg {
+        max-height: 150px;
     }
 
     .mining-bar {
         min-width: 2px !important;
         min-height: 6px !important;
+        max-height: 130px !important;
     }
 
     .mining-bar.future-slot {

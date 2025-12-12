@@ -22763,9 +22763,29 @@ function collectChartDataPoint(pkg) {
     const probability = parseFloat(pkg.probabilityPrecision) || 100;
     const remainingSeconds = pkg.estimateDurationInSeconds || 0;
 
-    // Get current BTC price from MEXC (USD) for the package
-    // Use live BTC price from dedicated MEXC polling
-    const cryptoPrice = liveBTCPriceUSD || getCryptoPriceAUD('btc') || 0;
+    // Get crypto price(s) based on package type
+    // Map crypto symbols to CoinGecko IDs
+    const cryptoIdMap = {
+        'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
+        'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+    };
+
+    // Determine if this is a dual-crypto package (Palladium)
+    const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCurrencyAlgo && pkg.mergeCurrencyAlgo.title);
+    const mainCrypto = pkg.mainCrypto || pkg.crypto || 'BTC';
+    const mergeCrypto = pkg.mergeCrypto || pkg.mergeCurrencyAlgo?.title || null;
+
+    // Get main crypto price in user's selected currency
+    const mainCryptoId = cryptoIdMap[mainCrypto?.toUpperCase()] || mainCrypto?.toLowerCase() || 'bitcoin';
+    const mainPrice = getPriceFromObject(cryptoPrices[mainCryptoId]) || 0;
+
+    // For dual-crypto packages (Palladium), also get merge crypto price
+    let mergePrice = 0;
+    let mergeCryptoId = null;
+    if (isDualCrypto && mergeCrypto) {
+        mergeCryptoId = cryptoIdMap[mergeCrypto?.toUpperCase()] || mergeCrypto?.toLowerCase();
+        mergePrice = getPriceFromObject(cryptoPrices[mergeCryptoId]) || 0;
+    }
 
     // Create data point
     const dataPoint = {
@@ -22775,7 +22795,14 @@ function collectChartDataPoint(pkg) {
         probability: probability,
         remainingSeconds: remainingSeconds,
         hashrateRatio: speedLimit > 0 ? hashrate / speedLimit : 0,
-        price: cryptoPrice
+        price: mainPrice,
+        mainCrypto: mainCrypto,
+        mainCryptoId: mainCryptoId,
+        // Dual-crypto fields (Palladium)
+        isDualCrypto: isDualCrypto,
+        mergePrice: mergePrice,
+        mergeCrypto: mergeCrypto,
+        mergeCryptoId: mergeCryptoId
     };
 
     // Only add if we don't have a point within the last 4 seconds (avoid duplicates)
@@ -22794,14 +22821,27 @@ function collectChartDataPoint(pkg) {
             chartData.hashrateHistory.shift();
         }
 
-        // Update price history
+        // Update price history for main crypto
         if (!chartData.priceHistory) chartData.priceHistory = [];
-        chartData.priceHistory.push(cryptoPrice);
+        chartData.priceHistory.push(mainPrice);
         if (chartData.priceHistory.length > 100) {
             chartData.priceHistory.shift();
         }
 
-        console.log(`📊 [${pkg.name}] Collected data point: hashrate=${hashrate.toFixed(4)}, price=$${cryptoPrice.toFixed(2)}, points=${chartData.dataPoints.length}`);
+        // Update merge price history for dual-crypto packages (Palladium)
+        if (isDualCrypto && mergeCrypto) {
+            if (!chartData.mergePriceHistory) chartData.mergePriceHistory = [];
+            chartData.mergePriceHistory.push(mergePrice);
+            if (chartData.mergePriceHistory.length > 100) {
+                chartData.mergePriceHistory.shift();
+            }
+        }
+
+        const currencySymbol = getUserCurrencySymbol();
+        const priceLog = isDualCrypto
+            ? `${mainCrypto}=${currencySymbol}${mainPrice.toFixed(2)}, ${mergeCrypto}=${currencySymbol}${mergePrice.toFixed(2)}`
+            : `${mainCrypto}=${currencySymbol}${mainPrice.toFixed(2)}`;
+        console.log(`📊 [${pkg.name}] Collected data point: hashrate=${hashrate.toFixed(4)}, ${priceLog}, points=${chartData.dataPoints.length}`);
     }
 
     // Update metadata
@@ -22963,6 +23003,116 @@ function renderLineGraph(canvasId, dataPoints, options = {}) {
     return { min, max, current: lastValue };
 }
 
+// Render dual-line graph for Palladium packages (two crypto prices overlapped)
+function renderDualLineGraph(canvasId, dataPoints1, dataPoints2, options = {}) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return { line1: null, line2: null };
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Check if we have enough data
+    const hasData1 = dataPoints1 && dataPoints1.length >= 2;
+    const hasData2 = dataPoints2 && dataPoints2.length >= 2;
+
+    if (!hasData1 && !hasData2) {
+        // Draw placeholder line
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        return { line1: { min: 0, max: 0, current: 0 }, line2: { min: 0, max: 0, current: 0 } };
+    }
+
+    // Calculate combined min/max for shared scaling (so both lines use same Y axis)
+    const allValues = [
+        ...(hasData1 ? dataPoints1.filter(v => v !== null && v !== undefined && !isNaN(v)) : []),
+        ...(hasData2 ? dataPoints2.filter(v => v !== null && v !== undefined && !isNaN(v)) : [])
+    ];
+    const globalMin = Math.min(...allValues);
+    const globalMax = Math.max(...allValues);
+    const globalRange = globalMax - globalMin || 1;
+    const padding = globalRange * 0.1;
+    const scaledMin = globalMin - padding;
+    const scaledMax = globalMax + padding;
+    const scaledRange = scaledMax - scaledMin;
+
+    // Line 1 colors (LTC - blue)
+    const line1Color = options.color1 || '#3498db';
+    const fill1Color = options.fillColor1 || 'rgba(52, 152, 219, 0.15)';
+
+    // Line 2 colors (DOGE - gold)
+    const line2Color = options.color2 || '#f1c40f';
+    const fill2Color = options.fillColor2 || 'rgba(241, 196, 15, 0.15)';
+
+    // Helper to draw a line
+    function drawLine(data, lineColor, fillColor) {
+        if (!data || data.length < 2) return null;
+
+        // Draw filled area under line
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        for (let i = 0; i < data.length; i++) {
+            const x = (i / (data.length - 1)) * width;
+            const normalizedY = (data[i] - scaledMin) / scaledRange;
+            const y = height - (normalizedY * height);
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+
+        // Draw line
+        ctx.beginPath();
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        for (let i = 0; i < data.length; i++) {
+            const x = (i / (data.length - 1)) * width;
+            const normalizedY = (data[i] - scaledMin) / scaledRange;
+            const y = height - (normalizedY * height);
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.stroke();
+
+        // Draw current value dot
+        const lastValue = data[data.length - 1];
+        const lastNormalizedY = (lastValue - scaledMin) / scaledRange;
+        const lastY = height - (lastNormalizedY * height);
+        ctx.beginPath();
+        ctx.arc(width - 3, lastY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const values = data.filter(v => v !== null && v !== undefined && !isNaN(v));
+        return { min: Math.min(...values), max: Math.max(...values), current: lastValue };
+    }
+
+    // Draw line 1 first (behind)
+    const stats1 = hasData1 ? drawLine(dataPoints1, line1Color, fill1Color) : { min: 0, max: 0, current: 0 };
+    // Draw line 2 on top
+    const stats2 = hasData2 ? drawLine(dataPoints2, line2Color, fill2Color) : { min: 0, max: 0, current: 0 };
+
+    return { line1: stats1, line2: stats2 };
+}
+
 // Render mini hashrate graph for team package cards
 function renderMiniHashrateGraph(canvasId, dataPoints, options = {}) {
     const canvas = document.getElementById(canvasId);
@@ -23063,17 +23213,27 @@ function updateLiveMetricsGraphs(pkg, chartData) {
     const dataPoints = chartData.dataPoints || [];
     if (dataPoints.length === 0) return;
 
+    // Get user's currency symbol (AUD, USD, etc.)
+    const currencySymbol = getUserCurrencySymbol();
+
+    // Determine if this is a dual-crypto package (Palladium)
+    const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCurrencyAlgo && pkg.mergeCurrencyAlgo.title);
+    const mainCrypto = pkg.mainCrypto || pkg.crypto || 'BTC';
+    const mergeCrypto = pkg.mergeCrypto || pkg.mergeCurrencyAlgo?.title || null;
+
     // Extract hashrate and price arrays from data points
     const hashrateData = dataPoints.map(p => p.hashrate || 0);
     const priceData = dataPoints.map(p => p.price || 0);
+    const mergePriceData = isDualCrypto ? dataPoints.map(p => p.mergePrice || 0) : [];
 
     // Get current values
     const currentHashrate = hashrateData[hashrateData.length - 1] || 0;
     const currentPrice = priceData[priceData.length - 1] || 0;
+    const currentMergePrice = isDualCrypto ? (mergePriceData[mergePriceData.length - 1] || 0) : 0;
 
     // Format hashrate for display using dynamic unit system
     const hashrateFormatted = currentHashrate > 0
-        ? formatHashrate(currentHashrate, { currency: pkg.mainCrypto || pkg.crypto, autoScale: true })
+        ? formatHashrate(currentHashrate, { currency: mainCrypto, autoScale: true })
         : '--';
 
     // Update hashrate display
@@ -23082,47 +23242,95 @@ function updateLiveMetricsGraphs(pkg, chartData) {
         hashrateValueEl.textContent = hashrateFormatted;
     }
 
-    // Update price display
+    // Update price display with correct currency symbol
     const priceValueEl = document.getElementById('live-price-value');
     const priceCryptoEl = document.getElementById('live-price-crypto');
     if (priceValueEl) {
-        priceValueEl.textContent = currentPrice > 0 ? `$${formatNumber(currentPrice.toFixed(2))}` : '$--';
+        if (isDualCrypto && currentPrice > 0 && currentMergePrice > 0) {
+            // Show both prices for Palladium
+            priceValueEl.innerHTML = `<span style="color: #3498db;">${currencySymbol}${formatNumber(currentPrice.toFixed(2))}</span> / <span style="color: #f1c40f;">${currencySymbol}${formatNumber(currentMergePrice.toFixed(2))}</span>`;
+        } else {
+            priceValueEl.textContent = currentPrice > 0 ? `${currencySymbol}${formatNumber(currentPrice.toFixed(2))}` : `${currencySymbol}--`;
+        }
     }
     if (priceCryptoEl) {
-        priceCryptoEl.textContent = pkg.crypto || 'BTC';
+        if (isDualCrypto && mergeCrypto) {
+            // Show both crypto symbols for Palladium with matching colors
+            priceCryptoEl.innerHTML = `<span style="color: #3498db;">${mainCrypto}</span>/<span style="color: #f1c40f;">${mergeCrypto}</span>`;
+        } else {
+            priceCryptoEl.textContent = mainCrypto;
+        }
     }
 
-    // Render hashrate line graph
-    const hashrateStats = renderLineGraph('hashrate-line-graph', hashrateData, {
-        color: '#4CAF50',
-        fillColor: 'rgba(76, 175, 80, 0.15)'
-    });
+    // Render graphs
+    let hashrateStats, priceStats;
 
-    // Render price line graph
-    const priceStats = renderLineGraph('price-line-graph', priceData, {
-        color: '#ffa500',
-        fillColor: 'rgba(255, 165, 0, 0.15)'
-    });
+    if (isDualCrypto) {
+        // Render dual hashrate line graph for Palladium (same data, two colors for visual consistency)
+        hashrateStats = renderDualLineGraph('hashrate-line-graph', hashrateData, hashrateData, {
+            color1: '#3498db',    // LTC blue
+            fillColor1: 'rgba(52, 152, 219, 0.15)',
+            color2: '#f1c40f',    // DOGE gold
+            fillColor2: 'rgba(241, 196, 15, 0.1)'
+        });
+        // Use line1 stats for hashrate (both are same)
+        hashrateStats = hashrateStats.line1 || { min: 0, max: 0, current: 0 };
+
+        // Render dual price line graph for Palladium (LTC + DOGE overlapped)
+        const dualPriceStats = renderDualLineGraph('price-line-graph', priceData, mergePriceData, {
+            color1: '#3498db',    // LTC blue
+            fillColor1: 'rgba(52, 152, 219, 0.15)',
+            color2: '#f1c40f',    // DOGE gold
+            fillColor2: 'rgba(241, 196, 15, 0.15)'
+        });
+        priceStats = {
+            min: Math.min(dualPriceStats.line1?.min || Infinity, dualPriceStats.line2?.min || Infinity),
+            max: Math.max(dualPriceStats.line1?.max || 0, dualPriceStats.line2?.max || 0),
+            current: currentPrice,
+            line1: dualPriceStats.line1,
+            line2: dualPriceStats.line2
+        };
+    } else {
+        // Single crypto - use standard line graph
+        hashrateStats = renderLineGraph('hashrate-line-graph', hashrateData, {
+            color: '#4CAF50',
+            fillColor: 'rgba(76, 175, 80, 0.15)'
+        });
+
+        priceStats = renderLineGraph('price-line-graph', priceData, {
+            color: '#ffa500',
+            fillColor: 'rgba(255, 165, 0, 0.15)'
+        });
+    }
 
     // Update min/max displays for hashrate using dynamic unit system
     const hashrateMinEl = document.getElementById('hashrate-min');
     const hashrateMaxEl = document.getElementById('hashrate-max');
-    const currency = pkg.mainCrypto || pkg.crypto;
-    if (hashrateMinEl && hashrateStats.min > 0) {
-        hashrateMinEl.textContent = `Min: ${formatHashrate(hashrateStats.min, { currency, autoScale: true })}`;
+    if (hashrateMinEl && hashrateStats && hashrateStats.min > 0) {
+        hashrateMinEl.textContent = `Min: ${formatHashrate(hashrateStats.min, { currency: mainCrypto, autoScale: true })}`;
     }
-    if (hashrateMaxEl && hashrateStats.max > 0) {
-        hashrateMaxEl.textContent = `Max: ${formatHashrate(hashrateStats.max, { currency, autoScale: true })}`;
+    if (hashrateMaxEl && hashrateStats && hashrateStats.max > 0) {
+        hashrateMaxEl.textContent = `Max: ${formatHashrate(hashrateStats.max, { currency: mainCrypto, autoScale: true })}`;
     }
 
-    // Update min/max displays for price
+    // Update min/max displays for price with correct currency symbol
     const priceMinEl = document.getElementById('price-min');
     const priceMaxEl = document.getElementById('price-max');
-    if (priceMinEl && priceStats.min > 0) {
-        priceMinEl.textContent = `Min: $${formatNumber(priceStats.min.toFixed(2))}`;
-    }
-    if (priceMaxEl && priceStats.max > 0) {
-        priceMaxEl.textContent = `Max: $${formatNumber(priceStats.max.toFixed(2))}`;
+    if (isDualCrypto && priceStats.line1 && priceStats.line2) {
+        // Show min/max for both cryptos
+        if (priceMinEl) {
+            priceMinEl.innerHTML = `<span style="color: #3498db;">${mainCrypto}: ${currencySymbol}${formatNumber(priceStats.line1.min?.toFixed(2) || '0')}</span>`;
+        }
+        if (priceMaxEl) {
+            priceMaxEl.innerHTML = `<span style="color: #f1c40f;">${mergeCrypto}: ${currencySymbol}${formatNumber(priceStats.line2.max?.toFixed(2) || '0')}</span>`;
+        }
+    } else {
+        if (priceMinEl && priceStats && priceStats.min > 0) {
+            priceMinEl.textContent = `Min: ${currencySymbol}${formatNumber(priceStats.min.toFixed(2))}`;
+        }
+        if (priceMaxEl && priceStats && priceStats.max > 0) {
+            priceMaxEl.textContent = `Max: ${currencySymbol}${formatNumber(priceStats.max.toFixed(2))}`;
+        }
     }
 }
 
@@ -23258,19 +23466,39 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
     const existingLine = container.querySelector('.probability-line-svg');
     if (existingLine) existingLine.remove();
 
-    // Create SVG element
+    // Get responsive dimensions based on screen size
+    const isMobileView = window.innerWidth <= 768;
+    const isSmallMobile = window.innerWidth <= 480;
+
+    // Get actual container height or use responsive defaults
+    let svgHeight = container.offsetHeight;
+    if (!svgHeight || svgHeight < 50) {
+        // Fallback heights matching CSS min-heights
+        svgHeight = isSmallMobile ? 150 : (isMobileView ? 200 : 300);
+    }
+
+    // Scale factors for y positioning (base is 240px desktop)
+    const heightScale = svgHeight / 240;
+    const minY = 20 * heightScale;  // Top margin
+    const maxY = svgHeight - 20;     // Bottom margin (leave room for bars)
+    const yRange = maxY - minY;
+
+    // Create SVG element with responsive height
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'probability-line-svg');
     svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '240');
+    svg.setAttribute('height', svgHeight.toString());
     svg.style.position = 'absolute';
     svg.style.top = '0';
     svg.style.left = '0';
     svg.style.pointerEvents = 'none';
     svg.style.zIndex = '10';
 
+    // Responsive font size
+    const fontSize = isSmallMobile ? 8 : (isMobileView ? 9 : 10);
+    const strokeWidth = isMobileView ? 1.5 : 2;
+
     // Check if this is a merged mining package (Palladium - LTC/DOGE)
-    // Check multiple indicators: isDualCrypto flag, mergeProbability fields, cryptoSecondary, or name contains "palladium"
     const isMergedMining = pkg && (
         pkg.isDualCrypto ||
         pkg.cryptoSecondary ||
@@ -23278,6 +23506,15 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
         (pkg.mergeProbability && pkg.mergeProbability !== 'N/A') ||
         (pkg.name && pkg.name.toLowerCase().includes('palladium'))
     );
+
+    // Helper to calculate Y position from probability (scales with container)
+    function calcYFromProb(prob) {
+        // log10 scale: prob 10 → near bottom, prob 200 → near top
+        const logScale = Math.log10(prob);
+        // Normalize: log10(10)=1 → bottom, log10(200)≈2.3 → top
+        const normalized = Math.max(0, Math.min(1, (logScale - 1) / 1.5));
+        return maxY - (normalized * yRange);
+    }
 
     // Helper to create a threshold line with label
     function createThresholdLine(yPosition, color, label, probText) {
@@ -23288,20 +23525,21 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
         line.setAttribute('x2', '100%');
         line.setAttribute('y2', yPosition);
         line.setAttribute('stroke', color);
-        line.setAttribute('stroke-width', '2');
-        line.setAttribute('stroke-dasharray', '5,3');
+        line.setAttribute('stroke-width', strokeWidth.toString());
+        line.setAttribute('stroke-dasharray', isMobileView ? '4,2' : '5,3');
         line.style.filter = `drop-shadow(0 0 3px ${color}40)`;
         svg.appendChild(line);
 
         // Add label on the right side
         const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         labelText.setAttribute('x', '98%');
-        labelText.setAttribute('y', yPosition - 5);
+        labelText.setAttribute('y', Math.max(fontSize + 2, yPosition - 3));
         labelText.setAttribute('text-anchor', 'end');
         labelText.setAttribute('fill', color);
-        labelText.setAttribute('font-size', '10');
+        labelText.setAttribute('font-size', fontSize.toString());
         labelText.setAttribute('font-weight', 'bold');
-        labelText.textContent = `${label} ${probText}`;
+        // Shorter label on mobile
+        labelText.textContent = isMobileView ? `${label}` : `${label} ${probText}`;
         svg.appendChild(labelText);
     }
 
@@ -23310,30 +23548,25 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
         const ltcProb = pkg.probabilityPrecision || 100;
         const dogeProb = pkg.mergeProbabilityPrecision || 50;
 
-        // Calculate Y positions based on probability (higher prob = harder = line higher up)
-        // Scale: prob 10 = easy (line at y=140), prob 200 = hard (line at y=40)
-        const ltcY = Math.max(30, Math.min(180, 180 - (Math.log10(ltcProb) * 50)));
-        const dogeY = Math.max(30, Math.min(180, 180 - (Math.log10(dogeProb) * 50)));
+        const ltcY = calcYFromProb(ltcProb);
+        const dogeY = calcYFromProb(dogeProb);
 
         // LTC line (blue) - typically harder
-        createThresholdLine(ltcY, '#a8d4ff', '100% LTC', `1:${Math.round(ltcProb)}`);
+        createThresholdLine(ltcY, '#a8d4ff', 'LTC', `1:${Math.round(ltcProb)}`);
 
         // DOGE line (gold) - typically easier
-        createThresholdLine(dogeY, '#f4d03f', '100% DOGE', `1:${Math.round(dogeProb)}`);
+        createThresholdLine(dogeY, '#f4d03f', 'DOGE', `1:${Math.round(dogeProb)}`);
 
-        console.log(`   - Dual lines: LTC y=${ltcY.toFixed(0)} (1:${ltcProb}), DOGE y=${dogeY.toFixed(0)} (1:${dogeProb})`);
+        console.log(`   - Dual lines: LTC y=${ltcY.toFixed(0)} (1:${ltcProb}), DOGE y=${dogeY.toFixed(0)} (1:${dogeProb}), height=${svgHeight}`);
     } else {
         // Single probability line
         const prob = pkg?.probabilityPrecision || currentDifficulty || 100;
-
-        // Calculate Y position based on probability
-        // Scale: prob 10 = easy (line at y=140), prob 200 = hard (line at y=40)
-        const yPosition = Math.max(30, Math.min(180, 180 - (Math.log10(prob) * 50)));
+        const yPosition = calcYFromProb(prob);
 
         // Create single red threshold line
         createThresholdLine(yPosition, '#ff6b6b', '100%', `1:${Math.round(prob)}`);
 
-        console.log(`   - Single line: y=${yPosition.toFixed(0)} (1:${prob})`);
+        console.log(`   - Single line: y=${yPosition.toFixed(0)} (1:${prob}), height=${svgHeight}`);
     }
 
     // Also add probability history line if we have history data
@@ -23346,9 +23579,8 @@ function addProbabilityLine(container, numBars, currentDifficulty, history, pkg 
 
         for (let i = 0; i < Math.min(history.length, numBars); i++) {
             const x = (i + 0.5) * barWidth;
-            // Dynamic line based on history
             const historyProb = history[i] || currentDifficulty;
-            const y = Math.max(30, Math.min(180, 180 - (Math.log10(historyProb) * 50)));
+            const y = calcYFromProb(historyProb);
             points.push(`${x}%,${y}`);
         }
 
