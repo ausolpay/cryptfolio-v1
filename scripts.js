@@ -24416,13 +24416,11 @@ const diceCryptoIcons = {
     ZEC: 'https://assets.coingecko.com/coins/images/486/small/circle-zcash-color.png'
 };
 
-// Calculate number of dice based on probability (1:X)
+// Calculate number of dice - always 2 per crypto
 function calculateDiceCount(probability) {
-    // probability is the X in "1:X" - divide by 6 and round to nearest
-    // 1:6 = 1 die, 1:12 = 2 dice, 1:30 = 5 dice, etc.
-    if (!probability || probability <= 0) return 1;
-    const diceCount = Math.max(1, Math.round(probability / 6));
-    return Math.min(diceCount, 8); // Cap at 8 dice per crypto for visual clarity
+    // Always show 2 dice per crypto for clear visual feedback
+    // Sum of 2 dice (2-12) indicates close-to-reward: 12 = closest, 2 = furthest
+    return 2;
 }
 
 // Calculate accurate close-to-reward percentage using Poisson probability model
@@ -24694,65 +24692,80 @@ function stopDiceRolling(rewardCryptos = [], closeToRewardPercent = 0) {
         6: 'rotateY(180deg)'                   // Back - highest (rocket)
     };
 
-    // Calculate dice values to show based on close-to-reward percentage
-    // Higher percentage = higher probability of showing higher values (1-5 only, never 6/rockets)
+    // Calculate dice pair values for a crypto based on close-to-reward percentage
+    // Sum range 2-12: 12 = closest to reward (100%), 2 = furthest (0%)
     // Rockets (face 6) ONLY show when actual reward is found
-    function getDiceValueForPercent(percent) {
-        // Use weighted random: higher percent = higher expected value
-        // Range is 1-5 only - rockets (6) only show on actual reward
+    function getDicePairForPercent(percent) {
+        // Map percentage to target sum (2-10 range, never 12 unless reward)
+        // 0% → sum ~2-3, 100% → sum ~10-11 (but not 12, that's for rewards only)
         const normalized = Math.max(0, Math.min(100, percent)) / 100;
 
-        // For all percentages, weighted random from 1-5
-        // Higher percent = higher average value (closer to 5)
-        const rand = Math.random();
-        const threshold = normalized * normalized; // Exponential curve
+        // Target sum scales from 2 (0%) to 10 (100%) - save 12 for actual rewards
+        const targetSum = 2 + Math.floor(normalized * 8) + (Math.random() < normalized ? 1 : 0);
+        const clampedTarget = Math.min(10, Math.max(2, targetSum)); // Max 10 (5+5), not 12
 
-        if (rand < threshold * 0.6) {
-            // High roll zone - return 5
-            return 5;
-        } else if (rand < threshold * 0.8) {
-            // Medium-high roll zone - return 4 or 5
-            return Math.random() < 0.5 ? 5 : 4;
-        } else if (rand < threshold * 0.9 + 0.2) {
-            // Medium roll zone - return 3 or 4
-            return Math.random() < 0.5 ? 4 : 3;
-        } else {
-            // Low roll zone - return 1, 2, or 3 based on percent
-            const lowRoll = 1 + Math.floor(normalized * 2 + Math.random() * 2);
-            return Math.min(5, lowRoll); // Never exceed 5
-        }
+        // Generate two dice values that sum close to target
+        // First die: random but constrained
+        const minFirst = Math.max(1, clampedTarget - 5);
+        const maxFirst = Math.min(5, clampedTarget - 1); // Max 5 (not 6)
+        const die1 = minFirst + Math.floor(Math.random() * (maxFirst - minFirst + 1));
+
+        // Second die: whatever's needed to hit target (clamped to 1-5)
+        const die2 = Math.min(5, Math.max(1, clampedTarget - die1));
+
+        return [die1, die2];
     }
 
     let totalSum = 0;
     const diceResults = [];
 
+    // Group dice by crypto for paired value calculation
+    const cryptoGroups = {};
     diceElements.forEach((dice, index) => {
-        dice.classList.remove('rolling');
-        const diceCrypto = dice.dataset.crypto;
-        const isWinningCrypto = rewardCryptos.includes(diceCrypto);
+        const crypto = dice.dataset.crypto;
+        if (!cryptoGroups[crypto]) cryptoGroups[crypto] = [];
+        cryptoGroups[crypto].push({ dice, index });
+    });
 
-        let faceValue;
+    // Process each crypto group
+    Object.keys(cryptoGroups).forEach(crypto => {
+        const group = cryptoGroups[crypto];
+        const isWinningCrypto = rewardCryptos.includes(crypto);
 
         if (isWinningCrypto) {
-            // This crypto won - show rocket (face 6) with glow
-            dice.classList.add('reward-win');
-            faceValue = 6;
-            dice.style.transform = faceRotations[6];
+            // This crypto won - show rockets (face 6) with reward animation
+            group.forEach(({ dice }) => {
+                dice.classList.remove('rolling');
+                dice.classList.add('reward-win');
+                dice.style.transform = faceRotations[6];
+                dice.dataset.currentValue = 6;
+                totalSum += 6;
+                diceResults.push(6);
+            });
         } else if (hasAnyReward) {
-            // Other crypto won but not this one - show random lower value (1-5)
-            dice.classList.add('stopped');
-            faceValue = 1 + Math.floor(Math.random() * 5); // 1-5
-            dice.style.transform = faceRotations[faceValue];
+            // Other crypto won - show random lower values (1-5)
+            group.forEach(({ dice }) => {
+                dice.classList.remove('rolling');
+                dice.classList.add('stopped');
+                const faceValue = 1 + Math.floor(Math.random() * 5);
+                dice.style.transform = faceRotations[faceValue];
+                dice.dataset.currentValue = faceValue;
+                totalSum += faceValue;
+                diceResults.push(faceValue);
+            });
         } else {
-            // No reward - show value based on close-to-reward percentage
-            dice.classList.add('stopped');
-            faceValue = getDiceValueForPercent(closeToRewardPercent);
-            dice.style.transform = faceRotations[faceValue];
+            // No reward - show values based on close-to-reward percentage
+            const pairValues = getDicePairForPercent(closeToRewardPercent);
+            group.forEach(({ dice }, i) => {
+                dice.classList.remove('rolling');
+                dice.classList.add('stopped');
+                const faceValue = pairValues[i] || pairValues[0];
+                dice.style.transform = faceRotations[faceValue];
+                dice.dataset.currentValue = faceValue;
+                totalSum += faceValue;
+                diceResults.push(faceValue);
+            });
         }
-
-        totalSum += faceValue;
-        diceResults.push(faceValue);
-        dice.dataset.currentValue = faceValue;
     });
 
     if (hasAnyReward) {
@@ -24811,10 +24824,67 @@ function startDicePositionAnimation() {
     const container = document.getElementById('mining-dice-container');
     if (!container) return;
 
+    const DICE_SIZE = 50; // Dice width/height for collision
+    const COLLISION_RADIUS = DICE_SIZE * 0.7; // Collision detection radius
+
     function animate() {
         const containerRect = container.getBoundingClientRect();
         const maxX = containerRect.width - 70;
         const maxY = containerRect.height - 70;
+
+        // Dice-to-dice collision detection
+        for (let i = 0; i < diceElements.length; i++) {
+            for (let j = i + 1; j < diceElements.length; j++) {
+                if (!dicePositions[i] || !dicePositions[j]) continue;
+                if (!diceVelocities[i] || !diceVelocities[j]) continue;
+
+                // Calculate centers
+                const cx1 = dicePositions[i].x + DICE_SIZE / 2;
+                const cy1 = dicePositions[i].y + DICE_SIZE / 2;
+                const cx2 = dicePositions[j].x + DICE_SIZE / 2;
+                const cy2 = dicePositions[j].y + DICE_SIZE / 2;
+
+                // Distance between centers
+                const dx = cx2 - cx1;
+                const dy = cy2 - cy1;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Check collision
+                if (distance < COLLISION_RADIUS * 2 && distance > 0) {
+                    // Normalize collision vector
+                    const nx = dx / distance;
+                    const ny = dy / distance;
+
+                    // Overlap amount
+                    const overlap = (COLLISION_RADIUS * 2 - distance) / 2;
+
+                    // Separate dice
+                    dicePositions[i].x -= nx * overlap;
+                    dicePositions[i].y -= ny * overlap;
+                    dicePositions[j].x += nx * overlap;
+                    dicePositions[j].y += ny * overlap;
+
+                    // Calculate relative velocity
+                    const dvx = diceVelocities[i].x - diceVelocities[j].x;
+                    const dvy = diceVelocities[i].y - diceVelocities[j].y;
+
+                    // Relative velocity along collision normal
+                    const dvn = dvx * nx + dvy * ny;
+
+                    // Only resolve if velocities are approaching
+                    if (dvn > 0) {
+                        // Elastic collision with some energy loss
+                        const restitution = 0.7;
+                        const impulse = dvn * restitution;
+
+                        diceVelocities[i].x -= impulse * nx;
+                        diceVelocities[i].y -= impulse * ny;
+                        diceVelocities[j].x += impulse * nx;
+                        diceVelocities[j].y += impulse * ny;
+                    }
+                }
+            }
+        }
 
         diceElements.forEach((dice, i) => {
             if (!dicePositions[i] || !diceVelocities[i]) return;

@@ -7094,8 +7094,9 @@ body.light-mode .live-metric-range {
 }
 
 .dice.reward-win {
-    animation: diceGlow 1.5s ease-in-out infinite, dicePulse 2s ease-in-out infinite;
-    filter: drop-shadow(0 0 15px rgba(255, 152, 0, 0.8));
+    animation: diceGlow 1.5s ease-in-out infinite, diceRewardPulse 0.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(255, 152, 0, 0.9));
+    z-index: 100;
 }
 
 /* Dice Faces */
@@ -7246,6 +7247,16 @@ body.light-mode .live-metric-range {
     }
     50% {
         transform: scale(1.15) rotateX(0deg) rotateY(0deg);
+    }
+}
+
+/* Reward pulse - scales dice while keeping rocket face (rotateY 180deg) visible */
+@keyframes diceRewardPulse {
+    0%, 100% {
+        transform: scale(1) rotateY(180deg);
+    }
+    50% {
+        transform: scale(1.25) rotateY(180deg);
     }
 }
 
