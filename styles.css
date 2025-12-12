@@ -1662,9 +1662,16 @@ body.light-mode .stat-item {
     background-color: rgba(255, 255, 255, 0.6);
 }
 
-/* Portfolio Stats Values - ensure consistent 18px font size */
+/* Portfolio Stats Values - ensure consistent styling for all 8 stat cards */
 .portfolio-stats-grid .stat-value,
-.portfolio-pnl-grid .pnl-value {
+.portfolio-pnl-grid .pnl-value,
+#daily-milestone,
+#record-high,
+#record-low,
+#crypto-count,
+#added-today,
+#strip-unrealized-pnl,
+#strip-realized-pnl {
     font-size: 18px !important;
     font-weight: 600;
     color: #fff;
@@ -1673,6 +1680,8 @@ body.light-mode .stat-item {
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
+    width: 100%;
 }
 
 .stat-value.highlight-orange {
@@ -1690,7 +1699,14 @@ body.light-mode .stat-item {
 }
 
 body.light-mode .portfolio-stats-grid .stat-value,
-body.light-mode .portfolio-pnl-grid .pnl-value {
+body.light-mode .portfolio-pnl-grid .pnl-value,
+body.light-mode #daily-milestone,
+body.light-mode #record-high,
+body.light-mode #record-low,
+body.light-mode #crypto-count,
+body.light-mode #added-today,
+body.light-mode #strip-unrealized-pnl,
+body.light-mode #strip-realized-pnl {
     color: #333;
 }
 
@@ -1746,12 +1762,18 @@ body.light-mode .best-performer-item {
 .pnl-value {
     font-size: 18px !important;
     font-weight: 600;
+    color: #fff;
     margin-bottom: 2px;
+    line-height: 1.2;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     width: 100%;
+}
+
+body.light-mode .pnl-value {
+    color: #333;
 }
 
 .pnl-label, .performer-label {
@@ -1900,7 +1922,14 @@ body.light-mode .performer-name {
 
     /* Ensure all portfolio stat values stay at 18px on tablet */
     .portfolio-stats-grid .stat-value,
-    .portfolio-pnl-grid .pnl-value {
+    .portfolio-pnl-grid .pnl-value,
+    #daily-milestone,
+    #record-high,
+    #record-low,
+    #crypto-count,
+    #added-today,
+    #strip-unrealized-pnl,
+    #strip-realized-pnl {
         font-size: 18px !important;
     }
 }
