@@ -28492,7 +28492,7 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             durationEl.textContent = pkg.duration;
         }
 
-        // Update recommended status (star)
+        // Update recommended status (star) - preserve SVG icon
         const isRecommended = teamRecommendedNames.includes(pkg.name);
         const titleElement = card.querySelector('h4');
         if (titleElement) {
@@ -28500,11 +28500,27 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             if (isRecommended && !hasRecommended) {
                 card.classList.add('recommended');
                 if (!titleElement.textContent.includes('⭐')) {
-                    titleElement.textContent = pkg.name + ' ⭐';
+                    // Preserve SVG icon, only update text
+                    const svg = titleElement.querySelector('svg');
+                    if (svg) {
+                        titleElement.innerHTML = '';
+                        titleElement.appendChild(svg);
+                        titleElement.appendChild(document.createTextNode(' ' + pkg.name + ' ⭐'));
+                    } else {
+                        titleElement.textContent = pkg.name + ' ⭐';
+                    }
                 }
             } else if (!isRecommended && hasRecommended) {
                 card.classList.remove('recommended');
-                titleElement.textContent = pkg.name;
+                // Preserve SVG icon, only update text
+                const svg = titleElement.querySelector('svg');
+                if (svg) {
+                    titleElement.innerHTML = '';
+                    titleElement.appendChild(svg);
+                    titleElement.appendChild(document.createTextNode(' ' + pkg.name));
+                } else {
+                    titleElement.textContent = pkg.name;
+                }
             }
         }
 
