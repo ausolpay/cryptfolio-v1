@@ -21609,10 +21609,7 @@ function updateTeamAlertCardValues(pkg) {
         blockReward: pkg.blockReward
     });
 
-    // Get crypto prices for reward calculation
-    const prices = window.packageCryptoPrices || {};
-    const audRate = parseFloat(localStorage.getItem('btcAudRate')) || 150000;
-
+    // Get crypto prices for reward calculation - use getBuyPackagePrice for fallback support
     if (pkg.isDualCrypto) {
         // Dual-crypto reward calculation - try both old and new ID patterns
         const mergeRewardEl = document.getElementById(`alert-reward-merge-${packageId}`) ||
@@ -21620,8 +21617,10 @@ function updateTeamAlertCardValues(pkg) {
         const mainRewardEl = document.getElementById(`alert-reward-main-${packageId}`) ||
                              document.getElementById(`alert-main-reward-${packageId}`);
 
+        const myMergeReward = effectiveTotalShares > 0 ? ((pkg.mergeBlockReward || 0) / effectiveTotalShares) * myShares : 0;
+        const myMainReward = effectiveTotalShares > 0 ? ((pkg.blockReward || 0) / effectiveTotalShares) * myShares : 0;
+
         if (mergeRewardEl && effectiveTotalShares > 0) {
-            const myMergeReward = ((pkg.mergeBlockReward || 0) / effectiveTotalShares) * myShares;
             const mergeDecimals = pkg.mergeCrypto === 'LTC' ? 2 : 0;
             // Check if element has crypto symbol (old style) or just number (new style)
             const hasSymbol = mergeRewardEl.textContent.includes(pkg.mergeCrypto);
@@ -21630,7 +21629,6 @@ function updateTeamAlertCardValues(pkg) {
                 : myMergeReward.toFixed(mergeDecimals);
         }
         if (mainRewardEl && effectiveTotalShares > 0) {
-            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
             const mainDecimals = pkg.mainCrypto === 'LTC' ? 2 : (pkg.mainCrypto === 'BTC' ? 4 : 0);
             // Check if element has crypto symbol (old style) or just number (new style)
             const hasSymbol = mainRewardEl.textContent.includes(pkg.mainCrypto);
@@ -21639,27 +21637,28 @@ function updateTeamAlertCardValues(pkg) {
                 : myMainReward.toFixed(mainDecimals);
         }
 
-        // Update combined reward value in local currency
+        // Update combined reward value in local currency - use getBuyPackagePrice for fallback
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
         if (rewardValueEl && effectiveTotalShares > 0) {
-            const mergePrice = getPriceFromObject(prices[pkg.mergeCrypto?.toLowerCase()]);
-            const mainPrice = getPriceFromObject(prices[pkg.mainCrypto?.toLowerCase()]);
-            const myMergeReward = ((pkg.mergeBlockReward || 0) / effectiveTotalShares) * myShares;
-            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
+            const mergePrice = getBuyPackagePrice(pkg.mergeCrypto);
+            const mainPrice = getBuyPackagePrice(pkg.mainCrypto);
             const myRewardLocal = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
             // Check if element has ≈ prefix (new style) or just $ (old style)
             const hasApprox = rewardValueEl.textContent.includes('≈');
             rewardValueEl.textContent = hasApprox
                 ? `≈ ${getUserCurrencySymbol()}${formatNumber(myRewardLocal.toFixed(2))}`
                 : `${getUserCurrencySymbol()}${formatNumber(myRewardLocal.toFixed(2))}`;
+            console.log(`💰 ${pkg.name} AUD update: mergePrice=${mergePrice}, mainPrice=${mainPrice}, total=$${myRewardLocal.toFixed(2)}`);
         }
     } else {
         // Single-crypto reward calculation - try both old and new ID patterns
         const mainRewardEl = document.getElementById(`alert-reward-${packageId}`) ||
                              document.getElementById(`alert-reward-main-${packageId}`) ||
                              document.getElementById(`alert-main-reward-${packageId}`);
+
+        const myMainReward = effectiveTotalShares > 0 ? ((pkg.blockReward || 0) / effectiveTotalShares) * myShares : 0;
+
         if (mainRewardEl && effectiveTotalShares > 0) {
-            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
             const decimals = ['BTC', 'BCH'].includes(pkg.crypto) ? 4 : 2;
             // Check if element has crypto symbol (old style) or just number (new style)
             const hasSymbol = mainRewardEl.textContent.includes(pkg.crypto);
@@ -21668,17 +21667,17 @@ function updateTeamAlertCardValues(pkg) {
                 : myMainReward.toFixed(decimals);
         }
 
-        // Update reward value in local currency
+        // Update reward value in local currency - use getBuyPackagePrice for fallback
         const rewardValueEl = document.getElementById(`alert-reward-value-${packageId}`);
         if (rewardValueEl && effectiveTotalShares > 0) {
-            const cryptoPrice = getPriceFromObject(prices[pkg.crypto?.toLowerCase()]);
-            const myMainReward = ((pkg.blockReward || 0) / effectiveTotalShares) * myShares;
+            const cryptoPrice = getBuyPackagePrice(pkg.crypto);
             const myRewardLocal = myMainReward * cryptoPrice;
             // Check if element has ≈ prefix (new style) or just $ (old style)
             const hasApprox = rewardValueEl.textContent.includes('≈');
             rewardValueEl.textContent = hasApprox
                 ? `≈ ${getUserCurrencySymbol()}${formatNumber(myRewardLocal.toFixed(2))}`
                 : `${getUserCurrencySymbol()}${formatNumber(myRewardLocal.toFixed(2))}`;
+            console.log(`💰 ${pkg.name} AUD update: cryptoPrice=${cryptoPrice}, total=$${myRewardLocal.toFixed(2)}`);
         }
     }
 
