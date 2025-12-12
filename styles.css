@@ -8155,6 +8155,11 @@ body.light-mode .share-adjuster-input {
     color: #999;
 }
 
+/* Buy button in share adjuster - prevent text wrapping (Buy -1 stays on one line) */
+.share-adjuster .buy-now-btn {
+    white-space: nowrap;
+}
+
 .share-button {
     width: 40px;
     height: 40px;
@@ -8784,10 +8789,10 @@ body.light-mode .easymining-settings-form input[type="number"] {
         width: 50px;
     }
 
-    /* EasyMining team alerts - even tighter share adjuster on mobile */
+    /* EasyMining team alerts - tighter share adjuster on mobile */
     #team-alerts-container .share-adjuster,
     .easymining-section .share-adjuster {
-        gap: 0;
+        gap: 5px;
     }
 
     #team-alerts-container .share-adjuster-btn,
