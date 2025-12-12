@@ -731,18 +731,18 @@
             el.textContent = new Date().getFullYear();
         });
 
-        // Mobile Menu Toggle
+        // Mobile Menu Toggle (matches styles.css .show class)
         function toggleMobileMenu() {
             const mobileMenu = document.getElementById('mobile-menu');
             const hamburger = document.getElementById('hamburger-btn');
-            const isActive = mobileMenu.classList.toggle('active');
+            const isActive = mobileMenu.classList.toggle('show');
             hamburger.classList.toggle('active', isActive);
             document.body.style.overflow = isActive ? 'hidden' : '';
         }
 
         // Close mobile menu
         function closeMobileMenu() {
-            document.getElementById('mobile-menu').classList.remove('active');
+            document.getElementById('mobile-menu').classList.remove('show');
             document.getElementById('hamburger-btn').classList.remove('active');
             document.body.style.overflow = '';
         }
