@@ -19307,11 +19307,11 @@ async function executeAutoBuyTeam(recommendations) {
                 }
             }
 
-            // Create order payload: amount and shares.small are ADDED values
+            // Create order payload: amount and shares.small are NEW TOTAL values
             const bodyData = {
-                amount: costForNewShares,  // Added value (actualSharesToBuy × 0.0001)
+                amount: totalAmountForAPI,  // New total value (newTotalShares × 0.0001)
                 shares: {
-                    small: actualSharesToBuy,  // Shares being added
+                    small: newTotalShares,  // New total shares
                     medium: 0,
                     large: 0,
                     couponSmall: 0,
@@ -19327,7 +19327,7 @@ async function executeAutoBuyTeam(recommendations) {
                 bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
             }
 
-            console.log(`📡 Auto-buy request: adding ${actualSharesToBuy} shares (amount: ${costForNewShares} BTC), will have ${newTotalShares} total`, {
+            console.log(`📡 Auto-buy request: adding ${actualSharesToBuy} shares, setting total to ${newTotalShares} (amount: ${totalAmountForAPI} BTC)`, {
                 isDualCrypto: isDualCrypto,
                 mainCrypto: mainCrypto,
                 mainWallet: mainWalletAddress.substring(0, 10) + '...',
@@ -20270,11 +20270,11 @@ async function executeAutoSharesTeam(teamPackages) {
             return; // Keep as current, wait for balance
         }
 
-        // Create order payload: amount and shares.small are ADDED values
+        // Create order payload: amount and shares.small are NEW TOTAL values
         const bodyData = {
-            amount: costForNewShares,  // Added value (actualSharesToBuy × 0.0001)
+            amount: totalAmountForAPI,  // New total value (newTotalShares × 0.0001)
             shares: {
-                small: actualSharesToBuy,  // Shares being added
+                small: newTotalShares,  // New total shares
                 medium: 0,
                 large: 0,
                 couponSmall: 0,
@@ -20289,13 +20289,13 @@ async function executeAutoSharesTeam(teamPackages) {
             bodyData.mergeSoloMiningRewardAddr = mergeWalletAddress.trim();
         }
 
-        // ========== SINGLE-STEP: ADD SHARES ==========
-        console.log(`🛒 AUTO-SHARES: Adding ${actualSharesToBuy} shares (amount: ${costForNewShares} BTC), will have ${newTotalShares} total...`);
+        // ========== SINGLE-STEP: SET TOTAL SHARES ==========
+        console.log(`🛒 AUTO-SHARES: Adding ${actualSharesToBuy} shares, setting total to ${newTotalShares} (amount: ${totalAmountForAPI} BTC)...`);
 
         const body = JSON.stringify(bodyData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
 
-        // ✅ VERIFICATION: amount and shares.small are ADDED values
+        // ✅ VERIFICATION: amount and shares.small are NEW TOTAL values
         console.log(`📡 Auto-shares API request:`, {
             endpoint: endpoint,
             previousOwned: myShares,
@@ -20303,7 +20303,7 @@ async function executeAutoSharesTeam(teamPackages) {
             totalSharesAfter: newTotalShares,
             'body.amount': bodyData.amount,
             'body.shares.small': bodyData.shares.small,
-            verification: `✅ amount (${bodyData.amount} BTC) = ${actualSharesToBuy} added shares × 0.0001 BTC`
+            verification: `✅ amount (${bodyData.amount} BTC) = ${newTotalShares} total shares × 0.0001 BTC`
         });
         console.log(`📄 Full request body:`, JSON.stringify(bodyData, null, 2));
 
@@ -25951,13 +25951,13 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
                 soloMiningRewardAddr: mainWalletAddress.trim()
             };
         } else {
-            // INCREASE: Send added amount and added shares count
-            const addedAmount = sharesToPurchase * sharePrice;
-            console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares (amount: ${addedAmount} BTC)`);
+            // INCREASE: Send NEW TOTAL amount and NEW TOTAL shares count
+            const totalAmount = desiredTotalShares * sharePrice;
+            console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares, new total: ${desiredTotalShares} (amount: ${totalAmount} BTC)`);
             orderData = {
-                amount: addedAmount,  // Amount being added
+                amount: totalAmount,  // New total amount
                 shares: {
-                    small: sharesToPurchase,  // Shares being added
+                    small: desiredTotalShares,  // New total shares
                     medium: 0,
                     large: 0,
                     couponSmall: 0,
@@ -25969,7 +25969,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             };
         }
 
-        console.log(`🛒 ${isDecrease ? 'Reducing to' : 'Adding'} ${isDecrease ? desiredTotalShares : sharesToPurchase} shares...`);
+        console.log(`🛒 Setting shares to ${desiredTotalShares} total...`);
 
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -30124,13 +30124,13 @@ Do you want to continue?
                 soloMiningRewardAddr: mainWalletAddress.trim()
             };
         } else {
-            // INCREASE: Send added amount and added shares count
-            const addedAmount = sharesToPurchase * sharePrice;
-            console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares (amount: ${addedAmount} BTC)`);
+            // INCREASE: Send NEW TOTAL amount and NEW TOTAL shares count
+            const totalAmount = desiredTotalShares * sharePrice;
+            console.log(`📈 INCREASE: Adding ${sharesToPurchase} shares, new total: ${desiredTotalShares} (amount: ${totalAmount} BTC)`);
             orderData = {
-                amount: addedAmount,  // Amount being added
+                amount: totalAmount,  // New total amount
                 shares: {
-                    small: sharesToPurchase,  // Shares being added
+                    small: desiredTotalShares,  // New total shares
                     medium: 0,
                     large: 0,
                     couponSmall: 0,
