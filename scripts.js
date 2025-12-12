@@ -22270,6 +22270,9 @@ function createTeamPackageRecommendationCard(pkg) {
 
     // For team packages: add share selector with buy button on same row
     // NO initial disabled states - let adjustShares() handle button states dynamically
+    // Calculate full reward value for 1 share (to use in adjustShares for recalculating)
+    const fullRewardAUD = parseFloat(rewardAUD) || 0;
+
     const teamShareSelector = `
         <div class="share-adjuster">
             <button onclick="adjustShares('${pkg.name}', -1, this)" class="share-adjuster-btn">-</button>
@@ -22286,6 +22289,11 @@ function createTeamPackageRecommendationCard(pkg) {
                 data-my-bought="${myCurrentShares}"
                 data-total-available="${totalAvailableShares}"
                 data-crypto="${pkg.crypto}"
+                data-is-dual-crypto="${pkg.isDualCrypto || false}"
+                data-merge-block-reward="${pkg.mergeBlockReward || 0}"
+                data-main-crypto="${pkg.mainCrypto || pkg.crypto || ''}"
+                data-merge-crypto="${pkg.mergeCrypto || ''}"
+                data-full-reward-aud="${fullRewardAUD}"
             >
             <button id="plus-${pkg.name.replace(/\s+/g, '-')}" onclick="adjustShares('${pkg.name}', 1, this)" class="share-adjuster-btn">+</button>
             <button class="buy-now-btn" style="margin-left: 10px;" onclick='buyPackageFromPage(${JSON.stringify(pkg)})'>Buy</button>
@@ -27068,7 +27076,8 @@ function createTeamPackageCard(pkg) {
     // For dual-crypto (Palladium): DOGE (merge) probability shown first, LTC (main) shown second
     const mainProbability = formatProbability(ticket.probabilityPrecision || pkg.probabilityPrecision || ticket.probability) || 'N/A';
     const mergeProbability = isDualCrypto ? formatProbability(ticket.mergeProbabilityPrecision || pkg.mergeProbabilityPrecision) || 'N/A' : null;
-    const blockReward = ticket.currencyAlgo?.blockRewardWithNhFee || ticket.currencyAlgo?.blockReward || 0;
+    // Use blockReward (not blockRewardWithNhFee) for consistency with alert cards
+    const blockReward = pkg.blockReward || ticket.currencyAlgo?.blockReward || ticket.currencyAlgo?.blockRewardWithNhFee || 0;
     const participants = pkg.numberOfParticipants || 0;
 
     // Get user's bought shares for this package
@@ -31487,20 +31496,26 @@ function adjustShares(packageName, delta, buttonElement) {
                          container.querySelector(`#price-${packageId}`) ||
                          document.getElementById(`${idPrefix}price-${packageId}`);
     // For main/merge rewards:
-    // - Dual crypto: alerts use alert-reward-main, buy page uses team-reward-main
+    // - Dual crypto: alerts use alert-reward-main OR alert-main-reward (old style), buy page uses team-reward-main
     // - Single crypto: alerts use alert-reward, buy page uses team-reward
     const mainRewardElement = container.querySelector(`#${idPrefix}reward-main-${packageId}`) ||
                               container.querySelector(`#${idPrefix}reward-${packageId}`) ||
+                              container.querySelector(`#${idPrefix}main-reward-${packageId}`) || // old style: alert-main-reward
                               container.querySelector(`#team-reward-main-${packageId}`) ||
                               container.querySelector(`#team-reward-${packageId}`) ||
                               container.querySelector(`#alert-reward-main-${packageId}`) ||
                               container.querySelector(`#alert-reward-${packageId}`) ||
+                              container.querySelector(`#alert-main-reward-${packageId}`) || // old style
                               document.getElementById(`${idPrefix}reward-main-${packageId}`) ||
-                              document.getElementById(`${idPrefix}reward-${packageId}`);
+                              document.getElementById(`${idPrefix}reward-${packageId}`) ||
+                              document.getElementById(`alert-main-reward-${packageId}`); // old style
     const mergeRewardElement = container.querySelector(`#${idPrefix}reward-merge-${packageId}`) ||
+                               container.querySelector(`#${idPrefix}merge-reward-${packageId}`) || // old style: alert-merge-reward
                                container.querySelector(`#team-reward-merge-${packageId}`) ||
                                container.querySelector(`#alert-reward-merge-${packageId}`) ||
-                               document.getElementById(`${idPrefix}reward-merge-${packageId}`);
+                               container.querySelector(`#alert-merge-reward-${packageId}`) || // old style
+                               document.getElementById(`${idPrefix}reward-merge-${packageId}`) ||
+                               document.getElementById(`alert-merge-reward-${packageId}`); // old style
 
     console.log(`🔍 Element lookup for packageId "${packageId}":`, {
         rewardValueFound: !!rewardValueElement,
@@ -31596,8 +31611,8 @@ function adjustShares(packageName, delta, buttonElement) {
                 : myMergeReward.toFixed(mergeDecimals);
         }
     } else {
-        // EASYMINING ALERTS: Simple price calculation when packageBaseValues not available
-        console.log(`📋 EasyMining alert mode: Using simple price calculation`);
+        // EASYMINING ALERTS: Calculate price AND rewards using data attributes
+        console.log(`📋 EasyMining alert mode: Calculating rewards from data attributes`);
 
         const sharePrice = 0.0001; // Each share = 0.0001 BTC
         const totalBTC = newValue * sharePrice;
@@ -31609,6 +31624,87 @@ function adjustShares(packageName, delta, buttonElement) {
             console.log(`✅ Alert price updated: ${oldPrice} → $${priceAUD.toFixed(2)}`);
         } else {
             console.warn(`⚠️ Price element not found for alert: ${packageName}`);
+        }
+
+        // Calculate rewards using formula: blockReward / totalBoughtShares * myShares
+        const totalBoughtShares = parseInt(input.dataset?.totalBought) || 0;
+        const blockReward = parseFloat(input.dataset?.blockReward) || 0;
+        const mergeBlockReward = parseFloat(input.dataset?.mergeBlockReward) || 0;
+        const isDualCrypto = input.dataset?.isDualCrypto === 'true';
+        const mainCrypto = input.dataset?.mainCrypto || input.dataset?.crypto || '';
+        const mergeCrypto = input.dataset?.mergeCrypto || '';
+        const fullRewardAUD = parseFloat(input.dataset?.fullRewardAud) || 0;
+        const myShares = newValue;
+
+        console.log(`💰 Alert reward calculation:`, {
+            blockReward,
+            mergeBlockReward,
+            totalBoughtShares,
+            myShares,
+            isDualCrypto,
+            mainCrypto,
+            mergeCrypto,
+            fullRewardAUD
+        });
+
+        // Calculate my reward share: blockReward / totalBoughtShares * myShares
+        // If totalBoughtShares is 0, use myShares as the denominator (I'm the only buyer)
+        const effectiveTotalShares = totalBoughtShares > 0 ? totalBoughtShares : myShares;
+
+        if (effectiveTotalShares > 0) {
+            // Calculate main crypto reward
+            const mainRewardPerShare = blockReward / effectiveTotalShares;
+            const myMainReward = mainRewardPerShare * myShares;
+
+            // Calculate merge crypto reward (for dual-crypto packages)
+            const mergeRewardPerShare = mergeBlockReward / effectiveTotalShares;
+            const myMergeReward = mergeRewardPerShare * myShares;
+
+            // Calculate reward value in AUD
+            const rewardPerShareAUD = fullRewardAUD / effectiveTotalShares;
+            const myRewardAUD = rewardPerShareAUD * myShares;
+
+            console.log(`💰 Alert rewards calculated:`, {
+                effectiveTotalShares,
+                mainRewardPerShare,
+                myMainReward,
+                mergeRewardPerShare,
+                myMergeReward,
+                rewardPerShareAUD,
+                myRewardAUD: myRewardAUD.toFixed(2)
+            });
+
+            // Update main reward element
+            if (mainRewardElement && blockReward > 0) {
+                const decimals = (mainCrypto === 'BTC' || mainCrypto === 'BCH') ? 4 : 2;
+                const currentText = mainRewardElement.textContent.trim();
+                const hasSymbol = mainCrypto && currentText.includes(mainCrypto);
+                mainRewardElement.textContent = hasSymbol
+                    ? `${myMainReward.toFixed(decimals)} ${mainCrypto}`
+                    : myMainReward.toFixed(decimals);
+                console.log(`✅ Main reward updated: ${myMainReward.toFixed(decimals)} ${mainCrypto}`);
+            }
+
+            // Update merge reward element (for dual-crypto packages)
+            if (mergeRewardElement && isDualCrypto && mergeBlockReward > 0) {
+                const mergeDecimals = mergeCrypto === 'LTC' ? 2 : 0;
+                const currentText = mergeRewardElement.textContent.trim();
+                const hasSymbol = mergeCrypto && currentText.includes(mergeCrypto);
+                mergeRewardElement.textContent = hasSymbol
+                    ? `${myMergeReward.toFixed(mergeDecimals)} ${mergeCrypto}`
+                    : myMergeReward.toFixed(mergeDecimals);
+                console.log(`✅ Merge reward updated: ${myMergeReward.toFixed(mergeDecimals)} ${mergeCrypto}`);
+            }
+
+            // Update reward value in AUD
+            if (rewardValueElement && fullRewardAUD > 0) {
+                const currentText = rewardValueElement.textContent.trim();
+                const hasApproxPrefix = currentText.includes('≈');
+                rewardValueElement.textContent = hasApproxPrefix
+                    ? `≈ $${formatNumber(myRewardAUD.toFixed(2))}`
+                    : `$${formatNumber(myRewardAUD.toFixed(2))}`;
+                console.log(`✅ Reward value updated: $${myRewardAUD.toFixed(2)}`);
+            }
         }
     }
 
