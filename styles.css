@@ -11892,11 +11892,15 @@ body.has-mobile-ad {
     .pricing-cards-container {
         flex-direction: column;
         align-items: center;
+        padding: 0 15px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .pricing-card {
         width: 100%;
         max-width: 400px;
+        margin: 0 auto;
     }
 
     .pricing-popular {
@@ -11915,11 +11919,23 @@ body.has-mobile-ad {
 
 @media (max-width: 768px) {
     .pricing-page-container {
-        padding: 40px 15px 30px;
+        padding: 40px 20px 30px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .pricing-cards-container {
+        padding: 0;
+        gap: 20px;
+    }
+
+    .pricing-card {
+        max-width: 100%;
     }
 
     .pricing-header {
         margin-bottom: 40px;
+        padding: 0 10px;
     }
 
     .pricing-header h1 {
@@ -11953,7 +11969,19 @@ body.has-mobile-ad {
 
 @media (max-width: 480px) {
     .pricing-page-container {
-        padding: 30px 12px 20px;
+        padding: 30px 16px 20px;
+    }
+
+    .pricing-cards-container {
+        gap: 16px;
+    }
+
+    .pricing-card {
+        border-radius: 18px;
+    }
+
+    .pricing-header {
+        margin-bottom: 30px;
     }
 
     .pricing-header h1 {
@@ -11961,11 +11989,11 @@ body.has-mobile-ad {
     }
 
     .pricing-card-inner {
-        padding: 25px 20px;
+        padding: 25px 18px;
     }
 
     .price-amount {
-        font-size: 2.4rem;
+        font-size: 2.2rem;
     }
 
     .pricing-features li {
@@ -11988,6 +12016,16 @@ body.has-mobile-ad {
         right: 12px;
         padding: 5px 10px;
         font-size: 0.6rem;
+    }
+
+    .pricing-footer {
+        margin-top: 30px;
+        padding: 0 10px;
+    }
+
+    .pricing-back-btn {
+        width: calc(100% - 32px);
+        margin: 20px 16px 0;
     }
 }
 
