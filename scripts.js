@@ -31764,9 +31764,16 @@ function adjustShares(packageName, delta, buttonElement) {
             const mergeRewardPerShare = mergeBlockReward / effectiveTotalShares;
             const myMergeReward = mergeRewardPerShare * myShares;
 
-            // Calculate reward value in AUD
-            const rewardPerShareAUD = fullRewardAUD / effectiveTotalShares;
-            const myRewardAUD = rewardPerShareAUD * myShares;
+            // Calculate reward value in AUD using live prices (getBuyPackagePrice has fallbacks)
+            let myRewardAUD = 0;
+            if (isDualCrypto) {
+                const mergePrice = getBuyPackagePrice(mergeCrypto);
+                const mainPrice = getBuyPackagePrice(mainCrypto);
+                myRewardAUD = (myMergeReward * mergePrice) + (myMainReward * mainPrice);
+            } else {
+                const cryptoPrice = getBuyPackagePrice(mainCrypto);
+                myRewardAUD = myMainReward * cryptoPrice;
+            }
 
             console.log(`💰 Alert rewards calculated:`, {
                 effectiveTotalShares,
@@ -31774,7 +31781,6 @@ function adjustShares(packageName, delta, buttonElement) {
                 myMainReward,
                 mergeRewardPerShare,
                 myMergeReward,
-                rewardPerShareAUD,
                 myRewardAUD: myRewardAUD.toFixed(2)
             });
 
@@ -31801,7 +31807,7 @@ function adjustShares(packageName, delta, buttonElement) {
             }
 
             // Update reward value in AUD
-            if (rewardValueElement && fullRewardAUD > 0) {
+            if (rewardValueElement && myRewardAUD > 0) {
                 const currentText = rewardValueElement.textContent.trim();
                 const hasApproxPrefix = currentText.includes('≈');
                 rewardValueElement.textContent = hasApproxPrefix
