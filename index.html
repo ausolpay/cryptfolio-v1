@@ -2498,82 +2498,96 @@
 
     <!-- Pricing Page -->
     <div id="pricing-page" class="page" style="display: none;">
+        <!-- Animated Background -->
+        <div class="pricing-bg-animation">
+            <div class="pricing-orb pricing-orb-1"></div>
+            <div class="pricing-orb pricing-orb-2"></div>
+            <div class="pricing-orb pricing-orb-3"></div>
+        </div>
+
         <div class="pricing-page-container">
             <div class="pricing-header">
+                <span class="pricing-tag">PRICING</span>
                 <h1>Choose Your Plan</h1>
                 <p>Track your crypto portfolio with the features you need</p>
             </div>
             <div class="pricing-cards-container">
                 <!-- Free Card -->
                 <div class="pricing-card" data-tier="free">
-                    <h2>Free</h2>
-                    <div class="tier-price" data-usd="0">
-                        <span class="price-amount">$0</span>
+                    <div class="pricing-card-inner">
+                        <h2>Free</h2>
+                        <div class="tier-price" data-usd="0">
+                            <span class="price-amount">$0</span>
+                        </div>
+                        <p class="price-period">Forever free</p>
+                        <ul class="pricing-features">
+                            <li class="included">Track up to 8 cryptos</li>
+                            <li class="included">Real-time prices</li>
+                            <li class="included">Charts & history</li>
+                            <li class="included">Holdings tracking</li>
+                            <li class="excluded">EasyMining access</li>
+                            <li class="excluded">Package alerts</li>
+                            <li class="excluded">Bot automation</li>
+                            <li class="note">Includes ads</li>
+                        </ul>
+                        <button class="pricing-btn" onclick="selectFreeTier()">Get Started Free</button>
                     </div>
-                    <p class="price-period">Forever free</p>
-                    <ul class="pricing-features">
-                        <li class="included">Track up to 8 cryptos</li>
-                        <li class="included">Real-time prices</li>
-                        <li class="included">Charts & history</li>
-                        <li class="included">Holdings tracking</li>
-                        <li class="excluded">EasyMining access</li>
-                        <li class="excluded">Package alerts</li>
-                        <li class="excluded">Bot automation</li>
-                        <li class="note">Includes ads</li>
-                    </ul>
-                    <button class="pricing-btn" onclick="selectFreeTier()">Get Started Free</button>
                 </div>
                 <!-- Premium Card -->
                 <div class="pricing-card pricing-popular" data-tier="premium">
                     <span class="pricing-badge">Most Popular</span>
-                    <h2>Premium</h2>
-                    <div class="tier-price" data-usd="9.99">
-                        <span class="price-amount">$9.99</span>
-                        <span class="price-currency">USD</span>
-                        <span class="price-aud"></span>
+                    <div class="pricing-card-inner">
+                        <h2>Premium</h2>
+                        <div class="tier-price" data-usd="9.99">
+                            <span class="price-amount">$9.99</span>
+                            <span class="price-currency">USD</span>
+                            <span class="price-aud"></span>
+                        </div>
+                        <p class="price-period">per month</p>
+                        <div class="trial-badge">7-Day Free Trial</div>
+                        <ul class="pricing-features">
+                            <li class="included">Track up to 20 cryptos</li>
+                            <li class="included">Real-time prices</li>
+                            <li class="included">Charts & history</li>
+                            <li class="included">Holdings tracking</li>
+                            <li class="included">Full EasyMining access</li>
+                            <li class="included">Package alerts</li>
+                            <li class="excluded">Bot automation</li>
+                            <li class="highlight">No ads</li>
+                        </ul>
+                        <button class="pricing-btn pricing-btn-primary" onclick="initiateStripeCheckout('premium')">Start Free Trial</button>
                     </div>
-                    <p class="price-period">per month</p>
-                    <div class="trial-badge">7-Day Free Trial</div>
-                    <ul class="pricing-features">
-                        <li class="included">Track up to 20 cryptos</li>
-                        <li class="included">Real-time prices</li>
-                        <li class="included">Charts & history</li>
-                        <li class="included">Holdings tracking</li>
-                        <li class="included">Full EasyMining access</li>
-                        <li class="included">Package alerts</li>
-                        <li class="excluded">Bot automation</li>
-                        <li class="highlight">No ads</li>
-                    </ul>
-                    <button class="pricing-btn pricing-btn-primary" onclick="initiateStripeCheckout('premium')">Start Free Trial</button>
                 </div>
                 <!-- Elite Card -->
                 <div class="pricing-card pricing-elite" data-tier="elite">
                     <span class="pricing-badge gold">Elite</span>
-                    <h2>Elite</h2>
-                    <div class="tier-price" data-usd="24.99">
-                        <span class="price-amount">$24.99</span>
-                        <span class="price-currency">USD</span>
-                        <span class="price-aud"></span>
+                    <div class="pricing-card-inner">
+                        <h2>Elite</h2>
+                        <div class="tier-price" data-usd="24.99">
+                            <span class="price-amount">$24.99</span>
+                            <span class="price-currency">USD</span>
+                            <span class="price-aud"></span>
+                        </div>
+                        <p class="price-period">per month</p>
+                        <div class="trial-badge gold">7-Day Free Trial</div>
+                        <ul class="pricing-features">
+                            <li class="included"><strong>Unlimited</strong> cryptos</li>
+                            <li class="included">Real-time prices</li>
+                            <li class="included">Charts & history</li>
+                            <li class="included">Holdings tracking</li>
+                            <li class="included">Full EasyMining access</li>
+                            <li class="included">Package alerts</li>
+                            <li class="included"><strong>Full Bot automation</strong></li>
+                            <li class="highlight">VIP early access</li>
+                            <li class="highlight">Support development</li>
+                            <li class="highlight">No ads</li>
+                        </ul>
+                        <button class="pricing-btn pricing-btn-elite" onclick="initiateStripeCheckout('elite')">Start Free Trial</button>
                     </div>
-                    <p class="price-period">per month</p>
-                    <div class="trial-badge gold">7-Day Free Trial</div>
-                    <ul class="pricing-features">
-                        <li class="included"><strong>Unlimited</strong> cryptos</li>
-                        <li class="included">Real-time prices</li>
-                        <li class="included">Charts & history</li>
-                        <li class="included">Holdings tracking</li>
-                        <li class="included">Full EasyMining access</li>
-                        <li class="included">Package alerts</li>
-                        <li class="included"><strong>Full Bot automation</strong></li>
-                        <li class="highlight">VIP early access</li>
-                        <li class="highlight">Support development</li>
-                        <li class="highlight">No ads</li>
-                    </ul>
-                    <button class="pricing-btn pricing-btn-elite" onclick="initiateStripeCheckout('elite')">Start Free Trial</button>
                 </div>
             </div>
             <p class="pricing-footer">Secure payments powered by Stripe</p>
-            <button class="back-btn" onclick="closePricingPage()" style="margin-top: 30px;">← Back</button>
+            <button class="back-btn pricing-back-btn" onclick="closePricingPage()">← Back to App</button>
         </div>
     </div>
 
