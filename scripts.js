@@ -25965,17 +25965,43 @@ function startDiceSyncCycle() {
     runCycle();
 }
 
-// Update dice faces mid-roll to show random numbers (intermediate rolls)
+// Update dice faces mid-roll to briefly show random numbers (intermediate rolls)
 function updateDiceFacesMidRoll() {
     // Don't update if we're showing a reward
     if (diceRewardTimeout) return;
 
-    // For intermediate rolls, generate truly random dice values (1-5, not 6 which is reserved for rewards)
-    // Each die gets its own independent random value
+    // Rotations to show each face value
+    const faceRotations = {
+        1: 'rotateX(0deg) rotateY(0deg)',
+        2: 'rotateX(-90deg) rotateY(0deg)',
+        3: 'rotateY(-90deg)',
+        4: 'rotateY(90deg)',
+        5: 'rotateX(90deg) rotateY(0deg)',
+        6: 'rotateY(180deg)'
+    };
+
+    // For intermediate rolls, briefly stop animation and show random face
+    // Each die gets its own independent random value (1-5, not 6 which is reserved for rewards)
     diceElements.forEach((dice) => {
         const randomValue = Math.floor(Math.random() * 5) + 1; // Random 1-5
-        dice.style.setProperty('--flash-value', randomValue);
+
+        // Briefly stop rolling to show the random face
+        dice.classList.remove('rolling');
+        dice.classList.add('stopped');
+        dice.style.transform = faceRotations[randomValue];
+        dice.dataset.currentValue = randomValue;
     });
+
+    // Resume rolling after a brief pause (500ms to show the random value)
+    setTimeout(() => {
+        if (isDiceRolling && !diceRewardTimeout) {
+            diceElements.forEach((dice) => {
+                dice.classList.remove('stopped');
+                dice.classList.add('rolling');
+                dice.style.transform = ''; // Let CSS animation take over
+            });
+        }
+    }, 500);
 }
 
 // Stop the synchronized dice cycle
