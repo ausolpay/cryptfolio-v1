@@ -5569,30 +5569,6 @@ body.light-mode .clear-shares-btn:hover {
     background-color: #b71c1c;
 }
 
-/* OAS (On Active Start) stats for team packages */
-.oas-stats {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.oas-stat {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
-    font-style: italic;
-}
-
-body.light-mode .oas-stats {
-    border-top-color: rgba(0, 0, 0, 0.1);
-}
-
-body.light-mode .oas-stat {
-    color: rgba(0, 0, 0, 0.5);
-}
-
 /* Closest to Reward progress bar for active packages */
 .closest-reward-section {
     padding: 10px 15px;

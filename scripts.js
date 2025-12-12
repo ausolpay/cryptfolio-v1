@@ -1331,9 +1331,7 @@ function getEasyMiningSettingsFromForm() {
         autoClearThreshold: parseInt(document.getElementById('autoClearThreshold')?.value) || 50,
         teamBailIncludeManual: document.getElementById('teamBailIncludeManual')?.checked || false,
         rewardAndBail: document.getElementById('rewardAndBailToggle')?.checked || false,
-        rewardAndBailIncludeManual: document.getElementById('rewardAndBailIncludeManual')?.checked || false,
-        autoClearOnDrop: document.getElementById('autoClearOnDropToggle')?.checked || false,
-        autoClearDropThreshold: parseInt(document.getElementById('autoClearDropThreshold')?.value) || 50
+        rewardAndBailIncludeManual: document.getElementById('rewardAndBailIncludeManual')?.checked || false
     };
 }
 
@@ -1456,10 +1454,6 @@ function showEasyMiningSettingsPage() {
     // Load Reward & Bail settings
     document.getElementById('rewardAndBailToggle').checked = savedSettings.rewardAndBail || false; // Default OFF
     document.getElementById('rewardAndBailIncludeManual').checked = savedSettings.rewardAndBailIncludeManual || false; // Default OFF
-
-    // Load Auto-Clear on Drop settings
-    document.getElementById('autoClearOnDropToggle').checked = savedSettings.autoClearOnDrop || false; // Default OFF
-    document.getElementById('autoClearDropThreshold').value = savedSettings.autoClearDropThreshold || 50; // Default 50%
 
     // Take snapshot of current settings for unsaved changes detection
     easyMiningSettingsSnapshot = getEasyMiningSettingsFromForm();
@@ -13509,11 +13503,6 @@ function saveEasyMiningDataToStorage() {
     }
 }
 
-// Track initial hashrate/rigs for drop detection (persisted to localStorage)
-let packageInitialValues = {};
-// Structure: { "packageId": { hashrate: "10 TH", hashrateNumeric: 10, rigs: 5, capturedAt: timestamp } }
-// Track packages that missed their 5-min capture window (won't be monitored for drops)
-let packagesMissedCaptureWindow = {};
 // Store package probabilities when active (for displaying on completed packages)
 let savedPackageProbabilities = {};
 
@@ -13679,8 +13668,6 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.teamBailIncludeManual = document.getElementById('teamBailIncludeManual')?.checked || false;
     easyMiningSettings.rewardAndBail = document.getElementById('rewardAndBailToggle')?.checked || false;
     easyMiningSettings.rewardAndBailIncludeManual = document.getElementById('rewardAndBailIncludeManual')?.checked || false;
-    easyMiningSettings.autoClearOnDrop = document.getElementById('autoClearOnDropToggle')?.checked || false;
-    easyMiningSettings.autoClearDropThreshold = parseInt(document.getElementById('autoClearDropThreshold')?.value) || 50;
 
     // Save multi-device settings
     easyMiningSettings.multiDeviceEnabled = document.getElementById('multi-device-toggle-page')?.checked || false;
@@ -15274,12 +15261,6 @@ async function fetchEasyMiningData() {
                     console.log(`     - btcEarnings: ${pkg.btcEarnings || 0} BTC`);
                     console.log(`     - active: ${pkg.active}`);
                 });
-
-                // Capture initial values for hashrate/rigs drop detection (waits 5 mins into package)
-                captureInitialPackageValues(easyMiningData.activePackages);
-
-                // Check for significant drops and auto-clear if enabled
-                await checkForHashrateRigsDrops(easyMiningData.activePackages);
 
             } catch (apiError) {
                 // Handle different types of API errors
@@ -17946,12 +17927,6 @@ function displayActivePackages() {
                         ` : ''}
                         ` : ''}
                     </div>
-                    ${pkg.active && pkg.isTeam && packageInitialValues[pkg.id]?.ready ? `
-                    <div class="oas-stats">
-                        ${packageInitialValues[pkg.id]?.hashrate ? `<span class="oas-stat">OAS: ${packageInitialValues[pkg.id].hashrate}</span>` : ''}
-                        ${packageInitialValues[pkg.id]?.rigs !== undefined ? `<span class="oas-stat">Rigs: ${packageInitialValues[pkg.id].rigs}</span>` : ''}
-                    </div>
-                    ` : ''}
                 </div>
 
                 <!-- Closest to Reward Progress (Active packages only) -->
@@ -30323,234 +30298,6 @@ function formatPackageSpeed(pkg, speedField = 'projectedSpeed') {
         fetchAlgorithmData().catch(err => console.warn('Algorithm data fetch failed:', err));
     }, 2000);
 })();
-
-// Capture OAS (On Active Snapshot) values with timed captures:
-// - Rigs (OAS): Captured at 10 minute mark
-// - HR (OAS): Average of hashrate samples from 15-20 minute window
-// Both values shown together after 20 minutes when ready
-// ONLY captures for auto-bought packages (manual shares won't trigger auto-clear on drop)
-// Values are persisted to localStorage to survive page refreshes
-function captureInitialPackageValues(packages) {
-    const now = Date.now();
-    const TEN_MINUTES_MS = 10 * 60 * 1000;
-    const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
-    const TWENTY_MINUTES_MS = 20 * 60 * 1000;
-    const GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minute grace period
-
-    // Load stored values from localStorage on first run (if not already loaded)
-    if (Object.keys(packageInitialValues).length === 0 && loggedInUser) {
-        const storedValues = getStorageItem(`${loggedInUser}_packageInitialValues`);
-        if (storedValues) {
-            try {
-                packageInitialValues = JSON.parse(storedValues);
-                console.log(`📂 Loaded ${Object.keys(packageInitialValues).length} stored package initial values from localStorage`);
-            } catch (e) {
-                console.warn('Failed to parse stored package initial values:', e);
-                packageInitialValues = {};
-            }
-        }
-    }
-
-    // Load skipped packages list from localStorage
-    if (Object.keys(packagesMissedCaptureWindow).length === 0 && loggedInUser) {
-        const storedSkipped = getStorageItem(`${loggedInUser}_packagesMissedCaptureWindow`);
-        if (storedSkipped) {
-            try {
-                packagesMissedCaptureWindow = JSON.parse(storedSkipped);
-            } catch (e) {
-                packagesMissedCaptureWindow = {};
-            }
-        }
-    }
-
-    let valuesChanged = false;
-    let skippedChanged = false;
-
-    packages.forEach(pkg => {
-        if (pkg.active && pkg.isTeam && pkg.ownedShares > 0) {
-            // Only capture for AUTO-BOUGHT packages (still works if user adds more shares later)
-            if (!isPackageAutoBought(pkg)) {
-                return; // Skip non-auto-bought packages
-            }
-
-            // If this package was already marked as missed, skip it
-            if (packagesMissedCaptureWindow[pkg.id]) {
-                return; // Already skipped this package
-            }
-
-            // Initialize tracking object if not exists
-            if (!packageInitialValues[pkg.id]) {
-                packageInitialValues[pkg.id] = {
-                    hashrateSamples: [], // Collected from 15-20 min
-                    rigsAt10Min: null,   // Captured at 10 min
-                    hashrate: null,      // Final average (set after 20 min)
-                    hashrateNumeric: null,
-                    rigs: null,          // Final value (set after 20 min)
-                    ready: false         // True when both values ready
-                };
-                valuesChanged = true;
-            }
-
-            // If already ready, nothing more to do
-            if (packageInitialValues[pkg.id].ready) {
-                return;
-            }
-
-            const packageStartTime = pkg.startTs || pkg.startTime;
-            if (!packageStartTime) return;
-
-            const startTimestamp = new Date(packageStartTime).getTime();
-            const timeSinceStart = now - startTimestamp;
-            const minutesSinceStart = (timeSinceStart / 60000).toFixed(1);
-
-            // Check if we missed the capture window (app opened too late)
-            if (timeSinceStart > TWENTY_MINUTES_MS + GRACE_PERIOD_MS && !packageInitialValues[pkg.id].ready) {
-                // Package has been active for more than 22 minutes and we don't have complete values
-                packagesMissedCaptureWindow[pkg.id] = {
-                    packageName: pkg.name,
-                    skippedAt: now,
-                    reason: 'App was not open during OAS capture window (10-20 min)'
-                };
-                skippedChanged = true;
-                delete packageInitialValues[pkg.id];
-                valuesChanged = true;
-                console.log(`⏭️ SKIPPING ${pkg.name} for OAS - app wasn't open during capture window (${minutesSinceStart} mins since start)`);
-                return;
-            }
-
-            // STEP 1: Capture Rigs at 10 minute mark
-            if (timeSinceStart >= TEN_MINUTES_MS && packageInitialValues[pkg.id].rigsAt10Min === null) {
-                packageInitialValues[pkg.id].rigsAt10Min = pkg.rigsCount || 0;
-                valuesChanged = true;
-                console.log(`📊 [${pkg.name}] Captured Rigs at 10-min mark: ${pkg.rigsCount || 0}`);
-            } else if (timeSinceStart < TEN_MINUTES_MS) {
-                const minsUntil10 = ((TEN_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
-                console.log(`⏳ [${pkg.name}] Waiting for 10-min mark (Rigs capture): ${minsUntil10} mins remaining`);
-            }
-
-            // STEP 2: Collect hashrate samples between 15-20 minutes
-            if (timeSinceStart >= FIFTEEN_MINUTES_MS && timeSinceStart < TWENTY_MINUTES_MS) {
-                const currentHR = parseHashrateToNumeric(pkg.hashrate);
-                if (currentHR > 0) {
-                    packageInitialValues[pkg.id].hashrateSamples.push({
-                        value: currentHR,
-                        timestamp: now
-                    });
-                    valuesChanged = true;
-                    const sampleCount = packageInitialValues[pkg.id].hashrateSamples.length;
-                    console.log(`📊 [${pkg.name}] HR sample #${sampleCount} at ${minutesSinceStart}min: ${pkg.hashrate}`);
-                }
-            } else if (timeSinceStart < FIFTEEN_MINUTES_MS && timeSinceStart >= TEN_MINUTES_MS) {
-                const minsUntil15 = ((FIFTEEN_MINUTES_MS - timeSinceStart) / 60000).toFixed(1);
-                console.log(`⏳ [${pkg.name}] Waiting for 15-min mark (HR sampling): ${minsUntil15} mins remaining`);
-            }
-
-            // STEP 3: After 20 minutes, calculate average HR and finalize
-            if (timeSinceStart >= TWENTY_MINUTES_MS && !packageInitialValues[pkg.id].ready) {
-                const samples = packageInitialValues[pkg.id].hashrateSamples;
-
-                if (samples.length > 0) {
-                    // Calculate average hashrate from samples
-                    const avgHR = samples.reduce((sum, s) => sum + s.value, 0) / samples.length;
-                    packageInitialValues[pkg.id].hashrateNumeric = avgHR;
-                    packageInitialValues[pkg.id].hashrate = formatHashrateFromTH(avgHR);
-                    packageInitialValues[pkg.id].rigs = packageInitialValues[pkg.id].rigsAt10Min;
-                    packageInitialValues[pkg.id].ready = true;
-                    packageInitialValues[pkg.id].capturedAt = now;
-                    valuesChanged = true;
-                    console.log(`✅ [${pkg.name}] OAS READY: HR (OAS)=${packageInitialValues[pkg.id].hashrate} (avg of ${samples.length} samples), Rigs (OAS)=${packageInitialValues[pkg.id].rigs}`);
-                } else {
-                    // No samples collected - take current value as fallback
-                    const currentHR = parseHashrateToNumeric(pkg.hashrate);
-                    packageInitialValues[pkg.id].hashrateNumeric = currentHR;
-                    packageInitialValues[pkg.id].hashrate = pkg.hashrate;
-                    packageInitialValues[pkg.id].rigs = packageInitialValues[pkg.id].rigsAt10Min ?? pkg.rigsCount ?? 0;
-                    packageInitialValues[pkg.id].ready = true;
-                    packageInitialValues[pkg.id].capturedAt = now;
-                    valuesChanged = true;
-                    console.log(`⚠️ [${pkg.name}] OAS READY (fallback - no samples): HR=${pkg.hashrate}, Rigs=${packageInitialValues[pkg.id].rigs}`);
-                }
-            }
-        }
-    });
-
-    // Clean up entries for packages no longer active
-    Object.keys(packageInitialValues).forEach(pkgId => {
-        if (!packages.find(p => p.id === pkgId && p.active)) {
-            delete packageInitialValues[pkgId];
-            valuesChanged = true;
-        }
-    });
-
-    // Clean up skipped entries for packages no longer active
-    Object.keys(packagesMissedCaptureWindow).forEach(pkgId => {
-        if (!packages.find(p => p.id === pkgId && p.active)) {
-            delete packagesMissedCaptureWindow[pkgId];
-            skippedChanged = true;
-        }
-    });
-
-    // Save to localStorage if changed
-    if (valuesChanged && loggedInUser) {
-        setStorageItem(`${loggedInUser}_packageInitialValues`, JSON.stringify(packageInitialValues));
-    }
-    if (skippedChanged && loggedInUser) {
-        setStorageItem(`${loggedInUser}_packagesMissedCaptureWindow`, JSON.stringify(packagesMissedCaptureWindow));
-    }
-}
-
-// Check for significant drops in hashrate or rigs and auto-clear if threshold exceeded
-// ONLY works on auto-bought packages (even if user added more shares later)
-// Values are captured after 5 minutes into package to allow initial stabilization
-async function checkForHashrateRigsDrops(packages) {
-    if (!easyMiningSettings.autoClearOnDrop) return;
-
-    const threshold = easyMiningSettings.autoClearDropThreshold || 50;
-
-    for (const pkg of packages) {
-        if (!pkg.active || !pkg.isTeam || pkg.ownedShares <= 0) continue;
-
-        // CRITICAL: Only auto-clear packages that were originally auto-bought
-        if (!isPackageAutoBought(pkg)) {
-            continue; // Skip manually purchased packages
-        }
-
-        const initial = packageInitialValues[pkg.id];
-        if (!initial) continue; // No captured values yet (waiting for 5-min mark)
-
-        const currentHashrate = parseHashrateToNumeric(pkg.hashrate);
-        const currentRigs = pkg.rigsCount || 0;
-
-        // Calculate drop percentages
-        let hashrateDrop = 0;
-        let rigsDrop = 0;
-
-        if (initial.hashrateNumeric > 0) {
-            hashrateDrop = ((initial.hashrateNumeric - currentHashrate) / initial.hashrateNumeric) * 100;
-        }
-        if (initial.rigs > 0) {
-            rigsDrop = ((initial.rigs - currentRigs) / initial.rigs) * 100;
-        }
-
-        // Check if either exceeds threshold
-        if (hashrateDrop >= threshold || rigsDrop >= threshold) {
-            console.log(`⚠️ DROP DETECTED for ${pkg.name}:`);
-            console.log(`   Hashrate: ${initial.hashrate} → ${pkg.hashrate} (${hashrateDrop.toFixed(1)}% drop)`);
-            console.log(`   Rigs: ${initial.rigs} → ${currentRigs} (${rigsDrop.toFixed(1)}% drop)`);
-            console.log(`   Threshold: ${threshold}% - AUTO-CLEARING SHARES`);
-
-            // Auto-clear shares
-            try {
-                await autoClearTeamShares(pkg.id, pkg.name);
-                console.log(`✅ Auto-cleared shares for ${pkg.name} due to drop`);
-                // Remove from tracking after clearing
-                delete packageInitialValues[pkg.id];
-            } catch (error) {
-                console.error(`❌ Failed to auto-clear shares for ${pkg.name}:`, error);
-            }
-        }
-    }
-}
 
 // Auto-clear team shares for packages that no longer meet alert thresholds
 async function autoClearTeamShares(packageId, packageName) {
