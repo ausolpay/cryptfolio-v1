@@ -27025,7 +27025,7 @@ function updateSoloPackageCardsInPlace(soloPackages, soloRecommendedNames) {
             }
         }
 
-        // Update optimal conditions on buy button
+        // Update optimal conditions and disabled state on buy button
         const buyBtn = card.querySelector('.buy-now-btn');
         if (buyBtn) {
             const isOptimal = isOptimalConditions(pkg.name);
@@ -27034,6 +27034,13 @@ function updateSoloPackageCardsInPlace(soloPackages, soloRecommendedNames) {
             } else {
                 buyBtn.classList.remove('optimal-conditions');
             }
+
+            // Update disabled state based on balance (solo packages only)
+            const availableBalance = window.niceHashBalance?.available || 0;
+            const canAfford = availableBalance >= (pkg.priceBTC || 0);
+            buyBtn.disabled = !canAfford;
+            buyBtn.style.opacity = canAfford ? '' : '0.5';
+            buyBtn.style.cursor = canAfford ? '' : 'not-allowed';
         }
 
         // Update recommended status
