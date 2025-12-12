@@ -22655,6 +22655,9 @@ function showPackageDetailPage(pkg) {
     // Update mining progress chart
     updateMiningProgressChart(pkg);
 
+    // Initialize 3D dice section
+    initDiceSection(pkg);
+
     // Start the 1-second live update timer for smooth countdown
     startPackageDetailTimer();
 
@@ -23176,6 +23179,9 @@ function stopPackageDetailTimer() {
         packageDetailUpdateInterval = null;
         console.log('⏱️ Package detail live timer stopped');
     }
+
+    // Cleanup dice section
+    cleanupDiceSection();
 }
 
 // Start the package detail API polling (5-second interval)
@@ -24333,6 +24339,630 @@ function updateMiningChartLive(pkg) {
     }
 
     currentDetailPackage = pkg;
+
+    // Sync dice animation with polling cycle
+    syncDiceWithPolling(pkg, chartData);
+}
+
+// =============================================================================
+// 3D DICE MINING VISUALIZATION
+// =============================================================================
+
+// Dice state variables
+let diceElements = [];
+let dicePositions = [];
+let diceVelocities = [];
+let diceAnimationFrame = null;
+let diceMousePosition = { x: 0, y: 0 };
+let isDiceRolling = false;
+let diceBlockCount = 0;
+let diceRewardTimeout = null;
+let dicePollCycleTimeout = null;
+
+// Track dice groups for dual-mining (e.g., Palladium LTC+DOGE)
+let diceGroups = {
+    primary: { crypto: null, dice: [], count: 0 },
+    secondary: { crypto: null, dice: [], count: 0 }
+};
+
+// Track last known reward counts per crypto
+let lastRewardCounts = {
+    primary: 0,
+    secondary: 0
+};
+
+// Crypto icons for dice faces (from CoinGecko)
+const diceCryptoIcons = {
+    BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
+    BCH: 'https://assets.coingecko.com/coins/images/780/small/bitcoin-cash-circle.png',
+    DOGE: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
+    LTC: 'https://assets.coingecko.com/coins/images/2/small/litecoin.png',
+    RVN: 'https://assets.coingecko.com/coins/images/3412/small/ravencoin.png',
+    KAS: 'https://assets.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+    DASH: 'https://assets.coingecko.com/coins/images/19/small/dash-logo.png',
+    ZEC: 'https://assets.coingecko.com/coins/images/486/small/circle-zcash-color.png'
+};
+
+// Calculate number of dice based on probability (1:X)
+function calculateDiceCount(probability) {
+    // probability is the X in "1:X" - higher X means more dice needed
+    // Formula: Math.ceil(log6(probability)) gives us how many 6-sided dice we need
+    // 1:6 or less = 1 die, 1:36 = 2 dice, 1:216 = 3 dice, etc.
+    if (!probability || probability <= 0) return 1;
+    const diceCount = Math.max(1, Math.ceil(Math.log(probability) / Math.log(6)));
+    return Math.min(diceCount, 4); // Cap at 4 dice per crypto for visual clarity
+}
+
+// Calculate accurate close-to-reward percentage using Poisson probability model
+// This models the cumulative probability of finding at least one block
+function calculateCloseToRewardPercent(pkg, chartData) {
+    // Get probability value (X in 1:X) - represents expected "rolls" to find a block
+    const probabilityValue = getProbabilityNumeric(pkg, 'main') || 100;
+
+    // Get hashrate ratio (actual vs expected) - affects effective probability
+    const currentHashrate = parseFloat(pkg.acceptedCurrentSpeed) || parseFloat(pkg.projectedSpeed) || 0;
+    const speedLimit = pkg.speedLimit || pkg.projectedSpeed || currentHashrate || 1;
+    const hashrateRatio = speedLimit > 0 ? Math.min(2, currentHashrate / speedLimit) : 1;
+
+    // Get time progress (0-1)
+    const progress = Math.max(0, Math.min(100, pkg.progress || 0)) / 100;
+
+    // If we already have chartData with highestBar, use it as baseline
+    const chartPercent = chartData?.highestBar?.percentage || 0;
+
+    // Calculate expected blocks based on time elapsed and probability
+    // If probability is 1:X and package runs for full duration, expected blocks = 1
+    // At progress p, expected blocks = p * 1 = p
+    // Adjust by hashrate ratio (higher hashrate = faster expected block finding)
+    const expectedBlocksAtProgress = progress * hashrateRatio;
+
+    // Poisson cumulative probability: P(at least 1 block) = 1 - e^(-λ)
+    // where λ = expectedBlocksAtProgress
+    // However, NiceHash probability is per-trial, so we need to adjust
+    // If 1:X means "1 block expected per X rolls" and we've done (progress * totalRolls) rolls
+    // Then λ = (progress * totalRolls) / X
+
+    // Simplified model: probability increases with time and hashrate
+    // At full progress with normal hashrate, expect ~63.2% chance (1 - e^-1)
+    // Scale to 0-99% for visual effect (never show 100% until actual reward)
+    const lambda = expectedBlocksAtProgress;
+    const poissonProb = (1 - Math.exp(-lambda)) * 100;
+
+    // Combine with chart-based percentage for smoother visualization
+    // Use whichever is higher, but cap at 95% (reserve 95-100 for actual close calls)
+    let closePercent = Math.max(poissonProb, chartPercent);
+
+    // Apply hashrate modifier - higher hashrate = closer to reward feel
+    closePercent = closePercent * (0.8 + hashrateRatio * 0.2);
+
+    // Add some variance based on recent hashrate fluctuations (makes it feel dynamic)
+    const variance = (Math.random() - 0.5) * 5; // ±2.5%
+    closePercent = Math.max(5, Math.min(95, closePercent + variance));
+
+    console.log(`🎲 Close-to-reward calc: prob=1:${probabilityValue.toFixed(1)}, progress=${(progress*100).toFixed(1)}%, hashRate=${hashrateRatio.toFixed(2)}, result=${closePercent.toFixed(1)}%`);
+
+    return closePercent;
+}
+
+// Initialize dice section for a package
+function initDiceSection(pkg) {
+    const diceSection = document.getElementById('mining-dice-section');
+    const diceContainer = document.getElementById('mining-dice-container');
+    const diceViewport = document.getElementById('mining-dice-viewport');
+
+    if (!diceSection || !diceContainer) {
+        console.log('🎲 Dice section elements not found');
+        return;
+    }
+
+    // Show dice section
+    diceSection.style.display = 'block';
+
+    // Clear existing dice
+    diceContainer.innerHTML = '';
+    diceElements = [];
+    dicePositions = [];
+    diceVelocities = [];
+
+    // Reset dice groups
+    diceGroups = {
+        primary: { crypto: null, dice: [], count: 0 },
+        secondary: { crypto: null, dice: [], count: 0 }
+    };
+
+    // Get primary crypto info
+    const primaryCrypto = pkg.crypto || 'BTC';
+    const primaryProbability = getProbabilityNumeric(pkg, 'main') || 100;
+    const primaryDiceCount = calculateDiceCount(primaryProbability);
+
+    diceGroups.primary = {
+        crypto: primaryCrypto,
+        dice: [],
+        count: primaryDiceCount
+    };
+
+    console.log(`🎲 Primary crypto: ${primaryCrypto}, probability 1:${primaryProbability.toFixed(1)} = ${primaryDiceCount} dice`);
+
+    // Check for secondary crypto (dual-mining like Palladium LTC+DOGE)
+    const secondaryCrypto = pkg.cryptoSecondary || null;
+    if (secondaryCrypto) {
+        const secondaryProbability = getProbabilityNumeric(pkg, 'merge') || 100;
+        const secondaryDiceCount = calculateDiceCount(secondaryProbability);
+
+        diceGroups.secondary = {
+            crypto: secondaryCrypto,
+            dice: [],
+            count: secondaryDiceCount
+        };
+
+        console.log(`🎲 Secondary crypto: ${secondaryCrypto}, probability 1:${secondaryProbability.toFixed(1)} = ${secondaryDiceCount} dice`);
+    }
+
+    // Create dice for both groups
+    createDiceForCrypto(diceContainer, 'primary', primaryCrypto, primaryDiceCount);
+    if (secondaryCrypto) {
+        createDiceForCrypto(diceContainer, 'secondary', secondaryCrypto, diceGroups.secondary.count);
+    }
+
+    // Initialize block counter and reward tracking
+    diceBlockCount = pkg.totalBlocks || 0;
+    lastRewardCounts = {
+        primary: getRewardCountForCrypto(pkg, primaryCrypto),
+        secondary: secondaryCrypto ? getRewardCountForCrypto(pkg, secondaryCrypto) : 0
+    };
+    updateDiceBlockCounter(diceBlockCount, false);
+
+    // Add mouse event listeners
+    if (diceViewport) {
+        diceViewport.removeEventListener('mousemove', handleDiceMouseMove);
+        diceViewport.removeEventListener('click', handleDiceClick);
+        diceViewport.removeEventListener('mouseleave', handleDiceMouseLeave);
+        diceViewport.addEventListener('mousemove', handleDiceMouseMove);
+        diceViewport.addEventListener('click', handleDiceClick);
+        diceViewport.addEventListener('mouseleave', handleDiceMouseLeave);
+    }
+
+    // Start rolling immediately
+    startDiceRolling();
+
+    // Start position animation loop
+    startDicePositionAnimation();
+}
+
+// Get reward count for a specific crypto from package data
+function getRewardCountForCrypto(pkg, crypto) {
+    if (!pkg.fullOrderData?.soloReward) return 0;
+    return pkg.fullOrderData.soloReward.filter(r => r.coin === crypto).length;
+}
+
+// Create dice for a specific crypto
+function createDiceForCrypto(container, group, crypto, count) {
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width || 300;
+    const containerHeight = containerRect.height || 200;
+
+    // Position offset for secondary crypto (right side)
+    const xOffset = group === 'secondary' ? containerWidth / 2 : 0;
+    const availableWidth = diceGroups.secondary.crypto ? containerWidth / 2 - 30 : containerWidth - 60;
+
+    const iconUrl = diceCryptoIcons[crypto] || diceCryptoIcons.BTC;
+
+    for (let i = 0; i < count; i++) {
+        const dice = document.createElement('div');
+        dice.className = 'dice rolling';
+        dice.dataset.index = diceElements.length;
+        dice.dataset.group = group;
+        dice.dataset.crypto = crypto;
+
+        // Create all 6 faces
+        // Standard dice: opposite faces sum to 7
+        // faces[0]=front=1, faces[1]=back=6, faces[2]=right=3, faces[3]=left=4, faces[4]=top=2, faces[5]=bottom=5
+        const faces = ['front', 'back', 'right', 'left', 'top', 'bottom'];
+        const faceValues = [1, 6, 3, 4, 2, 5]; // Standard dice values
+
+        faces.forEach((face, faceIndex) => {
+            const faceEl = document.createElement('div');
+            faceEl.className = `dice-face ${face}`;
+            faceEl.dataset.value = faceValues[faceIndex];
+
+            if (faceValues[faceIndex] === 6) {
+                // Face 6 (back) = Rocket (highest value = reward face)
+                faceEl.innerHTML = `
+                    <div class="rocket-icon">
+                        <svg viewBox="0 0 24 24" fill="#ff9800" stroke="none">
+                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                        </svg>
+                    </div>
+                `;
+            } else {
+                // Faces 1-5 = Crypto icon
+                faceEl.innerHTML = `
+                    <div class="crypto-icon-face">
+                        <img src="${iconUrl}" alt="${crypto}" onerror="this.style.display='none'">
+                    </div>
+                `;
+            }
+
+            dice.appendChild(faceEl);
+        });
+
+        // Random starting position within designated area
+        const x = xOffset + 20 + Math.random() * (availableWidth - 60);
+        const y = 20 + Math.random() * (containerHeight - 80);
+
+        dicePositions.push({ x, y });
+        diceVelocities.push({
+            x: (Math.random() - 0.5) * 2,
+            y: (Math.random() - 0.5) * 2
+        });
+
+        dice.style.left = `${x}px`;
+        dice.style.top = `${y}px`;
+
+        // Random rotation offsets for variety
+        dice.style.animationDelay = `${diceElements.length * 0.15}s`;
+
+        container.appendChild(dice);
+        diceElements.push(dice);
+        diceGroups[group].dice.push(dice);
+    }
+}
+
+// Start dice rolling animation
+function startDiceRolling() {
+    isDiceRolling = true;
+
+    diceElements.forEach(dice => {
+        dice.classList.add('rolling');
+        dice.classList.remove('stopped', 'reward-win');
+    });
+
+    console.log('🎲 Dice rolling started');
+}
+
+// Stop dice rolling and show result
+// rewardCryptos: array of crypto symbols that won (e.g., ['LTC'], ['DOGE'], or ['LTC', 'DOGE'])
+function stopDiceRolling(rewardCryptos = [], closeToRewardPercent = 0) {
+    isDiceRolling = false;
+
+    const hasAnyReward = rewardCryptos.length > 0;
+
+    // Rotations to show each face value
+    // Face 1 (front): rotateY(0deg)
+    // Face 6 (back/rocket): rotateY(180deg)
+    // Face 3 (right): rotateY(-90deg)
+    // Face 4 (left): rotateY(90deg)
+    // Face 2 (top): rotateX(-90deg)
+    // Face 5 (bottom): rotateX(90deg)
+    const faceRotations = {
+        1: 'rotateX(0deg) rotateY(0deg)',      // Front - lowest
+        2: 'rotateX(-90deg) rotateY(0deg)',    // Top
+        3: 'rotateY(-90deg)',                   // Right
+        4: 'rotateY(90deg)',                    // Left
+        5: 'rotateX(90deg) rotateY(0deg)',     // Bottom
+        6: 'rotateY(180deg)'                   // Back - highest (rocket)
+    };
+
+    // Calculate dice values to show based on close-to-reward percentage
+    // Higher percentage = higher probability of showing higher values (closer to 6/rocket)
+    function getDiceValueForPercent(percent) {
+        // Use weighted random: higher percent = higher expected value
+        // At 0%: mostly 1-2, at 100%: always 6 (rocket)
+        const normalized = Math.max(0, Math.min(100, percent)) / 100;
+
+        // Exponential weighting to make 6 rare until close to 100%
+        // Only show 6 (rocket) at very high percentages
+        if (normalized >= 0.95) return 6; // 95%+ always shows rocket
+
+        // For lower percentages, weighted random from 1-5
+        // Higher percent = higher average value
+        const rand = Math.random();
+        const threshold = normalized * normalized; // Exponential curve
+
+        if (rand < threshold * 0.8) {
+            // High roll zone - return 4 or 5
+            return Math.random() < 0.5 ? 5 : 4;
+        } else if (rand < threshold * 0.9 + 0.3) {
+            // Medium roll zone - return 3 or 4
+            return Math.random() < 0.5 ? 4 : 3;
+        } else {
+            // Low roll zone - return 1, 2, or 3 based on percent
+            const lowRoll = 1 + Math.floor(normalized * 2 + Math.random() * 2);
+            return Math.min(5, lowRoll);
+        }
+    }
+
+    let totalSum = 0;
+    const diceResults = [];
+
+    diceElements.forEach((dice, index) => {
+        dice.classList.remove('rolling');
+        const diceCrypto = dice.dataset.crypto;
+        const isWinningCrypto = rewardCryptos.includes(diceCrypto);
+
+        let faceValue;
+
+        if (isWinningCrypto) {
+            // This crypto won - show rocket (face 6) with glow
+            dice.classList.add('reward-win');
+            faceValue = 6;
+            dice.style.transform = faceRotations[6];
+        } else if (hasAnyReward) {
+            // Other crypto won but not this one - show random lower value (1-5)
+            dice.classList.add('stopped');
+            faceValue = 1 + Math.floor(Math.random() * 5); // 1-5
+            dice.style.transform = faceRotations[faceValue];
+        } else {
+            // No reward - show value based on close-to-reward percentage
+            dice.classList.add('stopped');
+            faceValue = getDiceValueForPercent(closeToRewardPercent);
+            dice.style.transform = faceRotations[faceValue];
+        }
+
+        totalSum += faceValue;
+        diceResults.push(faceValue);
+        dice.dataset.currentValue = faceValue;
+    });
+
+    if (hasAnyReward) {
+        console.log(`🎲🎉 REWARD WIN for: ${rewardCryptos.join(', ')} - All 6s!`);
+    } else {
+        const maxPossible = diceElements.length * 6;
+        const sumPercent = maxPossible > 0 ? ((totalSum / maxPossible) * 100).toFixed(0) : 0;
+        console.log(`🎲 Dice stopped: values=[${diceResults.join(',')}] sum=${totalSum}/${maxPossible} (${sumPercent}%) closePercent=${closeToRewardPercent.toFixed(0)}%`);
+    }
+}
+
+// Show reward win celebration for specific cryptos
+function showRewardWin(newBlockCount, winningCryptos = []) {
+    // Clear any existing reward timeout
+    if (diceRewardTimeout) {
+        clearTimeout(diceRewardTimeout);
+    }
+
+    // Stop rolling and show rockets for winning cryptos
+    stopDiceRolling(winningCryptos, 100);
+
+    // Update block counter with animation
+    updateDiceBlockCounter(newBlockCount, true);
+
+    console.log(`🎲🎉 REWARD WIN! Cryptos: ${winningCryptos.join(', ')}`);
+
+    // Hold for 10 seconds, then resume rolling
+    diceRewardTimeout = setTimeout(() => {
+        startDiceRolling();
+    }, 10000);
+}
+
+// Update dice block counter
+function updateDiceBlockCounter(count, animate = false) {
+    const counterElement = document.getElementById('dice-block-count');
+    if (!counterElement) return;
+
+    diceBlockCount = count;
+    counterElement.textContent = count;
+
+    if (animate && count > 0) {
+        // Add flash animation
+        counterElement.classList.add('flash');
+        setTimeout(() => {
+            counterElement.classList.remove('flash');
+        }, 1000);
+    }
+}
+
+// Position animation loop (floating movement)
+function startDicePositionAnimation() {
+    if (diceAnimationFrame) {
+        cancelAnimationFrame(diceAnimationFrame);
+    }
+
+    const container = document.getElementById('mining-dice-container');
+    if (!container) return;
+
+    function animate() {
+        const containerRect = container.getBoundingClientRect();
+        const maxX = containerRect.width - 70;
+        const maxY = containerRect.height - 70;
+
+        diceElements.forEach((dice, i) => {
+            if (!dicePositions[i] || !diceVelocities[i]) return;
+
+            // Apply velocity
+            dicePositions[i].x += diceVelocities[i].x;
+            dicePositions[i].y += diceVelocities[i].y;
+
+            // Bounce off walls
+            if (dicePositions[i].x <= 10 || dicePositions[i].x >= maxX) {
+                diceVelocities[i].x *= -0.8;
+                dicePositions[i].x = Math.max(10, Math.min(maxX, dicePositions[i].x));
+            }
+            if (dicePositions[i].y <= 10 || dicePositions[i].y >= maxY) {
+                diceVelocities[i].y *= -0.8;
+                dicePositions[i].y = Math.max(10, Math.min(maxY, dicePositions[i].y));
+            }
+
+            // Apply friction
+            diceVelocities[i].x *= 0.995;
+            diceVelocities[i].y *= 0.995;
+
+            // Add small random movement for floating effect
+            if (isDiceRolling) {
+                diceVelocities[i].x += (Math.random() - 0.5) * 0.3;
+                diceVelocities[i].y += (Math.random() - 0.5) * 0.3;
+            }
+
+            // Update position
+            dice.style.left = `${dicePositions[i].x}px`;
+            dice.style.top = `${dicePositions[i].y}px`;
+        });
+
+        diceAnimationFrame = requestAnimationFrame(animate);
+    }
+
+    animate();
+}
+
+// Handle mouse movement - push dice away
+function handleDiceMouseMove(e) {
+    const container = document.getElementById('mining-dice-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    diceMousePosition = { x: mouseX, y: mouseY };
+
+    // Push dice away from cursor
+    diceElements.forEach((dice, i) => {
+        if (!dicePositions[i] || !diceVelocities[i]) return;
+
+        const dx = dicePositions[i].x + 30 - mouseX; // +30 for dice center
+        const dy = dicePositions[i].y + 30 - mouseY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 100) {
+            // Push force inversely proportional to distance
+            const force = (100 - distance) / 50;
+            diceVelocities[i].x += (dx / distance) * force * 0.5;
+            diceVelocities[i].y += (dy / distance) * force * 0.5;
+        }
+    });
+}
+
+// Handle click - send dice flying
+function handleDiceClick(e) {
+    const container = document.getElementById('mining-dice-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    console.log('🎲 Click detected - sending dice flying!');
+
+    // Send all dice flying away from click point
+    diceElements.forEach((dice, i) => {
+        if (!dicePositions[i] || !diceVelocities[i]) return;
+
+        const dx = dicePositions[i].x + 30 - clickX;
+        const dy = dicePositions[i].y + 30 - clickY;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+
+        // Strong push force
+        const force = 8;
+        diceVelocities[i].x += (dx / distance) * force;
+        diceVelocities[i].y += (dy / distance) * force;
+    });
+}
+
+// Handle mouse leave - reduce velocities
+function handleDiceMouseLeave() {
+    diceMousePosition = { x: -1000, y: -1000 };
+}
+
+// Cleanup dice section
+function cleanupDiceSection() {
+    // Cancel animation frame
+    if (diceAnimationFrame) {
+        cancelAnimationFrame(diceAnimationFrame);
+        diceAnimationFrame = null;
+    }
+
+    // Clear timeouts
+    if (diceRewardTimeout) {
+        clearTimeout(diceRewardTimeout);
+        diceRewardTimeout = null;
+    }
+    if (dicePollCycleTimeout) {
+        clearTimeout(dicePollCycleTimeout);
+        dicePollCycleTimeout = null;
+    }
+
+    // Remove event listeners
+    const diceViewport = document.getElementById('mining-dice-viewport');
+    if (diceViewport) {
+        diceViewport.removeEventListener('mousemove', handleDiceMouseMove);
+        diceViewport.removeEventListener('click', handleDiceClick);
+        diceViewport.removeEventListener('mouseleave', handleDiceMouseLeave);
+    }
+
+    // Clear dice elements
+    const diceContainer = document.getElementById('mining-dice-container');
+    if (diceContainer) {
+        diceContainer.innerHTML = '';
+    }
+
+    // Hide section
+    const diceSection = document.getElementById('mining-dice-section');
+    if (diceSection) {
+        diceSection.style.display = 'none';
+    }
+
+    // Reset state
+    diceElements = [];
+    dicePositions = [];
+    diceVelocities = [];
+    isDiceRolling = false;
+    diceGroups = {
+        primary: { crypto: null, dice: [], count: 0 },
+        secondary: { crypto: null, dice: [], count: 0 }
+    };
+    lastRewardCounts = { primary: 0, secondary: 0 };
+
+    console.log('🎲 Dice section cleaned up');
+}
+
+// Sync dice with polling cycle
+function syncDiceWithPolling(pkg, chartData) {
+    // Calculate close-to-reward percentage using improved model
+    const closeToRewardPercent = calculateCloseToRewardPercent(pkg, chartData);
+
+    // Check for new rewards per crypto
+    const primaryCrypto = diceGroups.primary.crypto;
+    const secondaryCrypto = diceGroups.secondary.crypto;
+
+    const currentPrimaryRewards = getRewardCountForCrypto(pkg, primaryCrypto);
+    const currentSecondaryRewards = secondaryCrypto ? getRewardCountForCrypto(pkg, secondaryCrypto) : 0;
+
+    const newPrimaryReward = currentPrimaryRewards > lastRewardCounts.primary;
+    const newSecondaryReward = secondaryCrypto && currentSecondaryRewards > lastRewardCounts.secondary;
+
+    // Build list of cryptos that just won
+    const winningCryptos = [];
+    if (newPrimaryReward) winningCryptos.push(primaryCrypto);
+    if (newSecondaryReward) winningCryptos.push(secondaryCrypto);
+
+    // Update last known counts
+    lastRewardCounts.primary = currentPrimaryRewards;
+    lastRewardCounts.secondary = currentSecondaryRewards;
+
+    // Update total block count
+    const newBlockCount = pkg.totalBlocks || 0;
+
+    if (winningCryptos.length > 0) {
+        // New block(s) found!
+        showRewardWin(newBlockCount, winningCryptos);
+        diceBlockCount = newBlockCount;
+    } else if (!isDiceRolling && !diceRewardTimeout) {
+        // Already stopped and no reward celebration active, start rolling again
+        startDiceRolling();
+    }
+
+    // Schedule stop after 4 seconds (poll takes 5 seconds)
+    if (dicePollCycleTimeout) {
+        clearTimeout(dicePollCycleTimeout);
+    }
+
+    dicePollCycleTimeout = setTimeout(() => {
+        if (!diceRewardTimeout) { // Don't interrupt reward celebration
+            stopDiceRolling([], closeToRewardPercent);
+        }
+    }, 4000);
 }
 
 // Legacy modal functions (kept for compatibility)

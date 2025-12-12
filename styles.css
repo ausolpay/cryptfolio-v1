@@ -7044,6 +7044,295 @@ body.light-mode .live-metric-range {
     padding-top: 5px;
 }
 
+/* =============================================================================
+   3D DICE MINING VISUALIZATION
+   ============================================================================= */
+
+.dice-section {
+    margin-top: 15px;
+    background-color: rgba(30, 30, 30, 0.6);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.dice-viewport {
+    width: 100%;
+    height: 200px;
+    perspective: 800px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(20, 20, 30, 0.8) 0%, rgba(30, 30, 40, 0.6) 100%);
+}
+
+.dice-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+}
+
+/* Individual 3D Dice */
+.dice {
+    width: 50px;
+    height: 50px;
+    position: absolute;
+    transform-style: preserve-3d;
+    transition: transform 0.1s ease-out;
+    cursor: pointer;
+}
+
+.dice.rolling {
+    animation: diceSpin 0.8s linear infinite;
+}
+
+.dice.stopped {
+    animation: none;
+    transition: transform 0.3s ease-out;
+}
+
+.dice.reward-win {
+    animation: diceGlow 1.5s ease-in-out infinite, dicePulse 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 15px rgba(255, 152, 0, 0.8));
+}
+
+/* Dice Faces */
+.dice-face {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backface-visibility: visible;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Face positions for 3D cube */
+.dice-face.front  { transform: translateZ(25px); }
+.dice-face.back   { transform: rotateY(180deg) translateZ(25px); }
+.dice-face.right  { transform: rotateY(90deg) translateZ(25px); }
+.dice-face.left   { transform: rotateY(-90deg) translateZ(25px); }
+.dice-face.top    { transform: rotateX(90deg) translateZ(25px); }
+.dice-face.bottom { transform: rotateX(-90deg) translateZ(25px); }
+
+/* Dice Dots Container */
+.dice-dots {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 6px;
+    box-sizing: border-box;
+}
+
+/* Individual Dot */
+.dice-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #222;
+    border-radius: 50%;
+    margin: auto;
+    opacity: 0;
+}
+
+.dice-dot.visible {
+    opacity: 1;
+}
+
+/* Rocket Icon on Face 1 */
+.dice-face .rocket-icon {
+    width: 30px;
+    height: 30px;
+}
+
+.dice-face .rocket-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Crypto Icon on other faces */
+.dice-face .crypto-icon-face {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dice-face .crypto-icon-face img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 50%;
+}
+
+/* Dice Animations */
+@keyframes diceFloat {
+    0%, 100% {
+        transform: translateY(0) translateX(var(--float-offset-x, 0px));
+    }
+    25% {
+        transform: translateY(-10px) translateX(calc(var(--float-offset-x, 0px) + 5px));
+    }
+    50% {
+        transform: translateY(-5px) translateX(var(--float-offset-x, 0px));
+    }
+    75% {
+        transform: translateY(-15px) translateX(calc(var(--float-offset-x, 0px) - 5px));
+    }
+}
+
+@keyframes diceSpin {
+    0% {
+        transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+    }
+    100% {
+        transform: rotateX(360deg) rotateY(360deg) rotateZ(180deg);
+    }
+}
+
+@keyframes diceGlow {
+    0%, 100% {
+        filter: drop-shadow(0 0 10px rgba(255, 152, 0, 0.6));
+    }
+    50% {
+        filter: drop-shadow(0 0 25px rgba(255, 152, 0, 1));
+    }
+}
+
+@keyframes dicePulse {
+    0%, 100% {
+        transform: scale(1) rotateX(0deg) rotateY(0deg);
+    }
+    50% {
+        transform: scale(1.15) rotateX(0deg) rotateY(0deg);
+    }
+}
+
+/* Block Counter at Bottom */
+.dice-block-counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.counter-dice-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.counter-dice {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.counter-dice-face {
+    width: 24px;
+    height: 24px;
+}
+
+.counter-dice-face svg {
+    width: 100%;
+    height: 100%;
+}
+
+.counter-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #fff;
+    min-width: 40px;
+    text-align: center;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.counter-value.flash {
+    animation: counterFlash 0.5s ease;
+    color: #ff9800;
+}
+
+@keyframes counterFlash {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.3);
+    }
+}
+
+/* Light mode adjustments */
+body.light-mode .dice-section {
+    background-color: rgba(240, 240, 245, 0.8);
+}
+
+body.light-mode .dice-viewport {
+    background: linear-gradient(135deg, rgba(220, 220, 230, 0.8) 0%, rgba(200, 200, 210, 0.6) 100%);
+}
+
+body.light-mode .counter-value {
+    color: #333;
+}
+
+body.light-mode .dice-block-counter {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dice-viewport {
+        height: 160px;
+    }
+
+    .dice {
+        width: 40px;
+        height: 40px;
+    }
+
+    .dice-face {
+        width: 40px;
+        height: 40px;
+    }
+
+    .dice-face.front  { transform: translateZ(20px); }
+    .dice-face.back   { transform: rotateY(180deg) translateZ(20px); }
+    .dice-face.right  { transform: rotateY(90deg) translateZ(20px); }
+    .dice-face.left   { transform: rotateY(-90deg) translateZ(20px); }
+    .dice-face.top    { transform: rotateX(90deg) translateZ(20px); }
+    .dice-face.bottom { transform: rotateX(-90deg) translateZ(20px); }
+
+    .dice-dot {
+        width: 7px;
+        height: 7px;
+    }
+
+    .dice-face .rocket-icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .dice-face .crypto-icon-face {
+        width: 28px;
+        height: 28px;
+    }
+}
+
 /* Mining Stats Display */
 .mining-stats-display {
     display: flex;
