@@ -667,22 +667,36 @@ body.light-mode .header-row .add-crypto button {
     border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-/* Buy Packages Page - transparent wrapper, glass effect only on inner containers */
-#buy-packages-page .settings-page-content {
+/* Buy Packages, Deposits, Withdraw Pages - transparent wrapper, glass effect only on inner containers */
+#buy-packages-page .settings-page-content,
+#deposits-page .settings-page-content,
+#withdraw-page .settings-page-content {
     background-color: transparent !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
 
 #buy-packages-page .balance-card,
-#buy-packages-page .buy-package-card {
+#buy-packages-page .buy-package-card,
+#deposits-page .deposit-form,
+#deposits-page .deposit-card,
+#deposits-page .settings-section,
+#withdraw-page .withdraw-form,
+#withdraw-page .withdraw-card,
+#withdraw-page .settings-section {
     background-color: rgba(30, 30, 30, 0.85) !important;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
 
 body.light-mode #buy-packages-page .balance-card,
-body.light-mode #buy-packages-page .buy-package-card {
+body.light-mode #buy-packages-page .buy-package-card,
+body.light-mode #deposits-page .deposit-form,
+body.light-mode #deposits-page .deposit-card,
+body.light-mode #deposits-page .settings-section,
+body.light-mode #withdraw-page .withdraw-form,
+body.light-mode #withdraw-page .withdraw-card,
+body.light-mode #withdraw-page .settings-section {
     background-color: rgba(245, 245, 245, 0.85) !important;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
