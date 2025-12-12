@@ -18402,6 +18402,8 @@ function displayActivePackages() {
         const card = document.createElement('div');
         // Add 'block-confirmed' class to packages that found blocks (for orange glow)
         card.className = pkg.blockFound ? 'package-card block-confirmed' : 'package-card';
+        // Add unique data-package-id for proper tracking of multiple same-type packages
+        card.setAttribute('data-package-id', pkg.id);
         card.onclick = () => showPackageDetailModal(pkg);
 
         // BTC/BCH: 4 decimals, RVN/DOGE: 0 decimals, others: 2 decimals
@@ -18948,11 +18950,8 @@ function smartUpdateActivePackageCards() {
     easyMiningData.activePackages.forEach(pkg => {
         if (!pkg.active) return; // Only update active packages
 
-        // Find the card by looking for matching package name in h4
-        const card = Array.from(cards).find(c => {
-            const h4 = c.querySelector('h4');
-            return h4 && h4.textContent.includes(pkg.name);
-        });
+        // Find the card by unique package ID (supports multiple same-type packages)
+        const card = container.querySelector(`[data-package-id="${pkg.id}"]`);
 
         if (!card) return;
 
