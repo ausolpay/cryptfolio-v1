@@ -455,10 +455,10 @@ body.light-mode .mobile-menu-divider {
 
 .app-bg-animation {
     position: fixed;
-    top: 50px;
+    top: 0;
     left: 0;
     width: 100%;
-    height: calc(100vh - 50px);
+    height: 100vh;
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
@@ -469,50 +469,84 @@ body.light-mode .mobile-menu-divider {
     border-radius: 50%;
     filter: blur(120px);
     opacity: 0.25;
-    animation: app-float 25s ease-in-out infinite;
 }
 
 .app-orb-1 {
     width: 500px;
     height: 500px;
     background: #ff9800;
-    top: -200px;
-    right: -150px;
-    animation-delay: 0s;
+    top: -150px;
+    right: -100px;
+    animation: app-float-1 20s ease-in-out infinite;
 }
 
 .app-orb-2 {
-    width: 400px;
-    height: 400px;
+    width: 450px;
+    height: 450px;
     background: #666666;
-    bottom: -100px;
+    bottom: -150px;
     left: -100px;
-    animation-delay: -8s;
+    animation: app-float-2 25s ease-in-out infinite;
 }
 
 .app-orb-3 {
-    width: 350px;
-    height: 350px;
+    width: 400px;
+    height: 400px;
     background: #ff9800;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    animation-delay: -16s;
+    top: 40%;
+    left: 30%;
     opacity: 0.15;
+    animation: app-float-3 30s ease-in-out infinite;
 }
 
-@keyframes app-float {
+@keyframes app-float-1 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    20% {
+        transform: translate(-80px, 60px) scale(1.1);
+    }
+    40% {
+        transform: translate(-150px, 120px) scale(0.95);
+    }
+    60% {
+        transform: translate(-50px, 180px) scale(1.05);
+    }
+    80% {
+        transform: translate(50px, 80px) scale(1);
+    }
+}
+
+@keyframes app-float-2 {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
     25% {
-        transform: translate(30px, -30px) scale(1.05);
+        transform: translate(100px, -80px) scale(1.1);
     }
     50% {
-        transform: translate(-20px, 20px) scale(0.95);
+        transform: translate(200px, -150px) scale(0.9);
     }
     75% {
-        transform: translate(-30px, -20px) scale(1.02);
+        transform: translate(80px, -60px) scale(1.05);
+    }
+}
+
+@keyframes app-float-3 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    15% {
+        transform: translate(60px, -40px) scale(1.15);
+    }
+    35% {
+        transform: translate(150px, 30px) scale(0.9);
+    }
+    55% {
+        transform: translate(80px, 100px) scale(1.1);
+    }
+    75% {
+        transform: translate(-40px, 60px) scale(0.95);
     }
 }
 
@@ -11541,42 +11575,85 @@ body.has-mobile-ad {
     border-radius: 50%;
     filter: blur(120px);
     opacity: 0.3;
-    animation: pricing-float 25s ease-in-out infinite;
 }
 
 .pricing-orb-1 {
     width: 500px;
     height: 500px;
     background: #ff9800;
-    top: -200px;
-    right: -150px;
-    animation-delay: 0s;
+    top: -150px;
+    right: -100px;
+    animation: pricing-float-1 20s ease-in-out infinite;
 }
 
 .pricing-orb-2 {
-    width: 400px;
-    height: 400px;
-    background: #333;
+    width: 450px;
+    height: 450px;
+    background: #444;
     bottom: -150px;
-    left: -150px;
-    animation-delay: -8s;
+    left: -100px;
+    animation: pricing-float-2 25s ease-in-out infinite;
 }
 
 .pricing-orb-3 {
-    width: 300px;
-    height: 300px;
+    width: 400px;
+    height: 400px;
     background: #ff9800;
-    top: 50%;
-    left: 20%;
+    top: 40%;
+    left: 25%;
     opacity: 0.15;
-    animation-delay: -16s;
+    animation: pricing-float-3 30s ease-in-out infinite;
 }
 
-@keyframes pricing-float {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    25% { transform: translate(40px, -40px) scale(1.05); }
-    50% { transform: translate(-20px, 20px) scale(0.95); }
-    75% { transform: translate(-40px, -20px) scale(1.02); }
+@keyframes pricing-float-1 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    20% {
+        transform: translate(-100px, 80px) scale(1.1);
+    }
+    40% {
+        transform: translate(-180px, 150px) scale(0.95);
+    }
+    60% {
+        transform: translate(-60px, 200px) scale(1.05);
+    }
+    80% {
+        transform: translate(60px, 100px) scale(1);
+    }
+}
+
+@keyframes pricing-float-2 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    25% {
+        transform: translate(120px, -100px) scale(1.1);
+    }
+    50% {
+        transform: translate(250px, -180px) scale(0.9);
+    }
+    75% {
+        transform: translate(100px, -80px) scale(1.05);
+    }
+}
+
+@keyframes pricing-float-3 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    15% {
+        transform: translate(80px, -50px) scale(1.15);
+    }
+    35% {
+        transform: translate(180px, 40px) scale(0.9);
+    }
+    55% {
+        transform: translate(100px, 120px) scale(1.1);
+    }
+    75% {
+        transform: translate(-50px, 80px) scale(0.95);
+    }
 }
 
 .pricing-page-container {
