@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Ausolpay - Building the future of crypto portfolio management. Discover Cryptfolio, our flagship web app, and join the ASOL token presale.">
+    <meta name="description" content="CryptFolio - The ultimate cryptocurrency portfolio tracker. Track your holdings, monitor mining packages, analyze charts, and set custom alerts.">
     <meta name="robots" content="index, follow">
-    <meta property="og:title" content="About Ausolpay - Cryptfolio & ASOL Token">
-    <meta property="og:description" content="Join the Ausolpay ecosystem. Track crypto with Cryptfolio and invest in the ASOL token presale.">
+    <meta property="og:title" content="About CryptFolio - Real-Time Crypto Portfolio Tracker">
+    <meta property="og:description" content="Track 14,000+ cryptocurrencies with real-time prices, interactive charts, NiceHash mining integration, and smart portfolio analytics.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cryptfolio.app/about.html">
-    <title>About - Ausolpay | Cryptfolio & ASOL Token</title>
+    <title>About CryptFolio | Real-Time Crypto Portfolio Tracker</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="about.css">
     <link rel="icon" type="image/png" href="favicon.png">
@@ -19,14 +19,12 @@
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "Ausolpay",
-        "description": "Building the future of crypto portfolio management with Cryptfolio and the ASOL token ecosystem.",
+        "@type": "WebApplication",
+        "name": "CryptFolio",
+        "description": "Real-time cryptocurrency portfolio tracker with NiceHash mining integration, interactive charts, and smart alerts.",
         "url": "https://cryptfolio.app",
-        "parentOrganization": {
-            "@type": "Organization",
-            "name": "Corah Media Pty Ltd"
-        }
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web Browser"
     }
     </script>
 </head>
@@ -52,7 +50,6 @@
             <!-- Desktop: Navigation Links -->
             <div class="nav-links">
                 <a href="about.html" class="nav-link active">ABOUT</a>
-                <a href="presale.html" class="nav-link">PRESALE</a>
                 <a href="index.html" class="nav-link">CRYPTFOLIO WEB APP</a>
                 <a href="docs.html" class="nav-link">DOCS</a>
                 <a href="contact.html" class="nav-link">CONTACT</a>
@@ -93,7 +90,6 @@
     <div class="mobile-menu" id="mobile-menu">
         <div class="mobile-menu-content">
             <a href="about.html" class="mobile-menu-link active" onclick="closeMobileMenu()">ABOUT</a>
-            <a href="presale.html" class="mobile-menu-link" onclick="closeMobileMenu()">PRESALE</a>
             <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">CRYPTFOLIO WEB APP</a>
             <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
             <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
@@ -118,33 +114,38 @@
             <div class="hero-content">
                 <div class="hero-badge">
                     <span class="badge-dot"></span>
-                    <span>Powered by Corah Media Pty Ltd</span>
+                    <span>Free & Open Source</span>
                 </div>
                 <h1 class="hero-title">
-                    <span class="title-line">Building the Future of</span>
-                    <span class="title-gradient">Crypto Management</span>
+                    <span class="title-line">Your Complete</span>
+                    <span class="title-gradient">Crypto Command Center</span>
                 </h1>
                 <p class="hero-subtitle">
-                    Ausolpay is pioneering the next generation of cryptocurrency tools. From real-time portfolio tracking to our revolutionary token ecosystem, we're empowering investors worldwide.
+                    CryptFolio is a powerful, real-time cryptocurrency portfolio tracker with NiceHash EasyMining integration, interactive charts, smart alerts, and comprehensive holdings management. Track everything in one place.
                 </p>
                 <div class="hero-buttons">
-                    <a href="#presale" class="btn-primary">
-                        <span class="btn-icon">&#x1F680;</span>
-                        Join Token Presale
+                    <a href="index.html" class="btn-primary">
+                        <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        Launch CryptFolio
                     </a>
-                    <a href="index.html" class="btn-secondary">
-                        <span class="btn-icon">&#x1F4CA;</span>
-                        Launch Cryptfolio
+                    <a href="#features" class="btn-secondary">
+                        <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        Explore Features
                     </a>
                 </div>
                 <div class="hero-stats">
                     <div class="stat-item">
                         <span class="stat-value" data-count="14000">14,000+</span>
-                        <span class="stat-label">Cryptocurrencies Tracked</span>
+                        <span class="stat-label">Cryptocurrencies</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-value">Real-Time</span>
-                        <span class="stat-label">Live Price Updates</span>
+                        <span class="stat-label">WebSocket Updates</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-value">100%</span>
@@ -153,446 +154,543 @@
                 </div>
             </div>
             <div class="hero-visual">
-                <div class="app-preview">
+                <div class="app-preview-hero">
                     <div class="preview-glow"></div>
-                    <img src="ausolpay-logo.png" alt="Ausolpay" class="preview-logo">
-                </div>
-            </div>
-        </section>
-
-        <!-- Token Presale Section -->
-        <section class="presale-section" id="presale">
-            <div class="section-header">
-                <span class="section-tag">EXCLUSIVE OPPORTUNITY</span>
-                <h2 class="section-title">ASOL Token Presale</h2>
-                <p class="section-subtitle">Be an early investor in the Ausolpay ecosystem</p>
-            </div>
-
-            <div class="presale-content">
-                <div class="presale-info">
-                    <div class="presale-card highlight">
-                        <div class="card-header">
-                            <span class="live-badge">
-                                <span class="pulse"></span>
-                                PRESALE LIVE
-                            </span>
+                    <div class="preview-mockup">
+                        <div class="mockup-header">
+                            <span class="mockup-dot red"></span>
+                            <span class="mockup-dot yellow"></span>
+                            <span class="mockup-dot green"></span>
                         </div>
-                        <div class="card-body">
-                            <h3>Why Invest in ASOL?</h3>
-                            <ul class="benefits-list">
-                                <li>
-                                    <span class="benefit-icon">&#x2728;</span>
-                                    <div>
-                                        <strong>Early Investor Advantage</strong>
-                                        <p>Get in at presale prices before public listing</p>
+                        <div class="mockup-content">
+                            <div class="mini-holdings-preview">
+                                <div class="mini-crypto-box">
+                                    <div class="mini-crypto-icon btc"></div>
+                                    <div class="mini-crypto-info">
+                                        <span class="mini-name">Bitcoin</span>
+                                        <span class="mini-price">$152,432.00</span>
                                     </div>
-                                </li>
-                                <li>
-                                    <span class="benefit-icon">&#x1F4B0;</span>
-                                    <div>
-                                        <strong>Staking Rewards</strong>
-                                        <p>Earn passive income through our staking program</p>
-                                    </div>
-                                </li>
-                                <li>
-                                    <span class="benefit-icon">&#x1F513;</span>
-                                    <div>
-                                        <strong>Premium Features</strong>
-                                        <p>Unlock exclusive Cryptfolio features with ASOL</p>
-                                    </div>
-                                </li>
-                                <li>
-                                    <span class="benefit-icon">&#x1F310;</span>
-                                    <div>
-                                        <strong>Ecosystem Growth</strong>
-                                        <p>Fund development of new web apps and tools</p>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="presale-stages">
-                        <h4>10-Stage Public Presale</h4>
-                        <div class="stages-timeline">
-                            <div class="stage active">
-                                <div class="stage-marker">1</div>
-                                <div class="stage-info">
-                                    <span class="stage-name">Stage 1</span>
-                                    <span class="stage-price">$0.010 AUD</span>
-                                    <span class="stage-bonus">+1100% ROI</span>
+                                    <span class="mini-change up">+2.4%</span>
                                 </div>
-                            </div>
-                            <div class="stage">
-                                <div class="stage-marker">5</div>
-                                <div class="stage-info">
-                                    <span class="stage-name">Stage 5</span>
-                                    <span class="stage-price">$0.030 AUD</span>
-                                    <span class="stage-bonus">+300% ROI</span>
+                                <div class="mini-crypto-box">
+                                    <div class="mini-crypto-icon eth"></div>
+                                    <div class="mini-crypto-info">
+                                        <span class="mini-name">Ethereum</span>
+                                        <span class="mini-price">$5,892.15</span>
+                                    </div>
+                                    <span class="mini-change down">-0.8%</span>
                                 </div>
-                            </div>
-                            <div class="stage">
-                                <div class="stage-marker">10</div>
-                                <div class="stage-info">
-                                    <span class="stage-name">Stage 10</span>
-                                    <span class="stage-price">$0.100 AUD</span>
-                                    <span class="stage-bonus">+20% ROI</span>
-                                </div>
-                            </div>
-                            <div class="stage listing">
-                                <div class="stage-marker">&#x1F680;</div>
-                                <div class="stage-info">
-                                    <span class="stage-name">Exchange Listing</span>
-                                    <span class="stage-price">$0.120 AUD</span>
-                                    <span class="stage-bonus">Target Price</span>
+                                <div class="mini-crypto-box">
+                                    <div class="mini-crypto-icon sol"></div>
+                                    <div class="mini-crypto-info">
+                                        <span class="mini-name">Solana</span>
+                                        <span class="mini-price">$342.80</span>
+                                    </div>
+                                    <span class="mini-change up">+5.2%</span>
                                 </div>
                             </div>
                         </div>
-                        <p class="presale-note" style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 12px; text-align: center;">
-                            10% unlocked at TGE, then 10% monthly for 9 months
-                        </p>
-                    </div>
-                </div>
-
-                <div class="presale-cta">
-                    <div class="cta-card">
-                        <div class="token-visual">
-                            <div class="token-ring"></div>
-                            <div class="token-core">ASOL</div>
-                        </div>
-                        <h3>Join the Presale Now</h3>
-                        <p>Limited allocation available. Don't miss your chance to be part of the Ausolpay revolution.</p>
-                        <a href="#" class="btn-presale">
-                            Buy ASOL Tokens
-                            <span class="arrow">&#x2192;</span>
-                        </a>
-                        <a href="#" class="whitepaper-link">
-                            <span>&#x1F4C4;</span>
-                            Read the Whitepaper
-                        </a>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Token Ecosystem Section -->
-        <section class="ecosystem-section" id="ecosystem">
+        <!-- Features Section -->
+        <section class="features-section" id="features">
             <div class="section-header">
-                <span class="section-tag">THREE-TOKEN ECOSYSTEM</span>
-                <h2 class="section-title">The AusolPay Ecosystem</h2>
-                <p class="section-subtitle">Three powerful digital assets working together</p>
+                <span class="section-tag">POWERFUL FEATURES</span>
+                <h2 class="section-title">Everything You Need</h2>
+                <p class="section-subtitle">Comprehensive tools for tracking, analyzing, and managing your crypto investments</p>
             </div>
 
-            <div class="ecosystem-grid">
-                <div class="ecosystem-card asol">
-                    <div class="eco-token-icon">ASOL</div>
-                    <h3>ASOL Token</h3>
-                    <p class="eco-type">Utility Token</p>
-                    <ul class="eco-features">
-                        <li>Payments & Transactions</li>
-                        <li>Staking Rewards</li>
-                        <li>Ecosystem Incentives</li>
-                        <li>Buyback & Burn Mechanism</li>
-                        <li>Future Governance</li>
-                    </ul>
-                    <div class="eco-stats">
-                        <span class="eco-stat">1B Total Supply</span>
-                        <span class="eco-stat">9 Decimals</span>
-                    </div>
-                </div>
-
-                <div class="ecosystem-card ausd">
-                    <div class="eco-token-icon">AUSD</div>
-                    <h3>AUSD Stablecoin</h3>
-                    <p class="eco-type">Australian Dollar Pegged</p>
-                    <ul class="eco-features">
-                        <li>1:1 AUD Peg</li>
-                        <li>Fully Backed Reserves</li>
-                        <li>Merchant Settlement</li>
-                        <li>Price Stability</li>
-                        <li>Easy Accounting</li>
-                    </ul>
-                    <div class="eco-stats">
-                        <span class="eco-stat">Elastic Supply</span>
-                        <span class="eco-stat">Treasury Backed</span>
-                    </div>
-                </div>
-
-                <div class="ecosystem-card arc">
-                    <div class="eco-token-icon">ARC</div>
-                    <h3>ARC Reserve</h3>
-                    <p class="eco-type">Stabilisation Asset</p>
-                    <ul class="eco-features">
-                        <li>Secondary Stabilisation</li>
-                        <li>Emergency Buffer</li>
-                        <li>Peg Support</li>
-                        <li>Financial Resilience</li>
-                        <li>Market Volatility Protection</li>
-                    </ul>
-                    <div class="eco-stats">
-                        <span class="eco-stat">Reserve Locked</span>
-                        <span class="eco-stat">Ecosystem Stability</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Current Apps Section -->
-        <section class="apps-section" id="apps">
-            <div class="section-header">
-                <span class="section-tag">OUR PRODUCTS</span>
-                <h2 class="section-title">Current Apps</h2>
-                <p class="section-subtitle">Powerful tools for the modern crypto investor</p>
-            </div>
-
-            <div class="apps-showcase">
-                <div class="app-card featured">
-                    <div class="app-badge">FLAGSHIP</div>
-                    <div class="app-icon">
-                        <img src="ausolpay-logo.png" alt="Cryptfolio">
-                    </div>
-                    <h3>Cryptfolio</h3>
-                    <p class="app-tagline">Real-Time Cryptocurrency Portfolio Tracker</p>
-
-                    <div class="app-features">
-                        <div class="feature">
-                            <span class="feature-icon">&#x1F4C8;</span>
-                            <div>
-                                <strong>Live Price Tracking</strong>
-                                <p>Real-time prices via WebSocket connections to MEXC & LBank</p>
-                            </div>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">&#x26CF;</span>
-                            <div>
-                                <strong>NiceHash EasyMining</strong>
-                                <p>Track your mining packages, blocks found, and earnings</p>
-                            </div>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">&#x1F514;</span>
-                            <div>
-                                <strong>Smart Alerts</strong>
-                                <p>Set probability thresholds for package recommendations</p>
-                            </div>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">&#x1F4CA;</span>
-                            <div>
-                                <strong>Holdings Tracker</strong>
-                                <p>Track buy/sell entries with P&L calculations</p>
-                            </div>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">&#x1F3AF;</span>
-                            <div>
-                                <strong>Record Tracking</strong>
-                                <p>Monitor all-time highs, lows, and milestones</p>
-                            </div>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">&#x1F50A;</span>
-                            <div>
-                                <strong>Audio Alerts</strong>
-                                <p>Sound notifications for blocks, records, and alerts</p>
-                            </div>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">&#x1F916;</span>
-                            <div>
-                                <strong>EasyMining Bot</strong>
-                                <p>Autobuy packages, smart recommendations, and auto-reinvest</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="app-stats-bar">
-                        <div class="app-stat">
-                            <span class="value">14,000+</span>
-                            <span class="label">Cryptos</span>
-                        </div>
-                        <div class="app-stat">
-                            <span class="value">5s</span>
-                            <span class="label">Update Rate</span>
-                        </div>
-                        <div class="app-stat">
-                            <span class="value">Free</span>
-                            <span class="label">To Use</span>
-                        </div>
-                    </div>
-
-                    <a href="index.html" class="btn-launch">
-                        Launch Cryptfolio
-                        <span class="arrow">&#x2192;</span>
-                    </a>
-                </div>
-
-                <div class="coming-soon-apps">
-                    <h4>Coming Soon</h4>
-                    <div class="future-apps-grid">
-                        <div class="future-app">
-                            <div class="future-icon">&#x1F4B1;</div>
-                            <span>DeFi Dashboard</span>
-                        </div>
-                        <div class="future-app">
-                            <div class="future-icon">&#x1F916;</div>
-                            <span>Trading Bot</span>
-                        </div>
-                        <div class="future-app">
-                            <div class="future-icon">&#x1F4F1;</div>
-                            <span>Mobile App</span>
-                        </div>
-                        <div class="future-app">
-                            <div class="future-icon">&#x1F4CA;</div>
-                            <span>Tax Reporter</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Roadmap Section -->
-        <section class="roadmap-section" id="roadmap">
-            <div class="section-header">
-                <span class="section-tag">THE JOURNEY</span>
-                <h2 class="section-title">Roadmap</h2>
-                <p class="section-subtitle">Our path to revolutionizing crypto management</p>
-            </div>
-
-            <div class="roadmap-container">
-                <div class="roadmap-line"></div>
-
-                <div class="roadmap-item active">
-                    <div class="roadmap-marker">
-                        <span class="dot pulse"></span>
-                    </div>
-                    <div class="roadmap-content">
-                        <span class="roadmap-phase">Phase 1</span>
-                        <h4>Foundation</h4>
-                        <span class="roadmap-date">Current</span>
-                        <ul>
-                            <li>ASOL Token Launch</li>
-                            <li>Public Presale (10 stages)</li>
-                            <li>Core Smart Contracts</li>
-                            <li>Initial Security Audits</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="roadmap-item">
-                    <div class="roadmap-marker">
-                        <span class="dot"></span>
-                    </div>
-                    <div class="roadmap-content">
-                        <span class="roadmap-phase">Phase 2</span>
-                        <h4>Growth</h4>
-                        <span class="roadmap-date">Coming Soon</span>
-                        <ul>
-                            <li>Staking Platform Launch</li>
-                            <li>Merchant Integration Tools</li>
-                            <li>CryptFolio App Integration</li>
-                            <li>NFC Payment Development</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="roadmap-item">
-                    <div class="roadmap-marker">
-                        <span class="dot"></span>
-                    </div>
-                    <div class="roadmap-content">
-                        <span class="roadmap-phase">Phase 3</span>
-                        <h4>Adoption</h4>
-                        <span class="roadmap-date">Future</span>
-                        <ul>
-                            <li>Platform Partnerships</li>
-                            <li>Exchange Listings (CEX/DEX)</li>
-                            <li>Expanded Merchant Onboarding</li>
-                            <li>AUSD Stablecoin Launch</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="roadmap-item">
-                    <div class="roadmap-marker">
-                        <span class="dot"></span>
-                    </div>
-                    <div class="roadmap-content">
-                        <span class="roadmap-phase">Phase 4</span>
-                        <h4>Scale</h4>
-                        <span class="roadmap-date">Future</span>
-                        <ul>
-                            <li>Global Roll-out</li>
-                            <li>Enhanced Stablecoin Services</li>
-                            <li>Enterprise Adoption</li>
-                            <li>Governance Implementation</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Community Section -->
-        <section class="community-section" id="community">
-            <div class="section-header">
-                <span class="section-tag">JOIN US</span>
-                <h2 class="section-title">Community</h2>
-                <p class="section-subtitle">Connect with fellow investors and stay updated</p>
-            </div>
-
-            <div class="social-links">
-                <a href="#" class="social-card twitter" target="_blank">
-                    <div class="social-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            <div class="features-grid">
+                <!-- Portfolio Tracking -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+                            <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+                            <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>
                         </svg>
                     </div>
-                    <div class="social-info">
-                        <span class="social-name">X (Twitter)</span>
-                        <span class="social-handle">@ausolpay</span>
-                    </div>
-                    <span class="social-arrow">&#x2192;</span>
-                </a>
+                    <h3>Portfolio Tracking</h3>
+                    <p>Add unlimited cryptocurrencies to your portfolio. Track holdings, calculate total value in your local currency, and monitor performance over time.</p>
+                    <ul class="feature-list">
+                        <li>14,000+ cryptocurrencies supported</li>
+                        <li>Multi-currency support (AUD, USD, EUR, etc.)</li>
+                        <li>Real-time portfolio valuation</li>
+                        <li>Holdings history tracking</li>
+                    </ul>
+                </div>
 
-                <a href="#" class="social-card telegram" target="_blank">
-                    <div class="social-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                <!-- Real-Time Prices -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                         </svg>
                     </div>
-                    <div class="social-info">
-                        <span class="social-name">Telegram</span>
-                        <span class="social-handle">t.me/ausolpay</span>
-                    </div>
-                    <span class="social-arrow">&#x2192;</span>
-                </a>
+                    <h3>Real-Time Prices</h3>
+                    <p>Live price updates via WebSocket connections to major exchanges. See price changes instantly with visual indicators and smooth animations.</p>
+                    <ul class="feature-list">
+                        <li>WebSocket feeds from MEXC & LBank</li>
+                        <li>CoinGecko API integration</li>
+                        <li>Price change flash indicators</li>
+                        <li>Auto-refresh every 5 seconds</li>
+                    </ul>
+                </div>
 
-                <a href="#" class="social-card discord" target="_blank">
-                    <div class="social-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+                <!-- Interactive Charts -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"/>
+                            <path d="M18 17V9"/>
+                            <path d="M13 17V5"/>
+                            <path d="M8 17v-3"/>
                         </svg>
                     </div>
-                    <div class="social-info">
-                        <span class="social-name">Discord</span>
-                        <span class="social-handle">discord.gg/ausolpay</span>
+                    <h3>Interactive Charts</h3>
+                    <p>Professional candlestick charts with multiple timeframes. Analyze price action, spot trends, and make informed decisions.</p>
+                    <ul class="feature-list">
+                        <li>1H, 24H, 7D, 30D, 1Y timeframes</li>
+                        <li>OHLC candlestick visualization</li>
+                        <li>Volume overlay</li>
+                        <li>Touch-friendly mobile support</li>
+                    </ul>
+                </div>
+
+                <!-- Holdings Tracker -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <path d="M3 9h18"/>
+                            <path d="M9 21V9"/>
+                        </svg>
                     </div>
-                    <span class="social-arrow">&#x2192;</span>
-                </a>
+                    <h3>Holdings Tracker</h3>
+                    <p>Detailed buy/sell entry tracking with profit & loss calculations. See exactly how each position is performing against your cost basis.</p>
+                    <ul class="feature-list">
+                        <li>Individual entry tracking</li>
+                        <li>Cost basis calculations</li>
+                        <li>Realized & unrealized P&L</li>
+                        <li>Transaction history</li>
+                    </ul>
+                </div>
+
+                <!-- NiceHash Mining -->
+                <div class="feature-card featured">
+                    <div class="feature-badge">FEATURED</div>
+                    <div class="feature-icon-wrap orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <h3>NiceHash EasyMining</h3>
+                    <p>Full integration with NiceHash EasyMining. Track your mining packages, monitor hashrate, view blocks found, and manage rewards.</p>
+                    <ul class="feature-list">
+                        <li>Active package monitoring</li>
+                        <li>Real-time hashrate tracking</li>
+                        <li>Block discovery notifications</li>
+                        <li>Auto-update crypto holdings</li>
+                        <li>Smart package recommendations</li>
+                        <li>Probability alerts</li>
+                    </ul>
+                </div>
+
+                <!-- Smart Alerts -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </div>
+                    <h3>Smart Alerts</h3>
+                    <p>Set custom probability thresholds for mining packages and receive audio notifications when conditions are met.</p>
+                    <ul class="feature-list">
+                        <li>Probability threshold alerts</li>
+                        <li>Block found notifications</li>
+                        <li>Record high celebrations</li>
+                        <li>Custom sound alerts</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Holdings Preview Section -->
+        <section class="preview-section" id="holdings-preview">
+            <div class="section-header">
+                <span class="section-tag">PORTFOLIO VIEW</span>
+                <h2 class="section-title">Track Your Holdings</h2>
+                <p class="section-subtitle">Beautiful, information-rich crypto boxes with real-time data</p>
             </div>
 
-            <div class="resources-row">
-                <a href="#" class="resource-card" target="_blank">
-                    <span class="resource-icon">&#x1F4C4;</span>
-                    <span class="resource-name">Whitepaper</span>
-                </a>
-                <a href="docs.html" class="resource-card">
-                    <span class="resource-icon">&#x1F4DA;</span>
-                    <span class="resource-name">Documentation</span>
-                </a>
-                <a href="contact.html" class="resource-card">
-                    <span class="resource-icon">&#x2709;</span>
-                    <span class="resource-name">Contact Us</span>
+            <div class="preview-showcase">
+                <div class="preview-description">
+                    <h3>Crypto Holdings Cards</h3>
+                    <p>Each cryptocurrency in your portfolio gets a dedicated card showing all the essential information at a glance. Watch prices update in real-time with color-coded indicators.</p>
+
+                    <div class="preview-features">
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                <polyline points="17 6 23 6 23 12"/>
+                            </svg>
+                            <span>Live price with direction indicators</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+                                <path d="M12 18V6"/>
+                            </svg>
+                            <span>Total value in your local currency</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 20V10"/>
+                                <path d="M18 20V4"/>
+                                <path d="M6 20v-4"/>
+                            </svg>
+                            <span>Holdings amount with edit controls</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            <span>Click to view detailed chart modal</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-demo holdings-demo">
+                    <div class="demo-crypto-box">
+                        <div class="demo-crypto-header">
+                            <img src="https://assets.coingecko.com/coins/images/1/small/bitcoin.png" alt="Bitcoin" class="demo-crypto-icon">
+                            <div class="demo-crypto-name">
+                                <span class="demo-name">Bitcoin</span>
+                                <span class="demo-symbol">BTC</span>
+                            </div>
+                            <div class="demo-crypto-actions">
+                                <button class="demo-action-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                <button class="demo-action-btn delete">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="demo-crypto-body">
+                            <div class="demo-price-row">
+                                <span class="demo-price">$152,432.00</span>
+                                <span class="demo-triangle up"></span>
+                            </div>
+                            <div class="demo-holdings-row">
+                                <span class="demo-label">Holdings:</span>
+                                <span class="demo-holdings">0.5842 BTC</span>
+                            </div>
+                            <div class="demo-value-row">
+                                <span class="demo-dollar">$</span>
+                                <span class="demo-value flash-green">89,051.26</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chart Modal Preview -->
+        <section class="preview-section alt-bg" id="chart-preview">
+            <div class="section-header">
+                <span class="section-tag">ANALYSIS TOOLS</span>
+                <h2 class="section-title">Professional Charts</h2>
+                <p class="section-subtitle">Full-featured candlestick charts with holdings management</p>
+            </div>
+
+            <div class="preview-showcase reverse">
+                <div class="preview-demo chart-demo">
+                    <div class="demo-chart-modal">
+                        <div class="demo-chart-header">
+                            <div class="demo-chart-title">
+                                <img src="https://assets.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+                                <span>Bitcoin (BTC)</span>
+                            </div>
+                            <div class="demo-timeframes">
+                                <button class="tf-btn">1H</button>
+                                <button class="tf-btn active">24H</button>
+                                <button class="tf-btn">7D</button>
+                                <button class="tf-btn">30D</button>
+                                <button class="tf-btn">1Y</button>
+                            </div>
+                        </div>
+                        <div class="demo-chart-area">
+                            <div class="demo-candlesticks">
+                                <div class="candle green" style="height: 45px; bottom: 30%"></div>
+                                <div class="candle red" style="height: 30px; bottom: 35%"></div>
+                                <div class="candle green" style="height: 55px; bottom: 28%"></div>
+                                <div class="candle green" style="height: 40px; bottom: 40%"></div>
+                                <div class="candle red" style="height: 25px; bottom: 45%"></div>
+                                <div class="candle green" style="height: 60px; bottom: 35%"></div>
+                                <div class="candle green" style="height: 50px; bottom: 45%"></div>
+                                <div class="candle red" style="height: 20px; bottom: 55%"></div>
+                                <div class="candle green" style="height: 70px; bottom: 40%"></div>
+                            </div>
+                        </div>
+                        <div class="demo-holdings-tracker">
+                            <span class="tracker-label">Holdings Tracker</span>
+                            <div class="tracker-entries">
+                                <div class="tracker-entry">
+                                    <span class="entry-date">Dec 10</span>
+                                    <span class="entry-amount">0.25 BTC</span>
+                                    <span class="entry-pl positive">+$2,450</span>
+                                </div>
+                                <div class="tracker-entry">
+                                    <span class="entry-date">Nov 28</span>
+                                    <span class="entry-amount">0.3342 BTC</span>
+                                    <span class="entry-pl positive">+$8,920</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-description">
+                    <h3>Interactive Chart Modal</h3>
+                    <p>Click any crypto to open a detailed chart modal with professional candlestick visualization and integrated holdings management.</p>
+
+                    <div class="preview-features">
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 3v18h18"/>
+                                <path d="M18 17V9"/>
+                                <path d="M13 17V5"/>
+                                <path d="M8 17v-3"/>
+                            </svg>
+                            <span>OHLC candlestick charts</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span>Multiple timeframes (1H to 1Y)</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                            <span>Integrated P&L tracking</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"/>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                            <span>Buy/sell entry management</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mining Preview Section -->
+        <section class="preview-section" id="mining-preview">
+            <div class="section-header">
+                <span class="section-tag">NICEHASH INTEGRATION</span>
+                <h2 class="section-title">EasyMining Dashboard</h2>
+                <p class="section-subtitle">Complete mining package management and monitoring</p>
+            </div>
+
+            <div class="preview-showcase">
+                <div class="preview-description">
+                    <h3>Active Mining Packages</h3>
+                    <p>Monitor all your NiceHash EasyMining packages in real-time. Track hashrate, probability, blocks found, and estimated rewards with beautiful visualizations.</p>
+
+                    <div class="preview-features">
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                <path d="M2 17l10 5 10-5"/>
+                                <path d="M2 12l10 5 10-5"/>
+                            </svg>
+                            <span>All package types (Gold, Silver, Palladium, etc.)</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                            <span>Live hashrate monitoring</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            <span>Mining probability progress</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                                <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                            </svg>
+                            <span>Block discovery celebrations</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-demo mining-demo">
+                    <div class="demo-package-card">
+                        <div class="demo-pkg-header">
+                            <div class="demo-pkg-icon gold">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                    <path d="M2 17l10 5 10-5"/>
+                                    <path d="M2 12l10 5 10-5"/>
+                                </svg>
+                            </div>
+                            <div class="demo-pkg-info">
+                                <span class="demo-pkg-name">Gold XL</span>
+                                <span class="demo-pkg-crypto">Bitcoin (BTC)</span>
+                            </div>
+                            <div class="demo-pkg-status active">
+                                <span class="status-dot"></span>
+                                Active
+                            </div>
+                        </div>
+                        <div class="demo-pkg-stats">
+                            <div class="demo-stat">
+                                <span class="demo-stat-label">Hashrate</span>
+                                <span class="demo-stat-value">245.8 TH/s</span>
+                            </div>
+                            <div class="demo-stat">
+                                <span class="demo-stat-label">Probability</span>
+                                <span class="demo-stat-value orange">78%</span>
+                            </div>
+                            <div class="demo-stat">
+                                <span class="demo-stat-label">Blocks</span>
+                                <span class="demo-stat-value">3</span>
+                            </div>
+                        </div>
+                        <div class="demo-pkg-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 78%"></div>
+                            </div>
+                            <span class="progress-label">02:45:30 remaining</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Alerts Preview Section -->
+        <section class="preview-section alt-bg" id="alerts-preview">
+            <div class="section-header">
+                <span class="section-tag">STAY INFORMED</span>
+                <h2 class="section-title">Smart Alerts</h2>
+                <p class="section-subtitle">Never miss important events with customizable notifications</p>
+            </div>
+
+            <div class="preview-showcase reverse">
+                <div class="preview-demo alerts-demo">
+                    <div class="demo-alerts-panel">
+                        <div class="demo-alert-item success">
+                            <div class="alert-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                                    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                                </svg>
+                            </div>
+                            <div class="alert-content">
+                                <span class="alert-title">Block Found!</span>
+                                <span class="alert-desc">Gold XL discovered a block - 0.0312 BTC</span>
+                            </div>
+                        </div>
+                        <div class="demo-alert-item warning">
+                            <div class="alert-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                                </svg>
+                            </div>
+                            <div class="alert-content">
+                                <span class="alert-title">Probability Alert</span>
+                                <span class="alert-desc">Silver M reached 95% threshold</span>
+                            </div>
+                        </div>
+                        <div class="demo-alert-item info">
+                            <div class="alert-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                                </svg>
+                            </div>
+                            <div class="alert-content">
+                                <span class="alert-title">New Record High</span>
+                                <span class="alert-desc">Portfolio reached $125,430!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-description">
+                    <h3>Customizable Notifications</h3>
+                    <p>Set probability thresholds for each mining package and receive instant audio notifications when your conditions are met. Celebrate new records and block discoveries.</p>
+
+                    <div class="preview-features">
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                            </svg>
+                            <span>Custom probability thresholds</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                            </svg>
+                            <span>Audio sound alerts</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                                <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                            </svg>
+                            <span>Block found celebrations</span>
+                        </div>
+                        <div class="preview-feature">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                            <span>Record high milestones</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <div class="cta-content">
+                <h2>Ready to Take Control?</h2>
+                <p>Start tracking your cryptocurrency portfolio with CryptFolio today. It's free, powerful, and designed for serious investors.</p>
+                <a href="index.html" class="btn-cta">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                    Launch CryptFolio Now
                 </a>
             </div>
         </section>
@@ -600,8 +698,8 @@
         <!-- Company Footer Section -->
         <section class="company-section">
             <div class="company-info">
-                <img src="ausolpay-logo.png" alt="Ausolpay" class="company-logo">
-                <p class="company-tagline">Empowering crypto investors worldwide</p>
+                <img src="ausolpay-logo.png" alt="CryptFolio" class="company-logo">
+                <p class="company-tagline">Your complete crypto command center</p>
                 <p class="company-legal">A product of <strong>Corah Media Pty Ltd</strong></p>
             </div>
         </section>
@@ -612,14 +710,14 @@
     <footer class="about-footer">
         <div class="footer-content">
             <div class="footer-brand">
-                <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
-                <span class="footer-name">Ausolpay</span>
+                <img src="ausolpay-logo.png" alt="CryptFolio Logo" class="footer-logo">
+                <span class="footer-name">CryptFolio</span>
             </div>
             <div class="footer-links">
-                <a href="index.html">Cryptfolio</a>
+                <a href="index.html">Launch App</a>
                 <a href="docs.html">Docs</a>
                 <a href="contact.html">Contact</a>
-                <a href="#">Whitepaper</a>
+                <a href="help.html">Help</a>
             </div>
             <div class="footer-legal">
                 <span>&copy; <span class="current-year"></span> Corah Media Pty Ltd. All rights reserved.</span>
@@ -678,7 +776,7 @@
             });
         }, observerOptions);
 
-        document.querySelectorAll('.roadmap-item, .app-card, .presale-card, .social-card, .coming-soon-apps, .presale-stages').forEach(el => {
+        document.querySelectorAll('.feature-card, .preview-showcase, .demo-crypto-box, .demo-package-card, .demo-alert-item').forEach(el => {
             observer.observe(el);
         });
 
@@ -742,6 +840,25 @@
         document.querySelectorAll('[data-count]').forEach(el => {
             statsObserver.observe(el);
         });
+
+        // Animate demo elements
+        setInterval(() => {
+            const priceEl = document.querySelector('.demo-price');
+            const valueEl = document.querySelector('.demo-value');
+            if (priceEl && valueEl) {
+                const variation = (Math.random() - 0.5) * 200;
+                const basePrice = 152432;
+                const newPrice = basePrice + variation;
+                priceEl.textContent = '$' + newPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                const holdings = 0.5842;
+                const newValue = (newPrice * holdings).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                valueEl.textContent = newValue;
+
+                valueEl.classList.remove('flash-green', 'flash-red');
+                valueEl.classList.add(variation > 0 ? 'flash-green' : 'flash-red');
+            }
+        }, 3000);
     </script>
 </body>
 </html>
