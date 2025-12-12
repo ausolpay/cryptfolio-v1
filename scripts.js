@@ -16186,6 +16186,9 @@ async function fetchEasyMiningData() {
         // Fetch public package data from NiceHash
         await fetchPublicPackageData();
 
+        // Verify multiple same-type packages have unique values
+        verifyUniquePackageData();
+
         // Collect chart data for ALL active packages (background data collection)
         collectChartDataForAllPackages();
 
@@ -23715,6 +23718,92 @@ function collectChartDataPoint(pkg) {
     }
 
     return chartData;
+}
+
+/**
+ * Verify that multiple packages of the same type have unique values
+ * This helps debug issues where two "Team Silver" packages show the same data
+ */
+function verifyUniquePackageData() {
+    if (!easyMiningData.activePackages || easyMiningData.activePackages.length === 0) return;
+
+    // Group packages by name
+    const packagesByName = {};
+    easyMiningData.activePackages.forEach(pkg => {
+        if (!packagesByName[pkg.name]) {
+            packagesByName[pkg.name] = [];
+        }
+        packagesByName[pkg.name].push(pkg);
+    });
+
+    // Check packages with multiple instances of the same name
+    Object.entries(packagesByName).forEach(([name, packages]) => {
+        if (packages.length > 1) {
+            console.log(`\n🔍 MULTIPLE PACKAGE CHECK: "${name}" has ${packages.length} instances`);
+            console.log('=' .repeat(60));
+
+            packages.forEach((pkg, index) => {
+                console.log(`\n📦 Instance #${index + 1}:`);
+                console.log(`   ID: ${pkg.id}`);
+                console.log(`   Hashrate: ${pkg.hashrate}`);
+                console.log(`   Rigs: ${pkg.rigsCount}`);
+                console.log(`   Progress: ${pkg.progress}%`);
+                console.log(`   Time Remaining: ${pkg.timeRemaining}`);
+                console.log(`   Probability: ${pkg.probability}`);
+                console.log(`   ProbabilityPrecision: ${pkg.probabilityPrecision}`);
+                if (pkg.isTeam) {
+                    console.log(`   My Shares: ${pkg.ownedShares}`);
+                    console.log(`   Total Shares: ${pkg.totalShares}`);
+                }
+            });
+
+            // Verify unique IDs
+            const ids = packages.map(p => p.id);
+            const uniqueIds = new Set(ids);
+            if (uniqueIds.size !== packages.length) {
+                console.error(`❌ WARNING: Duplicate IDs found for "${name}"! IDs:`, ids);
+            } else {
+                console.log(`\n✅ All ${packages.length} "${name}" packages have unique IDs`);
+            }
+
+            // Check if values differ (they should for some fields)
+            const hashrates = packages.map(p => p.hashrate);
+            const uniqueHashrates = new Set(hashrates);
+            if (uniqueHashrates.size === 1) {
+                console.log(`⚠️ Note: All "${name}" packages have same hashrate: ${hashrates[0]}`);
+            }
+
+            const probs = packages.map(p => p.probabilityPrecision);
+            const uniqueProbs = new Set(probs);
+            if (uniqueProbs.size === 1) {
+                console.log(`📊 Note: All "${name}" packages have same probability (expected for same package type)`);
+            }
+
+            console.log('=' .repeat(60));
+        }
+    });
+
+    // Verify UI cards have data-package-id
+    setTimeout(() => {
+        const container = document.getElementById('active-packages-container');
+        if (container) {
+            const cards = container.querySelectorAll('.package-card');
+            const cardsWithId = container.querySelectorAll('.package-card[data-package-id]');
+            if (cards.length !== cardsWithId.length) {
+                console.error(`❌ WARNING: ${cards.length - cardsWithId.length} cards missing data-package-id attribute!`);
+            } else {
+                console.log(`✅ All ${cards.length} active package cards have data-package-id`);
+            }
+
+            // Check for duplicate data-package-id values
+            const cardIds = Array.from(cardsWithId).map(c => c.dataset.packageId);
+            const uniqueCardIds = new Set(cardIds);
+            if (uniqueCardIds.size !== cardIds.length) {
+                console.error(`❌ WARNING: Duplicate data-package-id values found in cards!`);
+                console.log('Card IDs:', cardIds);
+            }
+        }
+    }, 500); // Wait for UI to render
 }
 
 // Collect data for ALL active packages (called during polling)
