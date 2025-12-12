@@ -462,53 +462,50 @@ body.light-mode .mobile-menu-divider {
 .global-orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.25;
+    filter: blur(180px);
+    opacity: 0.2;
 }
 
 .global-orb-1 {
-    width: 500px;
-    height: 500px;
-    background: #ff9800;
-    top: -150px;
-    right: -100px;
-    animation: global-float-1 20s ease-in-out infinite;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 152, 0, 0.8) 0%, rgba(255, 152, 0, 0.4) 40%, rgba(255, 152, 0, 0) 70%);
+    top: -200px;
+    right: -150px;
+    animation: global-float-1 45s ease-in-out infinite;
 }
 
 .global-orb-2 {
-    width: 450px;
-    height: 450px;
-    background: #666666;
-    bottom: -150px;
-    left: -100px;
-    animation: global-float-2 25s ease-in-out infinite;
+    width: 550px;
+    height: 550px;
+    background: radial-gradient(circle, rgba(100, 100, 100, 0.8) 0%, rgba(100, 100, 100, 0.4) 40%, rgba(100, 100, 100, 0) 70%);
+    bottom: -200px;
+    left: -150px;
+    animation: global-float-2 55s ease-in-out infinite;
 }
 
 .global-orb-3 {
-    width: 400px;
-    height: 400px;
-    background: #ff9800;
-    top: 40%;
-    left: 30%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255, 152, 0, 0.6) 0%, rgba(255, 152, 0, 0.3) 40%, rgba(255, 152, 0, 0) 70%);
+    top: 35%;
+    left: 25%;
     opacity: 0.15;
-    animation: global-float-3 30s ease-in-out infinite;
+    animation: global-float-3 60s ease-in-out infinite;
 }
 
 @keyframes global-float-1 {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
-    20% {
-        transform: translate(-80px, 60px) scale(1.1);
+    25% {
+        transform: translate(-30px, 25px) scale(1.03);
     }
-    40% {
-        transform: translate(-150px, 120px) scale(0.95);
+    50% {
+        transform: translate(-50px, 45px) scale(0.97);
     }
-    60% {
-        transform: translate(-50px, 180px) scale(1.05);
-    }
-    80% {
-        transform: translate(50px, 80px) scale(1);
+    75% {
+        transform: translate(-20px, 30px) scale(1.02);
     }
 }
 
@@ -516,14 +513,11 @@ body.light-mode .mobile-menu-divider {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
-    25% {
-        transform: translate(100px, -80px) scale(1.1);
+    33% {
+        transform: translate(40px, -30px) scale(1.04);
     }
-    50% {
-        transform: translate(200px, -150px) scale(0.9);
-    }
-    75% {
-        transform: translate(80px, -60px) scale(1.05);
+    66% {
+        transform: translate(70px, -50px) scale(0.96);
     }
 }
 
@@ -531,17 +525,17 @@ body.light-mode .mobile-menu-divider {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
-    15% {
-        transform: translate(60px, -40px) scale(1.15);
+    20% {
+        transform: translate(25px, -20px) scale(1.05);
     }
-    35% {
-        transform: translate(150px, 30px) scale(0.9);
+    40% {
+        transform: translate(50px, 15px) scale(0.95);
     }
-    55% {
-        transform: translate(80px, 100px) scale(1.1);
+    60% {
+        transform: translate(30px, 40px) scale(1.03);
     }
-    75% {
-        transform: translate(-40px, 60px) scale(0.95);
+    80% {
+        transform: translate(-15px, 25px) scale(0.98);
     }
 }
 
@@ -11701,53 +11695,50 @@ body.has-mobile-ad {
 .pricing-orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.3;
+    filter: blur(180px);
+    opacity: 0.2;
 }
 
 .pricing-orb-1 {
-    width: 500px;
-    height: 500px;
-    background: #ff9800;
-    top: -150px;
-    right: -100px;
-    animation: pricing-float-1 20s ease-in-out infinite;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 152, 0, 0.8) 0%, rgba(255, 152, 0, 0.4) 40%, rgba(255, 152, 0, 0) 70%);
+    top: -200px;
+    right: -150px;
+    animation: pricing-float-1 45s ease-in-out infinite;
 }
 
 .pricing-orb-2 {
-    width: 450px;
-    height: 450px;
-    background: #444;
-    bottom: -150px;
-    left: -100px;
-    animation: pricing-float-2 25s ease-in-out infinite;
+    width: 550px;
+    height: 550px;
+    background: radial-gradient(circle, rgba(100, 100, 100, 0.8) 0%, rgba(100, 100, 100, 0.4) 40%, rgba(100, 100, 100, 0) 70%);
+    bottom: -200px;
+    left: -150px;
+    animation: pricing-float-2 55s ease-in-out infinite;
 }
 
 .pricing-orb-3 {
-    width: 400px;
-    height: 400px;
-    background: #ff9800;
-    top: 40%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255, 152, 0, 0.6) 0%, rgba(255, 152, 0, 0.3) 40%, rgba(255, 152, 0, 0) 70%);
+    top: 35%;
     left: 25%;
     opacity: 0.15;
-    animation: pricing-float-3 30s ease-in-out infinite;
+    animation: pricing-float-3 60s ease-in-out infinite;
 }
 
 @keyframes pricing-float-1 {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
-    20% {
-        transform: translate(-100px, 80px) scale(1.1);
+    25% {
+        transform: translate(-30px, 25px) scale(1.03);
     }
-    40% {
-        transform: translate(-180px, 150px) scale(0.95);
+    50% {
+        transform: translate(-50px, 45px) scale(0.97);
     }
-    60% {
-        transform: translate(-60px, 200px) scale(1.05);
-    }
-    80% {
-        transform: translate(60px, 100px) scale(1);
+    75% {
+        transform: translate(-20px, 30px) scale(1.02);
     }
 }
 
@@ -11755,14 +11746,11 @@ body.has-mobile-ad {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
-    25% {
-        transform: translate(120px, -100px) scale(1.1);
+    33% {
+        transform: translate(40px, -30px) scale(1.04);
     }
-    50% {
-        transform: translate(250px, -180px) scale(0.9);
-    }
-    75% {
-        transform: translate(100px, -80px) scale(1.05);
+    66% {
+        transform: translate(70px, -50px) scale(0.96);
     }
 }
 
@@ -11770,17 +11758,17 @@ body.has-mobile-ad {
     0%, 100% {
         transform: translate(0, 0) scale(1);
     }
-    15% {
-        transform: translate(80px, -50px) scale(1.15);
+    20% {
+        transform: translate(25px, -20px) scale(1.05);
     }
-    35% {
-        transform: translate(180px, 40px) scale(0.9);
+    40% {
+        transform: translate(50px, 15px) scale(0.95);
     }
-    55% {
-        transform: translate(100px, 120px) scale(1.1);
+    60% {
+        transform: translate(30px, 40px) scale(1.03);
     }
-    75% {
-        transform: translate(-50px, 80px) scale(0.95);
+    80% {
+        transform: translate(-15px, 25px) scale(0.98);
     }
 }
 
