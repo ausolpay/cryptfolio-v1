@@ -472,7 +472,7 @@ body.light-mode .mobile-menu-divider {
 @media (min-width: 1024px) {
     #login-page .header,
     #register-page .header {
-        padding-top: 60px;
+        padding-top: 150px;
     }
 }
 
