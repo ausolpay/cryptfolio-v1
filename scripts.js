@@ -21162,6 +21162,14 @@ function stopAutoSharesBackgroundPolling() {
 async function updateRecommendations() {
     console.log('🔄 Checking for recommendation updates...');
 
+    // Fetch authenticated team shares FIRST - needed for share distribution display on alerts
+    // This gets the user's owned shares from the API (important when bought on another device)
+    try {
+        await fetchAuthenticatedTeamShares();
+    } catch (error) {
+        console.error('❌ Failed to fetch authenticated team shares:', error);
+    }
+
     // Fetch balance for buy button validation in EasyMining section
     try {
         const balanceData = await fetchNiceHashBalances();
