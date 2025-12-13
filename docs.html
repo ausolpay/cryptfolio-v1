@@ -50,8 +50,14 @@
 
             <!-- Right: Profile, Donate, Logo -->
             <div class="nav-right">
-                <!-- Profile Dropdown (Desktop) -->
-                <div class="profile-dropdown desktop-only">
+                <!-- Login/Register Buttons (shown when logged out) -->
+                <div class="auth-buttons desktop-only" id="nav-auth-buttons">
+                    <a href="index.html" class="nav-login-link">Login</a>
+                    <a href="index.html" class="nav-register-link" onclick="localStorage.setItem('showRegister', 'true');">Register</a>
+                </div>
+
+                <!-- Profile Dropdown (Desktop - shown when logged in) -->
+                <div class="profile-dropdown desktop-only" id="profile-dropdown" style="display: none;">
                     <button class="profile-btn" onclick="toggleProfileDropdown()">
                         <div class="profile-icon">
                             <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
@@ -60,17 +66,17 @@
                         </div>
                     </button>
                     <div class="dropdown-menu" id="profile-dropdown-menu">
-                        <a href="account-settings.html" class="dropdown-item">Account Settings</a>
-                        <a href="index.html?page=settings" class="dropdown-item">App Settings</a>
+                        <a href="index.html" class="dropdown-item" onclick="localStorage.setItem('showAccountSettings', 'true');">Account Settings</a>
+                        <a href="index.html" class="dropdown-item" onclick="localStorage.setItem('showSettings', 'true');">App Settings</a>
                         <a href="preferences.html" class="dropdown-item">Preferences</a>
                         <a href="help.html" class="dropdown-item">Help</a>
                         <div class="dropdown-divider"></div>
-                        <a href="index.html" class="dropdown-item">Login</a>
+                        <a href="index.html" class="dropdown-item" onclick="localStorage.removeItem('loggedInUser');">Logout</a>
                     </div>
                 </div>
 
-                <!-- Donate Button (Desktop) -->
-                <a href="#" class="donate-btn desktop-only">Donate Dev</a>
+                <!-- Donate Button (Desktop - shown when logged in) -->
+                <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="donate-btn desktop-only" id="nav-donate-btn" style="display: none;">Donate Dev</a>
 
                 <!-- Logo -->
                 <img src="ausolpay-logo.png" alt="Logo" class="nav-logo">
@@ -85,15 +91,18 @@
             <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">CRYPTFOLIO WEB APP</a>
             <a href="docs.html" class="mobile-menu-link" onclick="closeMobileMenu()">DOCS</a>
             <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
+            <a href="index.html" class="mobile-menu-link" onclick="localStorage.setItem('showPricing', 'true'); closeMobileMenu();">PRICING</a>
+            <div class="mobile-menu-divider mobile-logged-in-only"></div>
+            <a href="index.html" class="mobile-menu-link mobile-logged-in-only" onclick="localStorage.setItem('showAccountSettings', 'true'); closeMobileMenu();">Account Settings</a>
+            <a href="index.html" class="mobile-menu-link mobile-logged-in-only" onclick="localStorage.setItem('showSettings', 'true'); closeMobileMenu();">App Settings</a>
+            <a href="preferences.html" class="mobile-menu-link mobile-logged-in-only" onclick="closeMobileMenu()">Preferences</a>
+            <a href="help.html" class="mobile-menu-link mobile-logged-in-only" onclick="closeMobileMenu()">Help</a>
             <div class="mobile-menu-divider"></div>
-            <a href="account-settings.html" class="mobile-menu-link" onclick="closeMobileMenu()">Account Settings</a>
-            <a href="index.html?page=settings" class="mobile-menu-link" onclick="closeMobileMenu()">App Settings</a>
-            <a href="preferences.html" class="mobile-menu-link" onclick="closeMobileMenu()">Preferences</a>
-            <a href="help.html" class="mobile-menu-link" onclick="closeMobileMenu()">Help</a>
-            <div class="mobile-menu-divider"></div>
-            <a href="index.html" class="mobile-menu-link" onclick="closeMobileMenu()">Login</a>
-            <div class="mobile-menu-divider"></div>
-            <a href="#" class="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
+            <a href="index.html" class="mobile-menu-link" id="mobile-login-btn" onclick="closeMobileMenu()">Login</a>
+            <a href="index.html" class="mobile-menu-link" id="mobile-register-btn" onclick="localStorage.setItem('showRegister', 'true'); closeMobileMenu();">Register</a>
+            <a href="index.html" class="mobile-menu-link mobile-logged-in-only" id="mobile-logout-btn" onclick="localStorage.removeItem('loggedInUser'); closeMobileMenu();">Logout</a>
+            <div class="mobile-menu-divider mobile-logged-in-only"></div>
+            <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="mobile-donate-btn mobile-logged-in-only" id="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
         </div>
     </div>
 
@@ -118,11 +127,72 @@
         </div>
     </div>
 
-    <script src="scripts.js"></script>
     <script>
         document.querySelectorAll('.current-year').forEach(el => {
             el.textContent = new Date().getFullYear();
         });
+
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            const hamburger = document.getElementById('hamburger-btn');
+            const isActive = mobileMenu.classList.toggle('show');
+            hamburger.classList.toggle('active', isActive);
+            document.body.style.overflow = isActive ? 'hidden' : '';
+        }
+
+        function closeMobileMenu() {
+            document.getElementById('mobile-menu').classList.remove('show');
+            document.getElementById('hamburger-btn').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Profile Dropdown Toggle
+        function toggleProfileDropdown() {
+            const dropdown = document.getElementById('profile-dropdown-menu');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('profile-dropdown-menu');
+            const profileBtn = document.querySelector('.profile-btn');
+            if (dropdown && profileBtn && !dropdown.contains(e.target) && !profileBtn.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Update nav based on login state
+        function updateNavAuthState() {
+            const isLoggedIn = !!localStorage.getItem('loggedInUser');
+
+            const authButtons = document.getElementById('nav-auth-buttons');
+            const profileDropdown = document.getElementById('profile-dropdown');
+            const donateBtn = document.getElementById('nav-donate-btn');
+            const mobileLoginBtn = document.getElementById('mobile-login-btn');
+            const mobileRegisterBtn = document.getElementById('mobile-register-btn');
+            const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+            const mobileLoggedInOnlyItems = document.querySelectorAll('.mobile-logged-in-only');
+
+            if (isLoggedIn) {
+                if (authButtons) authButtons.style.display = 'none';
+                if (profileDropdown) profileDropdown.style.display = 'flex';
+                if (donateBtn) donateBtn.style.display = 'inline-block';
+                if (mobileLoginBtn) mobileLoginBtn.style.display = 'none';
+                if (mobileRegisterBtn) mobileRegisterBtn.style.display = 'none';
+                if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'block';
+                mobileLoggedInOnlyItems.forEach(item => item.style.display = '');
+            } else {
+                if (authButtons) authButtons.style.display = 'flex';
+                if (profileDropdown) profileDropdown.style.display = 'none';
+                if (donateBtn) donateBtn.style.display = 'none';
+                if (mobileLoginBtn) mobileLoginBtn.style.display = 'block';
+                if (mobileRegisterBtn) mobileRegisterBtn.style.display = 'block';
+                if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'none';
+                mobileLoggedInOnlyItems.forEach(item => item.style.display = 'none');
+            }
+        }
+
+        updateNavAuthState();
     </script>
 </body>
 </html>

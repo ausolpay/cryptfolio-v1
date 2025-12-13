@@ -101,8 +101,8 @@
                     </div>
                 </div>
 
-                <!-- Donate Button (Desktop) -->
-                <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="donate-btn desktop-only">Donate Dev</a>
+                <!-- Donate Button (Desktop - shown when logged in) -->
+                <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="donate-btn desktop-only" id="nav-donate-btn" style="display: none;">Donate Dev</a>
 
                 <!-- Logo -->
                 <img src="ausolpay-logo.png" alt="Logo" class="nav-logo">
@@ -127,8 +127,8 @@
             <a href="#" class="mobile-menu-link" id="mobile-login-btn" onclick="navLogin(); closeMobileMenu(); return false;" style="display: none;">Login</a>
             <a href="#" class="mobile-menu-link" id="mobile-register-btn" onclick="navRegister(); closeMobileMenu(); return false;" style="display: none;">Register</a>
             <a href="#" class="mobile-menu-link" id="mobile-logout-btn" onclick="navLogout(); closeMobileMenu(); return false;">Logout</a>
-            <div class="mobile-menu-divider"></div>
-            <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
+            <div class="mobile-menu-divider mobile-logged-in-only" id="mobile-donate-divider"></div>
+            <a href="https://www.paypal.com/donate/?hosted_button_id=E73RZ7UKA62PY" target="_blank" class="mobile-donate-btn mobile-logged-in-only" id="mobile-donate-btn" onclick="closeMobileMenu()">Donate Dev</a>
         </div>
     </div>
 

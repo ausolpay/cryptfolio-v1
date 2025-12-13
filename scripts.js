@@ -1638,6 +1638,7 @@ function updateNavAuthState() {
     const authButtons = document.getElementById('nav-auth-buttons');
     const profileDropdown = document.getElementById('profile-dropdown');
     const logoutBtn = document.getElementById('nav-logout-btn');
+    const donateBtn = document.getElementById('nav-donate-btn');
 
     // Desktop logged-in-only menu items
     const loggedInOnlyItems = document.querySelectorAll('.logged-in-only');
@@ -1651,10 +1652,11 @@ function updateNavAuthState() {
     const mobileLoggedInOnlyItems = document.querySelectorAll('.mobile-logged-in-only');
 
     if (isLoggedIn) {
-        // Logged in: show profile dropdown, hide auth buttons
+        // Logged in: show profile dropdown and donate, hide auth buttons
         if (authButtons) authButtons.style.display = 'none';
         if (profileDropdown) profileDropdown.style.display = 'flex';
         if (logoutBtn) logoutBtn.style.display = 'block';
+        if (donateBtn) donateBtn.style.display = 'inline-block';
 
         // Show logged-in-only menu items
         loggedInOnlyItems.forEach(item => item.style.display = '');
@@ -1665,9 +1667,10 @@ function updateNavAuthState() {
         if (mobileRegisterBtn) mobileRegisterBtn.style.display = 'none';
         if (mobileLogoutBtn) mobileLogoutBtn.style.display = 'block';
     } else {
-        // Logged out: hide profile dropdown, show auth buttons
+        // Logged out: hide profile dropdown and donate, show auth buttons
         if (authButtons) authButtons.style.display = 'flex';
         if (profileDropdown) profileDropdown.style.display = 'none';
+        if (donateBtn) donateBtn.style.display = 'none';
 
         // Hide logged-in-only menu items
         loggedInOnlyItems.forEach(item => item.style.display = 'none');
