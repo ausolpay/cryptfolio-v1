@@ -29,6 +29,7 @@
     color: var(--about-text);
     min-height: 100vh;
     overflow-x: hidden;
+    overflow-y: scroll; /* Always show scrollbar to match other pages */
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
