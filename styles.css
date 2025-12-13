@@ -472,7 +472,7 @@ body.light-mode .mobile-menu-divider {
 @media (min-width: 1024px) {
     #login-page .header,
     #register-page .header {
-        padding-top: 150px;
+        padding-top: 220px;
     }
 }
 
@@ -11889,6 +11889,17 @@ body.has-mobile-ad {
     80% {
         transform: translate(-15px, 25px) scale(0.98);
     }
+}
+
+/* Hide scrollbar on pricing page */
+#pricing-page {
+    overflow: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+#pricing-page::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
 }
 
 .pricing-page-container {
