@@ -468,6 +468,14 @@ body.light-mode .mobile-menu-divider {
     }
 }
 
+/* Add extra top padding on desktop to push login/register content down */
+@media (min-width: 1024px) {
+    #login-page .header,
+    #register-page .header {
+        padding-top: 60px;
+    }
+}
+
 /* Global Background Animation - visible on all pages */
 .global-bg-animation {
     position: fixed;
