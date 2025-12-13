@@ -34408,13 +34408,27 @@ function parseProbability(probabilityVal) {
         return probabilityVal;
     }
 
-    // If it's a string, try to parse it
+    // If it's a string, try to parse it (supports decimals like 1:3.4)
     if (typeof probabilityVal === 'string') {
-        const match = probabilityVal.match(/1:(\d+)/);
-        return match ? parseInt(match[1]) : 0;
+        const match = probabilityVal.match(/1:([\d.]+)/);
+        return match ? parseFloat(match[1]) : 0;
     }
 
     return 0;
+}
+
+/**
+ * Format probability value with decimal precision
+ * Shows 1 decimal place for values under 100, whole numbers for larger values
+ * Example: 3.456 -> "3.5", 150.2 -> "150"
+ */
+function formatProbabilityValue(value) {
+    if (!value || value === 0) return '0';
+    // Show 1 decimal for values under 100, whole numbers for larger
+    if (value < 100) {
+        return value.toFixed(1).replace(/\.0$/, ''); // Remove .0 if whole number
+    }
+    return Math.round(value).toString();
 }
 
 /**
@@ -35328,15 +35342,15 @@ function updateAveragesSection(type, packages, allHistory) {
         const ltcIconUrl = fallbackIcons['litecoin'];
 
         const avgProbability = pkg.averages?.probability
-            ? `1:${Math.round(pkg.averages.probability)}`
+            ? `1:${formatProbabilityValue(pkg.averages.probability)}`
             : 'N/A';
 
         // Palladium dual probabilities
         const avgProbLtc = isPalladium && pkg.averages?.probabilityLtc
-            ? `1:${Math.round(pkg.averages.probabilityLtc)}`
+            ? `1:${formatProbabilityValue(pkg.averages.probabilityLtc)}`
             : null;
         const avgProbDoge = isPalladium && pkg.averages?.probabilityDoge
-            ? `1:${Math.round(pkg.averages.probabilityDoge)}`
+            ? `1:${formatProbabilityValue(pkg.averages.probabilityDoge)}`
             : null;
 
         const avgHashrate = pkg.averages?.hashrate
