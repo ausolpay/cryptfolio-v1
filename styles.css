@@ -447,6 +447,27 @@ body.light-mode .mobile-menu-divider {
     margin-top: 60px; /* Space from top (10px gap + 50px nav) */
 }
 
+/* Center login/register pages vertically on desktop and tablet */
+@media (min-width: 768px) {
+    #login-page,
+    #register-page {
+        min-height: calc(100vh - 60px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin-top: 60px;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    #login-page .header,
+    #register-page .header {
+        width: 100%;
+        max-width: 500px;
+    }
+}
+
 /* Global Background Animation - visible on all pages */
 .global-bg-animation {
     position: fixed;
@@ -11908,10 +11929,10 @@ body.has-mobile-ad {
     display: flex;
     justify-content: center;
     gap: 25px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: stretch;
     width: 100%;
-    max-width: 1100px;
+    max-width: 1250px;
     margin: 0 auto;
     padding: 0 20px;
     box-sizing: border-box;
@@ -11922,7 +11943,9 @@ body.has-mobile-ad {
     border-radius: 24px;
     padding: 0;
     width: 100%;
-    max-width: 340px;
+    max-width: 380px;
+    min-width: 280px;
+    flex: 1;
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -12273,14 +12296,16 @@ body.has-mobile-ad {
 
 @media (max-width: 992px) {
     .pricing-cards-container {
-        flex-direction: column;
+        flex-wrap: wrap;
         align-items: center;
-        padding: 0;
+        padding: 0 20px;
         gap: 20px;
     }
 
     .pricing-card {
         max-width: 380px;
+        min-width: 280px;
+        flex: 1 1 280px;
     }
 
     .pricing-popular {
@@ -12723,13 +12748,13 @@ body.has-mobile-ad {
 
 @media (max-width: 992px) {
     .pricing-cards-container {
-        flex-direction: column;
-        align-items: center;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
     .pricing-card {
-        width: 100%;
-        max-width: 400px;
+        flex: 1 1 280px;
+        max-width: 380px;
     }
 
     .pricing-popular {
