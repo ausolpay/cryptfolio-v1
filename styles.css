@@ -6805,6 +6805,46 @@ body.light-mode .package-card.block-confirmed {
         max-width: 350px;
         margin: 0 auto;
     }
+
+    /* === TABLET: Use same share adjuster styles as mobile === */
+    /* Tighter gap between +/- buttons and input on tablet */
+    .share-adjuster {
+        gap: 2px;
+    }
+
+    .share-adjuster-input {
+        padding: 2px;
+        width: 50px;
+    }
+
+    /* EasyMining team alerts - tighter share adjuster on tablet */
+    #team-alerts-container .share-adjuster,
+    .easymining-section .share-adjuster {
+        gap: 5px;
+    }
+
+    #team-alerts-container .share-adjuster-btn,
+    .easymining-section .share-adjuster-btn {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        min-height: 26px;
+        font-size: 14px;
+    }
+
+    #team-alerts-container .share-adjuster-input,
+    .easymining-section .share-adjuster-input {
+        width: 45px;
+        min-width: 45px;
+        padding: 2px 0;
+        margin: 0;
+    }
+
+    /* === TABLET: Use same countdown format as mobile === */
+    /* Hide seconds in countdown when hours are shown on tablet */
+    .countdown-seconds {
+        display: none;
+    }
 }
 
 .block-animation-section {
