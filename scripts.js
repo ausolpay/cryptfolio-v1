@@ -368,6 +368,7 @@ function updateAccountSettingsTier() {
 /**
  * Initialize ad display based on user tier
  */
+let adResizeTimeout = null;
 function initializeAds() {
     const config = getCurrentTierConfig();
 
@@ -378,7 +379,10 @@ function initializeAds() {
     }
 
     showAdsForViewport();
-    window.addEventListener('resize', debounce(showAdsForViewport, 250));
+    window.addEventListener('resize', function() {
+        clearTimeout(adResizeTimeout);
+        adResizeTimeout = setTimeout(showAdsForViewport, 250);
+    });
 }
 
 /**
