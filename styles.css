@@ -6679,6 +6679,12 @@ body.light-mode .package-card.block-confirmed {
     max-width: 1000px;
 }
 
+/* Package Detail Page - Base Styles */
+#package-detail-page {
+    margin-top: 70px; /* Space for header menu */
+    padding-top: 20px;
+}
+
 /* Package Detail Page - Desktop Styles (match settings page width) */
 .package-detail-page-content {
     width: 1390px;
