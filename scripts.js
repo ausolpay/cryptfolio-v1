@@ -1,6 +1,6 @@
-// CryptFolio v2 - Main Application Script - Stable 19 - Clean Build
+// CryptFolio v2 - Main Application Script - Stable 20 - Clean Build
 // MEXC BTC prices, close-to-reward persistence, multiple reward support
-// stable build - 2025-12-01 - synced
+// stable build - 2025-12-13 - team alerts share sync, tablet share button styles
 // Note: CoinGecko API base URLs are now dynamically determined by getApiBaseUrl() based on paid/free tier
 
 // Debug logging flag - set to true to enable verbose console output
