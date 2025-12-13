@@ -23453,10 +23453,18 @@ function showPackageDetailPage(pkg) {
 
     // Set package name and subtitle
     document.getElementById('package-detail-page-name').textContent = pkg.name;
-    // Add order number under the package name
     const subtitle = pkg.miningType || `${pkg.crypto} Mining`;
-    const orderNumber = pkg.id ? `Order #${pkg.id.substring(0, 8)}` : '';
-    document.getElementById('package-detail-page-subtitle').textContent = orderNumber ? `${orderNumber} • ${subtitle}` : subtitle;
+    document.getElementById('package-detail-page-subtitle').textContent = subtitle;
+
+    // Show order number card if available
+    const orderCard = document.getElementById('package-order-number-card');
+    const orderValue = document.getElementById('package-order-number-value');
+    if (pkg.id) {
+        orderValue.textContent = pkg.id.substring(0, 8);
+        orderCard.style.display = 'inline-flex';
+    } else {
+        orderCard.style.display = 'none';
+    }
 
     // Populate package info
     const infoGrid = document.getElementById('package-detail-page-info');

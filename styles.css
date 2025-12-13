@@ -6685,6 +6685,29 @@ body.light-mode .package-card.block-confirmed {
     padding-top: 20px;
 }
 
+/* Order Number Card */
+.order-number-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 152, 0, 0.15);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin-bottom: 15px;
+}
+
+.order-number-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.order-number-value {
+    color: #ffa500;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
 /* Package Detail Page - Desktop Styles (match settings page width) */
 .package-detail-page-content {
     width: 1390px;
