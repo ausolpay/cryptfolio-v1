@@ -11702,17 +11702,22 @@ body.light-mode .team-alert-checkbox:checked {
 .ad-banner-tablet {
     width: 728px;
     height: 90px;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.ad-banner-mobile {
-    width: 320px;
-    height: 50px;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ad-banner-mobile {
+    width: 100%;
+    height: 50px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    border-radius: 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 }
 
 /* Adjust body padding for ads */
