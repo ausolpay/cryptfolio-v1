@@ -1551,6 +1551,12 @@ function initTopNavScrollBehavior() {
     // Use requestAnimationFrame for smooth performance
     function handleScroll() {
         const currentScrollY = window.scrollY || window.pageYOffset;
+        if (document.getElementById('mobile-menu')?.classList.contains('show')) {
+            topNav.classList.remove('hidden');
+            lastScrollY = currentScrollY;
+            ticking = false;
+            return;
+        }
 
         if (currentScrollY > 60) {
             // Past threshold - check direction
@@ -1695,8 +1701,13 @@ function toggleMobileMenu() {
 
         // Prevent body scroll when menu is open
         if (mobileMenu.classList.contains('show')) {
+            document.body.classList.add('mobile-menu-open');
+            document.getElementById('top-nav')?.classList.remove('hidden');
+            hamburgerBtn.setAttribute('aria-expanded', 'true');
             document.body.style.overflow = 'hidden';
         } else {
+            document.body.classList.remove('mobile-menu-open');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
             document.body.style.overflow = '';
             // Remove focus from button when closing
             hamburgerBtn.blur();
@@ -1706,6 +1717,7 @@ function toggleMobileMenu() {
 
 // Close mobile menu
 function closeMobileMenu() {
+    document.body.classList.remove('mobile-menu-open');
     const mobileMenu = document.getElementById('mobile-menu');
     const hamburgerBtn = document.getElementById('hamburger-btn');
 
@@ -1713,6 +1725,7 @@ function closeMobileMenu() {
         mobileMenu.classList.remove('show');
     }
     if (hamburgerBtn) {
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
         hamburgerBtn.classList.remove('active');
         // Remove focus from button
         hamburgerBtn.blur();
@@ -5671,10 +5684,34 @@ function showBuyPackagesPage() {
 }
 
 async function login() {
+    const button = document.getElementById('login-submit');
+    if (button.disabled) return;
+    const form = document.querySelector('.login-form');
+    const errorMessage = document.getElementById('login-error');
+    const password = document.getElementById('password-login');
+    errorMessage.hidden = true;
+    password.removeAttribute('aria-invalid');
+    form.classList.remove('login-shake');
+    form.setAttribute('aria-busy', 'true');
+    button.disabled = true;
+    button.innerHTML = '<span class="auth-spinner" aria-hidden="true"></span> Signing in…';
     try {
         await CloudAccount.login(document.getElementById('email-login').value,
-            document.getElementById('password-login').value);
-    } catch (error) { showModal(error.message); }
+            password.value);
+    } catch (error) {
+        errorMessage.textContent = error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message)
+            ? 'Email or password is incorrect. Please try again.'
+            : (error.message || 'Unable to sign in. Please try again.');
+        errorMessage.hidden = false;
+        password.setAttribute('aria-invalid', 'true');
+        button.disabled = false;
+        button.textContent = 'Login';
+        form.removeAttribute('aria-busy');
+        // Restart the short animation on each failed attempt.
+        void form.offsetWidth;
+        form.classList.add('login-shake');
+        password.focus();
+    }
 }
 
 async function register() {

@@ -2,9 +2,17 @@ window.CloudAccount = (() => {
     'use strict';
     // The SDK persists only its authentication session on this device, never portfolio data.
     const client = window.supabase.createClient('https://mpoaaemubklcrjaolpon.supabase.co',
-        'sb_publishable_RnZO2mzbt8QXwza8pHSllA_CX2PYBux', { auth: { storage: window.CryptfolioAuthStorage } });
+        'sb_publishable_RnZO2mzbt8QXwza8pHSllA_CX2PYBux', {
+            auth: { storage: window.CryptfolioAuthStorage },
+            global: { fetch: (url, options = {}) => {
+                // Small saves can finish even when a reload closes this page.
+                const keepalive = String(url).endsWith('/rpc/patch_account_state') &&
+                    typeof options.body === 'string' && new TextEncoder().encode(options.body).length < 60000;
+                return fetch(url, { ...options, ...(keepalive ? { keepalive: true } : {}) });
+            } }
+        });
     let session = null, version = 0, baseline = {}, saving = null, paused = false, ready = false;
-    let refreshing = null, saveTimer = null;
+    let refreshing = null, saveTimer = null, refreshAgain = false;
     const deviceId = crypto.randomUUID(); // Deliberately unique per tab, not shared in browser storage.
     let leaseUntil = 0, automationBusy = false, isAdmin = false;
     const receivedActions = new Set();
@@ -69,7 +77,10 @@ window.CloudAccount = (() => {
         }
         return response;
     }
-    let message = 'Connecting to Supabase…';
+    let message = 'Connecting…';
+    function synced() {
+        status('Last synced ' + new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'medium' }));
+    }
     function status(text, error = false) {
         message = text;
         const element = document.getElementById('cloud-sync-status');
@@ -90,8 +101,10 @@ window.CloudAccount = (() => {
         return data;
     }
     async function persist(records, expectedVersion) {
-        const { data, error } = await client.rpc('save_account_state', {
-            p_state: { schema: 1, records }, p_version: expectedVersion
+        const changed = Object.fromEntries(Object.entries(records).filter(([key, value]) => baseline[key] !== value));
+        const removed = Object.keys(baseline).filter(key => !Object.hasOwn(records, key));
+        const { data, error } = await client.rpc('patch_account_state', {
+            p_records: changed, p_removed: removed, p_version: expectedVersion
         });
         if (error) throw error;
         return data;
@@ -107,7 +120,7 @@ window.CloudAccount = (() => {
             try {
                 version = await persist(records, version);
                 baseline = records;
-                status('Saved to Supabase');
+                synced();
             } catch (error) {
                 if (error.code === 'PT409') {
                     const remote = await load();
@@ -124,6 +137,8 @@ window.CloudAccount = (() => {
             if (attempt >= 3) throw new Error('Both devices are busy saving. Retrying shortly.');
             return flush(attempt + 1);
         }
+        // Changes made while the request was in flight are sent immediately after it.
+        if (dirty()) return flush();
     }
     function reconcile(remote) {
         if (remote.version <= version) return;
@@ -140,22 +155,26 @@ window.CloudAccount = (() => {
         const keys = [...new Set([...Object.keys(before), ...Object.keys(merged.records)])]
             .filter(key => before[key] !== merged.records[key]);
         if (keys.length) window.dispatchEvent(new CustomEvent('cloud-data-loaded', { detail: { keys } }));
-        status('Synced with Supabase');
+        synced();
     }
     async function refresh() {
         if (!ready || !session || paused) return;
-        if (refreshing) return refreshing;
+        if (refreshing) { refreshAgain = true; return refreshing; }
         refreshing = (async () => {
-            if (saving) await saving;
-            reconcile(await load());
-            if (dirty()) await flush();
+            do {
+                refreshAgain = false;
+                if (saving) await saving;
+                reconcile(await load());
+                if (dirty()) await flush();
+            } while (refreshAgain);
         })();
         try { await refreshing; } finally { refreshing = null; }
     }
     function scheduleSave() {
-        // Leading-edge batching avoids starvation during continuous market updates.
+        // Batch only the current synchronous action, with no timed save delay.
         if (saveTimer || !ready || !session || paused) return;
-        saveTimer = setTimeout(() => { saveTimer = null; flush().catch(() => {}); }, 400);
+        saveTimer = true;
+        queueMicrotask(() => { saveTimer = null; flush().catch(() => {}); });
     }
     function defaultProfile() {
         const p = session.user.user_metadata.profile || {};
@@ -200,22 +219,36 @@ window.CloudAccount = (() => {
             script.src = 'scripts.js';
             script.onload = () => {
                 ready = true;
-                status(session ? 'Saved to Supabase' : 'Sign in to sync');
+                document.body.classList.remove('auth-loading');
+                if (session) synced(); else status('Sign in to sync');
                 if (session) {
                     client.channel('account-sync-' + session.user.id)
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'account_sync',
-                            filter: 'user_id=eq.' + session.user.id }, () => refresh().catch(() => {}))
+                            filter: 'user_id=eq.' + session.user.id }, payload => {
+                                if (Number(payload.new?.version) > version) refresh().catch(() => {});
+                            })
                         .subscribe(state => { if (state === 'SUBSCRIBED') refresh().catch(() => {}); });
                 }
             };
-            script.onerror = () => status('App could not load. Please reload.', true);
+            script.onerror = () => {
+                document.body.classList.remove('auth-loading');
+                status('App could not load. Please reload.', true);
+                const notice = document.getElementById('cloud-load-error');
+                notice.hidden = false;
+                notice.querySelector('p').textContent = 'The app could not load. Please reload to try again.';
+            };
             document.body.appendChild(script);
-            setInterval(() => flush().catch(() => {}), 3000);
+            setInterval(() => flush().catch(() => {}), 1000);
             setInterval(() => renewLease().catch(() => { leaseUntil = 0; }), 8000);
             setInterval(() => {
-                if (!document.hidden) refresh().catch(() => {});
-            }, 5000);
+                if (!document.hidden && session && ready && !paused) {
+                    // Poll only the tiny revision row; download the account only when it changed.
+                    client.from('account_sync').select('version').eq('user_id', session.user.id).maybeSingle()
+                        .then(({ data }) => { if (Number(data?.version) > version) refresh().catch(() => {}); });
+                }
+            }, 1500);
         } catch (error) {
+            document.body.classList.remove('auth-loading');
             status('Could not load your cloud account. Reload to retry.', true);
             const notice = document.getElementById('cloud-load-error');
             notice.hidden = false;
@@ -274,7 +307,7 @@ window.CloudAccount = (() => {
             version = await persist(records, remote.version);
             baseline = records;
             paused = false;
-            status('Saved to Supabase');
+            synced();
             document.getElementById('cloud-conflict').close();
         } else {
             ready = false;
@@ -282,14 +315,15 @@ window.CloudAccount = (() => {
         }
     }
     window.addEventListener('app-data-changed', () => {
-        if (ready && session && !paused) status('Unsaved changes…');
+        if (ready && session && !paused) status('Saving…');
         scheduleSave();
     });
     window.addEventListener('online', () => refresh().catch(() => {}));
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh().catch(() => {}); });
-    window.addEventListener('beforeunload', event => {
-        if (ready && session && dirty()) { event.preventDefault(); event.returnValue = ''; }
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) flush().catch(() => {});
+        else refresh().catch(() => {});
     });
+    window.addEventListener('pagehide', () => { flush().catch(() => {}); });
     client.auth.onAuthStateChange((event, next) => {
         if (event === 'SIGNED_IN' && session && next?.user.id !== session.user.id) {
             ready = false;

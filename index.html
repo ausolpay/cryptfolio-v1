@@ -22,7 +22,12 @@
     <!-- Google AdSense (Free tier only) -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
 </head>
-<body class="dark-mode">
+<body class="dark-mode auth-loading">
+    <div id="auth-loading-screen" role="status" aria-live="polite">
+        <img src="ausolpay-logo.png" alt="CryptFolio" width="64" height="64">
+        <span class="auth-spinner" aria-hidden="true"></span>
+        <p>Opening your portfolio…</p>
+    </div>
     <!-- Global Animated Background Orbs -->
     <div class="global-bg-animation">
         <div class="global-orb global-orb-1"></div>
@@ -59,7 +64,7 @@
     <nav class="top-nav" id="top-nav">
         <div class="nav-content">
             <!-- Mobile: Hamburger Button -->
-            <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()">
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu" aria-controls="mobile-menu" aria-expanded="false" onclick="toggleMobileMenu()">
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
                 <span class="hamburger-line"></span>
@@ -150,13 +155,14 @@
                 <p>Track your investments in real-time!</p>
 
             </div>
-            <div class="login-form">
-                <input type="email" id="email-login" placeholder="Email">
-                <input type="password" id="password-login" placeholder="Password">
+            <form class="login-form" onsubmit="login(); return false;">
+                <input type="email" id="email-login" placeholder="Email" aria-label="Email" autocomplete="username" required>
+                <input type="password" id="password-login" placeholder="Password" aria-label="Password" autocomplete="current-password" aria-describedby="login-error" required>
+                <p id="login-error" class="login-error" role="alert" hidden></p>
                 <label class="stay-signed-in"><input type="checkbox" id="stay-signed-in" checked> Stay signed in</label>
                 <div class="login-buttons">
-                    <button onclick="showRegisterPage()">New user? Register</button>
-                    <button onclick="login()">Login</button>
+                    <button type="button" onclick="showRegisterPage()">New user? Register</button>
+                    <button type="submit" id="login-submit">Login</button>
                 </div>
                 <div class="app-footer" style="margin-top: 20px;">
                     <img src="ausolpay-logo.png" alt="AusolPay Logo" class="footer-logo">
@@ -169,7 +175,7 @@
                         <span>Data by CoinGecko / MEXC</span>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 

@@ -17,20 +17,21 @@ test('all settings, histories and API credentials round-trip through the working
     assert.equal(createStorage().getItem('theme'), null, 'fresh browser state has no persistent app data');
 });
 
-async function device(database, owner) {
-    const storage = createStorage();
+async function device(database, owner, beforeSave = async () => {}) {
+    const events = new Map(), requests = [];
+    const storage = createStorage({}, () => events.get('app-data-changed')?.());
     const status = { textContent: '', classList: { toggle() {} } };
     const context = {
-        console, CloudData, crypto: require('node:crypto').webcrypto, appStorage: storage, setInterval() {}, setTimeout() {},
+        console, CloudData, queueMicrotask, crypto: require('node:crypto').webcrypto, appStorage: storage, setInterval() {}, setTimeout() {},
         dispatchEvent() {}, CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
         navigator: { onLine: true }, location: { reload() {}, origin: 'https://test.invalid' },
-        addEventListener() {}, alert() {},
+        addEventListener(name, handler) { events.set(name, handler); }, alert() {},
         document: {
             hidden: false,
             addEventListener() {},
             getElementById: () => status,
             createElement: () => ({}),
-            body: { appendChild(element) { if (typeof element.onload === 'function') element.onload(); } }
+            body: { classList: { remove() {} }, appendChild(element) { if (typeof element.onload === 'function') element.onload(); } }
         },
         supabase: { createClient: () => ({
             channel: () => ({ on() { return this; }, subscribe() {} }),
@@ -41,10 +42,15 @@ async function device(database, owner) {
             rpc: async (name, args) => {
                 if (name === 'claim_automation') return { data: true };
                 if (name === 'get_account_access') return { data: { isAdmin: false, tier: 'free' } };
-                const saved = database.get(owner) || { version: 0, state: null };
+                let saved = database.get(owner) || { version: 0, state: null };
                 if (name === 'load_account_state') return { data: structuredClone(saved) };
+                requests.push(structuredClone(args));
+                await beforeSave(args);
+                saved = database.get(owner) || { version: 0, state: null };
                 if (args.p_version !== saved.version) return { error: { code: 'PT409' } };
-                const next = { version: saved.version + 1, state: structuredClone(args.p_state) };
+        const records = { ...saved.state?.records, ...structuredClone(args.p_records) };
+        for (const key of args.p_removed) delete records[key];
+        const next = { version: saved.version + 1, state: { schema: 1, records } };
                 database.set(owner, next);
                 return { data: next.version };
             }
@@ -55,8 +61,38 @@ async function device(database, owner) {
     const source = fs.readFileSync(require('node:path').join(__dirname, '../cloud-account.js'), 'utf8');
     vm.runInContext(source.replace('CloudAccount.start();', 'window.started = CloudAccount.start();'), context);
     await context.started;
-    return { cloud: context.CloudAccount, storage, status };
+    return { cloud: context.CloudAccount, storage, status, events, requests };
 }
+
+test('edits auto-save without a timer and only changed records are uploaded', async () => {
+    const database = new Map();
+    const first = await device(database, 'auto@example.test');
+    first.storage.setItem('largeHistory', 'x'.repeat(200000));
+    await first.cloud.flush();
+    first.storage.setItem('theme', 'light');
+    await new Promise(setImmediate);
+    assert.equal(database.get('auto@example.test').state.records.theme, 'light');
+    assert.deepEqual(first.requests.at(-1).p_records, { theme: 'light' });
+    first.storage.removeItem('theme');
+    await new Promise(setImmediate);
+    assert.equal(database.get('auto@example.test').state.records.theme, undefined);
+    assert.equal(first.events.has('beforeunload'), false);
+    assert.match(first.status.textContent, /^Last synced /);
+});
+
+test('an edit arriving during a save is drained immediately without losing either edit', async () => {
+    const database = new Map();
+    let release;
+    const first = await device(database, 'flight@example.test', args =>
+        args.p_records.first ? new Promise(resolve => { release = resolve; }) : Promise.resolve());
+    first.storage.setItem('first', '1');
+    await new Promise(setImmediate);
+    first.storage.setItem('second', '2');
+    release();
+    await first.cloud.flush();
+    assert.equal(database.get('flight@example.test').state.records.first, '1');
+    assert.equal(database.get('flight@example.test').state.records.second, '2');
+});
 
 test('a second device loads the full saved account from the server', async () => {
     const database = new Map();
