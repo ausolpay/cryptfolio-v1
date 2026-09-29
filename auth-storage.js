@@ -27,10 +27,19 @@
             put: (key, value) => transaction('readwrite', store => store.put(value, key))
         };
     }
-    function createStorage(database, legacy) {
+    function createStorage(database, legacy, transient = () => null) {
         const old = (method, key) => { try { return legacy()?.[method](key); } catch { return null; } };
+        const temporary = () => { try { return transient(); } catch { return null; } };
+        const persistent = () => temporary()?.getItem('cryptfolio-auth-mode') !== 'session';
         return {
+            get persistent() { return persistent(); },
+            setPersistence(remember) {
+                const store = temporary();
+                if (!store && !remember) throw new Error('This browser has disabled session storage. Allow site storage to sign in without remembering this device.');
+                if (store) store.setItem('cryptfolio-auth-mode', remember ? 'persistent' : 'session');
+            },
             async getItem(key) {
+                if (!persistent()) return temporary()?.getItem(key) ?? null;
                 const saved = await database.get(key);
                 // A null tombstone prevents a logged-out legacy session from reappearing.
                 if (saved !== undefined) return saved;
@@ -38,10 +47,20 @@
                 if (value != null) { await database.put(key, value); old('removeItem', key); }
                 return value ?? null;
             },
-            async setItem(key, value) { await database.put(key, value); old('removeItem', key); },
-            async removeItem(key) { await database.put(key, null); old('removeItem', key); }
+            async setItem(key, value) {
+                if (persistent()) {
+                    await database.put(key, value);
+                    temporary()?.removeItem(key);
+                } else {
+                    temporary().setItem(key, value);
+                    // Do not leave a durable copy when the user opts out of remembered login.
+                    await database.put(key, null);
+                }
+                old('removeItem', key);
+            },
+            async removeItem(key) { await database.put(key, null); temporary()?.removeItem(key); old('removeItem', key); }
         };
     }
     if (typeof module !== 'undefined') module.exports = { createStorage, databaseStore };
-    else root.CryptfolioAuthStorage = createStorage(databaseStore(root.indexedDB), () => root.localStorage);
+    else root.CryptfolioAuthStorage = createStorage(databaseStore(root.indexedDB), () => root.localStorage, () => root.sessionStorage);
 })(typeof window === 'undefined' ? globalThis : window);

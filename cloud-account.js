@@ -168,6 +168,8 @@ window.CloudAccount = (() => {
     }
     async function start() {
         try {
+            const remember = document.getElementById('stay-signed-in');
+            if (remember) remember.checked = window.CryptfolioAuthStorage?.persistent !== false;
             const { data, error } = await client.auth.getSession();
             if (error) throw error;
             session = data.session;
@@ -219,6 +221,7 @@ window.CloudAccount = (() => {
         }
     }
     async function login(email, password) {
+        window.CryptfolioAuthStorage?.setPersistence(document.getElementById('stay-signed-in')?.checked !== false);
         const { error } = await client.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) throw error;
         location.reload();

@@ -5,6 +5,26 @@ function database() {
     const values = new Map();
     return { get: async key => values.get(key), put: async (key, value) => { values.set(key, value); } };
 }
+function sessionStorage() {
+    const values = new Map();
+    return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+}
+test('unchecked stay signed in survives a reload but not a new browser session', async () => {
+    const db = database(); const tab = sessionStorage();
+    const first = createStorage(db, () => null, () => tab);
+    await first.setItem('auth', 'previously-remembered');
+    first.setPersistence(false);
+    await first.setItem('auth', 'temporary-session');
+    assert.equal(await createStorage(db, () => null, () => tab).getItem('auth'), 'temporary-session');
+    assert.equal(await createStorage(db, () => null, () => sessionStorage()).getItem('auth'), null);
+});
+test('checked stay signed in restores a session after browser restart', async () => {
+    const db = database();
+    const first = createStorage(db, () => null, () => sessionStorage());
+    first.setPersistence(true);
+    await first.setItem('auth', 'remembered-session');
+    assert.equal(await createStorage(db, () => null, () => sessionStorage()).getItem('auth'), 'remembered-session');
+});
 test('sign-in succeeds with full localStorage and is readable by another session', async () => {
     const db = database();
     const legacy = () => ({ getItem: () => null, setItem() { throw new Error('QuotaExceededError'); }, removeItem() {} });
