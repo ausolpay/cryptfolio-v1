@@ -14,6 +14,17 @@ window.CloudAccount = (() => {
     let session = null, version = 0, baseline = {}, saving = null, paused = false, ready = false;
     let refreshing = null, saveTimer = null, requestedVersion = 0;
     let checkingRevision = null, renewingLease = null, realtimeConnected = false, lastRevisionCheck = 0;
+    let lastSaveAt = 0, saveFailures = 0, retrySaveAt = 0;
+    // Frequent market observations should not rewrite the encrypted portfolio on every tick.
+    const observationKey = /(?:_display(?:AUD|Value|Holdings)|_easyMiningData|_chartDataStore|_packageStates|_candlestickData|_savedPackageProbabilities|_lastUpdated|_totalHoldings24hAgo|_recordHigh|_recordLow)$/;
+    function backgroundFlush() {
+        if (saving || Date.now() < retrySaveAt) return;
+        const records = snapshot();
+        const changed = [...new Set([...Object.keys(records), ...Object.keys(baseline)])]
+            .filter(key => records[key] !== baseline[key]);
+        if (changed.length && changed.every(key => observationKey.test(key)) && Date.now() - lastSaveAt < 30000) return;
+        flush(0, true).catch(() => {});
+    }
     const deviceId = crypto.randomUUID(); // Deliberately unique per tab, not shared in browser storage.
     let leaseUntil = 0, automationBusy = false, isAdmin = false;
     const receivedActions = new Set();
@@ -121,7 +132,7 @@ window.CloudAccount = (() => {
         if (error) throw error;
         return data;
     }
-    async function flush(attempt = 0) {
+    async function flush(attempt = 0, background = false) {
         if (saving) { await saving; return dirty() ? flush() : undefined; }
         if (paused) throw new Error('Cloud sync is paused. Resolve the changes from your other device first.');
         if (!ready || !session || !dirty()) return;
@@ -132,6 +143,9 @@ window.CloudAccount = (() => {
             try {
                 version = await persist(records, version);
                 baseline = records;
+                lastSaveAt = Date.now();
+                saveFailures = 0;
+                retrySaveAt = 0;
                 synced();
             } catch (error) {
                 if (error.code === 'PT409') {
@@ -140,17 +154,20 @@ window.CloudAccount = (() => {
                     status('Syncing changes from both devices…');
                     retryAfterMerge = true;
                     return;
-                } else status('Not saved — connection failed. Keep this tab open; retrying.', true);
+                } else {
+                    retrySaveAt = Date.now() + Math.min(60000, 2000 * 2 ** Math.min(saveFailures++, 5));
+                    status('Not saved — connection failed. Keep this tab open; retrying.', true);
+                }
                 throw error;
             }
         })();
         try { await saving; } finally { saving = null; }
         if (retryAfterMerge) {
             if (attempt >= 3) throw new Error('Both devices are busy saving. Retrying shortly.');
-            return flush(attempt + 1);
+            return flush(attempt + 1, background);
         }
         // Changes made while the request was in flight are sent immediately after it.
-        if (dirty()) return flush();
+        if (dirty()) return background ? backgroundFlush() : flush();
     }
     function reconcile(remote) {
         if (remote.version <= version) return;
@@ -197,7 +214,7 @@ window.CloudAccount = (() => {
         // Batch only the current synchronous action, with no timed save delay.
         if (saveTimer || !ready || !session || paused) return;
         saveTimer = true;
-        queueMicrotask(() => { saveTimer = null; flush().catch(() => {}); });
+        queueMicrotask(() => { saveTimer = null; backgroundFlush(); });
     }
     function defaultProfile() {
         const p = session.user.user_metadata.profile || {};
@@ -279,7 +296,7 @@ window.CloudAccount = (() => {
                 notice.querySelector('p').textContent = 'The app could not load. Please reload to try again.';
             };
             document.body.appendChild(script);
-            setInterval(() => flush().catch(() => {}), 1000);
+            setInterval(backgroundFlush, 1000);
             setInterval(() => renewLease().catch(() => { leaseUntil = 0; }), 8000);
             setInterval(() => {
                 if (!document.hidden && Date.now() - lastRevisionCheck >= (realtimeConnected ? 60000 : 15000)) {

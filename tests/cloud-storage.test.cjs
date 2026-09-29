@@ -46,7 +46,9 @@ async function device(database, owner, beforeSave = async () => {}, startupError
     const storage = createStorage({}, () => events.get('app-data-changed')?.());
     const status = { textContent: '', classList: { toggle() {} } };
     const context = {
-        console, CloudData, queueMicrotask, crypto: require('node:crypto').webcrypto, appStorage: storage, setInterval() {}, setTimeout() {}, clearTimeout() {},
+        console, CloudData, queueMicrotask, crypto: require('node:crypto').webcrypto, appStorage: storage,
+        Date: class extends Date { static now() { return hooks.now ?? Date.now(); } },
+        setInterval(fn, ms) { if (ms === 1000) hooks.autosave = fn; }, setTimeout() {}, clearTimeout() {},
         dispatchEvent() {}, CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
         navigator: { onLine: true }, location: { reload() {}, origin: 'https://test.invalid' },
         addEventListener(name, handler) { events.set(name, handler); }, alert() {},
@@ -279,4 +281,52 @@ test('automation lease checks cannot pile up while Supabase is slow', async () =
     const pending = [first.cloud.ensureAutomation(), first.cloud.ensureAutomation()];
     assert.equal(checks, 1);
     release(); await Promise.all(pending);
+});
+
+test('market ticks are batched, while holdings edits and explicit saves remain immediate', async () => {
+    const hooks = { now: 100000 }, database = new Map();
+    const first = await device(database, 'batch@example.test', undefined, null, hooks);
+    await first.cloud.flush();
+    const initial = first.requests.length;
+    for (let tick = 0; tick < 10; tick++) {
+        first.storage.setItem('owner_displayValue', String(tick));
+        hooks.autosave();
+        await new Promise(setImmediate);
+    }
+    assert.equal(first.requests.length, initial);
+    hooks.now += 30000;
+    hooks.autosave(); await new Promise(setImmediate);
+    assert.equal(first.requests.length, initial + 1);
+    assert.equal(database.get('batch@example.test').state.records.owner_displayValue, '9');
+    first.storage.setItem('owner_holdingsEntries', '[{"amount":2}]');
+    await new Promise(setImmediate);
+    assert.equal(first.requests.length, initial + 2);
+    first.storage.setItem('owner_displayValue', '12');
+    await first.cloud.flush();
+    assert.equal(database.get('batch@example.test').state.records.owner_displayValue, '12');
+});
+
+test('failed autosaves back off without losing edits, and manual retry can recover immediately', async () => {
+    const hooks = { now: 100000 }, database = new Map();
+    let fail = false;
+    const first = await device(database, 'backoff@example.test', async () => {
+        if (fail) throw new Error('Database unavailable');
+    }, null, hooks);
+    await first.cloud.flush();
+    fail = true;
+    first.storage.setItem('theme', 'dark');
+    await new Promise(setImmediate);
+    const failedCount = first.requests.length;
+    for (let i = 0; i < 10; i++) { hooks.autosave(); await new Promise(setImmediate); }
+    assert.equal(first.requests.length, failedCount);
+    assert.equal(first.storage.getItem('theme'), 'dark');
+    hooks.now += 2000;
+    hooks.autosave(); await new Promise(setImmediate);
+    assert.equal(first.requests.length, failedCount + 1);
+    hooks.now += 2000;
+    hooks.autosave(); await new Promise(setImmediate);
+    assert.equal(first.requests.length, failedCount + 1, 'second failure has a longer retry delay');
+    fail = false;
+    await first.cloud.retry();
+    assert.equal(database.get('backoff@example.test').state.records.theme, 'dark');
 });
