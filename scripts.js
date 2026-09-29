@@ -9124,7 +9124,8 @@ function resetHighLow() {
 
 // Function to send notification
 function sendNotification(title, body, icon) {
-    const notificationPermission = appStorage.getItem('notificationPermission');
+    AppNotifications.add(title, body, /milestone|record/i.test(title) ? 'milestone' : 'portfolio').catch(console.error);
+    const notificationPermission = typeof Notification !== 'undefined' ? Notification.permission : 'denied';
     if (notificationPermission === 'granted') {
         Push.create(title, {
             body: body,
@@ -10420,6 +10421,8 @@ function updateCryptoValue(cryptoId) {
 }
 
 function showTradeModal(message) {
+    const plain = document.createElement('div'); plain.innerHTML = message;
+    AppNotifications.add('Market alert', plain.textContent, 'market').catch(console.error);
     const modalMessage = document.getElementById('modal-message');
     modalMessage.innerHTML = `
         <span class="close" onclick="closeModal()">&times;</span>
@@ -21146,7 +21149,7 @@ async function updateRecommendations() {
                 navigator.vibrate([100, 50, 100]); // Double vibrate for alert
             }
             // Mark these packages as alerted
-            newSoloAlerts.forEach(pkg => alertedSoloPackages.add(pkg.name));
+            newSoloAlerts.forEach(pkg => { alertedSoloPackages.add(pkg.name); AppNotifications.add('Solo package alert', pkg.name + ' matches your configured thresholds.', 'mining').catch(console.error); });
         }
     }
 
@@ -21160,7 +21163,7 @@ async function updateRecommendations() {
                 navigator.vibrate([100, 50, 100]); // Double vibrate for alert
             }
             // Mark these packages as alerted
-            newTeamAlerts.forEach(pkg => alertedTeamPackages.add(pkg.name));
+            newTeamAlerts.forEach(pkg => { alertedTeamPackages.add(pkg.name); AppNotifications.add('Team package alert', pkg.name + ' matches your configured thresholds.', 'mining').catch(console.error); });
         }
     }
 
@@ -22731,6 +22734,12 @@ function checkForPackageStatusChanges() {
         };
 
         const previousState = previousStates[pkgId];
+        if (previousState && currentState.totalBlocks > previousState.totalBlocks) {
+            AppNotifications.add('Mining block found', pkg.name + ' has ' + currentState.totalBlocks + ' reported block(s). Order ' + pkgId, 'mining').catch(console.error);
+        }
+        if (previousState?.active && !currentState.active) {
+            AppNotifications.add('Mining package completed', pkg.name + ' finished with ' + currentState.totalBlocks + ' reported block(s). Order ' + pkgId, 'mining').catch(console.error);
+        }
 
         // Store current state for next check
         newStates[pkgId] = currentState;

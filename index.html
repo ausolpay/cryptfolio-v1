@@ -82,6 +82,11 @@
                     <a href="#" class="nav-register-link" onclick="navRegister(); return false;">Register</a>
                 </div>
 
+                <!-- Notification inbox -->
+                <button id="notification-bell" class="notification-bell" hidden aria-label="Notifications" onclick="AppNotifications.open()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+                    <span data-notice-count hidden></span>
+                </button>
                 <!-- Profile Dropdown (Desktop - shown when logged in) -->
                 <div class="profile-dropdown desktop-only" id="profile-dropdown">
                     <button class="profile-btn" onclick="toggleProfileDropdown()">
@@ -121,6 +126,7 @@
             <a href="contact.html" class="mobile-menu-link" onclick="closeMobileMenu()">CONTACT</a>
             <a href="#" class="mobile-menu-link" onclick="showPricingPage(); closeMobileMenu(); return false;">PRICING</a>
             <div class="mobile-menu-divider mobile-logged-in-only" id="mobile-divider-settings"></div>
+            <button class="mobile-menu-link mobile-logged-in-only" onclick="closeMobileMenu(); AppNotifications.open()">Notifications <span data-notice-count hidden></span></button>
             <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-account-settings" onclick="showAccountSettingsPage(); closeMobileMenu(); return false;">Account Settings</a>
             <button id="mobile-sync-status" class="mobile-menu-link mobile-logged-in-only" onclick="CloudAccount.retry().catch(error => alert(error.message))">Syncing…</button>
             <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-app-settings" onclick="showSettingsPage(); closeMobileMenu(); return false;">App Settings</a>
@@ -3193,6 +3199,12 @@
     <script src="easymining-model.js"></script>
     <script src="easymining-currency.js"></script>
     <link rel="stylesheet" href="easymining-currency.css">
+    <dialog id="notification-dialog" aria-labelledby="notification-heading">
+        <header class="notice-header"><h2 id="notification-heading">Notifications</h2><button onclick="AppNotifications.readAll()">Mark all read</button><button aria-label="Close notifications" onclick="this.closest('dialog').close()">✕</button></header>
+        <div id="notification-list"></div>
+    </dialog>
+    <link rel="stylesheet" href="notifications.css">
+    <script src="notifications.js"></script>
     <script src="cloud-account.js"></script>
 
     <script>
