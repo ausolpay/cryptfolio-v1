@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../api/ai.js'), 'utf8').replace(/^import .*\r?\n/gm, '').replace('export default async function handler', 'async function handler');
-async function run({ authorized = true, enabled = false, action = 'generate', provider = 'openai', model = 'gpt-5-mini', existing = {}, coinExtras = {}, shared, scope = 'bitcoin', currency = 'usd', providerFailure = false, id = '11111111-1111-4111-8111-111111111111' } = {}) {
+async function run({ authorized = true, enabled = false, action = 'generate', provider = 'openai', model = 'gpt-5-mini', existing = {}, coinExtras = {}, shared, scope = 'bitcoin', currency = 'usd', providerFailure = false, authError = null, claimOverrides = {}, id = '11111111-1111-4111-8111-111111111111' } = {}) {
     const calls = [], rpcCalls = [];
     let state = shared || { version: 1, state: { schema: 1, records: {
         'owner@test_aiSettings': JSON.stringify({ provider, apiKey: 'test-provider-key', enabled, model }),
@@ -11,7 +11,10 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
     } } };
     const context = {
         AbortSignal, URL, randomUUID: () => id,
-        createClient: () => ({ auth: { getUser: async () => ({ data: { user: { email: 'owner@test' } } }) },
+        createClient: () => ({ auth: { getClaims: async () => ({ error: authError, data: authError ? null : { claims: {
+            sub: 'verified-owner', email: 'owner@test', role: 'authenticated', aud: 'authenticated',
+            iss: 'https://mpoaaemubklcrjaolpon.supabase.co/auth/v1', ...claimOverrides
+        } } }) },
             rpc: async (name, args) => {
                 rpcCalls.push(name);
                 if (name === 'load_ai_overview_history') return { data: structuredClone(state) };
@@ -47,6 +50,31 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
 test('AI requires login and activation before sending financial context to a provider', async () => {
     const anonymous = await run({ authorized: false }); assert.equal(anonymous.res.code, 401); assert.equal(anonymous.calls.length, 0);
     const disabled = await run(); assert.equal(disabled.res.code, 403); assert.equal(disabled.calls.length, 0);
+});
+
+test('an authentication service timeout is unavailable, never an expired session', async () => {
+    for (const status of [0, 503]) {
+        const result = await run({ enabled: true, authError: { name: 'AuthRetryableFetchError', status } });
+        assert.equal(result.res.code, 503);
+        assert.doesNotMatch(result.res.data.error, /Session expired|Sign in again/);
+        assert.equal(result.calls.length, 0);
+        assert.equal(result.rpcCalls.length, 0);
+    }
+});
+
+test('invalid or expired verified tokens are rejected before any generation', async () => {
+    const result = await run({ enabled: true, authError: { name: 'AuthInvalidJwtError', status: 400 } });
+    assert.equal(result.res.code, 401);
+    assert.equal(result.calls.length, 0);
+});
+
+test('verified claims must belong to this project and an authenticated account', async () => {
+    for (const claimOverrides of [{ iss: 'https://other.supabase.co/auth/v1' }, { role: 'anon' }, { aud: 'other' }, { sub: '' }, { email: '' }]) {
+        const result = await run({ enabled: true, claimOverrides });
+        assert.equal(result.res.code, 401);
+        assert.equal(result.calls.length, 0);
+        assert.equal(result.rpcCalls.length, 0);
+    }
 });
 test('AI persists completed output and sends only the approved financial summary fields', async () => {
     const result = await run({ enabled: true });

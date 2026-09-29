@@ -78,9 +78,22 @@ async function handleRequest(req, res) {
     if (!authorization?.startsWith('Bearer ')) return res.status(401).json({ error: 'Sign in required' });
     const client = createClient(SUPABASE_URL, PUBLIC_KEY, { global: { headers: { Authorization: authorization },
         fetch: (url, options) => fetch(url, { ...options, signal: AbortSignal.timeout(10000) }) }, auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: auth, error: authError } = await timed('authenticate', () => client.auth.getUser(authorization.slice(7)));
-    if (authError || !auth.user) return res.status(401).json({ error: 'Session expired. Sign in again.' });
-    const user = auth.user.email, id = randomUUID();
+    // Verify signature and expiry using the SDK's cached public signing keys.
+    // Legacy symmetric tokens still receive the SDK's server verification.
+    const { data: auth, error: authError } = await timed('authenticate', () => client.auth.getClaims(authorization.slice(7)));
+    if (authError) {
+        const invalid = authError.name === 'AuthInvalidJwtError' ||
+            (authError.name !== 'AuthRetryableFetchError' && [400, 401, 403].includes(authError.status));
+        console.info('AI authentication failed', authError.name, 'status', authError.status || 0);
+        return res.status(invalid ? 401 : 503).json({ error: invalid ? 'Session expired. Sign in again.' :
+            'The sign-in service is taking too long or is temporarily unavailable. Your session has not been signed out. Try again shortly.' });
+    }
+    const claims = auth?.claims;
+    if (!claims?.sub || !claims.email || claims.iss !== SUPABASE_URL + '/auth/v1' ||
+        claims.role !== 'authenticated' || !(Array.isArray(claims.aud) ? claims.aud.includes('authenticated') : claims.aud === 'authenticated')) {
+        return res.status(401).json({ error: 'Session expired. Sign in again.' });
+    }
+    const user = claims.email, id = randomUUID();
     const day = summaryDay(), dailyKey = `${user}_ai_daily_${day}`, daily = req.body?.action === 'daily';
     let generation, reserved = false;
     async function load() {
