@@ -28,6 +28,8 @@ test('package artwork permits only official HTTPS assets', () => {
     assert.equal(model.packageIcon(raw('javascript:alert(1)')), null);
 });
 test('HTTP success does not turn a declined or partial mining order into a full purchase', () => {
+    assert.throws(() => model.assertSuccessfulOrder({}), /not confirmed/);
+    assert.throws(() => model.assertSuccessfulOrder({ message: 'Unrecognised response' }), /not confirmed/);
     assert.throws(() => model.assertSuccessfulOrder({ success: false, message: 'Insufficient funds' }), /Insufficient/);
     assert.throws(() => model.assertSuccessfulOrder({ success: true, successType: 'PARTIAL_SUCCESS' }), /partially/);
     assert.deepEqual(model.assertSuccessfulOrder({ success: true, successType: 'SUCCESSFUL' }), { success: true, successType: 'SUCCESSFUL' });

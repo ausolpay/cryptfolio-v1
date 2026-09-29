@@ -4,13 +4,13 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../api/nicehash.js'), 'utf8')
     .replace(/^import .*\n/, '').replace('export default async function handler', 'async function handler');
-async function request({ body = {}, auth = true, reserveError = false, upstreamStatus = 200 } = {}) {
+async function request({ body = {}, auth = true, reserveError = false, upstreamStatus = 200, upstreamData = { success: true } } = {}) {
     const calls = [], rpcs = [];
     const context = {
         AbortSignal,
         createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: 'test' } } }) },
             rpc: async name => { rpcs.push(name); return { error: name === 'reserve_automation_action' && reserveError ? { message: 'Another device owns automation' } : null }; } }),
-        fetch: async (url, options) => { calls.push({ url, options }); return { status: upstreamStatus, json: async () => ({ result: 'test' }) }; }
+        fetch: async (url, options) => { calls.push({ url, options }); return { status: upstreamStatus, json: async () => upstreamData }; }
     };
     vm.createContext(context);
     vm.runInContext(source, context);
@@ -21,6 +21,14 @@ async function request({ body = {}, auth = true, reserveError = false, upstreamS
     return { res, calls, rpcs };
 }
 const purchase = { endpoint: '/main/api/v2/hashpower/solo/order', method: 'POST', body: { test: true } };
+test('partial and unrecognised HTTP 200 mining responses retain the cross-device purchase lock', async () => {
+    for (const upstreamData of [{ success: true, successType: 'PARTIAL_SUCCESS' }, {}]) {
+        const result = await request({ body: purchase, upstreamData });
+        assert.equal(result.res.code, 409);
+        assert.deepEqual(result.rpcs, ['reserve_automation_action']);
+        assert.equal(result.res.headers['X-Cryptfolio-Received'], undefined);
+    }
+});
 test('unauthenticated mutations never reach NiceHash', async () => {
     const result = await request({ body: purchase, auth: false });
     assert.equal(result.res.code, 401);

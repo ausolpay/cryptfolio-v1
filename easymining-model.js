@@ -40,6 +40,10 @@
                 ? 'NiceHash partially filled this order. Check your active packages before trying again.'
                 : result?.message || 'NiceHash did not confirm the order. Check your active packages before trying again.');
         }
+        if (!(result.success === true || result.successType === 'SUCCESSFUL' ||
+              (typeof result.id === 'string' && result.id) || (typeof result.orderId === 'string' && result.orderId))) {
+            throw new Error('NiceHash has not confirmed this order. Check your packages before trying again.');
+        }
         return result;
     }
     const api = { coinIds, payment, shareCount, packageIcon, assertSuccessfulOrder, bestSharePercent };

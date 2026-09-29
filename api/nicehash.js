@@ -41,6 +41,18 @@ export default async function handler(req, res) {
             body: body == null || method === 'GET' ? undefined : typeof body === 'string' ? body : JSON.stringify(body)
         });
         const data = await response.json();
+        const miningOrder = method === 'POST' && /^\/main\/api\/v2\/hashpower\/(?:solo\/order|shared\/ticket\/)/.test(endpoint);
+        if (miningOrder && response.status >= 200 && response.status < 300) {
+            const declined = data?.successType === 'NOT_SUCCESSFUL' || data?.success === false;
+            const confirmed = data?.success === true || data?.successType === 'SUCCESSFUL' ||
+                (typeof data?.id === 'string' && data.id) || (typeof data?.orderId === 'string' && data.orderId);
+            if (data?.successType === 'PARTIAL_SUCCESS' || (!declined && !confirmed)) {
+                // Keep the server reservation pending on every device. A partial fill
+                // must be reconciled against the provider before another order is sent.
+                return res.status(409).json({ error: 'Order requires review in NiceHash. Automatic purchases are paused to prevent a duplicate.',
+                    success: false, successType: data?.successType || 'UNCONFIRMED' });
+            }
+        }
         // An ambiguous timeout/5xx stays pending, blocking retries and failover.
         if (mutation && response.status < 500 && response.status !== 408) {
             const { error } = await client.rpc('receive_automation_action', { p_device: device, p_request: request });

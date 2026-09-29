@@ -12412,7 +12412,7 @@ function renderNewsSlider(articles) {
     articles.forEach(article => {
         const card = document.createElement('div');
         card.className = 'news-card';
-        card.onclick = () => window.open(article.url, '_blank');
+        card.onclick = () => window.open(article.url, '_blank', 'noopener,noreferrer');
 
         // Format the date
         const publishDate = new Date(article.published_on * 1000);
@@ -12426,7 +12426,7 @@ function renderNewsSlider(articles) {
                  alt="" onerror="this.style.display='none'">
             <div class="news-card-content">
                 <p class="news-card-title">${safeTitle}</p>
-                <span class="news-card-source">${article.source || 'Unknown'} • ${timeAgo}</span>
+                <span class="news-card-source">${escapeNewsHtml(article.source || 'Unknown')} • ${article.dateType === 'indexed' ? 'Indexed ' : ''}${timeAgo}</span>
             </div>
         `;
 
@@ -19533,7 +19533,7 @@ async function executeAutoBuySolo(recommendations) {
                 throw new Error(errorData.message || `API Error: ${response.status}`);
             }
 
-            const result = await response.json();
+            const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
             console.log('📦 Solo auto-buy response:', result);
 
             // Validate response indicates success (check for order ID or success indicators)
@@ -19827,14 +19827,8 @@ async function executeAutoBuyTeam(recommendations) {
                 throw new Error(errorData.message || `API Error: ${response.status}`);
             }
 
-            const result = await response.json();
+            const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
             console.log('📦 Team auto-buy response:', result);
-
-            // Validate response indicates success (check for order ID or success indicators)
-            // Note: HTTP 200 already indicates success, missing fields is just a warning
-            if (!result || (!result.id && !result.orderId && !result.success)) {
-                console.warn(`⚠️ Auto-buy response missing expected fields (id/orderId/success), but HTTP 200 received - treating as success`);
-            }
 
             console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} - bought ${actualSharesToBuy} share(s), now has ${newTotalShares} total. Order ID: ${result.id || result.orderId || 'N/A'}`);
 
@@ -19843,7 +19837,7 @@ async function executeAutoBuyTeam(recommendations) {
             // getMyTeamShares() will return the API value automatically
 
             // Mark this package as auto-bought (use order ID from API response, not ticket ID)
-            const orderIdReturned = result.id || result.orderId;
+            const orderIdReturned = result.id || result.orderId || packageId;
             const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
             autoBoughtPackages[orderIdReturned] = {
                 type: 'team',
@@ -20776,7 +20770,7 @@ async function executeAutoSharesTeam(teamPackages) {
             throw new Error(errorData.message || `API Error: ${response.status}`);
         }
 
-        const result = await response.json();
+        const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
         console.log(`✅ AUTO-SHARES: ${pkg.name} - bought ${actualSharesToBuy} shares, expecting total ${newTotalShares}`);
 
         // CRITICAL: Set pending shares FIRST to prevent API overwrite during 10s cooldown
@@ -27494,7 +27488,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
             throw new Error(errorData.message || `API Error: ${response.status}`);
         }
 
-        const result = await response.json();
+        const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
         console.log('✅ Solo package purchased successfully:', result);
 
         showModal(`✅ Solo Package purchased successfully!\n\nCrypto: ${crypto}\nOrder ID: ${result.id || result.orderId || 'N/A'}\n\nOrder is now active and mining.`);
@@ -27912,7 +27906,7 @@ async function buyPackage(pkg) {
             throw new Error(errorData.message || `API Error: ${response.status}`);
         }
 
-        const result = await response.json();
+        const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
         console.log('Order created successfully:', result);
 
         showModal(`✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\n\nOrder is now active and mining.`);
@@ -32595,7 +32589,7 @@ async function autoClearTeamShares(packageId, packageName) {
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
-        const result = await response.json();
+        const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
         console.log('✅ Auto-clear successful:', result);
 
         // Clear shares from stored data using the correct storage method
@@ -32765,7 +32759,7 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
-        const result = await response.json();
+        const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
         console.log('✅ Re-add shares successful:', result);
 
         // 7. Update stored shares
