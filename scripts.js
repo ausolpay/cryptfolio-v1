@@ -14204,15 +14204,7 @@ let easyMiningData = {
 // Only saves essential stats, NOT activePackages (fetched fresh from API)
 function saveEasyMiningDataToStorage() {
     try {
-        // Only save stats - activePackages is fetched fresh and can be huge
-        const dataToSave = {
-            availableBTC: easyMiningData.availableBTC,
-            pendingBTC: easyMiningData.pendingBTC,
-            allTimeStats: easyMiningData.allTimeStats,
-            todayStats: easyMiningData.todayStats,
-            blocksFoundSession: easyMiningData.blocksFoundSession,
-            lastBlockCount: easyMiningData.lastBlockCount
-        };
+        const dataToSave = easyMiningData;
         appStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(dataToSave));
     } catch (e) {
         if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
@@ -16909,95 +16901,9 @@ async function fetchNiceHashOrders() {
     }
 
     try {
-        // Fetch from TWO endpoints to get complete picture:
-        // 1. Packages with rewards (blocks found) - includes active AND completed
-        // 2. Active packages (may not have found blocks yet)
-
-        console.log('📡 Fetching solo mining data from 2 endpoints...');
-
-        // ENDPOINT 1: Packages with rewards (any that found blocks)
-        const endpoint1 = `/main/api/v2/hashpower/solo/order?rewardsOnly=true&limit=5000`;
-        const headers1 = generateNiceHashAuthHeaders('GET', endpoint1);
-
-        console.log('📋 Endpoint 1 (with rewards):', endpoint1);
-
-        let response1;
-        if (USE_VERCEL_PROXY) {
-            response1 = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: endpoint1, method: 'GET', headers: headers1 })
-            });
-        } else {
-            response1 = await fetch(`https://api2.nicehash.com${endpoint1}`, {
-                method: 'GET',
-                headers: headers1
-            });
-        }
-
-        if (!response1.ok) {
-            throw new Error(`API Error (rewards): ${response1.status}`);
-        }
-
-        const dataWithRewards = await response1.json();
-        const packagesWithRewards = Array.isArray(dataWithRewards) ? dataWithRewards : (dataWithRewards.list || []);
-        console.log(`✅ Found ${packagesWithRewards.length} packages with rewards`);
-
-        // ENDPOINT 2: Active packages (including ones without blocks)
-        const endpoint2 = `/main/api/v2/hashpower/solo/order?limit=5000&active=true`;
-        const headers2 = generateNiceHashAuthHeaders('GET', endpoint2);
-
-        console.log('📋 Endpoint 2 (active):', endpoint2);
-
-        let response2;
-        if (USE_VERCEL_PROXY) {
-            response2 = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: endpoint2, method: 'GET', headers: headers2 })
-            });
-        } else {
-            response2 = await fetch(`https://api2.nicehash.com${endpoint2}`, {
-                method: 'GET',
-                headers: headers2
-            });
-        }
-
-        if (!response2.ok) {
-            throw new Error(`API Error (active): ${response2.status}`);
-        }
-
-        const dataActive = await response2.json();
-        const activePackages = Array.isArray(dataActive) ? dataActive : (dataActive.list || []);
-        console.log(`✅ Found ${activePackages.length} active packages`);
-
-        // ENDPOINT 3: Completed packages (including ones without blocks)
-        const endpoint3 = `/main/api/v2/hashpower/solo/order?limit=5000&status=COMPLETED`;
-        const headers3 = generateNiceHashAuthHeaders('GET', endpoint3);
-
-        console.log('📋 Endpoint 3 (completed):', endpoint3);
-
-        let response3;
-        if (USE_VERCEL_PROXY) {
-            response3 = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: endpoint3, method: 'GET', headers: headers3 })
-            });
-        } else {
-            response3 = await fetch(`https://api2.nicehash.com${endpoint3}`, {
-                method: 'GET',
-                headers: headers3
-            });
-        }
-
-        if (!response3.ok) {
-            throw new Error(`API Error (completed): ${response3.status}`);
-        }
-
-        const dataCompleted = await response3.json();
-        const completedPackages = Array.isArray(dataCompleted) ? dataCompleted : (dataCompleted.list || []);
-        console.log(`✅ Found ${completedPackages.length} completed packages`);
+        const activePackages = await NiceHashOrderCache.list('active=true', 4000);
+        const packagesWithRewards = await NiceHashOrderCache.list('rewardsOnly=true', 30000);
+        const completedPackages = await NiceHashOrderCache.list('status=COMPLETED', 60000);
 
         // Merge all three lists, avoiding duplicates (use order ID as key)
         const orderMap = new Map();

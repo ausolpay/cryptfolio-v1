@@ -30,7 +30,7 @@ async function device(database, owner) {
             addEventListener() {},
             getElementById: () => status,
             createElement: () => ({}),
-            body: { appendChild(script) { script.onload(); } }
+            body: { appendChild(element) { if (typeof element.onload === 'function') element.onload(); } }
         },
         supabase: { createClient: () => ({
             channel: () => ({ on() { return this; }, subscribe() {} }),
