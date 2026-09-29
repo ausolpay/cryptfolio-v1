@@ -1,5 +1,6 @@
 const AIOverview = (() => {
     let busy = false;
+    const completedResponses = new Map();
     const expandedSections = { portfolio: false, coin: false };
     let renderedCoin;
     const dailyAttempts = new Set();
@@ -16,9 +17,12 @@ const AIOverview = (() => {
     function node(tag, text, className) { const el = document.createElement(tag); if (text) el.textContent = text; if (className) el.className = className; return el; }
     const scopeFor = kind => kind === 'coin' ? currentCryptoId : 'portfolio';
     function records(scope) {
-        return Object.entries(appStorage.snapshot()).filter(([k]) => k.startsWith(`${loggedInUser}_ai_generation_`))
+        const saved = Object.entries(appStorage.snapshot()).filter(([k]) => k.startsWith(`${loggedInUser}_ai_generation_`))
             .flatMap(([, value]) => { try { return [JSON.parse(value)]; } catch { return []; } })
-            .filter(item => item.scope === scope).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+            .filter(item => item.scope === scope);
+        const completed = completedResponses.get(`${loggedInUser}:${scope}`);
+        return (completed ? [completed, ...saved.filter(item => item.id !== completed.id)] : saved)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
     function render() {
         const enabled = active();
@@ -93,7 +97,15 @@ const AIOverview = (() => {
                     title: article.title, source: article.source, url: article.url, publishedAt: new Date(article.published_on * 1000).toISOString() })) };
         });
         root.querySelector('.ai-status').textContent = 'Reviewing your selected data…';
-        await CloudAccount.flush(); await api({ action: daily && kind === 'portfolio' ? 'daily' : 'generate', context: { scope, currency: getCoinGeckoCurrency(), observedAt: new Date().toISOString(), coins } }); if (owner === loggedInUser) { await CloudAccount.refresh(); render(); } }
+        await CloudAccount.flush();
+        const result = await api({ action: daily && kind === 'portfolio' ? 'daily' : 'generate', context: { scope, currency: getCoinGeckoCurrency(), observedAt: new Date().toISOString(), coins } });
+        if (owner === loggedInUser) {
+            // The response is already saved on the server. Display it immediately;
+            // ongoing market/mining sync must not keep the generation button busy.
+            if (result.generation?.status === 'complete') completedResponses.set(`${owner}:${scope}`, result.generation);
+            render();
+            CloudAccount.refresh().then(() => { if (owner === loggedInUser) render(); }).catch(() => {});
+        } }
         catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = error.message; }
         finally { busy = false; button.disabled = false; button.textContent = 'Generate overview'; }
     }

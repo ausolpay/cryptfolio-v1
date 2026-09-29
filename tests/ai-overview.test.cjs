@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overview.js'), 'utf8').replace('return { install, configure, observeMarket };', 'return { install, configure, api, checkDaily, generate };');
 function setup(response) {
     const requests = [], writes = [], elements = new Map();
-    const root = { querySelector(selector) { if (!elements.has(selector)) elements.set(selector, {}); return elements.get(selector); } };
+    const root = { querySelector(selector) { if (!elements.has(selector)) elements.set(selector, { classList: { toggle() {} }, replaceChildren() {}, setAttribute() {} }); return elements.get(selector); } };
     const context = { loggedInUser: 'owner', currentCryptoId: 'bitcoin', navigator: { onLine: true },
         users: { owner: { cryptos: [{ id: 'bitcoin', name: 'Bitcoin', symbol: 'BTC' }] } },
         cryptoPrices: { bitcoin: 12 }, cryptoPriceChanges: {}, storedOHLCDataPerCrypto: { bitcoin: [[1, 10, 14, 9, 12]] },
@@ -62,6 +62,20 @@ test('saved portfolio summary without a daily marker prevents a false generating
         assert.equal(requests.length, 0);
         assert.equal(elements.size, 0, 'must not enter the generating UI or collect news');
     }
+});
+
+test('completed server response renders and releases the button while background sync is unfinished', async () => {
+    const { context, elements } = setup({ ok: true, json: async () => ({ generation: { id: 'new', scope: 'portfolio', status: 'complete', createdAt: new Date().toISOString(), text: 'Fresh saved analysis', model: 'test' } }) });
+    // This test only renders the portfolio section.
+    const getElement = context.document.getElementById;
+    context.document.getElementById = id => id === 'ai-coin' ? null : getElement(id);
+    let refreshStarted = false;
+    context.CloudAccount.refresh = () => { refreshStarted = true; return new Promise(() => {}); };
+    await Promise.race([context.ai.generate('portfolio'), new Promise((_, reject) => setTimeout(() => reject(new Error('Generation waited for background sync')), 100))]);
+    assert.equal(refreshStarted, true);
+    assert.equal(elements.get('.ai-output').textContent, 'Fresh saved analysis');
+    assert.equal(elements.get('.ai-generate').disabled, false);
+    assert.equal(elements.get('.ai-generate').textContent, 'Generate overview');
 });
 
 test('yesterday portfolio and today coin summaries do not suppress the morning portfolio run', async () => {
