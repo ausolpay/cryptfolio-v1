@@ -185,6 +185,15 @@ test('missing exchange quotes omit USD chart prices instead of relabelling them 
     assert.deepEqual(requests[0].context.coins[0].chart.candles, []);
 });
 
+test('crypto generation sends the hydrated AI connection separately from financial context', async () => {
+    const { context, requests } = setup({ ok: true, json: async () => ({}) });
+    context.CloudAccount.flush = () => { throw new Error('Must not wait for an account read/write'); };
+    await context.ai.generate('coin');
+    assert.equal(requests[0].settings.provider, 'openai'); assert.equal(requests[0].settings.apiKey, 'test');
+    assert.equal(requests[0].context.apiKey, undefined);
+    assert.doesNotMatch(JSON.stringify(requests[0].context), /apiKey/);
+});
+
 test('shared modal metrics retain the existing app calculation without touching the modal UI', () => {
     const script = fs.readFileSync(require('node:path').join(__dirname, '../scripts.js'), 'utf8');
     const helper = script.slice(script.indexOf('function getHoldingsModalMetrics('), script.indexOf('function updateModalPnL('));

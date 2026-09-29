@@ -14,7 +14,7 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
         createClient: () => ({ auth: { getUser: async () => ({ data: { user: { email: 'owner@test' } } }) },
             rpc: async (name, args) => {
                 rpcCalls.push(name);
-                if (name === 'load_ai_overview_state') return { data: structuredClone(state) };
+                if (name === 'load_ai_overview_history') return { data: structuredClone(state) };
                 if (name === 'reserve_ai_overview') {
                     const records = state.state.records;
                     if (args.p_daily) {
@@ -40,7 +40,7 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
     };
     vm.createContext(context); vm.runInContext(source, context);
     const res = { setHeader() {}, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
-    await context.handler({ method: 'POST', headers: authorized ? { authorization: 'Bearer test' } : {}, body: { action,
+    await context.handler({ method: 'POST', headers: authorized ? { authorization: 'Bearer test' } : {}, body: { action, settings: JSON.parse(state.state.records['owner@test_aiSettings']),
         context: { scope, currency, apiKey: 'never-send', wallet: 'never-send', coins: [{ name: 'Bitcoin', symbol: 'BTC', price: 12, holdings: 2, wallet: 'never-send', ...coinExtras, chart: { candles: [[1790600000000, 10, 14, 9, 12], ['bad', 1, 2, 3, 4]], secret: 'never-send' } }] } } }, res);
     return { res, calls, state, rpcCalls };
 }
@@ -159,9 +159,9 @@ test('Gemini uses supported fast reasoning settings without guessing settings fo
     }
 });
 
-test('generation uses one compact account read and two small saves, never full-account writes or CAS retries', async () => {
+test('generation uses hydrated connection settings and two small saves, never an account read or CAS retry', async () => {
     const result = await run({ enabled: true });
-    assert.deepEqual(result.rpcCalls, ['load_ai_overview_state', 'reserve_ai_overview', 'finish_ai_overview']);
+    assert.deepEqual(result.rpcCalls, ['reserve_ai_overview', 'finish_ai_overview']);
     assert.equal(result.res.code, 200);
 });
 

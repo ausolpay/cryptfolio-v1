@@ -84,26 +84,12 @@ async function handleRequest(req, res) {
     const day = summaryDay(), dailyKey = `${user}_ai_daily_${day}`, daily = req.body?.action === 'daily';
     let generation, reserved = false;
     async function load() {
-        const result = await timed('load-settings-history', () => client.rpc('load_ai_overview_state'));
-        if (result.error) throw new Error('Could not load your account');
+        const result = await timed('load-summary-history', () => client.rpc('load_ai_overview_history'));
+        if (result.error) throw new Error('Could not load saved summaries. Please try again shortly.');
         return result.data;
     }
-    async function save(reserve = false, initialData) {
+    async function save(reserve = false) {
         if (reserve) {
-            const records = initialData.state?.records || {};
-            if (daily) {
-                let marker; try { marker = JSON.parse(records[dailyKey] || 'null'); } catch {}
-                if (marker) {
-                    let prior; try { prior = JSON.parse(records[`${user}_ai_generation_${marker.id}`] || 'null'); } catch {}
-                    return { generation: prior, dailyStatus: marker.status, reused: true };
-                }
-                for (const [key, value] of Object.entries(records)) {
-                    if (!key.startsWith(`${user}_ai_generation_`)) continue;
-                    let prior; try { prior = JSON.parse(value); } catch { continue; }
-                    if (prior.scope === 'portfolio' && prior.status === 'complete' && Number.isFinite(Date.parse(prior.createdAt)) && summaryDay(Date.parse(prior.createdAt)) === day)
-                        return { generation: prior, dailyStatus: 'complete', reused: true };
-                }
-            }
             const result = await timed('reserve-summary', () => client.rpc('reserve_ai_overview', { p_generation: generation, p_day: day, p_daily: daily }));
             if (result.error) throw new Error(result.error.code === 'PT429' ? 'An overview is already generating. Check your saved summary shortly.' : 'Could not start the summary. Please try again shortly.');
             return result.data;
@@ -112,16 +98,16 @@ async function handleRequest(req, res) {
         if (result.error) throw new Error('The summary is ready but cloud saving failed. Your browser will keep a copy.');
     }
     try {
-        const data = await load();
         if (req.body?.action === 'history') {
+            const data = await load();
             const generations = Object.entries(data.state?.records || {}).filter(([key]) => key.startsWith(`${user}_ai_generation_`))
                 .flatMap(([, value]) => { try { return [JSON.parse(value)]; } catch { return []; } })
                 .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 30);
             return res.status(200).json({ generations });
         }
-        const settings = JSON.parse(data.state?.records?.[`${user}_aiSettings`] || '{}');
+        const settings = req.body?.settings || {};
         const model = settings.model || MODELS[settings.provider];
-        if (!MODELS[settings.provider] || !allowedModel(settings.provider, model) || typeof settings.apiKey !== 'string' || !settings.apiKey.trim()) return res.status(400).json({ error: 'Choose a provider and enter its API key in AI settings.' });
+        if (!MODELS[settings.provider] || !allowedModel(settings.provider, model) || typeof settings.apiKey !== 'string' || !settings.apiKey.trim() || settings.apiKey.length > 1000) return res.status(400).json({ error: 'Refresh the app to load your AI connection settings. If needed, check your provider and key in AI settings.' });
         const headers = settings.provider === 'openai' ? { Authorization: 'Bearer ' + settings.apiKey } : { 'x-goog-api-key': settings.apiKey };
         if (req.body?.action === 'models') {
             const url = settings.provider === 'openai' ? 'https://api.openai.com/v1/models' : 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000';
@@ -144,7 +130,7 @@ async function handleRequest(req, res) {
         if (!context.coins.length) return res.status(400).json({ error: 'Add a crypto and wait for its market data first.' });
         generation = { id, scope: context.scope, provider: settings.provider, model, status: 'pending', createdAt: new Date().toISOString(), context,
             ...(context.scope === 'portfolio' ? { summaryDay: day } : {}) };
-        const cached = await save(true, data);
+        const cached = await save(true);
         if (cached) return res.status(cached.dailyStatus === 'complete' ? 200 : 202).json(cached);
         reserved = true;
         const openai = settings.provider === 'openai';
