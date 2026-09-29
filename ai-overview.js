@@ -2,6 +2,7 @@ const AIOverview = (() => {
     let busy = false;
     let activeScope = null;
     const completedResponses = new Map();
+    const requestNotices = new Map();
     const savedHistory = new Map();
     const historyRequests = new Map();
     async function loadHistory(force = false) {
@@ -65,7 +66,11 @@ const AIOverview = (() => {
             const status = root.querySelector('.ai-status');
             // A persisted pending record is not proof that a request is running.
             // Only this page's active request may show generation progress.
-            if (!busy || activeScope !== scopeFor(kind)) status.textContent = latest?.status === 'complete' ? '' : history[0]?.status === 'error' ? history[0].error : '';
+            if (!busy || activeScope !== scopeFor(kind)) status.textContent = requestNotices.get(`${loggedInUser}:${scopeFor(kind)}`) ||
+                (latest?.status === 'complete' ? '' : history[0]?.status === 'error' ? history[0].error : '');
+            const generateButton = root.querySelector('.ai-generate');
+            generateButton.disabled = busy;
+            generateButton.textContent = busy && activeScope === scopeFor(kind) ? 'Generating…' : 'Generate overview';
             {
                 if (kind === 'coin' && renderedCoin !== currentCryptoId) { expandedSections.coin = false; renderedCoin = currentCryptoId; }
                 const expanded = expandedSections[kind];
@@ -99,7 +104,10 @@ const AIOverview = (() => {
     async function generate(kind, daily = false) {
         if (busy || !active()) return;
         const owner = loggedInUser, scope = scopeFor(kind), root = document.getElementById(`ai-${kind}`), button = root.querySelector('.ai-generate');
+        const noticeKey = `${owner}:${scope}`;
+        requestNotices.delete(noticeKey);
         busy = true; activeScope = scope; button.disabled = true; button.textContent = 'Generating…';
+        render();
         root.querySelector('.ai-status').textContent = 'Checking recent news and your market data…';
         try {
         const selected = (users[owner]?.cryptos || []).filter(coin => scope === 'portfolio' || coin.id === scope);
@@ -143,12 +151,13 @@ const AIOverview = (() => {
             if (result.generation?.status === 'complete') completedResponses.set(`${owner}:${scope}`, result.generation);
             root.querySelector('.ai-status').textContent = result.reused && result.generation?.status !== 'complete'
                 ? result.generation?.error || 'An earlier summary attempt has not completed. Check the saved overview or use Generate overview to retry.' : '';
+            if (root.querySelector('.ai-status').textContent) requestNotices.set(noticeKey, root.querySelector('.ai-status').textContent);
             render();
             // Summary history has its own small encrypted store; no full-account reload.
             if (result.generation) savedHistory.set(owner, [result.generation, ...(savedHistory.get(owner) || []).filter(item => item.id !== result.generation.id)]);
         } }
-        catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = ['TimeoutError', 'AbortError'].includes(error.name) ? 'The summary request timed out. Check your saved overview before trying again.' : error.message; }
-        finally { busy = false; activeScope = null; button.disabled = false; button.textContent = 'Generate overview'; }
+        catch (error) { if (owner === loggedInUser) requestNotices.set(noticeKey, ['TimeoutError', 'AbortError'].includes(error.name) ? 'The summary request timed out. Check your saved overview before trying again.' : error.message); }
+        finally { busy = false; activeScope = null; button.disabled = false; button.textContent = 'Generate overview'; render(); }
     }
     function readJson(key, fallback) { try { return JSON.parse(appStorage.getItem(key)) || fallback; } catch { return fallback; } }
     function conversionRate(id, from) {

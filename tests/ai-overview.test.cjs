@@ -22,6 +22,17 @@ test('plain text service errors show a readable message instead of a JSON parser
     await assert.rejects(context.ai.api({ action: 'generate' }), /took too long/);
 });
 
+test('a failed crypto request remains readable through background market renders', async () => {
+    const { context, elements } = setup({ ok: false, status: 503, json: async () => ({ error: 'Sign-in service temporarily unavailable' }) });
+    const original = context.document.getElementById;
+    context.document.getElementById = id => id === 'ai-portfolio' ? null : original(id);
+    await context.ai.generate('coin');
+    assert.equal(elements.get('.ai-status').textContent, 'Sign-in service temporarily unavailable');
+    context.ai.render();
+    assert.equal(elements.get('.ai-status').textContent, 'Sign-in service temporarily unavailable');
+    assert.equal(elements.get('.ai-generate').disabled, false);
+});
+
 test('loading a saved overview with a newer pending record never claims to be generating', () => {
     const { context, elements } = setup({});
     const getElement = context.document.getElementById;
