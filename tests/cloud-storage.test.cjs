@@ -22,7 +22,7 @@ async function device(database, owner, beforeSave = async () => {}) {
     const storage = createStorage({}, () => events.get('app-data-changed')?.());
     const status = { textContent: '', classList: { toggle() {} } };
     const context = {
-        console, CloudData, queueMicrotask, crypto: require('node:crypto').webcrypto, appStorage: storage, setInterval() {}, setTimeout() {},
+        console, CloudData, queueMicrotask, crypto: require('node:crypto').webcrypto, appStorage: storage, setInterval() {}, setTimeout() {}, clearTimeout() {},
         dispatchEvent() {}, CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
         navigator: { onLine: true }, location: { reload() {}, origin: 'https://test.invalid' },
         addEventListener(name, handler) { events.set(name, handler); }, alert() {},

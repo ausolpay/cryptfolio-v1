@@ -1133,6 +1133,13 @@ function getTradingViewSymbol(symbol) {
 
 // Initialize TradingView widget
 function initializeTradingViewChart(cryptoSymbol, interval) {
+    if (typeof TradingView === 'undefined') {
+        const container = document.getElementById('tradingview-chart-container');
+        if (container) container.textContent = 'Loading chart…';
+        const sdk = document.getElementById('tradingview-sdk');
+        if (sdk) sdk.onload = () => initializeTradingViewChart(cryptoSymbol, interval);
+        return;
+    }
 
     // Destroy existing widget if present
     if (tradingViewWidget) {

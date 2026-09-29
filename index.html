@@ -6,9 +6,9 @@
     <title>CryptFolio v2 | Real-time Holdings Tracker</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
    <!-- Include Odometer stylesheet -->
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-default.min.css">
+   <link rel="stylesheet" href="vendor/odometer-0.4.8.css">
    <!-- Include Odometer script -->
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
+   <script src="vendor/odometer-0.4.8.js"></script>
    <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-C7DZD5J9D7"></script>
 <script>
@@ -27,6 +27,7 @@
 <body class="dark-mode auth-loading">
     <div id="auth-loading-screen" role="status" aria-label="Loading your portfolio">
         <img class="auth-loading-logo" src="favicon.png" alt="" width="72" height="72">
+        <p id="auth-loading-status" hidden></p>
     </div>
     <!-- Global Animated Background Orbs -->
     <div class="global-bg-animation">
@@ -3179,13 +3180,13 @@
 
 
     <!-- Scripts -->
-    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/push.js/1.0.12/push.min.js"></script>
+    <script async src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <script src="vendor/push-1.0.12.js"></script>
     <!-- TradingView Charting Library -->
-    <script src="https://s3.tradingview.com/tv.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script async id="tradingview-sdk" src="https://s3.tradingview.com/tv.js"></script>
+    <script src="vendor/crypto-js-4.1.1.js"></script>
     <!-- Protocol Buffers library for MEXC WebSocket -->
-    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.5/dist/protobuf.min.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.5/dist/protobuf.min.js"></script>
 
     <section id="cloud-load-error" hidden role="alert" style="padding: 100px 24px; text-align: center;">
         <h2>Your cloud account could not be loaded</h2>

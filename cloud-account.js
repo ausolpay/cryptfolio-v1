@@ -190,17 +190,28 @@ window.CloudAccount = (() => {
             tierSource: 'default', firstLoginComplete: false, createdAt: new Date().toISOString()
         };
     }
+    async function startupStep(task, label) {
+        const note = document.getElementById('auth-loading-status');
+        if (note) { note.textContent = label; note.hidden = true; }
+        let timeout, hint;
+        try {
+            hint = setTimeout(() => { if (note) note.hidden = false; }, 3000);
+            return await Promise.race([task, new Promise((_, reject) => {
+                timeout = setTimeout(() => reject(new Error(label + ' is taking too long. Your saved account is unchanged. Please retry the connection.')), 20000);
+            })]);
+        } finally { clearTimeout(timeout); clearTimeout(hint); }
+    }
     async function start() {
         try {
             const conflictDialog = document.getElementById('cloud-conflict');
             if (conflictDialog) document.body.appendChild(conflictDialog);
             const remember = document.getElementById('stay-signed-in');
             if (remember) remember.checked = window.CryptfolioAuthStorage?.persistent !== false;
-            const { data, error } = await client.auth.getSession();
+            const { data, error } = await startupStep(client.auth.getSession(), 'Restoring your sign-in');
             if (error) throw error;
             session = data.session;
             if (session) {
-                const [remote, access] = await Promise.all([load(), client.rpc('get_account_access')]);
+                const [remote, access] = await startupStep(Promise.all([load(), client.rpc('get_account_access')]), 'Loading your saved portfolio');
                 version = remote.version;
                 appStorage.replace(remote.state?.records || {});
                 const email = session.user.email;
@@ -236,6 +247,7 @@ window.CloudAccount = (() => {
                 window.dispatchEvent(new CustomEvent('app-ready'));
             };
             script.onerror = () => {
+                document.body.classList.add('auth-load-failed');
                 document.body.classList.remove('auth-loading');
                 status('App could not load. Please reload.', true);
                 const notice = document.getElementById('cloud-load-error');
@@ -253,6 +265,7 @@ window.CloudAccount = (() => {
                 }
             }, 1500);
         } catch (error) {
+            document.body.classList.add('auth-load-failed');
             document.body.classList.remove('auth-loading');
             status('Could not load your cloud account. Reload to retry.', true);
             const notice = document.getElementById('cloud-load-error');
