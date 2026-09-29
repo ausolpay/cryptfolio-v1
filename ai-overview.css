@@ -1,13 +1,12 @@
 .ai-overview[hidden] { display: none !important; }
-#ai-portfolio { padding: 0; border: 0; background: transparent; margin: 0; }
 #ai-portfolio .ai-toggle { width: 100%; border: 0; font-family: inherit; box-sizing: border-box; margin: 10px 0 0; min-height: 0; min-width: 0; line-height: normal; }
 #ai-portfolio .ai-collapse { display: grid; grid-template-rows: 1fr; opacity: 1; margin-top: 8px; transition: grid-template-rows .3s ease, opacity .3s ease, margin .3s ease; }
 #ai-portfolio .ai-collapse.collapsed { grid-template-rows: 0fr; opacity: 0; margin-top: 0; }
 #ai-portfolio .ai-body { min-height: 0; overflow: hidden; }
-#ai-portfolio .ai-inner { padding: 16px 20px; }
+#ai-portfolio .ai-inner { padding: 16px 0; text-align: left; }
 @media (prefers-reduced-motion: reduce) { #ai-portfolio .ai-collapse, #ai-portfolio .arrow { transition: none; } }
 .ai-status { font-size: 13px; line-height: 1.5; color: #ffb36b; }
-.ai-overview { box-sizing: border-box; width: 100%; margin: 18px 0; padding: 20px; border: 1px solid #ffffff20; border-radius: 16px; background: #ffffff06; text-align: left; }
+.ai-overview:not(#ai-portfolio) { box-sizing: border-box; width: 100%; margin: 18px 0; padding: 20px; border: 1px solid #ffffff20; border-radius: 16px; background: #ffffff06; text-align: left; }
 .ai-overview h3 { margin: 0 0 8px; font-size: 17px; }
 .ai-output { white-space: pre-wrap; line-height: 1.65; font-size: 14px; overflow-wrap: anywhere; }
 .ai-date, .ai-disclosure { color: #999; font-size: 12px; line-height: 1.5; }
@@ -19,6 +18,6 @@
 .ai-settings p { font-size: 14px; line-height: 1.6; }
 .ai-settings label { display: block; margin: 12px 0; }
 .ai-settings input, .ai-settings select { display: block; box-sizing: border-box; width: 100%; padding: 12px; margin-top: 8px; background: #121212; color: #fff; border: 1px solid #666; border-radius: 6px; }
-body.light-mode .ai-overview { border-color: #0002; background: #fff; }
+body.light-mode .ai-overview:not(#ai-portfolio) { border-color: #0002; background: #fff; }
 body.light-mode .ai-date, body.light-mode .ai-disclosure { color: #666; }
-@media(max-width: 600px) { .ai-overview { padding: 14px; } }
+@media(max-width: 600px) { .ai-overview:not(#ai-portfolio) { padding: 14px; } }

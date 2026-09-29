@@ -153,7 +153,7 @@ const AIOverview = (() => {
         const configureButton = node('button', 'Configure AI', 'settings-save-btn'); configureButton.onclick = configure;
         row.append(state, configureButton); card.append(row); section.append(card); document.querySelector('#api-keys-page .settings-page-footer')?.before(section);
         for (const kind of ['portfolio', 'coin']) {
-            const root = node('section', null, 'ai-overview'); root.id = `ai-${kind}`; root.hidden = true;
+            const root = node('section', null, kind === 'portfolio' ? 'ai-overview easymining-section' : 'ai-overview'); root.id = `ai-${kind}`; root.hidden = true;
             const body = node('div', null, 'ai-body'), content = node('div', null, 'ai-inner'); body.append(content);
             const collapse = node('div', null, 'ai-collapse collapsed'); collapse.id = `ai-${kind}-body`;
             if (kind === 'portfolio') {
