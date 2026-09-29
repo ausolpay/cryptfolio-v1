@@ -9,7 +9,7 @@ const AIOverview = (() => {
         // Let login finish and the portfolio paint before collecting AI context.
         backgroundTimer = setTimeout(() => { backgroundTimer = null; checkDaily(); }, 1500);
     }
-    const summaryDay = () => new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const summaryDay = (time = Date.now()) => new Date(time + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const key = () => `${loggedInUser}_aiSettings`;
     const settings = () => { try { return JSON.parse(appStorage.getItem(key()) || '{}'); } catch { return {}; } };
     const active = () => settings().enabled === true && Boolean(settings().apiKey) && ['gemini', 'openai'].includes(settings().provider);
@@ -120,6 +120,9 @@ const AIOverview = (() => {
         if (!CloudAccount.isReady || busy || !loggedInUser || !active() || document.hidden || !navigator.onLine) return;
         // Hydration already loaded today's shared marker; no provider/server request is needed.
         if (appStorage.getItem(`${loggedInUser}_ai_daily_${summaryDay()}`)) return;
+        // Older/manual summaries may predate the daily marker. Reuse the saved
+        // portfolio record before entering any loading state or fetching news.
+        if (records('portfolio').some(item => Number.isFinite(Date.parse(item.createdAt)) && summaryDay(Date.parse(item.createdAt)) === summaryDay())) return;
         const coins = users[loggedInUser]?.cryptos || [];
         if (!coins.length || !coins.some(coin => getPriceFromObject(cryptoPrices[coin.id]) > 0)) return;
         const attempt = `${loggedInUser}:${summaryDay()}`;

@@ -53,6 +53,27 @@ test('daily work cannot run during login and skips days already loaded from Supa
     context.ai.checkDaily(); await new Promise(resolve => setImmediate(resolve));
     assert.equal(requests.length, 0);
 });
+test('saved portfolio summary without a daily marker prevents a false generating state on reload', async () => {
+    for (const status of ['complete', 'pending', 'error']) {
+        const { context, requests, elements } = setup({ ok: true, json: async () => ({}) });
+        context.appStorage.snapshot = () => ({ owner_ai_generation_saved: JSON.stringify({ scope: 'portfolio', status, createdAt: new Date().toISOString(), text: 'Saved overview' }) });
+        context.ai.checkDaily();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(requests.length, 0);
+        assert.equal(elements.size, 0, 'must not enter the generating UI or collect news');
+    }
+});
+
+test('yesterday portfolio and today coin summaries do not suppress the morning portfolio run', async () => {
+    const { context, requests } = setup({ ok: false, json: async () => ({ error: 'test' }) });
+    context.appStorage.snapshot = () => ({
+        owner_ai_generation_old: JSON.stringify({ scope: 'portfolio', status: 'complete', createdAt: new Date(Date.now() - 86400000).toISOString() }),
+        owner_ai_generation_coin: JSON.stringify({ scope: 'bitcoin', status: 'complete', createdAt: new Date().toISOString() })
+    });
+    context.ai.checkDaily(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests.length, 1); assert.equal(requests[0].action, 'daily');
+});
+
 test('manual analysis includes only this coin history and still works when online news is unavailable', async () => {
     const { context, requests } = setup({ ok: false, json: async () => ({ error: 'test' }) });
     context.window = { fetchAICoverage: async () => { throw new Error('News offline'); } };
