@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../api/ai.js'), 'utf8').replace(/^import .*\r?\n/gm, '').replace('export default async function handler', 'async function handler');
 async function run({ authorized = true, enabled = false, action = 'generate', provider = 'openai', model = 'gpt-5-mini', existing = {}, coinExtras = {}, shared, scope = 'bitcoin', providerFailure = false, id = '11111111-1111-4111-8111-111111111111' } = {}) {
-    const calls = [];
+    const calls = [], rpcCalls = [];
     let state = shared || { version: 1, state: { schema: 1, records: {
         'owner@test_aiSettings': JSON.stringify({ provider, apiKey: 'test-provider-key', enabled, model }),
         'owner@test_niceHash': 'must-not-be-sent', ...existing
@@ -13,10 +13,21 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
         AbortSignal, URL, randomUUID: () => id,
         createClient: () => ({ auth: { getUser: async () => ({ data: { user: { email: 'owner@test' } } }) },
             rpc: async (name, args) => {
-                if (name === 'load_account_state') return { data: structuredClone(state) };
-                if (args.p_version !== state.version) return { error: { code: 'PT409' } };
-                state.state.records = { ...state.state.records, ...args.p_records }; state.version++;
-                return { data: state.version };
+                rpcCalls.push(name);
+                if (name === 'load_ai_overview_state') return { data: structuredClone(state) };
+                if (name === 'reserve_ai_overview') {
+                    const records = state.state.records;
+                    if (args.p_daily) {
+                        const marker = records[`owner@test_ai_daily_${args.p_day}`];
+                        if (marker) { const saved=JSON.parse(marker); return { data: { generation: JSON.parse(records[`owner@test_ai_generation_${saved.id}`]), dailyStatus: saved.status, reused: true } }; }
+                    }
+                    if (Object.entries(records).some(([key,value]) => key.includes('_ai_generation_') && JSON.parse(value).status === 'pending' && Date.now()-Date.parse(JSON.parse(value).createdAt)<120000)) return {error:{code:'PT429'}};
+                }
+                const generation=args.p_generation;
+                state.state.records[`owner@test_ai_generation_${generation.id}`]=JSON.stringify(generation);
+                if (generation.scope === 'portfolio') state.state.records[`owner@test_ai_daily_${generation.summaryDay}`]=JSON.stringify({id:generation.id,status:generation.status});
+                state.version++;
+                return { data: null };
             } }),
         fetch: async (url, options) => {
             calls.push({ url, options });
@@ -31,7 +42,7 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
     const res = { setHeader() {}, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
     await context.handler({ method: 'POST', headers: authorized ? { authorization: 'Bearer test' } : {}, body: { action,
         context: { scope, apiKey: 'never-send', wallet: 'never-send', coins: [{ name: 'Bitcoin', symbol: 'BTC', price: 12, holdings: 2, wallet: 'never-send', ...coinExtras, chart: { candles: [[1790600000000, 10, 14, 9, 12], ['bad', 1, 2, 3, 4]], secret: 'never-send' } }] } } }, res);
-    return { res, calls, state };
+    return { res, calls, state, rpcCalls };
 }
 test('AI requires login and activation before sending financial context to a provider', async () => {
     const anonymous = await run({ authorized: false }); assert.equal(anonymous.res.code, 401); assert.equal(anonymous.calls.length, 0);
@@ -146,4 +157,19 @@ test('Gemini uses supported fast reasoning settings without guessing settings fo
         assert.equal(result.res.code, 200);
         assert.deepEqual(JSON.parse(result.calls[0].options.body).generationConfig.thinkingConfig, config);
     }
+});
+
+test('generation uses one compact account read and two small saves, never full-account writes or CAS retries', async () => {
+    const result = await run({ enabled: true });
+    assert.deepEqual(result.rpcCalls, ['load_ai_overview_state', 'reserve_ai_overview', 'finish_ai_overview']);
+    assert.equal(result.res.code, 200);
+});
+
+test('saved summary history never exposes provider credentials or unrelated account records', async () => {
+    const result = await run({ action: 'history', existing: {
+        'owner@test_ai_generation_saved': JSON.stringify({ id: 'saved', status: 'complete', text: 'A portfolio brief', createdAt: new Date().toISOString() })
+    } });
+    assert.equal(result.res.code, 200); assert.equal(result.res.data.generations.length, 1);
+    assert.doesNotMatch(JSON.stringify(result.res.data), /test-provider-key|must-not-be-sent/);
+    assert.equal(result.calls.length, 0);
 });

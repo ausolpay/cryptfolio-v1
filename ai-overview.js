@@ -2,6 +2,19 @@ const AIOverview = (() => {
     let busy = false;
     let activeScope = null;
     const completedResponses = new Map();
+    const savedHistory = new Map();
+    const historyRequests = new Map();
+    async function loadHistory(force = false) {
+        const owner = loggedInUser;
+        if (!owner || !active() || !CloudAccount.isReady) return;
+        if (historyRequests.has(owner)) return historyRequests.get(owner);
+        if (!force && savedHistory.has(owner)) return;
+        const request = api({ action: 'history' }).then(result => {
+            if (owner === loggedInUser) { savedHistory.set(owner, result.generations || []); render(); }
+        }).catch(() => {}).finally(() => historyRequests.delete(owner));
+        historyRequests.set(owner, request);
+        return request;
+    }
     const expandedSections = { portfolio: false, coin: false };
     let renderedCoin;
     const dailyAttempts = new Set();
@@ -9,7 +22,7 @@ const AIOverview = (() => {
     function scheduleDaily() {
         if (backgroundTimer || !CloudAccount.isReady) return;
         // Let login finish and the portfolio paint before collecting AI context.
-        backgroundTimer = setTimeout(() => { backgroundTimer = null; checkDaily(); }, 1500);
+        backgroundTimer = setTimeout(async () => { backgroundTimer = null; await loadHistory(); checkDaily(); }, 1500);
     }
     const summaryDay = (time = Date.now()) => new Date(time + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const key = () => `${loggedInUser}_aiSettings`;
@@ -18,9 +31,11 @@ const AIOverview = (() => {
     function node(tag, text, className) { const el = document.createElement(tag); if (text) el.textContent = text; if (className) el.className = className; return el; }
     const scopeFor = kind => kind === 'coin' ? currentCryptoId : 'portfolio';
     function records(scope) {
-        const saved = Object.entries(appStorage.snapshot()).filter(([k]) => k.startsWith(`${loggedInUser}_ai_generation_`))
+        const local = Object.entries(appStorage.snapshot()).filter(([k]) => k.startsWith(`${loggedInUser}_ai_generation_`))
             .flatMap(([, value]) => { try { return [JSON.parse(value)]; } catch { return []; } })
             .filter(item => item.scope === scope);
+        const cloud = (savedHistory.get(loggedInUser) || []).filter(item => item.scope === scope);
+        const saved = [...cloud, ...local.filter(item => !cloud.some(record => record.id === item.id))];
         const completed = completedResponses.get(`${loggedInUser}:${scope}`);
         return (completed ? [completed, ...saved.filter(item => item.id !== completed.id)] : saved)
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -125,7 +140,8 @@ const AIOverview = (() => {
             root.querySelector('.ai-status').textContent = result.reused && result.generation?.status !== 'complete'
                 ? result.generation?.error || 'An earlier summary attempt has not completed. Check the saved overview or use Generate overview to retry.' : '';
             render();
-            CloudAccount.refresh().then(() => { if (owner === loggedInUser) render(); }).catch(() => {});
+            // Summary history has its own small encrypted store; no full-account reload.
+            if (result.generation) savedHistory.set(owner, [result.generation, ...(savedHistory.get(owner) || []).filter(item => item.id !== result.generation.id)]);
         } }
         catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = ['TimeoutError', 'AbortError'].includes(error.name) ? 'The summary request timed out. Check your saved overview before trying again.' : error.message; }
         finally { busy = false; activeScope = null; button.disabled = false; button.textContent = 'Generate overview'; }
@@ -221,7 +237,9 @@ const AIOverview = (() => {
     function openSaved() {
         if (!active()) return;
         const id = location.hash.match(/^#ai=([0-9a-f-]{36})$/)?.[1]; if (!id) return;
-        let item; try { item = JSON.parse(appStorage.getItem(`${loggedInUser}_ai_generation_${id}`)); } catch {} if (!item) return;
+        let item = (savedHistory.get(loggedInUser) || []).find(record => record.id === id)
+            || [...completedResponses.values()].find(record => record.id === id);
+        if (!item) try { item = JSON.parse(appStorage.getItem(`${loggedInUser}_ai_generation_${id}`)); } catch {} if (!item) return;
         let dialog = document.getElementById('ai-saved-dialog');
         if (!dialog) { dialog = node('dialog', null, 'ai-settings'); dialog.id = 'ai-saved-dialog'; document.body.append(dialog); }
         dialog.replaceChildren(node('h2', item.scope === 'portfolio' ? 'Portfolio overview' : item.scope + ' overview'), node('p', new Date(item.createdAt).toLocaleString()), node('div', item.text || item.error || 'Generating…', 'ai-output'));

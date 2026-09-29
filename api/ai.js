@@ -54,58 +54,59 @@ export default async function handler(req, res) {
     catch { return res.status(503).json({ error: 'Could not reach your account or AI service. Please try again shortly.' }); }
 }
 async function handleRequest(req, res) {
+    const started = Date.now();
+    async function timed(stage, work) {
+        const at = Date.now();
+        try { return await work(); }
+        finally { console.info('AI overview stage', stage, 'durationMs', Date.now() - at, 'totalMs', Date.now() - started); }
+    }
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     const authorization = req.headers.authorization;
     if (!authorization?.startsWith('Bearer ')) return res.status(401).json({ error: 'Sign in required' });
-    const client = createClient(SUPABASE_URL, PUBLIC_KEY, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: auth, error: authError } = await client.auth.getUser(authorization.slice(7));
+    const client = createClient(SUPABASE_URL, PUBLIC_KEY, { global: { headers: { Authorization: authorization },
+        fetch: (url, options) => fetch(url, { ...options, signal: AbortSignal.timeout(10000) }) }, auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: auth, error: authError } = await timed('authenticate', () => client.auth.getUser(authorization.slice(7)));
     if (authError || !auth.user) return res.status(401).json({ error: 'Session expired. Sign in again.' });
-    const user = auth.user.email, id = randomUUID(), recordKey = `${user}_ai_generation_${id}`;
+    const user = auth.user.email, id = randomUUID();
     const day = summaryDay(), dailyKey = `${user}_ai_daily_${day}`, daily = req.body?.action === 'daily';
     let generation, reserved = false;
     async function load() {
-        const result = await client.rpc('load_account_state');
+        const result = await timed('load-settings-history', () => client.rpc('load_ai_overview_state'));
         if (result.error) throw new Error('Could not load your account');
         return result.data;
     }
     async function save(reserve = false, initialData) {
-        for (let attempt = 0; attempt < 8; attempt++) {
-            const data = attempt === 0 && initialData ? initialData : await load();
-            if (reserve) {
-                if (daily) {
-                    const records = data.state?.records || {};
-                    let marker; try { marker = JSON.parse(records[dailyKey] || 'null'); } catch {}
-                    if (marker) {
-                        let prior; try { prior = JSON.parse(records[`${user}_ai_generation_${marker.id}`] || 'null'); } catch {}
-                        // An uncertain attempt is never silently retried on refresh.
-                        return { generation: prior, dailyStatus: marker.status, reused: true };
-                    }
-                    for (const [key, value] of Object.entries(records)) {
-                        if (!key.startsWith(`${user}_ai_generation_`)) continue;
-                        let prior; try { prior = JSON.parse(value); } catch { continue; }
-                        if (prior.scope === 'portfolio' && prior.status === 'complete' && Number.isFinite(Date.parse(prior.createdAt)) && summaryDay(Date.parse(prior.createdAt)) === day) {
-                            return { generation: prior, dailyStatus: 'complete', reused: true };
-                        }
-                    }
+        if (reserve) {
+            const records = initialData.state?.records || {};
+            if (daily) {
+                let marker; try { marker = JSON.parse(records[dailyKey] || 'null'); } catch {}
+                if (marker) {
+                    let prior; try { prior = JSON.parse(records[`${user}_ai_generation_${marker.id}`] || 'null'); } catch {}
+                    return { generation: prior, dailyStatus: marker.status, reused: true };
                 }
-                for (const [key, value] of Object.entries(data.state?.records || {})) {
+                for (const [key, value] of Object.entries(records)) {
                     if (!key.startsWith(`${user}_ai_generation_`)) continue;
                     let prior; try { prior = JSON.parse(value); } catch { continue; }
-                    if (prior.status === 'pending' && Date.now() - Date.parse(prior.createdAt) < 120000) throw new Error('An overview is already generating. It will appear when ready.');
+                    if (prior.scope === 'portfolio' && prior.status === 'complete' && Number.isFinite(Date.parse(prior.createdAt)) && summaryDay(Date.parse(prior.createdAt)) === day)
+                        return { generation: prior, dailyStatus: 'complete', reused: true };
                 }
             }
-            const records = { [recordKey]: JSON.stringify(generation) };
-            if (generation.scope === 'portfolio') records[dailyKey] = JSON.stringify({ day, id, status: generation.status,
-                updatedAt: new Date().toISOString(), timeZone: 'Australia/Brisbane', startsAt: '06:00' });
-            const result = await client.rpc('patch_account_state', { p_records: records, p_removed: [], p_version: data.version });
-            if (!result.error) return;
-            if (result.error.code !== 'PT409') throw new Error('Could not save the overview');
+            const result = await timed('reserve-summary', () => client.rpc('reserve_ai_overview', { p_generation: generation, p_day: day, p_daily: daily }));
+            if (result.error) throw new Error(result.error.code === 'PT429' ? 'An overview is already generating. Check your saved summary shortly.' : 'Could not start the summary. Please try again shortly.');
+            return result.data;
         }
-        throw new Error('Your account is busy syncing. Try again shortly.');
+        const result = await timed('save-summary', () => client.rpc('finish_ai_overview', { p_generation: generation }));
+        if (result.error) throw new Error('The summary is ready but cloud saving failed. Your browser will keep a copy.');
     }
     try {
         const data = await load();
+        if (req.body?.action === 'history') {
+            const generations = Object.entries(data.state?.records || {}).filter(([key]) => key.startsWith(`${user}_ai_generation_`))
+                .flatMap(([, value]) => { try { return [JSON.parse(value)]; } catch { return []; } })
+                .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 30);
+            return res.status(200).json({ generations });
+        }
         const settings = JSON.parse(data.state?.records?.[`${user}_aiSettings`] || '{}');
         const model = settings.model || MODELS[settings.provider];
         if (!MODELS[settings.provider] || !allowedModel(settings.provider, model) || typeof settings.apiKey !== 'string' || !settings.apiKey.trim()) return res.status(400).json({ error: 'Choose a provider and enter its API key in AI settings.' });
@@ -140,10 +141,14 @@ async function handleRequest(req, res) {
         const body = openai ? { model, store: false, instructions: prompt, input: JSON.stringify(context), max_output_tokens: 4000,
             ...(/^gpt-5(?:-mini|-nano)?$/.test(model) ? { reasoning: { effort: 'minimal' } } : {}) }
             : { systemInstruction: { parts: [{ text: prompt }] }, contents: [{ role: 'user', parts: [{ text: JSON.stringify(context) }] }], generationConfig: { maxOutputTokens: 2200, ...geminiThinking(model) } };
-        const response = await fetch(url, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(40000), redirect: 'error' });
+        const providerSignal = AbortSignal.timeout(25000);
+        const response = await timed('provider-request', () => fetch(url, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: providerSignal, redirect: 'error' }));
         if (!response.ok) throw new Error(response.status === 429 ? 'Your AI provider is rate limited or out of quota. Try later or check your provider account.' : 'The provider could not generate the overview. Check your API key and account access.');
         let result;
-        try { result = await response.json(); } catch { throw new Error('Your AI provider returned an unreadable response. Try again shortly.'); }
+        try { result = await timed('provider-answer', () => response.json()); } catch (error) {
+            if (providerSignal.aborted) throw new Error('Your AI provider did not finish within 25 seconds. No automatic retry was sent.');
+            throw new Error('Your AI provider returned an unreadable response. Try again shortly.');
+        }
         const text = openai ? (result.output || []).flatMap(item => item.type === 'message' ? item.content || [] : []).filter(item => item.type === 'output_text').map(item => item.text).join('\n')
             : (result.candidates?.[0]?.content?.parts || []).filter(part => !part.thought).map(part => part.text || '').join('\n');
         if (!text.trim()) throw new Error('The provider returned no overview. Try again later.');

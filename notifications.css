@@ -1,8 +1,8 @@
-.notification-bell { background:transparent; color:inherit; border:0; position:relative; padding:10px; cursor:pointer; }
+.notification-bell { background:transparent; color:inherit; border:0; position:relative; padding:10px; margin-right:17px; cursor:pointer; }
 .notification-bell[hidden] { display:none !important; }
-.notification-bell svg { width:23px; height:23px; }
+.notification-bell svg { width:23px; height:23px; transform:translateX(17px); }
 [data-notice-count] { background:#ffa500; color:#111; border-radius:12px; padding:2px 5px; font-size:10px; font-weight:700; }
-.notification-bell [data-notice-count] { position:absolute; top:5px; right:5px; display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 3px; box-sizing:border-box; border-radius:999px; line-height:1; }
+.notification-bell [data-notice-count] { position:absolute; top:5px; right:-3px; display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 3px; box-sizing:border-box; border-radius:999px; line-height:1; }
 .notification-bell [data-notice-count][hidden] { display:none; }
 #notification-dialog { color:#eee; background:#202020; border:1px solid #555; border-radius:18px; width:min(540px,calc(100vw - 24px)); max-height:80dvh; padding:0; box-shadow:0 20px 70px #0008; }
 #notification-dialog::backdrop { background:#0009; }

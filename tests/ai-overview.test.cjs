@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overview.js'), 'utf8').replace('return { install, configure, observeMarket };', 'return { install, configure, api, checkDaily, generate, render };');
+const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overview.js'), 'utf8').replace('return { install, configure, observeMarket };', 'return { install, configure, api, checkDaily, generate, render, loadHistory };');
 function setup(response) {
     const requests = [], writes = [], elements = new Map();
     const root = { querySelector(selector) { if (!elements.has(selector)) elements.set(selector, { classList: { toggle() {} }, replaceChildren() {}, setAttribute() {} }); return elements.get(selector); } };
@@ -85,7 +85,7 @@ test('completed server response renders and releases the button while background
     let refreshStarted = false;
     context.CloudAccount.refresh = () => { refreshStarted = true; return new Promise(() => {}); };
     await Promise.race([context.ai.generate('portfolio'), new Promise((_, reject) => setTimeout(() => reject(new Error('Generation waited for background sync')), 100))]);
-    assert.equal(refreshStarted, true);
+    assert.equal(refreshStarted, false, 'summary storage must not trigger a whole-account refresh');
     assert.equal(elements.get('.ai-output').textContent, 'Fresh saved analysis');
     assert.equal(elements.get('.ai-generate').disabled, false);
     assert.equal(elements.get('.ai-generate').textContent, 'Generate overview');
@@ -148,4 +148,16 @@ test('completed output survives a server-save failure without waiting for browse
     context.CloudAccount.flush = () => new Promise(() => {});
     const result = await context.ai.api({ action: 'generate' });
     assert.equal(result.generation.text, 'Saved locally'); assert.equal(requests.length, 1);
+});
+
+test('separate saved summary history renders after reload and prevents another daily billable request', async () => {
+    const { context, requests, writes, elements } = setup({ ok: true, json: async () => ({ generations: [{
+        id: 'saved', scope: 'portfolio', status: 'complete', createdAt: new Date().toISOString(), text: 'Cloud saved brief'
+    }] }) });
+    const getElement = context.document.getElementById;
+    context.document.getElementById = id => id === 'ai-coin' ? null : getElement(id);
+    await context.ai.loadHistory();
+    context.ai.checkDaily(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests.length, 1); assert.equal(requests[0].action, 'history');
+    assert.equal(writes.length, 0); assert.equal(elements.get('.ai-output').textContent, 'Cloud saved brief');
 });
