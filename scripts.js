@@ -16512,6 +16512,9 @@ async function fetchNiceHashBalances() {
 
         const data = await response.json();
         console.log('Balance API Response:', data);
+        window.niceHashCurrencyBalances = Object.fromEntries((data.currencies || []).map(item => [item.currency, {
+            available: Number(item.available), pending: Number(item.pending), fetchedAt: Date.now()
+        }]));
 
         // Parse BTC balances from response
         // NiceHash API structure: { total: {...}, currencies: [{currency, available, pending, ...}] }
@@ -16554,6 +16557,8 @@ async function fetchNiceHashBalances() {
 
 // Convert BTC to AUD
 function convertBTCtoAUD(btcAmount) {
+    const livePrice = getBuyPackagePrice('BTC');
+    if (livePrice > 0) return btcAmount * livePrice;
     // Get current BTC price in AUD from the page
     const btcPriceElement = document.getElementById('bitcoin-price-aud');
     if (!btcPriceElement) return btcAmount * 100000; // Fallback estimate
@@ -16565,6 +16570,8 @@ function convertBTCtoAUD(btcAmount) {
 // Convert any cryptocurrency amount to AUD
 function convertCryptoToAUD(cryptoAmount, cryptoSymbol) {
     if (!cryptoAmount || cryptoAmount === 0) return 0;
+    const livePrice = getBuyPackagePrice(cryptoSymbol);
+    if (livePrice > 0) return cryptoAmount * livePrice;
 
     // Map common crypto symbols to their CoinGecko IDs
     const cryptoIdMap = {
@@ -16951,6 +16958,18 @@ async function fetchNiceHashOrders() {
         });
 
         const orders = Array.from(orderMap.values());
+        // Payment amounts follow currencyMarket, not the coin being mined.
+        // Refresh conversion quotes even when USDT is not in the user's portfolio.
+        if (orders.some(order => EasyMiningModel.orderPayment(order, 0).currency === 'USDT')) {
+            if (!window.miningPaymentQuoteAt || Date.now() - window.miningPaymentQuoteAt > 60000) {
+                const rates = await fetchPackageCryptoPrices([]);
+                window.packageCryptoPrices = { ...window.packageCryptoPrices, ...rates };
+                if (getPriceFromObject(rates.usdt) > 0 && getPriceFromObject(rates.btc) > 0) window.miningPaymentQuoteAt = Date.now();
+            }
+            if (!(getBuyPackagePrice('USDT') > 0 && getBuyPackagePrice('BTC') > 0)) {
+                throw new Error('Live USDT conversion is unavailable. Saved mining data is retained until prices recover.');
+            }
+        }
 
         console.log(`\n${'='.repeat(80)}`);
         console.log('📦 MERGED SOLO MINING DATA');
@@ -17113,7 +17132,8 @@ async function fetchNiceHashOrders() {
             let myShares = null;
             let totalShares = null;
             let secondaryCryptoReward = 0; // For dual mining (e.g., LTC in Palladium packages)
-            const SHARE_COST = 0.0001; // Each share costs 0.0001 BTC
+            const paymentInfo = EasyMiningModel.orderPayment(order, 0);
+            const SHARE_COST = paymentInfo.shareAmount;
 
             if (isTeamPackage) {
                 console.log(`   👥 TEAM PACKAGE - Calculating user's share:`);
@@ -17227,7 +17247,7 @@ async function fetchNiceHashOrders() {
                     console.log(`      Calculated shares: ${small} + (${medium}×10) + (${large}×100) = ${apiMyShares}`);
                 } else {
                     // Fallback: Calculate my shares from addedAmount * 10000
-                    apiMyShares = addedAmount > 0 ? Math.round(addedAmount * 10000) : 0;
+                    apiMyShares = addedAmount > 0 ? EasyMiningModel.shareCount(addedAmount, SHARE_COST) || 0 : 0;
                     console.log(`      My shares (calculated): ${addedAmount.toFixed(8)} * 10000 = ${apiMyShares.toFixed(2)}`);
                 }
 
@@ -17235,15 +17255,14 @@ async function fetchNiceHashOrders() {
                 // This ensures recent purchases aren't overwritten by old API data
                 const ticketId = order.sharedTicket?.id || order.id;
                 const pendingShares = getMyTeamShares(ticketId);
-                myShares = (pendingShares !== null && pendingShares > apiMyShares) ? pendingShares : apiMyShares;
-                if (pendingShares !== null && pendingShares > apiMyShares) {
-                    console.log(`      🔒 Using pending shares (${pendingShares}) instead of API (${apiMyShares})`);
-                }
+                // Only provider-confirmed membership may allocate real block rewards.
+                // Pending selections remain a UI preview until the API catches up.
+                myShares = apiMyShares;
 
                 // Calculate total shares: sharedTicket.addedAmount * 10000
                 // Note: This is the TOTAL package cost, not the user's individual contribution
                 const totalPackageCost = parseFloat(order.sharedTicket?.addedAmount || order.packagePrice || 0);
-                totalShares = totalPackageCost > 0 ? Math.round(totalPackageCost * 10000) : 1;
+                totalShares = totalPackageCost > 0 ? EasyMiningModel.shareCount(totalPackageCost, SHARE_COST) || 0 : 0;
                 console.log(`      Total shares: ${totalPackageCost.toFixed(8)} * 10000 = ${totalShares.toFixed(2)}`);
 
                 // SHARES CALCULATION DEBUG
@@ -17253,7 +17272,7 @@ async function fetchNiceHashOrders() {
                 console.log(`      Are values > 0? ownedShares=${myShares > 0}, totalShares=${totalShares > 0}`);
 
                 if (totalShares > 0 && myShares > 0) {
-                    userSharePercentage = myShares / totalShares;
+                    userSharePercentage = Math.min(1, myShares / totalShares);
                     console.log(`      User share percentage: ${myShares.toFixed(2)} / ${totalShares.toFixed(2)} = ${(userSharePercentage * 100).toFixed(2)}%`);
 
                     // Calculate user's share of BTC rewards
@@ -17315,8 +17334,11 @@ async function fetchNiceHashOrders() {
                     }
                 } else {
                     console.log(`      ⚠️ WARNING: Unable to calculate shares (addedAmount or packagePrice missing)`);
-                    priceSpent = parseFloat(order.packagePrice || order.amount || 0);
-                    totalRewardBTC = totalPackageRewardBTC;
+                    // Never assign the entire team's cost or reward to one member.
+                    priceSpent = addedAmount;
+                    userSharePercentage = 0;
+                    totalRewardBTC = 0;
+                    cryptoReward = userMemberReward || 0;
                 }
             } else {
                 // Standard (non-team) package - use full amounts
@@ -17326,6 +17348,10 @@ async function fetchNiceHashOrders() {
                 secondaryCryptoReward = totalPackageSecondaryCryptoReward;
             }
 
+            const paymentCost = EasyMiningModel.orderPayment(order, priceSpent, {
+                BTC: getBuyPackagePrice('BTC'), USDT: getBuyPackagePrice('USDT')
+            });
+            priceSpent = paymentCost.btcEquivalent;
             console.log(`   💰 Financial Data:`);
             console.log(`      amount: ${order.amount} BTC`);
             console.log(`      payedAmount: ${order.payedAmount} BTC (already spent on hashpower)`);
@@ -17457,7 +17483,10 @@ async function fetchNiceHashOrders() {
                 progress: calculateProgress(order), // Pass full order object to use estimateDurationInSeconds for active packages
                 blockFound: blockFound,
                 isTeam: isTeamPackage,
-                price: priceSpent, // User's price spent (share-adjusted for team packages)
+                price: priceSpent, // BTC equivalent for legacy aggregates; native amount is retained below.
+                paymentCurrency: paymentCost.currency,
+                paymentAmount: paymentCost.amount,
+                paymentLocalAmount: paymentCost.localAmount,
                 // Team package share information
                 ownedShares: isTeamPackage ? myShares : null,
                 totalShares: isTeamPackage ? totalShares : null,
@@ -17467,7 +17496,9 @@ async function fetchNiceHashOrders() {
                 numberOfParticipants: isTeamPackage
                     ? (order.sharedTicket?.numberOfParticipants || order.numberOfParticipants || 0)
                     : null,
-                totalCostBTC: isTeamPackage ? parseFloat(order.sharedTicket?.addedAmount || 0) : null,
+                totalCostBTC: isTeamPackage ? EasyMiningModel.orderPayment(order, Number(order.sharedTicket?.addedAmount || 0), {
+                    BTC: getBuyPackagePrice('BTC'), USDT: getBuyPackagePrice('USDT')
+                }).btcEquivalent : null,
                 // Probability from API - use probabilityPrecision field, formatted with formatProbability()
                 // Team packages: sharedTicket.currencyAlgoTicket, Solo packages: currencyAlgoTicket or direct on order
                 probability: formatProbability(
@@ -22579,6 +22610,8 @@ function createTeamPackageRecommendationCard(pkg) {
     window.packageShareValues[pkg.name] = initialShareValue;
 
     console.log(`📦 Initialized team alert package base values for ${pkg.name}:`, window.packageBaseValues[pkg.name]);
+    card.teamRewardBase = window.packageBaseValues[pkg.name];
+    TeamProbability.bind(card, pkg);
 
     return card;
 }
@@ -23303,11 +23336,11 @@ function showPackageDetailPage(pkg) {
         ${pkg.sharePrice ? `
         <div class="stat-item">
             <span class="stat-label">Price Per Share:</span>
-            <span class="stat-value">${pkg.sharePrice.toFixed(8)} BTC</span>
+            <span class="stat-value">${pkg.sharePrice.toFixed(8)} ${pkg.paymentCurrency || 'BTC'}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Total Package Price:</span>
-            <span class="stat-value">${pkg.fullOrderData?.sharedTicket?.addedAmount ? pkg.fullOrderData.sharedTicket.addedAmount.toFixed(8) + ' BTC' : (pkg.fullOrderData?.packagePrice ? pkg.fullOrderData.packagePrice.toFixed(8) + ' BTC' : 'N/A')}</span>
+            <span class="stat-value">${Number(pkg.fullOrderData?.sharedTicket?.addedAmount ?? pkg.fullOrderData?.packagePrice ?? 0).toFixed(8)} ${pkg.paymentCurrency || 'BTC'}</span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Total Participants:</span>
@@ -23320,8 +23353,8 @@ function showPackageDetailPage(pkg) {
             <span class="stat-value">$${convertBTCtoAUD(pkg.price).toFixed(2)}</span>
         </div>
         <div class="stat-item">
-            <span class="stat-label">${pkg.isTeam ? 'BTC Spent:' : 'BTC Cost:'}</span>
-            <span class="stat-value">${pkg.price.toFixed(8)} BTC</span>
+            <span class="stat-label">Payment:</span>
+            <span class="stat-value">${Number(pkg.paymentAmount ?? pkg.price).toFixed(pkg.paymentCurrency === 'USDT' ? 2 : 8)} ${pkg.paymentCurrency || 'BTC'}</span>
         </div>
         ${pkg.active ? `
         <div class="stat-item">
@@ -28513,6 +28546,7 @@ function getCurrentCryptoPrice(cryptoId) {
 
 // Unified price getter for Buy Packages with fallback chain
 function getBuyPackagePrice(symbol) {
+    if (typeof symbol !== 'string' || !symbol) return 0;
     const key = symbol.toLowerCase();
     const cryptoIdMap = {
         btc: 'bitcoin',
@@ -31263,6 +31297,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     }
 
     const officialIcon = EasyMiningModel.packageIcon(pkg.apiData || {});
+    if (pkg.isTeam) TeamProbability.bind(card, pkg);
     if (officialIcon) {
         const icon = document.createElement('img');
         icon.src = officialIcon;
@@ -31352,6 +31387,7 @@ function adjustShares(packageName, delta, buttonElement) {
     // Set value using BOTH methods to force visual update
     input.value = newValue;
     input.dataset.userSelected = 'true';
+    TeamProbability.changed(input);
     input.setAttribute('value', newValue); // Force attribute update for visual rendering
 
     console.log(`📝 Verifying: input.value is now ${input.value}`);

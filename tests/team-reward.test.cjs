@@ -10,7 +10,7 @@ test('share buttons recalculate crypto and fiat rewards using the selected pool,
         querySelector: selector => selector === '#team-reward-Team' ? reward : selector === '#team-reward-value-Team' ? fiat : null };
     const input = { value: '1', min: '1', max: '100', dataset: { myBought: '1', totalBought: '4', totalAvailable: '100' }, style: {},
         closest: selector => selector.includes('buy-package-card') ? card : null, hasAttribute: () => false, setAttribute() {}, dispatchEvent() {} };
-    const context = { window: { packageBaseValues: { Team: { ...base, totalRewardAUD: 999 } } }, Event: class {}, console: { log() {}, error() {} },
+    const context = { TeamProbability: { changed() {} }, window: { packageBaseValues: { Team: { ...base, totalRewardAUD: 999 } } }, Event: class {}, console: { log() {}, error() {} },
         document: { getElementById: id => id === 'shares-Team' ? input : null },
         formatNumber: value => value, addFloatingIconForShares() {}, removeFloatingIconForShares() {} };
     vm.createContext(context);

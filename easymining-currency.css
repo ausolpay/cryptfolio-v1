@@ -15,3 +15,5 @@
 .currency-package-card label { display:flex; justify-content:space-between; gap:12px; align-items:center; }
 .currency-package-card input { width:85px; }
 .official-package-icon { vertical-align:middle; margin-right:8px; }
+.team-probability-preview { padding:12px 16px; margin:8px 12px 12px; border:1px solid #ffa50055; border-radius:10px; font-size:13px; line-height:1.6; }
+.team-probability-preview small { display:block; opacity:.7; font-size:11px; margin-top:4px; }
