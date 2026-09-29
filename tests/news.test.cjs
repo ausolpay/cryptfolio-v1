@@ -39,3 +39,13 @@ test('one news source can fail without hiding the other source or fabricating a 
     await context.handler({ method: 'GET', query: { name: 'Bitcoin', symbol: 'BTC' } }, res);
     assert.equal(res.code, 503);
 });
+
+test('AI headlines request skips slow 30-day mention counting and asks for the past week', async () => {
+    const urls = [];
+    context.fetch = async url => { urls.push(url); return { ok: true, text: async () => '<rss><channel></channel></rss>' }; };
+    const res = { setHeader() {}, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
+    await context.handler({ method: 'GET', query: { name: 'Bitcoin', symbol: 'BTC', mode: 'headlines' } }, res);
+    assert.equal(res.code, 200); assert.equal(urls.length, 1);
+    assert.match(new URL(urls[0]).searchParams.get('q'), /when:7d/);
+    assert.match(res.data.coverage, /last 7 days/);
+});

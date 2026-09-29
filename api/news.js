@@ -35,16 +35,18 @@ export default async function handler(req, res) {
     const name = clean(req.query.name), symbol = clean(req.query.symbol).toUpperCase();
     if (name.length < 2 || name.length > 80 || !/^[A-Z0-9]{2,15}$/.test(symbol)) return res.status(400).json({ error: 'A coin name and symbol are required' });
     const query = `("${name}" OR "${symbol}") (crypto OR cryptocurrency OR blockchain)`;
+    const headlinesOnly = req.query.mode === 'headlines';
     const fetchText = async url => {
-        const response = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'Accept': 'application/json, application/rss+xml, text/xml' } });
+        const response = await fetch(url, { signal: AbortSignal.timeout(headlinesOnly ? 4500 : 10000), headers: { 'Accept': 'application/json, application/rss+xml, text/xml' } });
         if (!response.ok) throw new Error('Source unavailable');
         const text = await response.text();
         if (text.length > 2000000) throw new Error('Source response too large');
         return text;
     };
-    const sources = ['Google News', 'GDELT'];
+    const sources = headlinesOnly ? ['Google News'] : ['Google News', 'GDELT'];
     const results = await Promise.allSettled([
-        fetchText('https://news.google.com/rss/search?' + new URLSearchParams({ q: query + ' when:30d', hl: 'en-AU', gl: 'AU', ceid: 'AU:en' })).then(parseRss),
+        fetchText('https://news.google.com/rss/search?' + new URLSearchParams({ q: query + (headlinesOnly ? ' when:7d' : ' when:30d'), hl: 'en-AU', gl: 'AU', ceid: 'AU:en' })).then(parseRss),
+        ...(!headlinesOnly ? [
         fetchText('https://api.gdeltproject.org/api/v2/doc/doc?' + new URLSearchParams({ query, mode: 'artlist', format: 'json', maxrecords: '250', timespan: '30d', sort: 'datedesc' }))
             .then(text => {
                 const result = JSON.parse(text);
@@ -52,12 +54,12 @@ export default async function handler(req, res) {
                 return result.articles.map(article => ({ title: article.title, url: article.url, source: article.domain,
                     published_on: Date.parse(String(article.seendate).replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z')) / 1000,
                     index: 'GDELT', dateType: 'indexed' }));
-            })
+            })] : [])
     ]);
     const available = sources.filter((_, i) => results[i].status === 'fulfilled');
     if (!available.length) { res.setHeader('Cache-Control', 'no-store'); return res.status(503).json({ error: 'News sources are temporarily unavailable' }); }
     const articles = normaliseArticles(results.flatMap(result => result.status === 'fulfilled' ? result.value : []));
     res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=600');
     return res.status(200).json({ articles, count: articles.length, available, unavailable: sources.filter(source => !available.includes(source)),
-        checkedAt: new Date().toISOString(), coverage: 'Unique indexed news mentions in the last 30 days. Limited to returned results; not every online or social mention. GDELT dates are first-seen dates.' });
+        checkedAt: new Date().toISOString(), coverage: headlinesOnly ? 'Recent headlines from Google News in the last 7 days; limited to returned results.' : 'Unique indexed news mentions in the last 30 days. Limited to returned results; not every online or social mention. GDELT dates are first-seen dates.' });
 }

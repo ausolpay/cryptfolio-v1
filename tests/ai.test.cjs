@@ -125,3 +125,25 @@ test('analysis receives bounded trade history, comparisons and safe source links
     assert.match(body.instructions, /buy\/add, hold\/wait, trim\/sell and reinvest/);
     assert.match(body.instructions, /Do not treat sale proceeds as available cash/);
 });
+
+test('portfolio brief strips bulky chart and trade details on the server and prioritises important dated news', async () => {
+    const result = await run({ enabled: true, scope: 'portfolio', coinExtras: { history: { purchases: [{ amount: 2, boughtPrice: 10 }] } } });
+    const body = JSON.parse(result.calls[0].options.body), input = JSON.parse(body.input);
+    assert.equal(input.coins[0].history, undefined); assert.equal(input.coins[0].chart, undefined);
+    assert.match(body.instructions, /Portfolio summary, Important latest news, Recommendations, Watch next/);
+    assert.match(body.instructions, /last 48 hours within the last 7 days/);
+    assert.match(body.instructions, /never invent news/i);
+});
+
+test('Gemini uses supported fast reasoning settings without guessing settings for unknown models', async () => {
+    for (const [model, config] of [
+        ['gemini-3.5-flash', { thinkingLevel: 'minimal' }],
+        ['gemini-3.8-flash', { thinkingLevel: 'low' }],
+        ['gemini-2.5-flash', { thinkingBudget: 0 }],
+        ['gemini-2.5-pro', undefined], ['gemini-future-model', undefined]
+    ]) {
+        const result = await run({ enabled: true, provider: 'gemini', model });
+        assert.equal(result.res.code, 200);
+        assert.deepEqual(JSON.parse(result.calls[0].options.body).generationConfig.thinkingConfig, config);
+    }
+});

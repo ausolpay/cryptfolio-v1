@@ -65,12 +65,16 @@ const AIOverview = (() => {
     }
     async function api(body) {
         const owner = loggedInUser;
-        const response = await CloudAccount.authorizedFetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const response = await CloudAccount.authorizedFetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(75000) });
         let data;
         try { data = await response.json(); } catch { throw new Error(response.status === 504 ? 'The AI service took too long. Try a faster model in AI settings, then generate again.' : 'The AI service could not respond. Please try again shortly.'); }
         if (loggedInUser !== owner) throw new Error('Your account changed. Please generate again.');
         // Normally the server already saved the record. Only recover a completed result if its save failed.
-        if (!response.ok && data.generation?.status === 'complete' && !data.reused) { appStorage.setItem(`${owner}_ai_generation_${data.generation.id}`, JSON.stringify(data.generation)); await CloudAccount.flush(); }
+        if (!response.ok && data.generation?.status === 'complete' && !data.reused) {
+            appStorage.setItem(`${owner}_ai_generation_${data.generation.id}`, JSON.stringify(data.generation));
+            CloudAccount.flush().catch(() => {});
+            return data;
+        }
         if (!response.ok) throw new Error(data.error || 'AI is unavailable');
         return data;
     }
@@ -81,36 +85,49 @@ const AIOverview = (() => {
         root.querySelector('.ai-status').textContent = 'Checking recent news and your market data…';
         try {
         const selected = (users[owner]?.cryptos || []).filter(coin => scope === 'portfolio' || coin.id === scope);
+        const coverage = new Map();
         if (typeof window !== 'undefined' && window.fetchAICoverage) {
             // Public coin identifiers only; balances and transaction history never go to news indexes.
-            const priority = [...selected].sort((a, b) => (getTotalActiveHoldings(b.id) * (getPriceFromObject(cryptoPrices[b.id]) || 0)) - (getTotalActiveHoldings(a.id) * (getPriceFromObject(cryptoPrices[a.id]) || 0))).slice(0, 8);
-            await Promise.allSettled(priority.map(coin => window.fetchAICoverage(coin.id, coin.symbol)));
+            const held = selected.filter(coin => getTotalActiveHoldings(coin.id) > 0);
+            const priority = [...(scope === 'portfolio' && held.length ? held : selected)].sort((a, b) => (getTotalActiveHoldings(b.id) * (getPriceFromObject(cryptoPrices[b.id]) || 0)) - (getTotalActiveHoldings(a.id) * (getPriceFromObject(cryptoPrices[a.id]) || 0))).slice(0, 8);
+            let deadline;
+            try {
+                // A slow news index must never block the summary indefinitely.
+                await Promise.race([
+                    Promise.allSettled(priority.map(async coin => {
+                        const news = await window.fetchAICoverage(coin.id, coin.symbol, { headlinesOnly: true });
+                        coverage.set(coin.id, news);
+                    })),
+                    new Promise(resolve => { deadline = setTimeout(resolve, 6000); })
+                ]);
+            } finally { clearTimeout(deadline); }
         }
         if (owner !== loggedInUser) return;
         const coins = (users[loggedInUser]?.cryptos || []).filter(coin => scope === 'portfolio' || coin.id === scope).map(coin => {
             const price = getPriceFromObject(cryptoPrices[coin.id]) || null, holdings = getTotalActiveHoldings(coin.id);
-            let news; try { news = JSON.parse(appStorage.getItem(`${loggedInUser}_freeNews_${coin.id.replace(/-/g, ' ').toLowerCase()}_${coin.symbol.toLowerCase()}`)); } catch {}
+            let news = coverage.get(coin.id); if (!news) try { news = JSON.parse(appStorage.getItem(`${loggedInUser}_freeNews_${coin.id.replace(/-/g, ' ').toLowerCase()}_${coin.symbol.toLowerCase()}`)); } catch {}
             return { name: coin.name || coin.id, symbol: coin.symbol, holdings, price, value: price === null ? null : holdings * price,
                 change24h: cryptoPriceChanges[coin.id] ?? null, rsi: getStoredRSI(coin.id),
-                history: historyContext(coin.id),
+                ...(scope !== 'portfolio' ? { history: historyContext(coin.id), chart: { candles: (storedOHLCDataPerCrypto[coin.id] || []).slice(-60) } } : {}),
                 market: readJson(`${owner}_ai_market_${coin.id}`, {}),
-                chart: { candles: (storedOHLCDataPerCrypto[coin.id] || []).slice(-60) },
                 newsCheckedAt: news?.checkedAt || null,
-                headlines: (news?.articles || []).filter(article => Number.isFinite(article.published_on) && Number.isFinite(new Date(article.published_on * 1000).getTime())).slice(0, 3).map(article => ({
-                    title: article.title, source: article.source, url: article.url, publishedAt: new Date(article.published_on * 1000).toISOString() })) };
+                headlines: (news?.articles || []).filter(article => Number.isFinite(article.published_on) && article.published_on * 1000 >= Date.now() - 7 * 86400000 && article.published_on * 1000 <= Date.now() + 3600000).sort((a, b) => b.published_on - a.published_on).slice(0, 5).map(article => ({
+                    title: article.title, source: article.source, url: article.url, publishedAt: new Date(article.published_on * 1000).toISOString(), dateType: article.dateType || 'published' })) };
         });
-        root.querySelector('.ai-status').textContent = 'Reviewing your selected data…';
-        await CloudAccount.flush();
+        root.querySelector('.ai-status').textContent = 'Writing your summary and recommendations…';
+        // Settings were synced at activation. Context travels in this request;
+        // waiting for all market/mining writes can starve generation indefinitely.
         const result = await api({ action: daily && kind === 'portfolio' ? 'daily' : 'generate', context: { scope, currency: getCoinGeckoCurrency(), observedAt: new Date().toISOString(), coins } });
         if (owner === loggedInUser) {
             // The response is already saved on the server. Display it immediately;
             // ongoing market/mining sync must not keep the generation button busy.
             if (result.generation?.status === 'complete') completedResponses.set(`${owner}:${scope}`, result.generation);
-            root.querySelector('.ai-status').textContent = '';
+            root.querySelector('.ai-status').textContent = result.reused && result.generation?.status !== 'complete'
+                ? result.generation?.error || 'An earlier summary attempt has not completed. Check the saved overview or use Generate overview to retry.' : '';
             render();
             CloudAccount.refresh().then(() => { if (owner === loggedInUser) render(); }).catch(() => {});
         } }
-        catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = error.message; }
+        catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = ['TimeoutError', 'AbortError'].includes(error.name) ? 'The summary request timed out. Check your saved overview before trying again.' : error.message; }
         finally { busy = false; activeScope = null; button.disabled = false; button.textContent = 'Generate overview'; }
     }
     function readJson(key, fallback) { try { return JSON.parse(appStorage.getItem(key)) || fallback; } catch { return fallback; } }
@@ -162,7 +179,7 @@ const AIOverview = (() => {
             };
             provider.onchange = () => { input.value = settings().provider === provider.value ? settings().apiKey || '' : ''; resetModels(); };
             const loadModels = node('button', 'Load available models'); dialog.append(loadModels);
-            dialog.append(node('p', 'Activation enables one automatic portfolio overview each day while the app is open, with a new day starting at 6am Brisbane time. Crypto overviews generate only when you click Generate. Summaries send balances, recorded buy/sell history, prices, indicators, available price candles and sourced headlines to your provider. News refreshes for up to eight coins, prioritising your larger positions; other coins use available cached coverage. Login details, wallet addresses and other API keys are excluded. API usage may incur charges; a ChatGPT subscription is separate from API access.'));
+            dialog.append(node('p', 'Activation enables one automatic portfolio overview each day while the app is open, with a new day starting at 6am Brisbane time. Crypto overviews generate only when you click Generate. Portfolio summaries send balances, prices, indicators and recent sourced headlines to your provider. Individual crypto reviews also include recorded buy/sell history and available price candles. News refreshes for up to eight coins, prioritising your larger holdings; other coins use available cached coverage. Slow news sources are skipped and missing or stale coverage is disclosed. Login details, wallet addresses and other API keys are excluded. API usage may incur charges; a ChatGPT subscription is separate from API access.'));
             const status = node('p'); status.setAttribute('role', 'status'); dialog.append(status);
             loadModels.onclick = async () => {
                 if (!input.value.trim()) { status.textContent = 'Enter an API key first.'; return; }

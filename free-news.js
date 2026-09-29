@@ -1,23 +1,29 @@
 /* Shared request for the coin's latest headlines and its 30-day coverage count. */
 function installFreeNews() {
     const pending = new Map();
-    async function coverage(name, symbol) {
+    const headlineCache = new Map();
+    async function coverage(name, symbol, { headlinesOnly = false } = {}) {
         const owner = loggedInUser;
         const normalized = String(name).replace(/-/g, ' ').toLowerCase();
         const key = `${loggedInUser}_freeNews_${normalized}_${symbol.toLowerCase()}`;
         let cached;
         try { cached = JSON.parse(appStorage.getItem(key)); } catch {}
+        if (headlinesOnly) cached = headlineCache.get(key) || cached;
         if (cached && Date.now() - Date.parse(cached.checkedAt) < 600000) return cached;
-        if (pending.has(key)) return pending.get(key);
+        const requestKey = key + (headlinesOnly ? '_headlines' : '');
+        if (pending.has(requestKey)) return pending.get(requestKey);
         const request = (async () => {
-            const response = await fetch('/api/news?' + new URLSearchParams({ name: normalized, symbol }), { signal: AbortSignal.timeout(12000) });
+            const response = await fetch('/api/news?' + new URLSearchParams({ name: normalized, symbol, ...(headlinesOnly ? { mode: 'headlines' } : {}) }), { signal: AbortSignal.timeout(headlinesOnly ? 5500 : 12000) });
             if (!response.ok) throw new Error('News sources are temporarily unavailable.');
             const data = await response.json();
-            if (owner === loggedInUser) appStorage.setItem(key, JSON.stringify(data));
+            if (owner === loggedInUser) {
+                if (headlinesOnly) headlineCache.set(key, data);
+                else appStorage.setItem(key, JSON.stringify(data));
+            }
             return data;
         })();
-        pending.set(key, request);
-        try { return await request; } finally { pending.delete(key); }
+        pending.set(requestKey, request);
+        try { return await request; } finally { pending.delete(requestKey); }
     }
     window.fetchAICoverage = coverage;
     window.fetchMentions30d = async function (name, symbol) {

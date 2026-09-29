@@ -6,7 +6,7 @@ const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overv
 function setup(response) {
     const requests = [], writes = [], elements = new Map();
     const root = { querySelector(selector) { if (!elements.has(selector)) elements.set(selector, { classList: { toggle() {} }, replaceChildren() {}, setAttribute() {} }); return elements.get(selector); } };
-    const context = { loggedInUser: 'owner', currentCryptoId: 'bitcoin', navigator: { onLine: true },
+    const context = { AbortSignal, setTimeout, clearTimeout, loggedInUser: 'owner', currentCryptoId: 'bitcoin', navigator: { onLine: true },
         users: { owner: { cryptos: [{ id: 'bitcoin', name: 'Bitcoin', symbol: 'BTC' }] } },
         cryptoPrices: { bitcoin: 12 }, cryptoPriceChanges: {}, storedOHLCDataPerCrypto: { bitcoin: [[1, 10, 14, 9, 12]] },
         getPriceFromObject: value => value, getTotalActiveHoldings: () => 2, getStoredRSI: () => 50, getCoinGeckoCurrency: () => 'aud',
@@ -114,4 +114,38 @@ test('manual analysis includes only this coin history and still works when onlin
     assert.equal(history.eventCount, 1); assert.equal(history.purchaseEntryCount, 1);
     assert.equal(history.recent[0].amount, 1); assert.equal(history.recent[0].currency, null);
     assert.equal(history.recent[0].wallet, undefined);
+});
+
+test('portfolio generation bypasses a stuck cloud flush and sends a compact snapshot with fresh news', async () => {
+    const { context, requests } = setup({ ok: true, json: async () => ({}) });
+    context.CloudAccount.flush = () => new Promise(() => {});
+    context.window = { fetchAICoverage: async (id, symbol, options) => {
+        assert.equal(options.headlinesOnly, true);
+        return { checkedAt: new Date().toISOString(), articles: [
+            { title: 'Recent protocol upgrade', published_on: Date.now() / 1000, source: 'Publisher', url: 'https://example.com/recent' },
+            { title: 'Old report', published_on: (Date.now() - 8 * 86400000) / 1000 }
+        ] };
+    } };
+    await Promise.race([context.ai.generate('portfolio'), new Promise((_, reject) => setTimeout(() => reject(new Error('Waited for unrelated cloud sync')), 100))]);
+    assert.equal(requests.length, 1);
+    const coin = requests[0].context.coins[0];
+    assert.equal(coin.history, undefined); assert.equal(coin.chart, undefined);
+    assert.equal(coin.headlines.length, 1); assert.equal(coin.headlines[0].title, 'Recent protocol upgrade');
+});
+
+test('a never-ending news request reaches its deadline and still generates a portfolio summary', async () => {
+    const { context, requests, elements } = setup({ ok: true, json: async () => ({}) });
+    context.window = { fetchAICoverage: () => new Promise(() => {}) };
+    let deadline;
+    context.setTimeout = (callback, ms) => { deadline = ms; return setTimeout(callback, 0); };
+    await context.ai.generate('portfolio');
+    assert.equal(deadline, 6000); assert.equal(requests.length, 1);
+    assert.equal(elements.get('.ai-generate').disabled, false);
+});
+
+test('completed output survives a server-save failure without waiting for browser recovery sync', async () => {
+    const { context, requests } = setup({ ok: false, json: async () => ({ generation: { id: 'done', status: 'complete', text: 'Saved locally' } }) });
+    context.CloudAccount.flush = () => new Promise(() => {});
+    const result = await context.ai.api({ action: 'generate' });
+    assert.equal(result.generation.text, 'Saved locally'); assert.equal(requests.length, 1);
 });
