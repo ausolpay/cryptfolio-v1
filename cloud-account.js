@@ -168,6 +168,8 @@ window.CloudAccount = (() => {
     }
     async function start() {
         try {
+            const conflictDialog = document.getElementById('cloud-conflict');
+            if (conflictDialog) document.body.appendChild(conflictDialog);
             const remember = document.getElementById('stay-signed-in');
             if (remember) remember.checked = window.CryptfolioAuthStorage?.persistent !== false;
             const { data, error } = await client.auth.getSession();

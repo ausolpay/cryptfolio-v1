@@ -55,7 +55,12 @@ const AppNotifications = (() => {
             content.append(row);
         }
     }
-    function open() { render(); document.getElementById('notification-dialog').showModal(); }
+    function open() {
+        render();
+        const dialog = document.getElementById('notification-dialog');
+        document.body.append(dialog);
+        dialog.showModal();
+    }
     function readAll() { for (const item of list()) appStorage.setItem(readKey(item.id), 'true'); render(); }
     window.addEventListener('cloud-data-loaded', render);
     window.addEventListener('app-data-changed', () => {
