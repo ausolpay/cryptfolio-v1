@@ -15900,6 +15900,13 @@ function updateEasyMiningLoadingProgress(percentage) {
 function setEasyMiningLoadingTarget(target) {
     targetProgress = target;
 
+    // The animation must never hold up data that is already ready to display.
+    if (target >= 100) {
+        updateEasyMiningLoadingProgress(100);
+        hideEasyMiningLoadingBar();
+        return;
+    }
+
     // Start smooth animation if not already running
     if (!loadingProgressInterval && isFirstEasyMiningLoad) {
         loadingProgressInterval = setInterval(() => {
@@ -15949,6 +15956,7 @@ async function fetchEasyMiningData() {
 
     // Mark fetch as in progress
     isFetchingEasyMiningData = true;
+    const preloadBuyPackages = isFirstEasyMiningLoad;
 
     // Show loading bar only on first load
     if (isFirstEasyMiningLoad) {
@@ -15983,10 +15991,16 @@ async function fetchEasyMiningData() {
             try {
                 // Attempt real API calls
                 if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(60); // Progress to 60%
-                balances = await fetchNiceHashBalances();
-                if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(75); // Move to 75% after balances
-
-                orders = await fetchNiceHashOrders();
+                // Independent reads can run together. Settle both before releasing
+                // the polling guard, including when one request fails.
+                const results = await Promise.allSettled([
+                    fetchNiceHashBalances(),
+                    fetchNiceHashOrders()
+                ]);
+                const failed = results.find(result => result.status === 'rejected');
+                if (failed) throw failed.reason;
+                balances = results[0].value;
+                orders = results[1].value;
                 if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(90); // Move to 90% after orders
 
                 // If we got here, API calls succeeded
@@ -16079,6 +16093,9 @@ async function fetchEasyMiningData() {
         // Update UI
         updateEasyMiningUI();
 
+        // Reveal fresh balances and packages before portfolio/market housekeeping.
+        if (isFirstEasyMiningLoad) setEasyMiningLoadingTarget(100);
+
         // Sync countdown values with fresh API data
         syncCountdownsWithApiData();
 
@@ -16105,30 +16122,11 @@ async function fetchEasyMiningData() {
         // ✅ Auto-add crypto boxes for active packages (ensures live prices are used)
         await autoAddCryptoBoxesForActivePackages();
 
-        // Pre-load buy packages data during initialization loading sequence
-        if (isFirstEasyMiningLoad) {
-            setEasyMiningLoadingTarget(95); // Update progress bar to 95%
-
-            // Update loading text
-            const loadingText = document.getElementById('loading-bar-text');
-            if (loadingText) {
-                loadingText.textContent = 'Loading buy packages data...';
-            }
-
-            // Load buy packages data (caches for instant display when user opens page)
-            console.log('📦 Pre-loading buy packages data during initialization...');
-            try {
-                await loadBuyPackagesDataOnPage();
-                console.log('✅ Buy packages data pre-loaded successfully');
-            } catch (error) {
-                console.error('⚠️ Failed to pre-load buy packages data:', error);
-                // Don't block initialization if buy packages loading fails
-            }
-
-            // Reset loading text back to default
-            if (loadingText) {
-                loadingText.textContent = 'Loading EasyMining data...';
-            }
+        // Warm the separate Buy Packages page without blocking this section or polling.
+        if (preloadBuyPackages) {
+            loadBuyPackagesDataOnPage().catch(error => {
+                console.warn('Failed to pre-load buy packages data:', error);
+            });
         }
 
         // Update BTC holdings if toggles are enabled
@@ -16137,12 +16135,6 @@ async function fetchEasyMiningData() {
         // Fix any holdings entries with missing bought prices (now that we have EasyMining data)
         fixMissingBoughtPrices();
         recalculateAddedToday();
-
-        // Complete loading (only on first load)
-        // Loading bar will automatically hide when it reaches 100%
-        if (isFirstEasyMiningLoad) {
-            setEasyMiningLoadingTarget(100);
-        }
 
         // Clear any pending error alerts since fetch succeeded
         clearEasyMiningErrorAlert();
@@ -16932,9 +16924,11 @@ async function fetchNiceHashOrders() {
     }
 
     try {
-        const activePackages = await NiceHashOrderCache.list('active=true', 4000);
-        const packagesWithRewards = await NiceHashOrderCache.list('rewardsOnly=true', 30000);
-        const completedPackages = await NiceHashOrderCache.list('status=COMPLETED', 60000);
+        const [activePackages, packagesWithRewards, completedPackages] = await Promise.all([
+            NiceHashOrderCache.list('active=true', 4000),
+            NiceHashOrderCache.list('rewardsOnly=true', 30000),
+            NiceHashOrderCache.list('status=COMPLETED', 60000)
+        ]);
 
         // Merge all three lists, avoiding duplicates (use order ID as key)
         const orderMap = new Map();
