@@ -76,7 +76,6 @@
 
             <!-- Right: Profile, Donate, Logo -->
             <div class="nav-right">
-                <button id="cloud-sync-status" class="cloud-sync-status" onclick="CloudAccount.retry().catch(error => alert(error.message))" aria-live="polite">Connecting…</button>
                 <!-- Login/Register Buttons (shown when logged out) -->
                 <div class="auth-buttons desktop-only" id="nav-auth-buttons" style="display: none;">
                     <a href="#" class="nav-login-link" onclick="navLogin(); return false;">Login</a>
@@ -93,6 +92,8 @@
                         </div>
                     </button>
                     <div class="dropdown-menu" id="profile-dropdown-menu">
+                        <button id="cloud-sync-status" class="dropdown-item cloud-sync-status" onclick="CloudAccount.retry().catch(error => alert(error.message))" aria-live="polite">Syncing…</button>
+                        <div id="cloud-automation-status" class="cloud-automation-status"></div>
                         <a href="#" class="dropdown-item logged-in-only" id="nav-account-settings" onclick="showAccountSettingsPage(); closeProfileDropdown(); return false;">Account Settings</a>
                         <a href="#" class="dropdown-item logged-in-only" id="nav-app-settings" onclick="showSettingsPage(); closeProfileDropdown(); return false;">App Settings</a>
                         <a href="preferences.html" class="dropdown-item logged-in-only" id="nav-preferences">Preferences</a>
@@ -121,6 +122,7 @@
             <a href="#" class="mobile-menu-link" onclick="showPricingPage(); closeMobileMenu(); return false;">PRICING</a>
             <div class="mobile-menu-divider mobile-logged-in-only" id="mobile-divider-settings"></div>
             <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-account-settings" onclick="showAccountSettingsPage(); closeMobileMenu(); return false;">Account Settings</a>
+            <button id="mobile-sync-status" class="mobile-menu-link mobile-logged-in-only" onclick="CloudAccount.retry().catch(error => alert(error.message))">Syncing…</button>
             <a href="#" class="mobile-menu-link mobile-logged-in-only" id="mobile-app-settings" onclick="showSettingsPage(); closeMobileMenu(); return false;">App Settings</a>
             <a href="preferences.html" class="mobile-menu-link mobile-logged-in-only" id="mobile-preferences" onclick="closeMobileMenu()">Preferences</a>
             <a href="help.html" class="mobile-menu-link mobile-logged-in-only" id="mobile-help" onclick="closeMobileMenu()">Help</a>
@@ -604,8 +606,8 @@
                     </div>
                     <div class="settings-row">
                         <div class="settings-row-info">
-                            <span class="settings-row-label">Multi-Device Mode</span>
-                            <span class="settings-row-desc">Reduce API calls when running on multiple devices</span>
+                            <span class="settings-row-label">Reduce API Polling</span>
+                            <span class="settings-row-desc">Optional slower polling. Account sync and duplicate-purchase protection are always enabled.</span>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="multi-device-toggle-page" onchange="toggleMultiDeviceInput()">
@@ -3180,6 +3182,7 @@
     </dialog>
     <script src="vendor/supabase-2.117.2.js"></script>
     <script src="cloud-data.js"></script>
+    <script src="cloud-app-bridge.js"></script>
     <script src="cloud-account.js"></script>
 
     <script>

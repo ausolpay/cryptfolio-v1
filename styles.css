@@ -12921,7 +12921,8 @@ body.light-mode .ad-container {
 .cloud-conflict { max-width: 480px; padding: 28px; border: 1px solid #555; border-radius: 16px; background: #202020; color: #eee; }
 .cloud-conflict::backdrop { background: #000b; }
 .cloud-conflict button { display: block; width: 100%; margin-top: 12px; padding: 12px; cursor: pointer; }
-@media (max-width: 600px) { .cloud-sync-status { max-width: 110px; font-size: 10px; } }
+.cloud-sync-status.dropdown-item { display: block; width: 100%; max-width: none; text-align: left; white-space: normal; font-size: 12px; }
+.cloud-automation-status { padding: 0 16px 10px; max-width: 240px; color: #888; font-size: 11px; line-height: 1.5; }
 
 #holdings-tracking-section .holdings-entries-container,
 #holdings-tracking-section .history-entries-container {

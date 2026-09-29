@@ -18,11 +18,7 @@ let currentApiKeyIndex = 0;
 // SUBSCRIPTION TIER SYSTEM
 // =============================================================================
 
-// Admin accounts automatically get Elite tier
-const ADMIN_EMAILS = [
-    'hannahbelles801@gmail.com',
-    'hannah@cairnscitygraphics.com.au'
-];
+// Admin access is supplied by the confirmed Supabase account.
 
 // Tier configuration for subscription system
 const TIER_CONFIG = {
@@ -82,7 +78,7 @@ const STRIPE_CONFIG = {
 function getUserTier(email = loggedInUser) {
     if (!email) return 'free';
     // Admin accounts always get Elite
-    if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+    if ((email === loggedInUser && CloudAccount.isAdmin)) {
         return 'elite';
     }
     return users[email]?.tier || 'free';
@@ -126,7 +122,7 @@ function canUserAccess(feature) {
  */
 function isAdminUser(email = loggedInUser) {
     if (!email) return false;
-    return ADMIN_EMAILS.includes(email.toLowerCase());
+    return (email === loggedInUser && CloudAccount.isAdmin);
 }
 
 /**
@@ -750,7 +746,7 @@ function migrateExistingUsers() {
     for (const email in users) {
         if (!users[email].tier) {
             // Check if admin
-            if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+            if ((email === loggedInUser && CloudAccount.isAdmin)) {
                 users[email].tier = 'elite';
                 users[email].tierSource = 'admin';
             } else {
@@ -2440,7 +2436,7 @@ async function loadNiceHashSavedAddresses() {
 
 
         // Make request via proxy
-        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+        const response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2636,7 +2632,7 @@ async function fetchNiceHashVasps() {
         let response;
         if (USE_VERCEL_PROXY) {
             // Use Vercel proxy in production
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint, method: 'GET', headers })
@@ -3544,7 +3540,7 @@ async function fetchNiceHashDepositAddress(amount, endpointConfig) {
 
     try {
         // Use Vercel proxy to avoid CORS issues
-        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+        const response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3780,7 +3776,7 @@ async function fetchWithdrawalAddresses() {
 
         let response;
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint, method: 'GET', headers })
@@ -4157,7 +4153,7 @@ async function callNiceHashWithdrawal(amount, addressData, note) {
 
     try {
         // Use Vercel proxy to avoid CORS issues
-        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+        const response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -5731,8 +5727,8 @@ async function register() {
         cryptos: [],
         percentageThresholds: {},
         // Tier system properties
-        tier: ADMIN_EMAILS.includes(email.toLowerCase()) ? 'elite' : 'free',
-        tierSource: ADMIN_EMAILS.includes(email.toLowerCase()) ? 'admin' : 'default',
+        tier: 'free',
+        tierSource: 'default',
         stripeCustomerId: null,
         stripeSubscriptionId: null,
         subscriptionStatus: null,
@@ -7133,10 +7129,14 @@ function saveHoldingsEntries(cryptoId, entries) {
 // Add a new holdings entry
 function addHoldingsEntry(cryptoId, entry) {
     const entries = getHoldingsEntries(cryptoId);
+    if (entries.some(existing => existing.id === entry.id ||
+        (entry.source === 'easymining-reward' && existing.source === entry.source &&
+        existing.blockHash === entry.blockHash && existing.packageId === entry.packageId))) return false;
     console.log(`📦 Existing entries for ${cryptoId} BEFORE add:`, entries.length, entries);
     entries.push(entry);
     saveHoldingsEntries(cryptoId, entries);
     console.log(`✅ Added holdings entry for ${cryptoId}. Total entries now: ${entries.length}`, entry);
+    return true;
 }
 
 // Get a specific holdings entry by ID
@@ -7317,6 +7317,7 @@ function isBlockTracked(blockHash) {
 function trackNewBlock(blockData, livePrice) {
     const blocks = getTrackedBlocks();
     const blockKey = blockData.blockHash || `${blockData.packageId}_${blockData.timestamp}_${blockData.coin}`;
+    if (!CloudAccount.canPurchase) return blocks[blockKey] || null;
 
     // If already tracked, UPDATE cost basis data if we have better values now
     if (blocks[blockKey]) {
@@ -15517,7 +15518,7 @@ async function fetchRewardsForCrypto(crypto) {
     const endpoint = `/main/api/v2/public/solo/singleReward?coin=${crypto}&limit=100000000&orphans=false&sortField=time&sortDir=DESC`;
 
     try {
-        const response = await fetch(VERCEL_PROXY_ENDPOINT, {
+        const response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -16378,7 +16379,7 @@ async function fetchMiningPayments(currency) {
         let response;
 
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -16421,7 +16422,7 @@ async function fetchCurrencyBalanceExtended(currency) {
         let response;
 
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -16484,7 +16485,7 @@ async function fetchNiceHashBalances() {
         if (USE_VERCEL_PROXY) {
             // Use Vercel serverless function as proxy
             console.log('✅ Using Vercel proxy:', VERCEL_PROXY_ENDPOINT);
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -16814,7 +16815,7 @@ async function fetchOrderRewards(orderId) {
         let response;
 
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -16951,7 +16952,7 @@ async function fetchNiceHashOrders() {
 
         let response1;
         if (USE_VERCEL_PROXY) {
-            response1 = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response1 = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: endpoint1, method: 'GET', headers: headers1 })
@@ -16979,7 +16980,7 @@ async function fetchNiceHashOrders() {
 
         let response2;
         if (USE_VERCEL_PROXY) {
-            response2 = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response2 = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: endpoint2, method: 'GET', headers: headers2 })
@@ -17007,7 +17008,7 @@ async function fetchNiceHashOrders() {
 
         let response3;
         if (USE_VERCEL_PROXY) {
-            response3 = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response3 = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: endpoint3, method: 'GET', headers: headers3 })
@@ -19592,7 +19593,7 @@ async function executeAutoBuySolo(recommendations) {
 
             let response;
             if (USE_VERCEL_PROXY) {
-                response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -19886,7 +19887,7 @@ async function executeAutoBuyTeam(recommendations) {
 
             let response;
             if (USE_VERCEL_PROXY) {
-                response = await fetch(VERCEL_PROXY_ENDPOINT, {
+                response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -20835,7 +20836,7 @@ async function executeAutoSharesTeam(teamPackages) {
 
         let response;
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -22946,7 +22947,7 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                 const boughtPrice = livePrice;
 
                 // Create holdings entry for this individual block
-                const entryId = uuidv4();
+                const entryId = `reward:${cryptoId}:${block.packageId}:${block.blockHash}`;
                 const entry = {
                     id: entryId,
                     cryptoId: cryptoId,
@@ -22964,7 +22965,10 @@ async function autoUpdateCryptoHoldings(newBlocks) {
                     blockHash: block.blockHash
                 };
 
-                addHoldingsEntry(cryptoId, entry);
+                if (!addHoldingsEntry(cryptoId, entry)) {
+                    markBlockAddedToHoldings(block.blockHash, entryId);
+                    continue;
+                }
                 addToHoldingsHistory('add', entry, {
                     packageName: block.packageName,
                     blockHash: block.blockHash,
@@ -26459,7 +26463,7 @@ async function fetchAvailableSoloPackages() {
         let response;
 
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -26555,7 +26559,7 @@ async function fetchAvailableTeamPackages() {
         let response;
 
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -27537,7 +27541,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
         let response;
 
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -27788,7 +27792,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
 
         let response;
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -27954,7 +27958,7 @@ async function buyPackage(pkg) {
         if (USE_VERCEL_PROXY) {
             // Use Vercel serverless function as proxy
             console.log('✅ Using Vercel proxy to create order');
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -28129,7 +28133,7 @@ async function fetchNiceHashSoloPackages() {
         if (USE_VERCEL_PROXY) {
             // Use Vercel proxy with POST method
 
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -28314,7 +28318,7 @@ async function fetchNiceHashTeamPackages() {
         if (USE_VERCEL_PROXY) {
             // Use Vercel proxy with POST method
 
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -28501,7 +28505,7 @@ async function fetchAuthenticatedTeamShares() {
 
         let response;
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ endpoint: endpoint, method: 'GET', headers: headers })
@@ -29933,7 +29937,7 @@ function updateTeamPackageCountdowns() {
                     countdownElement.style.color = '#FFA500';
 
                     // AUTO-CLEAR LOGIC: Check if countdown <= 30 seconds AND auto-clear is enabled
-                    if (autoClearEnabled && timeUntilStart <= 30000) { // 30000ms = 30 seconds
+                    if (CloudAccount.canPurchase && autoClearEnabled && timeUntilStart <= 30000) { // 30000ms = 30 seconds
                         const packageId = pkg.apiData?.id || pkg.id;
                         const myShares = getMyTeamShares(packageId) || 0;
 
@@ -32119,7 +32123,7 @@ Do you want to continue?
                 body: orderData
             };
 
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -32365,7 +32369,7 @@ async function fetchAlgorithmData() {
         let response;
 
         if (typeof USE_VERCEL_PROXY !== 'undefined' && USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -32624,7 +32628,7 @@ async function autoClearTeamShares(packageId, packageName) {
                 body: clearData
             };
 
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -32792,7 +32796,7 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
 
         let response;
         if (USE_VERCEL_PROXY) {
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -32852,6 +32856,7 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
 
 // Auto-buy Bot - Team Bail: Clear shares from team packages that cross completion threshold
 function checkAutoClearActiveShares() {
+    if (!CloudAccount.canPurchase) return;
     // Check if feature is enabled
     if (!easyMiningSettings.autoClearActiveShares) {
         return;
@@ -32959,6 +32964,7 @@ const rewardAndBailBlockTimes = {};
 
 // Auto-buy Bot - Reward & Bail (TP): Clear shares 1 minute after a block reward is found
 function checkRewardAndBail() {
+    if (!CloudAccount.canPurchase) return;
     // Check if feature is enabled
     if (!easyMiningSettings.rewardAndBail) {
         return;
@@ -33251,7 +33257,7 @@ Do you want to continue?
         if (USE_VERCEL_PROXY) {
             // Use Vercel serverless function as proxy
             console.log('✅ Using Vercel proxy to create solo order');
-            response = await fetch(VERCEL_PROXY_ENDPOINT, {
+            response = await CloudAccount.proxyFetch(VERCEL_PROXY_ENDPOINT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -35927,4 +35933,5 @@ function cleanupResources() {
 window.addEventListener('beforeunload', cleanupResources);
 
 // Initialize the app
+installCloudAppBridge();
 initializeApp();

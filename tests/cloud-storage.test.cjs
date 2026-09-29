@@ -2,7 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const { createStorage } = require('../cloud-data.js');
+const CloudData = require('../cloud-data.js');
+const { createStorage } = CloudData;
 
 test('all settings, histories and API credentials round-trip through the working copy', () => {
     let changes = 0;
@@ -20,21 +21,26 @@ async function device(database, owner) {
     const storage = createStorage();
     const status = { textContent: '', classList: { toggle() {} } };
     const context = {
-        console, appStorage: storage, setInterval() {},
+        console, CloudData, crypto: require('node:crypto').webcrypto, appStorage: storage, setInterval() {}, setTimeout() {},
+        dispatchEvent() {}, CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
         navigator: { onLine: true }, location: { reload() {}, origin: 'https://test.invalid' },
         addEventListener() {}, alert() {},
         document: {
             hidden: false,
+            addEventListener() {},
             getElementById: () => status,
             createElement: () => ({}),
             body: { appendChild(script) { script.onload(); } }
         },
         supabase: { createClient: () => ({
+            channel: () => ({ on() { return this; }, subscribe() {} }),
             auth: {
-                getSession: async () => ({ data: { session: { user: { email: owner, user_metadata: {} } } } }),
+                getSession: async () => ({ data: { session: { user: { id: owner, email: owner, user_metadata: {} } } } }),
                 onAuthStateChange() {}
             },
             rpc: async (name, args) => {
+                if (name === 'claim_automation') return { data: true };
+                if (name === 'get_account_access') return { data: { isAdmin: false, tier: 'free' } };
                 const saved = database.get(owner) || { version: 0, state: null };
                 if (name === 'load_account_state') return { data: structuredClone(saved) };
                 if (args.p_version !== saved.version) return { error: { code: 'PT409' } };
@@ -96,4 +102,34 @@ test('main app has no persistent browser-storage fallback or plaintext password 
     const source = fs.readFileSync(require('node:path').join(__dirname, '../scripts.js'), 'utf8');
     assert.doesNotMatch(source, /\b(?:localStorage|sessionStorage)\b/);
     assert.doesNotMatch(source, /users\[[^\]]+\]\.password/);
+});
+
+test('a live device refresh receives holdings and auto-buy settings without reloading', async () => {
+    const database = new Map();
+    const first = await device(database, 'one@example.test');
+    const second = await device(database, 'one@example.test');
+    first.storage.setItem('one@example.test_bitcoin_holdingsEntries', '[{"id":"buy1","amount":2}]');
+    first.storage.setItem('one@example.test_soloAutoBuy', '{"Bronze":{"enabled":true}}');
+    await first.cloud.flush();
+    await second.cloud.refresh();
+    assert.deepEqual(second.storage.snapshot(), first.storage.snapshot());
+});
+
+test('simultaneous independent settings edits merge and are durably saved', async () => {
+    const database = new Map();
+    const first = await device(database, 'one@example.test');
+    const second = await device(database, 'one@example.test');
+    first.storage.setItem('theme', 'dark');
+    second.storage.setItem('sound', 'off');
+    await first.cloud.flush();
+    await second.cloud.flush();
+    assert.equal(database.get('one@example.test').state.records.theme, 'dark');
+    assert.equal(database.get('one@example.test').state.records.sound, 'off');
+});
+
+test('settings merge separately, while conflicting financial arrays require resolution', () => {
+    const base = { settings: '{"btc":true,"usdt":false}' };
+    const merged = CloudData.mergeRecords(base, { settings: '{"btc":false,"usdt":false}' }, { settings: '{"btc":true,"usdt":true}' });
+    assert.deepEqual(JSON.parse(merged.records.settings), { btc: false, usdt: true });
+    assert.equal(CloudData.mergeRecords({ holdings: '[]' }, { holdings: '[1]' }, { holdings: '[2]' }).conflicts.length, 1);
 });
