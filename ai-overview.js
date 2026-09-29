@@ -123,8 +123,9 @@ const AIOverview = (() => {
             let news = coverage.get(coin.id); if (!news) try { news = JSON.parse(appStorage.getItem(`${loggedInUser}_freeNews_${coin.id.replace(/-/g, ' ').toLowerCase()}_${coin.symbol.toLowerCase()}`)); } catch {}
             return { name: coin.name || coin.id, symbol: coin.symbol, holdings, price, value: price === null ? null : holdings * price,
                 change24h: cryptoPriceChanges[coin.id] ?? null, rsi: getStoredRSI(coin.id),
-                ...(scope !== 'portfolio' ? { history: historyContext(coin.id), chart: { candles: (storedOHLCDataPerCrypto[coin.id] || []).slice(-60) } } : {}),
-                market: readJson(`${owner}_ai_market_${coin.id}`, {}),
+                tracker: trackerContext(coin.id),
+                ...(scope !== 'portfolio' ? { history: historyContext(coin.id), chart: chartContext(coin.id) } : {}),
+                market: marketContext(coin.id),
                 newsCheckedAt: news?.checkedAt || null,
                 headlines: (news?.articles || []).filter(article => Number.isFinite(article.published_on) && article.published_on * 1000 >= Date.now() - 7 * 86400000 && article.published_on * 1000 <= Date.now() + 3600000).sort((a, b) => b.published_on - a.published_on).slice(0, 5).map(article => ({
                     title: article.title, source: article.source, url: article.url, publishedAt: new Date(article.published_on * 1000).toISOString(), dateType: article.dateType || 'published' })) };
@@ -147,6 +148,38 @@ const AIOverview = (() => {
         finally { busy = false; activeScope = null; button.disabled = false; button.textContent = 'Generate overview'; }
     }
     function readJson(key, fallback) { try { return JSON.parse(appStorage.getItem(key)) || fallback; } catch { return fallback; } }
+    function conversionRate(id, from) {
+        const currency = getCoinGeckoCurrency();
+        if (from.toLowerCase() === currency) return 1;
+        const quotes = readJson(`${loggedInUser}_ai_market_${id}`, {}).prices || {};
+        return quotes[currency] > 0 && quotes[from.toLowerCase()] > 0 ? quotes[currency] / quotes[from.toLowerCase()] : null;
+    }
+    function chartContext(id) {
+        const rate = conversionRate(id, 'usd');
+        return { currency: getCoinGeckoCurrency().toUpperCase(),
+            conversion: rate === null ? 'Exchange quote unavailable; USD candles omitted.' : rate === 1 ? 'Native USD candles.' : 'USD candles translated using the loaded current exchange quote, not historical FX.',
+            exchangeObservedAt: readJson(`${loggedInUser}_ai_market_${id}`, {}).observedAt || null,
+            candles: rate === null ? [] : (storedOHLCDataPerCrypto[id] || []).slice(-60).filter(row => row.length === 5 && row.every(Number.isFinite)).map(([time, ...values]) => [time, ...values.map(value => value * rate)]) };
+    }
+    function marketContext(id) {
+        const market = readJson(`${loggedInUser}_ai_market_${id}`, {}), rate = conversionRate(id, 'usd');
+        return { ...market, currency: getCoinGeckoCurrency().toUpperCase(),
+            marketCap: rate === null || !Number.isFinite(market.marketCapUSD) ? null : market.marketCapUSD * rate,
+            volume24h: rate === null || !Number.isFinite(market.volume24hUSD) ? null : market.volume24hUSD * rate,
+            high24h: rate === null || !Number.isFinite(market.high24hUSD) ? null : market.high24hUSD * rate,
+            low24h: rate === null || !Number.isFinite(market.low24hUSD) ? null : market.low24hUSD * rate };
+    }
+    function trackerContext(id) {
+        const currency = getCoinGeckoCurrency().toUpperCase();
+        if (typeof getHoldingsModalMetrics !== 'function') return { currency, unavailable: true };
+        const metrics = getHoldingsModalMetrics(id);
+        return { currency, dca: metrics.dca, unrealizedProfit: metrics.totalUnrealized,
+            realizedProfit: metrics.totalRealized, totalBuyCost: metrics.totalCost,
+            totalBoughtUnits: metrics.totalBought, purchaseCount: metrics.purchaseCount, saleCount: metrics.saleCount,
+            recentBuys: readJson(`${loggedInUser}_${id}_holdingsEntries`, []).slice(-5).map(entry => ({ amount: entry.amount, boughtPrice: entry.boughtPrice, currency: entry.currency || null, timestamp: entry.dateAdded })),
+            source: 'Existing app holdings/chart modal calculations. Use these supplied figures; do not recalculate P&L from history.',
+            observedAt: new Date().toISOString() };
+    }
     function historyContext(id) {
         const buys = readJson(`${loggedInUser}_${id}_holdingsEntries`, []);
         const events = readJson(`${loggedInUser}_holdingsHistory`, []).filter(entry => entry.cryptoId === id);
@@ -163,6 +196,7 @@ const AIOverview = (() => {
             change7d: market.price_change_percentage_7d, change30d: market.price_change_percentage_30d,
             change1y: market.price_change_percentage_1y, marketCapUSD: market.market_cap?.usd,
             volume24hUSD: market.total_volume?.usd, high24hUSD: market.high_24h?.usd, low24hUSD: market.low_24h?.usd,
+            prices: market.current_price || {},
             observedAt: market.last_updated || new Date().toISOString() }));
     }
     function checkDaily() {
@@ -195,7 +229,7 @@ const AIOverview = (() => {
             };
             provider.onchange = () => { input.value = settings().provider === provider.value ? settings().apiKey || '' : ''; resetModels(); };
             const loadModels = node('button', 'Load available models'); dialog.append(loadModels);
-            dialog.append(node('p', 'Activation enables one automatic portfolio overview each day while the app is open, with a new day starting at 6am Brisbane time. Crypto overviews generate only when you click Generate. Portfolio summaries send balances, prices, indicators and recent sourced headlines to your provider. Individual crypto reviews also include recorded buy/sell history and available price candles. News refreshes for up to eight coins, prioritising your larger holdings; other coins use available cached coverage. Slow news sources are skipped and missing or stale coverage is disclosed. Login details, wallet addresses and other API keys are excluded. API usage may incur charges; a ChatGPT subscription is separate from API access.'));
+            dialog.append(node('p', 'Activation enables one automatic portfolio overview each day while the app is open, with a new day starting at 6am Brisbane time. Crypto overviews generate only when you click Generate. Portfolio summaries send balances, app-calculated DCA and profit figures, recent buy prices, prices, indicators and recent sourced headlines to your provider. Individual crypto reviews also include recorded buy/sell history and available price candles. News refreshes for up to eight coins, prioritising your larger holdings; other coins use available cached coverage. Slow news sources are skipped and missing or stale coverage is disclosed. Login details, wallet addresses and other API keys are excluded. API usage may incur charges; a ChatGPT subscription is separate from API access.'));
             const status = node('p'); status.setAttribute('role', 'status'); dialog.append(status);
             loadModels.onclick = async () => {
                 if (!input.value.trim()) { status.textContent = 'Enter an API key first.'; return; }

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../api/ai.js'), 'utf8').replace(/^import .*\r?\n/gm, '').replace('export default async function handler', 'async function handler');
-async function run({ authorized = true, enabled = false, action = 'generate', provider = 'openai', model = 'gpt-5-mini', existing = {}, coinExtras = {}, shared, scope = 'bitcoin', providerFailure = false, id = '11111111-1111-4111-8111-111111111111' } = {}) {
+async function run({ authorized = true, enabled = false, action = 'generate', provider = 'openai', model = 'gpt-5-mini', existing = {}, coinExtras = {}, shared, scope = 'bitcoin', currency = 'usd', providerFailure = false, id = '11111111-1111-4111-8111-111111111111' } = {}) {
     const calls = [], rpcCalls = [];
     let state = shared || { version: 1, state: { schema: 1, records: {
         'owner@test_aiSettings': JSON.stringify({ provider, apiKey: 'test-provider-key', enabled, model }),
@@ -41,7 +41,7 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
     vm.createContext(context); vm.runInContext(source, context);
     const res = { setHeader() {}, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
     await context.handler({ method: 'POST', headers: authorized ? { authorization: 'Bearer test' } : {}, body: { action,
-        context: { scope, apiKey: 'never-send', wallet: 'never-send', coins: [{ name: 'Bitcoin', symbol: 'BTC', price: 12, holdings: 2, wallet: 'never-send', ...coinExtras, chart: { candles: [[1790600000000, 10, 14, 9, 12], ['bad', 1, 2, 3, 4]], secret: 'never-send' } }] } } }, res);
+        context: { scope, currency, apiKey: 'never-send', wallet: 'never-send', coins: [{ name: 'Bitcoin', symbol: 'BTC', price: 12, holdings: 2, wallet: 'never-send', ...coinExtras, chart: { candles: [[1790600000000, 10, 14, 9, 12], ['bad', 1, 2, 3, 4]], secret: 'never-send' } }] } } }, res);
     return { res, calls, state, rpcCalls };
 }
 test('AI requires login and activation before sending financial context to a provider', async () => {
@@ -172,4 +172,14 @@ test('saved summary history never exposes provider credentials or unrelated acco
     assert.equal(result.res.code, 200); assert.equal(result.res.data.generations.length, 1);
     assert.doesNotMatch(JSON.stringify(result.res.data), /test-provider-key|must-not-be-sent/);
     assert.equal(result.calls.length, 0);
+});
+
+test('provider receives sanitised app-calculated tracker figures and explicit selected-currency instructions', async () => {
+    const result = await run({ enabled: true, scope: 'portfolio', currency: 'aud', coinExtras: { tracker: { currency: 'AUD', dca: 9, unrealizedProfit: 25, realizedProfit: -7, wallet: 'private-wallet' } } });
+    const body = JSON.parse(result.calls[0].options.body), input = JSON.parse(body.input);
+    assert.equal(input.coins[0].tracker.dca, 9); assert.equal(input.coins[0].tracker.realizedProfit, -7);
+    assert.equal(input.coins[0].tracker.currency, 'AUD'); assert.doesNotMatch(body.input, /private-wallet/);
+    assert.match(body.instructions, /Use supplied tracker DCA/);
+    assert.match(body.instructions, /selected context.currency/);
+    assert.equal(input.currency, 'AUD');
 });

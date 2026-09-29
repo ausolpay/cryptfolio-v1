@@ -9,7 +9,7 @@ function setup(response) {
     const context = { AbortSignal, setTimeout, clearTimeout, loggedInUser: 'owner', currentCryptoId: 'bitcoin', navigator: { onLine: true },
         users: { owner: { cryptos: [{ id: 'bitcoin', name: 'Bitcoin', symbol: 'BTC' }] } },
         cryptoPrices: { bitcoin: 12 }, cryptoPriceChanges: {}, storedOHLCDataPerCrypto: { bitcoin: [[1, 10, 14, 9, 12]] },
-        getPriceFromObject: value => value, getTotalActiveHoldings: () => 2, getStoredRSI: () => 50, getCoinGeckoCurrency: () => 'aud',
+        getPriceFromObject: value => value, getTotalActiveHoldings: () => 2, getStoredRSI: () => 50, getCoinGeckoCurrency: () => 'usd',
         document: { hidden: false, getElementById: id => id === 'ai-portfolio' || id === 'ai-coin' ? root : null },
         appStorage: { getItem: key => key.endsWith('aiSettings') ? JSON.stringify({ enabled: true, provider: 'openai', apiKey: 'test' }) : null, snapshot: () => ({}), setItem: (...args) => writes.push(args) },
         CloudAccount: { isReady: true, flush: async () => {}, refresh: async () => {}, authorizedFetch: async (url, options) => { requests.push(JSON.parse(options.body)); return response; } }
@@ -160,4 +160,38 @@ test('separate saved summary history renders after reload and prevents another d
     context.ai.checkDaily(); await new Promise(resolve => setImmediate(resolve));
     assert.equal(requests.length, 1); assert.equal(requests[0].action, 'history');
     assert.equal(writes.length, 0); assert.equal(elements.get('.ai-output').textContent, 'Cloud saved brief');
+});
+
+test('AUD summary reuses app modal metrics and converts chart candles with loaded exchange quotes', async () => {
+    const { context, requests } = setup({ ok: true, json: async () => ({}) });
+    context.getCoinGeckoCurrency = () => 'aud';
+    context.getHoldingsModalMetrics = () => ({ dca: 9, totalUnrealized: 25, totalRealized: 7, totalCost: 18, totalBought: 2, purchaseCount: 1, saleCount: 1 });
+    const read = context.appStorage.getItem;
+    context.appStorage.getItem = key => key.includes('_ai_market_') ? JSON.stringify({ prices: { usd: 8, aud: 12 }, high24hUSD: 10 }) : read(key);
+    await context.ai.generate('coin');
+    const coin = requests[0].context.coins[0];
+    assert.equal(coin.tracker.currency, 'AUD'); assert.equal(coin.tracker.dca, 9);
+    assert.equal(coin.tracker.unrealizedProfit, 25); assert.equal(coin.tracker.realizedProfit, 7);
+    assert.equal(coin.chart.currency, 'AUD');
+    assert.deepEqual(coin.chart.candles, [[1, 15, 21, 13.5, 18]]);
+    assert.equal(coin.market.high24h, 15);
+    assert.match(coin.chart.conversion, /not historical FX/);
+});
+
+test('missing exchange quotes omit USD chart prices instead of relabelling them as AUD', async () => {
+    const { context, requests } = setup({ ok: true, json: async () => ({}) });
+    context.getCoinGeckoCurrency = () => 'aud';
+    await context.ai.generate('coin');
+    assert.deepEqual(requests[0].context.coins[0].chart.candles, []);
+});
+
+test('shared modal metrics retain the existing app calculation without touching the modal UI', () => {
+    const script = fs.readFileSync(require('node:path').join(__dirname, '../scripts.js'), 'utf8');
+    const helper = script.slice(script.indexOf('function getHoldingsModalMetrics('), script.indexOf('function updateModalPnL('));
+    const context = { getHoldingsEntries: () => [{ cryptoId: 'bitcoin', amount: 2, boughtPrice: 5, status: 'active' }, { cryptoId: 'bitcoin', amount: 1, boughtPrice: 4, status: 'sold' }],
+        getHoldingsHistoryByCrypto: () => [{ action: 'sell', amount: 1, boughtPrice: 4, soldPrice: 9 }], cryptoPrices: { bitcoin: 12 }, getPriceFromObject: value => value };
+    vm.createContext(context); vm.runInContext(helper, context);
+    const metrics = context.getHoldingsModalMetrics('bitcoin');
+    assert.equal(metrics.totalUnrealized, 14); assert.equal(metrics.totalRealized, 5);
+    assert.equal(metrics.dca, 14 / 3); assert.equal(metrics.totalCost, 14);
 });
