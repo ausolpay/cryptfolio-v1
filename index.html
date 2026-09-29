@@ -346,6 +346,7 @@
             <div id="easymining-content" class="easymining-content" style="display: none;">
                 <!-- Balance Card with Deposit/Withdraw -->
                 <div id="easymining-balance-card" class="easymining-balance-card">
+                    <div class="mining-wallet-heading"><span>NiceHash wallet</span><label>Currency <select class="mining-wallet-select" id="easymining-wallet-currency" onchange="MiningWallet.select(this.value)"><option value="BTC">BTC</option><option value="USDT">USDT</option></select></label></div>
                     <div class="balance-card-content">
                         <div class="balance-card-item available">
                             <div class="balance-card-label">
@@ -512,9 +513,11 @@
                 <div class="recommendations-section">
                     <div class="easymining-subheader">Solo Package Alerts</div>
                     <div id="best-packages-container" class="recommendations-container"></div>
+                    <div id="usdt-solo-alerts" class="currency-package-grid"></div>
 
                     <div class="easymining-subheader">Team Package Alerts</div>
                     <div id="team-alerts-container" class="recommendations-container"></div>
+                    <div id="usdt-team-alerts" class="currency-package-grid"></div>
                 </div>
 
                 <!-- Recent Rewards Section -->
@@ -908,10 +911,12 @@
     <div id="package-alerts-page" class="container" style="display: none;">
         <div class="settings-page-content">
             <div class="settings-page-header">
-                <h1>Package Alert Settings</h1>
-                <p>Configure probability thresholds for package recommendations</p>
+                <h1>Package Alerts & Auto-Buy</h1>
+                <p>Choose your conditions, set shares, and control automatic purchases for each wallet.</p>
+                <p class="package-rule-state">Save thresholds with the button below. Automation switches save immediately. New packages start with automation off.</p>
             </div>
 
+            <div class="package-alert-toolbar"><label>Payment wallet<select id="alert-currency-filter" onchange="PackageAlerts.filter()"><option value="BTC">BTC</option><option value="USDT">USDT</option><option value="ALL">All wallets</option></select></label><label>Find a package<input id="alert-package-search" type="search" placeholder="Search Gold, Silver, Bronze…" oninput="PackageAlerts.filter()"></label></div>
             <!-- Tabs for Solo and Team alerts -->
             <div class="buy-packages-tabs" style="margin-bottom: 20px;">
                 <button class="tab-button active" onclick="showAlertTab('solo')">Solo Alerts</button>
@@ -1132,6 +1137,7 @@
                 <p>Package Averages</p>
             </div>
 
+            <label class="mining-wallet-heading">Payment wallet <select id="averages-payment-filter" class="mining-wallet-select" onchange="updateAveragesDisplay()"><option value="BTC">BTC</option><option value="USDT">USDT</option><option value="ALL">All wallets</option></select></label>
             <div class="averages-content">
                 <!-- Team Packages Section -->
                 <div class="averages-section">
@@ -3214,6 +3220,9 @@
     <link rel="stylesheet" href="market-alerts.css">
     <link rel="stylesheet" href="crypto-modal.css">
     <script src="easymining-currency.js"></script>
+    <script src="package-alerts.js"></script>
+    <script src="mining-wallet.js"></script>
+    <link rel="stylesheet" href="package-alerts.css">
     <link rel="stylesheet" href="easymining-currency.css">
     <dialog id="notification-dialog" aria-labelledby="notification-heading">
         <header class="notice-header"><h2 id="notification-heading">Notifications</h2><button onclick="AppNotifications.readAll()">Mark all read</button><button aria-label="Close notifications" onclick="this.closest('dialog').close()">✕</button></header>

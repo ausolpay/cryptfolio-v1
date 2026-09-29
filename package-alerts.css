@@ -1,0 +1,32 @@
+#package-alerts-page .settings-page-content { max-width: 1120px; }
+#package-alerts-page .settings-page-header { text-align: left; margin-bottom: 24px; }
+#package-alerts-page .settings-page-header h1 { font-size: clamp(24px, 4vw, 34px); letter-spacing: -.7px; white-space: normal; overflow: visible; }
+#package-alerts-page { scroll-margin-top: 70px; }
+.package-alert-toolbar { display: flex; flex-wrap: wrap; gap: 16px; padding: 18px; background: var(--card-bg, #242831); border: 1px solid #ffffff18; border-radius: 14px; margin-bottom: 20px; }
+.package-alert-toolbar label { display: grid; gap: 7px; color: #abb6c7; font-size: 12px; font-weight: 600; }
+.package-alert-toolbar label:last-child { flex: 1; min-width: 180px; }
+.package-alert-toolbar select, .package-alert-toolbar input, .mining-wallet-select { background: #161b24; color: #eef3fa; border: 1px solid #ffffff25; border-radius: 8px; padding: 11px 14px; font: inherit; }
+#solo-alerts-list, #team-alerts-list { max-height: none !important; overflow: visible !important; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); align-items: start; }
+#package-alerts-page .package-rule-card { margin: 0 !important; padding: 20px !important; background: #202630 !important; border: 1px solid #ffffff18 !important; border-radius: 14px !important; box-shadow: 0 6px 22px #00000012; min-width: 0; }
+#package-alerts-page .package-rule-card[hidden] { display: none; }
+.package-rule-meta { color: #97acbf; font-size: 12px; line-height: 1.6; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #ffffff16; }
+.package-rule-state { font-size: 12px; line-height: 1.6; color: #aab7c9; margin: 14px 0 0; }
+#package-alerts-page .package-rule-card[data-automation="on"] { border-color: #4dba9360 !important; }
+#package-alerts-page .package-rule-card input[type="number"] { max-width: 100%; min-height: 38px; border-radius: 7px !important; background: #131a23 !important; border-color: #ffffff28 !important; }
+#package-alerts-page .package-rule-card input[type="checkbox"] { accent-color: #68d8ad; width: 20px; height: 20px; }
+#package-alerts-page .settings-card:has(> #solo-alerts-list), #package-alerts-page .settings-card:has(> #team-alerts-list) { background: transparent; padding: 0; border: 0; }
+#package-alerts-page .buy-packages-tabs { justify-content: flex-start; border-bottom: 1px solid #ffffff20; padding-bottom: 8px; }
+#package-alerts-page .tab-button { border-radius: 8px; padding: 12px 22px; }
+#package-alerts-page input:focus-visible, #package-alerts-page select:focus-visible { outline: 2px solid #68d8ad; outline-offset: 3px; }
+.mining-wallet-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; color: #aeb9c9; font-size: 13px; }
+.mining-wallet-panel { max-width: 660px; margin: auto; padding: 28px; background: #202630; color: #edf2f8; border: 1px solid #ffffff20; border-radius: 16px; }
+.mining-wallet-panel label { display: grid; gap: 8px; margin: 18px 0; }
+.mining-wallet-panel input, .mining-wallet-panel select, .mining-wallet-panel textarea { box-sizing: border-box; width: 100%; padding: 12px; background: #121923; color: #edf2f8; border: 1px solid #ffffff30; border-radius: 8px; }
+.mining-wallet-panel p { line-height: 1.6; color: #b4c0d0; overflow-wrap: anywhere; }
+.mining-wallet-panel h1 { font-size: clamp(26px, 5vw, 34px); white-space: normal; overflow: visible; text-overflow: clip; }
+.mining-wallet-panel { text-align: left; }
+.mining-wallet-panel a { color: #9ed4ff; }
+#package-alerts-page .share-adjuster { flex-wrap: nowrap !important; }
+#package-alerts-page .share-adjuster-input { width: 100px; min-width: 0; flex: 1; }
+.mining-wallet-panel button { margin: 6px 8px 6px 0; }
+@media(max-width: 550px) { #package-alerts-page .package-rule-card { padding: 14px !important; } #package-alerts-page .package-rule-card div[style*="display: flex"] { flex-wrap: wrap; } .mining-wallet-panel { padding: 18px; } }

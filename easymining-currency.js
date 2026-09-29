@@ -1,21 +1,21 @@
-/* USDT catalogue is isolated from legacy BTC automation and its saved thresholds. */
+/* Currency-aware catalogue; BTC's existing rules retain their original keys. */
 const EasyMiningCurrency = (() => {
     const catalogue = { single: [], team: [] };
+    const fetchedAt = { single: 0, team: 0 };
     const selections = new Map();
     let buying = false;
     let tab = 'single';
-    const key = () => `${loggedInUser}_miningPayment_${tab}`;
-    const selected = () => appStorage.getItem(key()) === 'USDT' ? 'USDT' : 'BTC';
+    const selected = () => MiningWallet.currency();
     const ticket = raw => raw.currencyAlgoTicket || raw;
     function setCatalogue(kind, items) {
         catalogue[kind] = Array.isArray(items) ? items : [];
+        fetchedAt[kind] = Date.now();
         if (kind === 'team') TeamProbability.setCatalogue(catalogue[kind]);
         render();
     }
     function selectTab(value) { tab = value === 'team' ? 'team' : 'single'; render(); }
     function selectCurrency(value) {
-        appStorage.setItem(key(), value === 'USDT' ? 'USDT' : 'BTC');
-        render();
+        MiningWallet.select(value);
     }
     function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -88,7 +88,7 @@ const EasyMiningCurrency = (() => {
         }
         if (!usdt || buying) return;
         root.replaceChildren();
-        root.append(element('p', 'Paid in USDT • Rewards stay in the mined coin. BTC automation settings apply only to BTC packages.', 'mining-currency-note'));
+        root.append(element('p', 'Paid in USDT • Rewards stay in the mined coin. Configure automation in Package Alerts.', 'mining-currency-note'));
         const packages = catalogue[tab].filter(raw => ticket(raw).currencyMarket === 'USDT' && ticket(raw).available && ticket(raw).status === 'A');
         if (!packages.length) root.append(element('p', 'No USDT packages are available in the latest catalogue.'));
         const grid = element('div', null, 'currency-package-grid');
@@ -154,5 +154,95 @@ const EasyMiningCurrency = (() => {
         }
         return null;
     }
-    return { setCatalogue, selectTab, selectCurrency, render, blockReward };
+    function metricPackages(kind) {
+        if (Date.now() - fetchedAt[kind] > 60000) return [];
+        return catalogue[kind].filter(raw => ticket(raw).currencyMarket === 'USDT' && ticket(raw).available && ticket(raw).status === 'A')
+            .map(raw => {
+                const t = ticket(raw), p = EasyMiningModel.payment(raw, { BTC: getBuyPackagePrice('BTC'), USDT: getBuyPackagePrice('USDT') });
+                const unit = getPackageDisplayUnit({ algorithm: t.currencyAlgo.miningAlgorithm, currency: t.currencyAlgo.currency, currencyAlgo: t.currencyAlgo });
+                const team = kind === 'team', fill = Number(raw.fullAmount) > 0 ? Number(raw.addedAmount) / Number(raw.fullAmount) : 0;
+                return { name: EasyMiningModel.alertName(raw), id: raw.id, apiData: raw, isTeam: team,
+                    crypto: t.currencyAlgo.currency, mainCrypto: t.currencyAlgo.currency,
+                    mergeCrypto: t.mergeCurrencyAlgo?.currency, isDualCrypto: !!t.mergeCurrencyAlgo,
+                    paymentCurrency: 'USDT', paymentAmount: p.amount, sharePrice: p.shareAmount,
+                    priceBTC: p.btcEquivalent, priceAUD: p.localAmount,
+                    probabilityPrecision: raw.probabilityPrecision, probability: formatProbability(raw.probabilityPrecision),
+                    mergeProbabilityPrecision: raw.mergeProbabilityPrecision, mergeProbability: formatProbability(raw.mergeProbabilityPrecision),
+                    hashrate: `${Number(raw.projectedSpeed) * (team ? fill : 1)} ${unit}/s`, algorithm: t.currencyAlgo.miningAlgorithm,
+                    duration: `${Number(raw.duration || t.duration) / 3600}h`, packageDuration: Number(raw.duration || t.duration),
+                    blockReward: t.currencyAlgo.blockReward, numberOfParticipants: raw.numberOfParticipants,
+                    fullAmount: raw.fullAmount, addedAmount: raw.addedAmount, shares: Number((fill * 100).toFixed(2)), lifeTimeTill: raw.lifeTimeTill,
+                    observedAt: fetchedAt[kind] };
+            });
+    }
+    let alertsRunning = false;
+    async function runAlerts() {
+        if (alertsRunning) return;
+        alertsRunning = true;
+        try {
+            const solo = metricPackages('single'), team = metricPackages('team');
+            const soloMatches = await checkPackageRecommendations(solo);
+            const teamMatches = await checkTeamRecommendations(team, solo);
+            renderAlerts('solo', soloMatches); renderAlerts('team', teamMatches);
+            if (!easyMiningSettings.enabled || !easyMiningSettings.apiKey || !canUserAccess('botFeatures')) return;
+            for (const [kind, matches] of [['solo', soloMatches], ['team', teamMatches]]) {
+                for (const pkg of matches) await CloudAccount.runAutomation(() => autoBuy(pkg, kind));
+            }
+        } finally { alertsRunning = false; }
+    }
+    function renderAlerts(kind, packages) {
+        const host = document.getElementById(`usdt-${kind}-alerts`);
+        if (!host) return;
+        host.replaceChildren();
+        for (const pkg of packages) {
+            const card = element('article', null, 'currency-package-card');
+            card.append(element('h3', pkg.name), element('p', `USDT wallet · ${pkg.crypto} rewards · Odds ${pkg.probability}`));
+            const status = element('p', '', 'mining-currency-note'); status.setAttribute('role', 'status');
+            const button = element('button', 'Review package', 'settings-action-btn');
+            button.onclick = () => buy(pkg.apiData, pkg.isTeam ? (getMyTeamShares(pkg.id) || 0) + 1 : 1, status);
+            card.append(button, status); host.append(card);
+        }
+    }
+    async function autoBuy(pkg, kind) {
+        const key = `${loggedInUser}_${kind}AutoBuy`;
+        const readRule = () => JSON.parse(appStorage.getItem(key) || '{}')[pkg.name];
+        let rule = readRule();
+        if (!EasyMiningModel.automationReady(pkg.apiData, rule, Date.now(), easyMiningSettings.autoBuyCooldown !== false)) return;
+        try {
+            const team = kind === 'team';
+            await syncNiceHashTime();
+            const data = await request(team ? '/main/api/v2/hashpower/solo/shared/order?onlyGold=false&limit=100' : '/main/api/v2/public/solo/package?limit=100');
+            const raw = (Array.isArray(data) ? data : data.list || []).find(p => p.id === pkg.apiData.id);
+            rule = readRule();
+            if (!raw || EasyMiningModel.alertName(raw) !== pkg.name || !EasyMiningModel.automationReady(raw, rule, Date.now(), easyMiningSettings.autoBuyCooldown !== false)) return;
+            const fresh = { ...pkg, probabilityPrecision: raw.probabilityPrecision, mergeProbabilityPrecision: raw.mergeProbabilityPrecision,
+                numberOfParticipants: raw.numberOfParticipants, shares: Number(raw.fullAmount) > 0 ? Number(raw.addedAmount) / Number(raw.fullAmount) * 100 : 0,
+                lifeTimeTill: raw.lifeTimeTill };
+            const matches = team ? await checkTeamRecommendations([fresh], metricPackages('single')) : await checkPackageRecommendations([fresh]);
+            if (!matches.length) return;
+            const t = ticket(raw), p = EasyMiningModel.payment(raw);
+            if (team && !Array.isArray(raw.members)) throw new Error('Current team membership unavailable.');
+            const member = team ? raw.members.find(m => m.organizationId === easyMiningSettings.orgId) : null;
+            const owned = member ? EasyMiningModel.shareCount(member.addedAmount, p.shareAmount) : 0;
+            const shares = Number(rule.shares ?? 1);
+            if (team && (!Number.isSafeInteger(shares) || shares < 1 || owned === null)) throw new Error('Invalid share count.');
+            const plan = EasyMiningModel.purchasePlan(raw, owned, owned + shares, getWithdrawalAddress(t.currencyAlgo.currency),
+                t.mergeCurrencyAlgo ? getWithdrawalAddress(t.mergeCurrencyAlgo.currency) : null);
+            await fetchNiceHashBalances();
+            const balance = window.niceHashCurrencyBalances?.USDT;
+            if (!balance || Date.now() - balance.fetchedAt > 30000 || !Number.isFinite(balance.available) || balance.available < plan.change) return;
+            // The proxy refreshes cloud state before reserving this order; recheck the local rule too.
+            if (!readRule()?.enabled) return;
+            const result = EasyMiningModel.assertSuccessfulOrder(await request(plan.endpoint, 'POST', plan.body));
+            const settings = JSON.parse(appStorage.getItem(key) || '{}');
+            settings[pkg.name] = { ...settings[pkg.name], lastBuyTime: Date.now(), ...(team ? { lastPoolId: raw.id } : {}) };
+            appStorage.setItem(key, JSON.stringify(settings));
+            if (team) { setPendingShares(raw.id, owned + shares); saveMyTeamShares(raw.id, owned + shares); }
+            const purchases = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`) || '{}');
+            purchases[result.id || result.orderId || raw.id] = { type: kind, timestamp: Date.now(), paymentCurrency: 'USDT', paymentAmount: plan.change };
+            appStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(purchases));
+            await CloudAccount.flush();
+        } catch (error) { console.error(`USDT auto-buy paused for ${pkg.name}:`, error.message); }
+    }
+    return { setCatalogue, selectTab, selectCurrency, render, blockReward, metricPackages, runAlerts, request };
 })();

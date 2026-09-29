@@ -42,9 +42,10 @@ export default async function handler(req, res) {
         });
         const data = await response.json();
         const miningOrder = method === 'POST' && /^\/main\/api\/v2\/hashpower\/(?:solo\/order|shared\/ticket\/)/.test(endpoint);
-        if (miningOrder && response.status >= 200 && response.status < 300) {
+        const withdrawal = method === 'POST' && endpoint === '/main/api/v2/accounting/withdrawal';
+        if ((miningOrder || withdrawal) && response.status >= 200 && response.status < 300) {
             const declined = data?.successType === 'NOT_SUCCESSFUL' || data?.success === false;
-            const confirmed = data?.success === true || data?.successType === 'SUCCESSFUL' ||
+            const confirmed = (!withdrawal && (data?.success === true || data?.successType === 'SUCCESSFUL')) ||
                 (typeof data?.id === 'string' && data.id) || (typeof data?.orderId === 'string' && data.orderId);
             if (data?.successType === 'PARTIAL_SUCCESS' || (!declined && !confirmed)) {
                 // Keep the server reservation pending on every device. A partial fill

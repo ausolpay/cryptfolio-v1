@@ -26,7 +26,7 @@ test('Bronze auto-shares stays paused after verification timeout instead of buyi
     const start = source.indexOf('async function executeAutoSharesTeam(');
     const end = source.indexOf('\nfunction isAutoSharesActive(', start);
     vm.createContext(context); vm.runInContext(source.slice(start, end), context);
-    const packages = [{ name: 'Team Bronze', addedAmount: .002, numberOfParticipants: 6, apiData: { id: 'pool', state: 'OPEN' } }];
+    const packages = [{ name: 'Team Bronze', addedAmount: .002, numberOfParticipants: 6, apiData: { id: 'pool', state: 'OPEN', minShareAmount: .0001 } }];
     await context.executeAutoSharesTeam(packages); await context.executeAutoSharesTeam(packages);
     assert.equal(purchases, 0); assert.equal(notices, 1);
     assert.equal(JSON.parse(records.user_teamAutoShares)['Team Bronze'].trackedPackageIds.pool.pendingVerification, true);

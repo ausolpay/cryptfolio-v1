@@ -1,0 +1,85 @@
+// Isolated browser regression: real UI functions, recorded public catalogue, fake account responses.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/hanna/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root=path.join(__dirname,'..'),source=fs.readFileSync(path.join(root,'scripts.js'),'utf8').replaceAll('\r\n','\n');
+const catalogue=JSON.parse(fs.readFileSync(path.join(__dirname,'nicehash-catalogue-live.json'),'utf8').replace(/^\uFEFF/,''));
+function extract(name){let a=source.indexOf(`function ${name}(`);if(a<0)throw Error(name);if(source.slice(a-6,a)==='async ')a-=6;return source.slice(a,source.indexOf('\n}',a)+2);}
+async function main(){
+ const browser=await chromium.launch({headless:true,channel:'msedge'});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.hostname==='127.0.0.1')route.continue();else route.abort();});
+ await page.goto('http://127.0.0.1:4179');await page.waitForTimeout(400);
+ assert.ok((await page.locator('body').innerText()).includes('CryptFolio')||(await page.locator('body').innerText()).includes('CRYPTFOLIO'));
+ console.log('Actual app login renders; errors:',JSON.stringify(errors)); errors.length=0;
+ await page.goto('about:blank');
+ let html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace('<head>','<head><base href="http://127.0.0.1:4179/">');
+ await page.setContent(html);
+ for(const f of ['styles.css','easymining-currency.css','package-alerts.css']) await page.addStyleTag({path:path.join(root,f)});
+ await page.addScriptTag({content:`
+ const loggedInUser='browser-test',records={};const appStorage={getItem:k=>records[k]??null,setItem:(k,v)=>records[k]=v};
+ const easyMiningSettings={enabled:true,apiKey:'fixture',orgId:'test'};const fixture=${JSON.stringify(catalogue)};
+ const calls=[];let failBalances=false;let withdrawResult={id:'test-withdrawal'};
+ window.niceHashCurrencyBalances={BTC:{available:.01,pending:.002,fetchedAt:Date.now()},USDT:{available:42,pending:3,fetchedAt:Date.now()}};
+ const easyMiningData={availableBTC:.01,pendingBTC:.002}; const users={'browser-test':{cryptos:[]}};
+ let isAutoBuyInProgress=false;const USE_VERCEL_PROXY=true,VERCEL_PROXY_ENDPOINT='/api/nicehash';
+ const TeamProbability={setCatalogue(){},bind(){},changed(){}};
+ const getBuyPackagePrice=coin=>coin.toUpperCase()==='BTC'?100000:1.5;
+ const getPackageDisplayUnit=()=> 'TH';const getCoinGeckoCurrency=()=> 'aud';const getUserCurrency=()=> 'aud';const getUserCurrencySymbol=()=> '$';
+ const getPriceFromObject=p=>typeof p==='number'?p:p?.aud||0;
+ const getWithdrawalAddress=()=> 'test-reward-address';const generateNiceHashAuthHeaders=()=>({});const syncNiceHashTime=async()=>{};
+ const getMyTeamShares=()=>0;const setPendingShares=()=>{};const saveMyTeamShares=()=>{};const canAccessFeature=()=>true;
+ const formatNumber=n=>String(n);const disableOtherAutoOptions=()=>{};
+ const alertedSoloPackages=new Set(),alertedTeamPackages=new Set();const updateRecommendations=()=>{};
+ const CloudAccount={flush:async()=>{},runAutomation:async fn=>fn(),proxyFetch:async(url,opts)=>{
+   const p=JSON.parse(opts.body);calls.push(p);let data={};
+   if(p.endpoint.includes('/public/solo/package'))data=fixture.solo;
+   else if(p.endpoint.includes('/solo/shared/order'))data={list:fixture.team};
+   else if(p.endpoint.endsWith('/public/currencies'))data={currencies:[{symbol:'USDT',networks:[{network:'SOL',name:'Solana'},{network:'ETH',name:'Ethereum'}]}]};
+   else if(p.endpoint.includes('/depositAddresses'))data={list:[{currency:'USDT',network:new URL('https://x'+p.endpoint).searchParams.get('network'),address:'TEST-DEPOSIT-ADDRESS'}]};
+   else if(p.endpoint.includes('/withdrawalAddresses'))data={list:[{id:'test-address',name:'Test wallet',address:'TEST-WITHDRAW-ADDRESS',currency:'USDT',network:'SOL',status:{code:'ACTIVE'},type:{code:'FIREBLOCKS_AG'}}]};
+   else if(p.endpoint.includes('/withdrawalAddress/'))data={id:'test-address',address:'TEST-WITHDRAW-ADDRESS',currency:'USDT',network:'SOL',status:{code:'ACTIVE'},type:{code:'FIREBLOCKS_AG'}};
+   else if(p.endpoint.includes('/fee/info'))data={withdrawal:{FIREBLOCKS_AG:{rules:{SOL:[{coin:'USDT',intervals:[{start:10,element:{value:0,type:'PERCENTAGE',sndValue:1,sndType:'ABSOLUTE'}}]}]}}}};
+   else if(p.endpoint.endsWith('/withdrawal'))data=withdrawResult;
+   else throw Error('Unexpected test request '+p.endpoint);
+   return {ok:true,json:async()=>data};
+ }};
+ async function fetchNiceHashBalances(){if(failBalances)throw Error('offline');return window.niceHashCurrencyBalances.BTC;}
+ `});
+ for(const f of ['easymining-model.js','easymining-currency.js','package-alerts.js','mining-wallet.js'])await page.addScriptTag({path:path.join(root,f)});
+ for(const name of ['formatProbability','getProbabilityNumeric','fetchNiceHashSoloPackages','fetchNiceHashTeamPackages','loadSoloAlerts','loadTeamAlerts','showAlertTab','saveSoloAlerts','saveTeamAlerts','adjustTeamAutoBuyShares','showDepositsPage','showWithdrawPage'])await page.addScriptTag({content:extract(name)});
+ page.on('dialog',d=>d.type()==='confirm'?d.dismiss():d.accept());
+ await page.evaluate(async()=>{document.body.classList.remove('auth-loading');document.getElementById('auth-loading-screen')?.remove();document.querySelectorAll('body > .container').forEach(n=>n.style.display='none');document.getElementById('package-alerts-page').style.display='block';await loadSoloAlerts();await loadTeamAlerts();});
+ assert.equal(await page.locator('#solo-alerts-list .package-rule-card').count(),21);
+ assert.equal(await page.locator('#solo-alerts-list .package-rule-card:visible').count(),15);
+ await page.selectOption('#alert-currency-filter','USDT');assert.equal(await page.locator('#solo-alerts-list .package-rule-card:visible').count(),6);
+ await page.locator('#alert-Gold-5-USDT').fill('123.5');await page.locator('button[onclick="saveSoloAlerts()"]').click();
+ assert.equal(await page.evaluate(()=>JSON.parse(records['browser-test_soloPackageAlerts'])['Gold 5 USDT']),123.5);
+ await page.locator('#package-alerts-page button[onclick="showAlertTab(\'team\')"]').click();
+ assert.equal(await page.locator('#team-alerts-list .package-rule-card:visible').count(),2);
+ assert.equal(await page.locator('#package-alerts-page .tab-button.active').innerText(),'Team Alerts');
+ await page.locator('#package-alerts-page').screenshot({path:path.join(root,'.playwright-mcp/package-alerts-usdt-desktop.png')});
+ await page.setViewportSize({width:390,height:844});await page.locator('#package-alerts-page').screenshot({path:path.join(root,'.playwright-mcp/package-alerts-usdt-mobile.png')});
+ const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);assert.equal(overflow,false);
+ await page.evaluate(()=>{document.getElementById('package-alerts-page').style.display='none';document.getElementById('app-page').style.display='block';document.getElementById('easymining-content').style.display='block';MiningWallet.renderBalance();});
+ assert.match(await page.locator('#easymining-available-btc').innerText(),/0\.01000000 BTC/);
+ await page.selectOption('#easymining-wallet-currency','USDT');assert.match(await page.locator('#easymining-available-btc').innerText(),/42\.000000 USDT/);
+ await page.locator('#easymining-balance-card button[onclick="showDepositsPage()"]').click();
+ await page.locator('#usdt-deposit-page select').selectOption('SOL');await page.locator('#usdt-deposit-page textarea').waitFor();
+ assert.equal(await page.locator('#usdt-deposit-page textarea').inputValue(),'TEST-DEPOSIT-ADDRESS');
+ await page.screenshot({path:path.join(root,'.playwright-mcp/usdt-deposit-mobile.png')});
+ await page.evaluate(()=>MiningWallet.close());
+ await page.locator('#easymining-balance-card button[onclick="showWithdrawPage()"]').click();
+ await page.locator('#usdt-withdraw-page select').first().selectOption('SOL');
+ await page.locator('#usdt-withdraw-page select').nth(1).selectOption('test-address');
+ await page.locator('#usdt-withdraw-page input[type=number]').fill('20');await page.locator('#usdt-withdraw-page input[type=number]').blur();
+ await page.getByRole('button',{name:'Review withdrawal',exact:true}).waitFor();
+ await page.waitForFunction(()=>!document.querySelector('#usdt-withdraw-page .settings-action-btn').disabled);
+ assert.match(await page.locator('#usdt-withdraw-page').innerText(),/Fee: 1 USDT/);
+ await page.screenshot({path:path.join(root,'.playwright-mcp/usdt-withdraw-mobile.png')});
+ await page.getByRole('button',{name:'Review withdrawal',exact:true}).click();
+ await page.waitForFunction(()=>document.getElementById('usdt-withdraw-page').textContent.includes('cancelled'));
+ assert.equal(await page.evaluate(()=>calls.filter(c=>c.method==='POST').length),0);
+ assert.deepEqual(errors,[]);console.log('PASS: catalogue, BTC defaults, USDT filters, saved decimals, tabs, responsive cards, wallet switching, deposit network, withdrawal fee and cancellation. No live transactions.');
+ await browser.close();
+}
+main().catch(e=>{console.error(e);process.exit(1);});

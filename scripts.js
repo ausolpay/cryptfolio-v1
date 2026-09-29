@@ -2101,6 +2101,7 @@ function showRegisterPage() {
 }
 
 function showAppPage() {
+    MiningWallet.close();
     window.scrollTo(0, 0);
     // Stop buy packages polling when leaving the page
     stopBuyPackagesPolling();
@@ -3036,7 +3037,9 @@ let currentQrTokenIndex = 0;
 // Global variable for deposits page balance polling
 let depositsBalanceInterval = null;
 
-function showDepositsPage() {
+function showDepositsPage(currency = MiningWallet.currency()) {
+    if (currency === 'USDT') return MiningWallet.open('deposit');
+    MiningWallet.close();
     window.scrollTo(0, 0);
     console.log('💰 Showing BTC Lightning Deposits Page');
 
@@ -3743,7 +3746,9 @@ function uuidv4() {
 /**
  * Show the BTC Withdraw page
  */
-function showWithdrawPage() {
+function showWithdrawPage(currency = MiningWallet.currency()) {
+    if (currency === 'USDT') return MiningWallet.open('withdraw');
+    MiningWallet.close();
     window.scrollTo(0, 0);
     console.log('💸 Showing BTC Withdraw Page');
 
@@ -3879,9 +3884,7 @@ function populateWithdrawAddressDropdown(addresses) {
 function updateWithdrawBalance() {
     // Get available BTC from EasyMining balance
     const availableBtcElement = document.getElementById('easymining-available-btc');
-    const availableBtc = availableBtcElement
-        ? parseFloat(availableBtcElement.textContent) || 0
-        : 0;
+    const availableBtc = Number(window.niceHashCurrencyBalances?.BTC?.available ?? easyMiningData.availableBTC) || 0;
 
     // Display in withdraw page
     const balanceDisplay = document.getElementById('withdraw-available-balance');
@@ -3975,9 +3978,7 @@ function checkAutoFeeInclusion() {
 
     // Get available BTC from EasyMining balance
     const availableBtcElement = document.getElementById('easymining-available-btc');
-    const availableBtc = availableBtcElement
-        ? parseFloat(availableBtcElement.textContent) || 0
-        : 0;
+    const availableBtc = Number(window.niceHashCurrencyBalances?.BTC?.available ?? easyMiningData.availableBTC) || 0;
 
     // Auto-check if amount + fee would exceed available (or very close)
     const feeCheckbox = document.getElementById('fee-included-checkbox');
@@ -3999,9 +4000,7 @@ function addMaxAmountWithdraw() {
 
     // Get available BTC from EasyMining balance
     const availableBtcElement = document.getElementById('easymining-available-btc');
-    const availableBtc = availableBtcElement
-        ? parseFloat(availableBtcElement.textContent) || 0
-        : 0;
+    const availableBtc = Number(window.niceHashCurrencyBalances?.BTC?.available ?? easyMiningData.availableBTC) || 0;
 
     // Set max amount to full available balance (fee will be included)
     const maxAmount = availableBtc;
@@ -4067,9 +4066,7 @@ async function executeWithdrawal() {
 
     // Check available balance
     const availableBtcElement = document.getElementById('easymining-available-btc');
-    const availableBtc = availableBtcElement
-        ? parseFloat(availableBtcElement.textContent) || 0
-        : 0;
+    const availableBtc = Number(window.niceHashCurrencyBalances?.BTC?.available ?? easyMiningData.availableBTC) || 0;
 
     // Calculate total needed based on fee inclusion
     let totalNeeded;
@@ -4265,7 +4262,7 @@ function showAlertTab(tabName) {
     console.log('Switching to alert tab:', tabName);
 
     // Update tab buttons
-    const tabs = document.querySelectorAll('.buy-packages-tabs .tab-button');
+    const tabs = document.querySelectorAll('#package-alerts-page .buy-packages-tabs .tab-button');
     tabs.forEach(tab => tab.classList.remove('active'));
 
     // Show selected tab content
@@ -4284,7 +4281,7 @@ async function loadSoloAlerts() {
     console.log('Loading solo package alerts...');
 
     // Fetch packages from API
-    const packages = await fetchNiceHashSoloPackages();
+    const packages = await fetchNiceHashSoloPackages('ALL');
 
     if (!packages || packages.length === 0) {
         console.error('No solo packages available to set alerts for');
@@ -4420,6 +4417,7 @@ async function loadSoloAlerts() {
             `;
         }
 
+        PackageAlerts.decorate(alertDiv, pkg);
         alertsList.appendChild(alertDiv);
     });
 
@@ -4471,13 +4469,14 @@ async function loadSoloAlerts() {
                     const autoBuySettings = JSON.parse(appStorage.getItem(storageKey)) || {};
 
                     autoBuySettings[packageName] = {
+                        ...autoBuySettings[packageName],
                         enabled: true,
                         crypto: crypto,
                         mergeCrypto: mergeCrypto || null,
                         mainAddress: mainAddress,
                         mergeAddress: mergeAddress,
                         shares: 1,
-                        lastBuyTime: null
+                        lastBuyTime: autoBuySettings[packageName]?.lastBuyTime || null
                     };
 
                     appStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
@@ -4519,7 +4518,7 @@ async function loadTeamAlerts() {
     console.log('Loading team package alerts...');
 
     // Fetch team packages from API
-    const packages = await fetchNiceHashTeamPackages();
+    const packages = await fetchNiceHashTeamPackages('ALL');
 
     if (!packages || packages.length === 0) {
         console.error('No team packages available to set alerts for');
@@ -4528,7 +4527,7 @@ async function loadTeamAlerts() {
     }
 
     // Fetch solo packages to get current small package probabilities
-    const soloPackages = await fetchNiceHashSoloPackages();
+    const soloPackages = await fetchNiceHashSoloPackages('ALL');
 
     // Get saved team alerts
     const savedAlerts = JSON.parse(appStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
@@ -4578,8 +4577,7 @@ async function loadTeamAlerts() {
             }
         } else {
             // Single crypto package
-            const smallPackageName = pkg.name.replace('Team ', '') + ' S';
-            const smallPackage = soloPackages?.find(sp => sp.name === smallPackageName);
+            const smallPackage = EasyMiningModel.smallPackage(pkg, soloPackages);
             if (smallPackage) {
                 // Use probabilityPrecision or formatted probability
                 smallPackageCurrentProb = smallPackage.probabilityPrecision
@@ -4711,7 +4709,7 @@ async function loadTeamAlerts() {
             smallPackageProbabilityInputs = `
                 <div style="margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <label style="color: #aaa; font-size: 14px;">📦 Small Package Probability Threshold (${pkg.name.replace('Team ', '')} S)</label>
+                        <label style="color: #aaa; font-size: 14px;">📦 Small Package Probability (${EasyMiningModel.smallPackage(pkg, soloPackages)?.name || 'Unavailable'})</label>
                         <span style="color: #4CAF50; font-size: 13px;">Current: ${smallProbFormatted}</span>
                     </div>
                     <input type="number"
@@ -4735,7 +4733,7 @@ async function loadTeamAlerts() {
                 ${isAnyActive ? '<span style="color: #4CAF50; font-size: 12px; margin-left: 8px;">✓ Active</span>' : '<span style="color: #888; font-size: 12px; margin-left: 8px;">Not set</span>'}
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="color: #888; font-size: 13px;">Current: ${pkg.numberOfParticipants || 0} participants | ${pkg.shares || '0'}% share</span>
+                <span style="color: #888; font-size: 13px;">Current: ${pkg.numberOfParticipants || 0} participants | ${Number(pkg.shares || 0).toFixed(2)}% pool funded</span>
             </div>
 
             ${probabilityInputs}
@@ -4854,6 +4852,7 @@ async function loadTeamAlerts() {
             </div>
         `;
 
+        PackageAlerts.decorate(alertDiv, pkg);
         alertsList.appendChild(alertDiv);
     });
 
@@ -4914,13 +4913,14 @@ async function loadTeamAlerts() {
                     const autoBuySettings = JSON.parse(appStorage.getItem(storageKey)) || {};
 
                     autoBuySettings[packageName] = {
+                        ...autoBuySettings[packageName],
                         enabled: true,
                         crypto: crypto,
                         mergeCrypto: mergeCrypto || null,
                         mainAddress: mainAddress,
                         mergeAddress: mergeAddress,
                         shares: shares,
-                        lastBuyTime: null
+                        lastBuyTime: autoBuySettings[packageName]?.lastBuyTime || null
                     };
 
                     appStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
@@ -5128,13 +5128,14 @@ function adjustTeamAutoBuyShares(packageName, delta) {
 
         input.value = currentValue;
         console.log(`Adjusted ${packageName} auto-buy shares to ${currentValue}`);
+        input.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
 
 function saveSoloAlerts() {
     console.log('Saving solo package alerts...');
 
-    const alerts = {};
+    const alerts = JSON.parse(appStorage.getItem(`${loggedInUser}_soloPackageAlerts`) || '{}');
     const inputs = document.querySelectorAll('[id^="alert-"]');
 
     inputs.forEach(input => {
@@ -5157,10 +5158,11 @@ function saveSoloAlerts() {
             alertKey = idParts.join(' ');
         }
 
+        delete alerts[alertKey];
         const threshold = input.value.trim();
 
-        if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-            alerts[alertKey] = parseInt(threshold);
+        if (threshold !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0) {
+            alerts[alertKey] = Number(threshold);
         }
     });
 
@@ -5183,7 +5185,7 @@ function saveSoloAlerts() {
 function saveTeamAlerts() {
     console.log('Saving team package alerts...');
 
-    const alerts = {};
+    const alerts = JSON.parse(appStorage.getItem(`${loggedInUser}_teamPackageAlerts`) || '{}');
     const teamInputs = document.querySelectorAll('[id^="team-alert-"]');
 
     // Group inputs by package name
@@ -5202,8 +5204,8 @@ function saveTeamAlerts() {
             if (!packageData[packageName]) packageData[packageName] = {};
 
             const threshold = input.value.trim();
-            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-                packageData[packageName][`probability_${crypto}`] = parseInt(threshold);
+            if (threshold !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0) {
+                packageData[packageName][`probability_${crypto}`] = Number(threshold);
             }
         } else if (id.endsWith('-probability')) {
             // Single crypto probability (e.g., "Team-Gold-probability")
@@ -5212,8 +5214,8 @@ function saveTeamAlerts() {
             if (!packageData[packageName]) packageData[packageName] = {};
 
             const threshold = input.value.trim();
-            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-                packageData[packageName].probability = parseInt(threshold);
+            if (threshold !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0) {
+                packageData[packageName].probability = Number(threshold);
             }
         } else if (id.endsWith('-shares')) {
             // Shares threshold
@@ -5222,7 +5224,7 @@ function saveTeamAlerts() {
             if (!packageData[packageName]) packageData[packageName] = {};
 
             const threshold = input.value.trim();
-            if (threshold !== '' && !isNaN(threshold) && parseFloat(threshold) > 0) {
+            if (threshold !== '' && Number.isFinite(Number(threshold)) && parseFloat(threshold) > 0) {
                 packageData[packageName].shares = parseFloat(threshold);
             }
         } else if (id.endsWith('-participants')) {
@@ -5232,8 +5234,8 @@ function saveTeamAlerts() {
             if (!packageData[packageName]) packageData[packageName] = {};
 
             const threshold = input.value.trim();
-            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-                packageData[packageName].participants = parseInt(threshold);
+            if (threshold !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0) {
+                packageData[packageName].participants = Number(threshold);
             }
         } else if (id.endsWith('-timeUntilStart')) {
             // Time until start threshold (in minutes)
@@ -5242,8 +5244,8 @@ function saveTeamAlerts() {
             if (!packageData[packageName]) packageData[packageName] = {};
 
             const threshold = input.value.trim();
-            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-                packageData[packageName].timeUntilStart = parseInt(threshold);
+            if (threshold !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0) {
+                packageData[packageName].timeUntilStart = Number(threshold);
             }
         } else if (id.includes('-smallPackageProbability-')) {
             // Dual-crypto small package probability (e.g., "Team-Palladium-smallPackageProbability-LTC")
@@ -5253,8 +5255,8 @@ function saveTeamAlerts() {
             if (!packageData[packageName]) packageData[packageName] = {};
 
             const threshold = input.value.trim();
-            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-                packageData[packageName][`smallPackageProbability_${crypto}`] = parseInt(threshold);
+            if (threshold !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0) {
+                packageData[packageName][`smallPackageProbability_${crypto}`] = Number(threshold);
             }
         } else if (id.endsWith('-smallPackageProbability')) {
             // Single crypto small package probability threshold
@@ -5263,14 +5265,15 @@ function saveTeamAlerts() {
             if (!packageData[packageName]) packageData[packageName] = {};
 
             const threshold = input.value.trim();
-            if (threshold !== '' && !isNaN(threshold) && parseInt(threshold) > 0) {
-                packageData[packageName].smallPackageProbability = parseInt(threshold);
+            if (threshold !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0) {
+                packageData[packageName].smallPackageProbability = Number(threshold);
             }
         }
     });
 
     // Only save packages that have at least one threshold set
     Object.keys(packageData).forEach(packageName => {
+        delete alerts[packageName];
         if (Object.keys(packageData[packageName]).length > 0) {
             alerts[packageName] = packageData[packageName];
         }
@@ -5611,10 +5614,8 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
             }
         } else if (!isDualCryptoPackage && alert.smallPackageProbability && soloPackages && soloPackages.length > 0) {
             // Single crypto package - check single small package
-            const smallPackageName = pkg.name.replace('Team ', '') + ' S';
-
-            // Find the corresponding small package
-            const smallPackage = soloPackages.find(sp => sp.name === smallPackageName);
+            const smallPackage = EasyMiningModel.smallPackage(pkg, soloPackages);
+            const smallPackageName = smallPackage?.name || 'Smallest matching package';
 
             if (smallPackage) {
                 // Extract small package probability value using precision (preferred) or formatted string
@@ -5641,6 +5642,9 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
                 console.log(`⚠️ ${pkg.name}: Small package threshold set but "${smallPackageName}" not found in solo packages`);
             }
         }
+
+        const requiresSmallPackage = alert.smallPackageProbability || alert.smallPackageProbability_DOGE || alert.smallPackageProbability_LTC;
+        if (requiresSmallPackage && !EasyMiningModel.smallPackage(pkg, soloPackages)) shouldRecommend = false;
 
         // Add to recommendations if conditions are met
         if (shouldRecommend) {
@@ -16544,8 +16548,11 @@ async function fetchNiceHashBalances() {
             }
         }
 
+        MiningWallet.renderBalance();
         return { available, pending };
         } catch (error) {
+            window.niceHashCurrencyBalances = {};
+            MiningWallet.renderBalance();
             console.error('❌ Error fetching NiceHash balances:', error);
             // Re-throw the error so the parent function can handle CORS fallback
             throw error;
@@ -17470,7 +17477,7 @@ async function fetchNiceHashOrders() {
             // Create package object
             const pkg = {
                 id: order.id,
-                name: order.packageName || `${order.soloMiningCoin} Package`, // Use packageName from API!
+                name: EasyMiningModel.alertName({ name: order.packageName || `${order.soloMiningCoin} Package`, currencyMarket: paymentCost.currency }),
                 crypto: order.soloMiningCoin, // Direct from API (primary coin)
                 cryptoSecondary: order.soloMiningMergeCoin, // For dual mining (secondary coin)
                 isDualCrypto: !!order.soloMiningMergeCoin, // Flag for dual-mining packages (Palladium)
@@ -18138,6 +18145,8 @@ function updateEasyMiningUI() {
 
     // Restore rockets after UI update (maintains persistence)
     restoreRockets();
+    MiningWallet.renderBalance();
+
 }
 
 // Current package filter tab
@@ -20488,7 +20497,7 @@ async function executeAutoSharesTeam(teamPackages) {
 
         const participants = pkg.numberOfParticipants || 0;
         // Calculate total shares from addedAmount (same as rest of codebase)
-        const totalSharesBought = Math.round((pkg.addedAmount || 0) * 10000);
+        const totalSharesBought = EasyMiningModel.shareCount(Number(pkg.addedAmount), Number(pkg.apiData?.minShareAmount ?? pkg.apiData?.currencyAlgoTicket?.minShareAmount));
         const myShares = authenticatedTeamShares[packageId];
         const targetShares = EasyMiningModel.targetShares(totalSharesBought, myShares, settings.percentage || 10);
         if (!Number.isFinite(myShares) || targetShares === null || pkg.apiData?.state !== 'OPEN') continue;
@@ -20603,7 +20612,7 @@ async function executeAutoSharesTeam(teamPackages) {
 
     const participants = pkg.numberOfParticipants || 0;
     // Calculate total shares from addedAmount (same as rest of codebase)
-    const totalSharesBought = Math.round((pkg.addedAmount || 0) * 10000);
+    const totalSharesBought = EasyMiningModel.shareCount(Number(pkg.addedAmount), Number(pkg.apiData?.minShareAmount ?? pkg.apiData?.currencyAlgoTicket?.minShareAmount));
     const myShares = authenticatedTeamShares[packageId];
     const targetShares = EasyMiningModel.targetShares(totalSharesBought, myShares, settings.percentage || 10);
     if (!Number.isFinite(myShares) || targetShares === null || pkg.apiData?.state !== 'OPEN') return;
@@ -20744,12 +20753,20 @@ async function executeAutoSharesTeam(teamPackages) {
             }
         }
 
-        const sharePrice = Number(pkg.apiData?.minShareAmount ?? pkg.apiData?.currencyAlgoTicket?.minShareAmount);
-        if (!(sharePrice > 0) || pkg.apiData?.currencyAlgoTicket?.currencyMarket !== 'BTC') return;
-        const availableShares = Math.max(0, Math.floor(Number(pkg.fullAmount) / sharePrice) - totalSharesBought);
+        const liveData = await EasyMiningCurrency.request('/main/api/v2/hashpower/solo/shared/order?onlyGold=false&limit=100');
+        const live = (liveData.list || []).find(item => item.id === packageId);
+        if (!live || live.state !== 'OPEN' || !live.currencyAlgoTicket?.available || live.currencyAlgoTicket?.status !== 'A' || !Array.isArray(live.members)) return;
+        const paymentCurrency = live.currencyAlgoTicket.currencyMarket;
+        const sharePrice = Number(live.minShareAmount ?? live.currencyAlgoTicket.minShareAmount);
+        if (paymentCurrency !== (pkg.paymentCurrency || 'BTC')) return;
+        const liveMember = live.members.find(member => member.organizationId === easyMiningSettingsLocal.orgId);
+        const liveOwned = liveMember ? EasyMiningModel.shareCount(liveMember.addedAmount, sharePrice) : 0;
+        if (liveOwned !== myShares) return; // Wait for the normal membership refresh before changing totals.
+        if (!(sharePrice > 0) || !['BTC', 'USDT'].includes(paymentCurrency)) return;
+        const availableShares = Math.max(0, Math.floor((Number(live.fullAmount) - Number(live.addedAmount)) / sharePrice + 1e-8));
         actualSharesToBuy = Math.min(actualSharesToBuy, availableShares);
         if (!Number.isSafeInteger(actualSharesToBuy) || actualSharesToBuy <= 0) { autoSharesCurrentPackage = null; return; }
-        if (shouldPauseAutoBuyForTgSafeHold(pkg.name)) return;
+        if (paymentCurrency === 'BTC' && shouldPauseAutoBuyForTgSafeHold(pkg.name)) return;
         const newTotalShares = myShares + actualSharesToBuy;
         const costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
         // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
@@ -20765,7 +20782,9 @@ async function executeAutoSharesTeam(teamPackages) {
         });
 
         // 💰 Balance check skipped - API will validate, we send total amount but only pay for new shares
-        const availableBalance = window.niceHashBalance?.available || 0;
+        await fetchNiceHashBalances();
+        const availableBalance = window.niceHashCurrencyBalances?.[paymentCurrency]?.available;
+        if (!Number.isFinite(availableBalance) || availableBalance < costForNewShares) return;
 
         // Create order payload: amount and shares.small are NEW TOTAL values
         const bodyData = {
@@ -20991,7 +21010,7 @@ async function runAutoSharesBackgroundCheck() {
 
     try {
         // Fetch team packages
-        const teamPackages = await fetchNiceHashTeamPackages();
+        const teamPackages = await fetchNiceHashTeamPackages('ALL');
         if (teamPackages && teamPackages.length > 0) {
             await executeAutoSharesTeam(teamPackages);
         }
@@ -21081,13 +21100,16 @@ async function updateRecommendations() {
     // Execute auto-buy for any new recommendations (with cooldown check)
     await executeAutoBuySolo(recommendations);
     await executeAutoBuyTeam(teamRecommendations);
+    await EasyMiningCurrency.runAlerts();
 
     // Execute auto-shares ON ALERT for team packages that triggered alerts
     // (uses same queue as continuous auto-shares)
-    await executeAutoSharesOnAlertTeam(teamRecommendations);
+    const usdtTeam = EasyMiningCurrency.metricPackages('team');
+    const usdtTeamRecommendations = await checkTeamRecommendations(usdtTeam, EasyMiningCurrency.metricPackages('single'));
+    await executeAutoSharesOnAlertTeam([...teamRecommendations, ...usdtTeamRecommendations]);
 
     // Execute auto-shares for team packages (continuous buying based on fraction)
-    await executeAutoSharesTeam(teamPackages);
+    await executeAutoSharesTeam([...teamPackages, ...usdtTeam]);
 
     // Fetch crypto prices once for ALL packages (prevents race condition)
     const allPackages = [...recommendations, ...teamRecommendations];
@@ -28098,7 +28120,7 @@ function getRecommendedPackages() {
 
 // Fetch solo packages from NiceHash public API
 // Returns: { packages: array|null, success: boolean }
-async function fetchNiceHashSoloPackages() {
+async function fetchNiceHashSoloPackages(currency = 'BTC') {
     // Skip fetch if auto-buy is in progress to avoid rate limiting
     if (isAutoBuyInProgress) {
         console.log('⏸️ Solo packages fetch paused - auto-buy in progress');
@@ -28245,6 +28267,7 @@ async function fetchNiceHashSoloPackages() {
 
                 return {
                     name: pkg.name,
+                    observedAt: Date.now(),
                     id: pkg.id, // Required for auto-buy
                     ticketId: pkg.id, // Required for auto-buy
                     crypto: cryptoDisplay,
@@ -28274,7 +28297,7 @@ async function fetchNiceHashSoloPackages() {
 
         console.log(`✅ Transformed ${transformedPackages.length} packages`);
         console.log('✅ API DATA IS BEING USED!');
-        return transformedPackages;
+        return currency === 'ALL' ? [...transformedPackages, ...EasyMiningCurrency.metricPackages('single')] : transformedPackages;
 
     } catch (error) {
         console.error('❌ Error fetching solo packages from API:', error);
@@ -28285,7 +28308,7 @@ async function fetchNiceHashSoloPackages() {
 }
 
 // Fetch team packages from NiceHash API
-async function fetchNiceHashTeamPackages() {
+async function fetchNiceHashTeamPackages(currency = 'BTC') {
     // Skip fetch if auto-buy is in progress to avoid rate limiting
     if (isAutoBuyInProgress) {
         console.log('⏸️ Team packages fetch paused - auto-buy in progress');
@@ -28433,6 +28456,7 @@ async function fetchNiceHashTeamPackages() {
                 return {
                     id: ticket.id, // Use currencyAlgoTicket.id for the POST endpoint
                     name: ticket.name,
+                    observedAt: Date.now(),
                     crypto: cryptoDisplay,
                     mainCrypto: mainCrypto,
                     mergeCrypto: mergeCrypto,
@@ -28466,7 +28490,7 @@ async function fetchNiceHashTeamPackages() {
             });
 
         console.log(`✅ Transformed ${transformedPackages.length} team packages`);
-        return transformedPackages;
+        return currency === 'ALL' ? [...transformedPackages, ...EasyMiningCurrency.metricPackages('team')] : transformedPackages;
 
     } catch (error) {
         console.error('❌ Error fetching team packages from API:', error);
@@ -29536,7 +29560,7 @@ async function loadBuyPackagesDataOnPage() {
     // Capture package metrics for historical tracking and averaging
     // This stores hashrate, probability, and price data with timestamps
     try {
-        capturePackageMetrics(allPackages);
+        capturePackageMetrics([...allPackages, ...EasyMiningCurrency.metricPackages('single'), ...EasyMiningCurrency.metricPackages('team')]);
     } catch (error) {
         console.error('❌ Error capturing package metrics:', error);
     }
@@ -29634,6 +29658,7 @@ async function loadBuyPackagesDataOnPage() {
             </div>
         </div>
     `;
+    MiningWallet.renderBalance();
     console.log('✅ Balance section populated');
 
     // Populate single packages
@@ -32747,50 +32772,20 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
             throw new Error('EasyMining API not configured');
         }
 
-        // 2. Determine crypto type from package name
-        let crypto = 'BTC';
-        const nameLower = packageName.toLowerCase();
-        if (nameLower.includes('silver') || nameLower.includes('bch')) {
-            crypto = 'BCH';
-        } else if (nameLower.includes('chromium') || nameLower.includes('rvn')) {
-            crypto = 'RVN';
-        } else if (nameLower.includes('titanium') || nameLower.includes('kas')) {
-            crypto = 'KAS';
-        } else if (nameLower.includes('palladium doge') || nameLower.includes('doge')) {
-            crypto = 'DOGE';
-        } else if (nameLower.includes('palladium ltc') || nameLower.includes('ltc')) {
-            crypto = 'LTC';
-        }
-
-        // 3. Get wallet address from appStorage
-        const mainWalletAddress = getWithdrawalAddress(crypto);
-        if (!mainWalletAddress) {
-            throw new Error(`No ${crypto} withdrawal address configured`);
-        }
-
-        // 4. Calculate total amount (shares × 0.0001 BTC)
-        const sharePrice = 0.0001;
-        const totalAmount = shares * sharePrice;
-
-        // 5. Sync NiceHash time
         await syncNiceHashTime();
-
-        // 6. Make POST request to buy shares
-        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
-
-        const orderData = {
-            amount: totalAmount,
-            shares: {
-                small: shares,
-                medium: 0,
-                large: 0,
-                couponSmall: 0,
-                couponMedium: 0,
-                couponLarge: 0,
-                massBuy: 0
-            },
-            soloMiningRewardAddr: mainWalletAddress.trim()
-        };
+        const data = await EasyMiningCurrency.request('/main/api/v2/hashpower/solo/shared/order?onlyGold=false&limit=100');
+        const raw = (data.list || []).find(item => item.id === packageId);
+        if (!raw || !Array.isArray(raw.members)) throw new Error('Current package membership unavailable.');
+        const payment = EasyMiningModel.payment(raw);
+        const member = raw.members.find(item => item.organizationId === easyMiningSettings.orgId);
+        const owned = member ? EasyMiningModel.shareCount(member.addedAmount, payment.shareAmount) : 0;
+        const ticket = raw.currencyAlgoTicket;
+        const crypto = ticket.currencyAlgo.currency;
+        const plan = EasyMiningModel.purchasePlan(raw, owned, Number(shares), getWithdrawalAddress(crypto), ticket.mergeCurrencyAlgo ? getWithdrawalAddress(ticket.mergeCurrencyAlgo.currency) : null);
+        await fetchNiceHashBalances();
+        const balance = window.niceHashCurrencyBalances?.[plan.currency]?.available;
+        if (!Number.isFinite(balance) || balance < plan.change) throw new Error('Insufficient ' + plan.currency + ' balance.');
+        const endpoint = plan.endpoint, orderData = plan.body, totalAmount = plan.body.amount;
 
         const body = JSON.stringify(orderData);
         const headers = generateNiceHashAuthHeaders('POST', endpoint, body);
@@ -33610,33 +33605,14 @@ async function captureBackgroundMetrics() {
         console.log('📊 Background metrics capture starting...');
 
         // Fetch solo packages from API (or use mock data)
-        let singlePackages = await fetchNiceHashSoloPackages();
-        if (!singlePackages || singlePackages.length === 0) {
-            console.log('📦 Using mock solo package data for background capture');
-            singlePackages = [
-                { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-                { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-                { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
-                { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-                { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-                { name: 'Silver L', crypto: 'BCH', probability: '1:45', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'SHA256', hashrate: '4 TH/s', blockReward: 3.125 },
-                { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
-                { name: 'Chromium M', crypto: 'RVN', probability: '1:100', priceBTC: 0.001, priceAUD: '20.00', duration: '24h', algorithm: 'KawPow', hashrate: '200 MH/s', blockReward: 2500 },
-                { name: 'Chromium L', crypto: 'RVN', probability: '1:50', priceBTC: 0.01, priceAUD: '40.00', duration: '24h', algorithm: 'KawPow', hashrate: '400 MH/s', blockReward: 2500 },
-                { name: 'Palladium S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25, mergeProbability: '1:220' },
-                { name: 'Palladium M', crypto: 'LTC', probability: '1:105', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'Scrypt', hashrate: '1 GH/s', blockReward: 6.25, mergeProbability: '1:110' },
-                { name: 'Palladium L', crypto: 'LTC', probability: '1:52', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'Scrypt', hashrate: '2 GH/s', blockReward: 6.25, mergeProbability: '1:55' },
-                { name: 'Titanium S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 },
-                { name: 'Titanium M', crypto: 'KAS', probability: '1:80', priceBTC: 0.001, priceAUD: '26.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '2 TH/s', blockReward: 3.8890873 },
-                { name: 'Titanium L', crypto: 'KAS', probability: '1:40', priceBTC: 0.01, priceAUD: '52.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '4 TH/s', blockReward: 3.8890873 }
-            ];
-        }
+        let singlePackages = await fetchNiceHashSoloPackages('ALL');
+        singlePackages = singlePackages || []; // A failed request never creates synthetic observations.
 
         // Fetch team packages from API
-        let teamPackages = await fetchNiceHashTeamPackages();
+        let teamPackages = await fetchNiceHashTeamPackages('ALL');
         console.log(`📊 Background: Fetched ${singlePackages.length} solo, ${teamPackages?.length || 0} team packages`);
 
-        const allPackages = [...singlePackages, ...teamPackages];
+        const allPackages = [...singlePackages, ...(teamPackages || [])];
 
         // Capture metrics (no DOM operations)
         if (allPackages.length > 0) {
@@ -34281,24 +34257,13 @@ function trimPackageMetricsHistory(history) {
  * Examples: "1 TH/s" -> 1, "100 MH/s" -> 0.0001, "1 PH/s" -> 1000
  */
 function parseHashrate(hashrateStr) {
-    if (!hashrateStr) return 0;
-    const match = hashrateStr.match(/([\d.]+)\s*(PH|TH|GH|MH|KH|H)\/s/i);
+    if (typeof hashrateStr !== 'string') return 0;
+    // Team cards display current / maximum speed; record the current speed.
+    const match = hashrateStr.match(/([\d.]+)(?:\s*\/\s*[\d.]+)?\s*(EH|PH|TH|GH|MH|KH|H|PSol|TSol|GSol|MSol|KSol|Sol)\/s/i);
     if (!match) return 0;
-
-    const value = parseFloat(match[1]);
-    const unit = match[2].toUpperCase();
-
-    // Convert to TH/s
-    const multipliers = {
-        'PH': 1000,
-        'TH': 1,
-        'GH': 0.001,
-        'MH': 0.000001,
-        'KH': 0.000000001,
-        'H': 0.000000000001
-    };
-
-    return value * (multipliers[unit] || 0);
+    const value = Number(match[1]);
+    const unit = match[2].toUpperCase().replace('SOL', 'H');
+    return Number.isFinite(value) ? value * ({ EH: 1e6, PH: 1e3, TH: 1, GH: 1e-3, MH: 1e-6, KH: 1e-9, H: 1e-12 }[unit] || 0) : 0;
 }
 
 /**
@@ -34435,7 +34400,7 @@ function processSnapshotQueue() {
  */
 function captureSinglePackageSnapshot(pkg) {
     const name = pkg.name;
-    if (!name) return;
+    if (!name || pkg.unavailable || pkg.isMock || (pkg.observedAt && Date.now() - pkg.observedAt > 60000)) return;
 
     const timestamp = new Date().toISOString();
     const history = getPackageMetricsHistory();
@@ -34446,6 +34411,7 @@ function captureSinglePackageSnapshot(pkg) {
             snapshots: [],
             averages: null,
             crypto: pkg.crypto,
+            paymentCurrency: pkg.paymentCurrency || 'BTC',
             algorithm: pkg.algorithm,
             isTeam: pkg.isTeam || false
         };
@@ -34453,7 +34419,7 @@ function captureSinglePackageSnapshot(pkg) {
 
     // Parse numeric values
     const hashrateRaw = parseHashrate(pkg.hashrate);
-    const probabilityRaw = parseProbability(pkg.probability);
+    const probabilityRaw = parseProbability(pkg.probabilityPrecision ?? pkg.probability);
 
     // Check if this is a Palladium package (dual mining DOGE + LTC)
     const isPalladium = name.toLowerCase().includes('palladium');
@@ -34469,6 +34435,7 @@ function captureSinglePackageSnapshot(pkg) {
         // Palladium dual-mining: LTC probability is main, DOGE is merge
         probabilityLtc: isPalladium ? probabilityRaw : 0,
         probabilityDoge: isPalladium ? mergeProbabilityRaw : 0,
+        paymentAmount: Number(pkg.paymentAmount ?? pkg.priceBTC) || 0,
         priceBTC: parseFloat(pkg.priceBTC) || 0,
         priceAUD: parseFloat(pkg.priceAUD) || 0,
         duration: pkg.duration,
@@ -34519,7 +34486,7 @@ function updatePackageMetricsAverages() {
         let totalPriceAUD = 0;
         let totalParticipants = 0;
         let totalShares = 0;
-        let validCount = 0;
+        let validCount = 0, hashrateCount = 0, probabilityCount = 0, btcCount = 0, audCount = 0;
         let participantCount = 0;
         let sharesCount = 0;
 
@@ -34539,12 +34506,12 @@ function updatePackageMetricsAverages() {
 
         snapshots.forEach(s => {
             if (s.hashrateRaw > 0) {
-                totalHashrate += s.hashrateRaw;
+                totalHashrate += s.hashrateRaw; hashrateCount++;
                 minHashrate = Math.min(minHashrate, s.hashrateRaw);
                 maxHashrate = Math.max(maxHashrate, s.hashrateRaw);
             }
             if (s.probabilityRaw > 0) {
-                totalProbability += s.probabilityRaw;
+                totalProbability += s.probabilityRaw; probabilityCount++;
                 minProbability = Math.min(minProbability, s.probabilityRaw);
                 maxProbability = Math.max(maxProbability, s.probabilityRaw);
             }
@@ -34557,8 +34524,8 @@ function updatePackageMetricsAverages() {
                 totalProbabilityDoge += s.probabilityDoge;
                 dogeProbCount++;
             }
-            if (s.priceBTC > 0) totalPriceBTC += s.priceBTC;
-            if (s.priceAUD > 0) totalPriceAUD += s.priceAUD;
+            if (s.priceBTC > 0) { totalPriceBTC += s.priceBTC; btcCount++; }
+            if (s.priceAUD > 0) { totalPriceAUD += s.priceAUD; audCount++; }
             // Track participants (team packages)
             if (s.participants > 0) {
                 totalParticipants += s.participants;
@@ -34577,10 +34544,11 @@ function updatePackageMetricsAverages() {
         if (validCount > 0) {
             // Store averages
             pkg.averages = {
-                hashrate: totalHashrate / validCount,
-                probability: totalProbability / validCount,
-                priceBTC: totalPriceBTC / validCount,
-                priceAUD: totalPriceAUD / validCount,
+                paymentAmount: snapshots.filter(s => s.paymentAmount > 0).reduce((sum,s) => sum + s.paymentAmount,0) / (snapshots.filter(s => s.paymentAmount > 0).length || 1),
+                hashrate: hashrateCount ? totalHashrate / hashrateCount : 0,
+                probability: probabilityCount ? totalProbability / probabilityCount : 0,
+                priceBTC: btcCount ? totalPriceBTC / btcCount : 0,
+                priceAUD: audCount ? totalPriceAUD / audCount : 0,
                 participants: participantCount > 0 ? totalParticipants / participantCount : 0,
                 shares: sharesCount > 0 ? totalShares / sharesCount : 0,
                 maxParticipants: maxParticipants,
@@ -34981,36 +34949,17 @@ async function fetchAndUpdateAverages() {
 
     try {
         // Fetch solo packages from API (or use mock data)
-        let singlePackages = await fetchNiceHashSoloPackages();
-        if (!singlePackages || singlePackages.length === 0) {
-            console.log('📦 Using mock solo package data for averages');
-            singlePackages = [
-                { name: 'Gold S', crypto: 'BTC', probability: '1:150', priceBTC: 0.0001, priceAUD: '15.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-                { name: 'Gold M', crypto: 'BTC', probability: '1:75', priceBTC: 0.001, priceAUD: '30.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-                { name: 'Gold L', crypto: 'BTC', probability: '1:35', priceBTC: 0.01, priceAUD: '60.00', duration: '24h', algorithm: 'SHA256', hashrate: '5 TH/s', blockReward: 3.125 },
-                { name: 'Silver S', crypto: 'BCH', probability: '1:180', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'SHA256', hashrate: '1 TH/s', blockReward: 3.125 },
-                { name: 'Silver M', crypto: 'BCH', probability: '1:90', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'SHA256', hashrate: '2 TH/s', blockReward: 3.125 },
-                { name: 'Silver L', crypto: 'BCH', probability: '1:45', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'SHA256', hashrate: '4 TH/s', blockReward: 3.125 },
-                { name: 'Chromium S', crypto: 'RVN', probability: '1:200', priceBTC: 0.0001, priceAUD: '10.00', duration: '24h', algorithm: 'KawPow', hashrate: '100 MH/s', blockReward: 2500 },
-                { name: 'Chromium M', crypto: 'RVN', probability: '1:100', priceBTC: 0.001, priceAUD: '20.00', duration: '24h', algorithm: 'KawPow', hashrate: '200 MH/s', blockReward: 2500 },
-                { name: 'Chromium L', crypto: 'RVN', probability: '1:50', priceBTC: 0.01, priceAUD: '40.00', duration: '24h', algorithm: 'KawPow', hashrate: '400 MH/s', blockReward: 2500 },
-                { name: 'Palladium S', crypto: 'LTC', probability: '1:210', priceBTC: 0.0001, priceAUD: '12.00', duration: '24h', algorithm: 'Scrypt', hashrate: '500 MH/s', blockReward: 6.25, mergeProbability: '1:220' },
-                { name: 'Palladium M', crypto: 'LTC', probability: '1:105', priceBTC: 0.001, priceAUD: '24.00', duration: '24h', algorithm: 'Scrypt', hashrate: '1 GH/s', blockReward: 6.25, mergeProbability: '1:110' },
-                { name: 'Palladium L', crypto: 'LTC', probability: '1:52', priceBTC: 0.01, priceAUD: '48.00', duration: '24h', algorithm: 'Scrypt', hashrate: '2 GH/s', blockReward: 6.25, mergeProbability: '1:55' },
-                { name: 'Titanium S', crypto: 'KAS', probability: '1:160', priceBTC: 0.0001, priceAUD: '13.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '1 TH/s', blockReward: 3.8890873 },
-                { name: 'Titanium M', crypto: 'KAS', probability: '1:80', priceBTC: 0.001, priceAUD: '26.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '2 TH/s', blockReward: 3.8890873 },
-                { name: 'Titanium L', crypto: 'KAS', probability: '1:40', priceBTC: 0.01, priceAUD: '52.00', duration: '24h', algorithm: 'kHeavyHash', hashrate: '4 TH/s', blockReward: 3.8890873 }
-            ];
-        }
+        let singlePackages = await fetchNiceHashSoloPackages('ALL');
+        singlePackages = singlePackages || []; // A failed request never creates synthetic observations.
 
         // Add delay between API calls to prevent rate limiting
         await new Promise(resolve => setTimeout(resolve, SNAPSHOT_QUEUE_DELAY_MS));
 
         // Fetch team packages from API
-        let teamPackages = await fetchNiceHashTeamPackages();
+        let teamPackages = await fetchNiceHashTeamPackages('ALL');
         console.log(`📊 Averages: Fetched ${singlePackages.length} solo, ${teamPackages?.length || 0} team packages`);
 
-        const allPackages = [...singlePackages, ...teamPackages];
+        const allPackages = [...singlePackages, ...(teamPackages || [])];
 
         // Queue packages for snapshot capture (processed one at a time with delays)
         // Averages update happens automatically when queue finishes in processSnapshotQueue()
@@ -35075,6 +35024,8 @@ function updateAveragesDisplay() {
 
         Object.keys(history).forEach(name => {
             const pkg = history[name];
+            const filter = document.getElementById('averages-payment-filter')?.value || 'BTC';
+            if (filter !== 'ALL' && (pkg.paymentCurrency || 'BTC') !== filter) return;
             if (pkg.isTeam) {
                 teamPackages.push({ name, ...pkg });
             } else {
@@ -35259,7 +35210,7 @@ function updateAveragesSection(type, packages, allHistory) {
             : null;
 
         const avgHashrate = pkg.averages?.hashrate
-            ? formatHashrateForAverages(pkg.averages.hashrate)
+            ? formatHashrateForAverages(pkg.averages.hashrate, pkg.algorithm)
             : 'N/A';
 
         const avgPriceBTC = pkg.averages?.priceBTC
@@ -35312,7 +35263,7 @@ function updateAveragesSection(type, packages, allHistory) {
         // Get latest snapshot for current values
         const latestSnapshot = pkg.snapshots?.[pkg.snapshots.length - 1];
         const currentProb = latestSnapshot?.probabilityRaw ? `1:${latestSnapshot.probabilityRaw}` : '';
-        const currentHashrate = latestSnapshot?.hashrateRaw ? formatHashrateForAverages(latestSnapshot.hashrateRaw) : '';
+        const currentHashrate = latestSnapshot?.hashrateRaw ? formatHashrateForAverages(latestSnapshot.hashrateRaw, pkg.algorithm) : '';
 
         // Build stats row based on package type
         let statsRow = '';
@@ -35378,8 +35329,8 @@ function updateAveragesSection(type, packages, allHistory) {
                     <div class="averages-item-stat-value">${avgHashrate} ${hashrateIndicator}</div>
                 </div>
                 <div class="averages-item-stat">
-                    <div class="averages-item-stat-label">Avg Price BTC</div>
-                    <div class="averages-item-stat-value">${avgPriceBTC}</div>
+                    <div class="averages-item-stat-label">Avg Price ${pkg.paymentCurrency || 'BTC'}</div>
+                    <div class="averages-item-stat-value">${pkg.paymentCurrency === 'USDT' ? (pkg.averages?.paymentAmount?.toFixed(2) || 'N/A') : avgPriceBTC}</div>
                 </div>
                 <div class="averages-item-stat">
                     <div class="averages-item-stat-label">Avg ${getUserCurrency().toUpperCase()}</div>
@@ -35634,7 +35585,8 @@ function calculateOptimalPackages(packages, isTeam, todayStart, sevenDaysAgo, th
 /**
  * Format hashrate value (in TH/s) to human readable string for averages display
  */
-function formatHashrateForAverages(thPerSec) {
+function formatHashrateForAverages(thPerSec, algorithm) {
+    if (String(algorithm).toUpperCase().includes('EQUIHASH')) return formatHashrateForAverages(thPerSec).replace('H/s', 'Sol/s');
     if (!thPerSec || thPerSec === 0) return '0 H/s';
 
     if (thPerSec >= 1000) {

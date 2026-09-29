@@ -104,7 +104,35 @@
         }
         return result;
     }
-    const api = { coinIds, payment, shareCount, orderPayment, teamPreview, purchasePlan, probabilityPreview, targetShares, packageIcon, assertSuccessfulOrder, bestSharePercent };
+    function alertName(raw) {
+        const t = raw.currencyAlgoTicket || raw;
+        return t.currencyMarket === 'USDT' && !/\bUSDT\b/i.test(t.name) ? `${t.name} USDT` : t.name;
+    }
+    function smallPackage(team, solos) {
+        const currency = team.paymentCurrency || 'BTC';
+        const family = team.name.replace(/^Team /, '').replace(/\s+USDT$/, '');
+        return (solos || []).filter(p => (p.paymentCurrency || 'BTC') === currency &&
+            p.mainCrypto === team.mainCrypto && p.name.replace(/\s+USDT$/, '').startsWith(family + ' '))
+            .sort((a, b) => Number(a.paymentAmount ?? a.priceBTC) - Number(b.paymentAmount ?? b.priceBTC))[0];
+    }
+    function automationReady(raw, rule, now, smartCooldown = true) {
+        const t = raw.currencyAlgoTicket || raw;
+        const cooldown = smartCooldown ? Number(raw.duration || t.duration) * 1000 : 600000;
+        return !!(rule?.enabled && t.currencyMarket === 'USDT' && t.available && t.status === 'A' &&
+            (!raw.currencyAlgoTicket || raw.state === 'OPEN') && Number.isFinite(cooldown) && cooldown > 0 &&
+            (!rule.lastBuyTime || now - rule.lastBuyTime >= cooldown) && rule.lastPoolId !== raw.id);
+    }
+    function withdrawalQuote(fees, address, amount) {
+        if (address.currency !== 'USDT' || !address.network || !(amount > 0) || !Number.isFinite(amount) || Math.abs(amount * 1e6 - Math.round(amount * 1e6)) > 1e-5) throw new Error('Enter a valid USDT amount with up to six decimals.');
+        const intervals = fees.withdrawal?.[address.type?.code]?.rules?.[address.network]?.find(rule => rule.coin === 'USDT')?.intervals;
+        const interval = intervals?.find(i => amount >= Number(i.start) && (i.end == null || amount < Number(i.end)));
+        if (!interval || interval.dynamic) throw new Error('A fixed fee is unavailable for this amount. Check the minimum amount or withdraw on NiceHash.');
+        const term = (type,value) => { if (!['PERCENTAGE','ABSOLUTE'].includes(type) || !Number.isFinite(Number(value)) || Number(value)<0) throw new Error('Fee unavailable.'); return type === 'PERCENTAGE' ? amount * Number(value) : Number(value); };
+        const e=interval.element;
+        const fee=Math.ceil((term(e.type,e.value)+term(e.sndType,e.sndValue))*1e6)/1e6;
+        return { fee, total: Number((amount+fee).toFixed(6)) };
+    }
+    const api = { coinIds, payment, shareCount, orderPayment, teamPreview, purchasePlan, probabilityPreview, targetShares, packageIcon, assertSuccessfulOrder, bestSharePercent, alertName, smallPackage, automationReady, withdrawalQuote };
     if (typeof module !== 'undefined') module.exports = api;
     else root.EasyMiningModel = api;
 })(typeof window === 'undefined' ? globalThis : window);

@@ -21,6 +21,15 @@ async function request({ body = {}, auth = true, reserveError = false, upstreamS
     return { res, calls, rpcs };
 }
 const purchase = { endpoint: '/main/api/v2/hashpower/solo/order', method: 'POST', body: { test: true } };
+test('withdrawals require a provider reference before releasing the cross-device action lock', async () => {
+    const body = { endpoint: '/main/api/v2/accounting/withdrawal', method: 'POST', body: { currency: 'USDT' } };
+    const ambiguous = await request({ body, upstreamData: { success: true } });
+    assert.equal(ambiguous.res.code, 409);
+    assert.deepEqual(ambiguous.rpcs, ['reserve_automation_action']);
+    const confirmed = await request({ body, upstreamData: { id: 'withdrawal-reference' } });
+    assert.equal(confirmed.res.code, 200);
+    assert.ok(confirmed.rpcs.includes('receive_automation_action'));
+});
 test('partial and unrecognised HTTP 200 mining responses retain the cross-device purchase lock', async () => {
     for (const upstreamData of [{ success: true, successType: 'PARTIAL_SUCCESS' }, {}]) {
         const result = await request({ body: purchase, upstreamData });
