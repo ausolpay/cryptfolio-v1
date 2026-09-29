@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overview.js'), 'utf8').replace('return { install, configure, observeMarket };', 'return { install, configure, api, checkDaily, generate };');
+const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overview.js'), 'utf8').replace('return { install, configure, observeMarket };', 'return { install, configure, api, checkDaily, generate, render };');
 function setup(response) {
     const requests = [], writes = [], elements = new Map();
     const root = { querySelector(selector) { if (!elements.has(selector)) elements.set(selector, { classList: { toggle() {} }, replaceChildren() {}, setAttribute() {} }); return elements.get(selector); } };
@@ -20,6 +20,19 @@ function setup(response) {
 test('plain text service errors show a readable message instead of a JSON parser exception', async () => {
     const { context } = setup({ ok: false, status: 504, json: async () => { throw new SyntaxError("Unexpected token A"); } });
     await assert.rejects(context.ai.api({ action: 'generate' }), /took too long/);
+});
+
+test('loading a saved overview with a newer pending record never claims to be generating', () => {
+    const { context, elements } = setup({});
+    const getElement = context.document.getElementById;
+    context.document.getElementById = id => id === 'ai-coin' ? null : getElement(id);
+    context.appStorage.snapshot = () => ({
+        owner_ai_generation_done: JSON.stringify({ id: 'done', scope: 'portfolio', status: 'complete', text: 'Saved summary', createdAt: new Date(Date.now() - 60000).toISOString() }),
+        owner_ai_generation_pending: JSON.stringify({ id: 'pending', scope: 'portfolio', status: 'pending', createdAt: new Date().toISOString() })
+    });
+    context.ai.render();
+    assert.equal(elements.get('.ai-output').textContent, 'Saved summary');
+    assert.equal(elements.get('.ai-status').textContent, '');
 });
 test('server-cached pending generations never overwrite Supabase from the browser', async () => {
     const { context, writes } = setup({ ok: true, json: async () => ({ reused: true, generation: { id: 'id', status: 'pending' } }) });

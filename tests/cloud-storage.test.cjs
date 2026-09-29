@@ -5,6 +5,27 @@ const vm = require('node:vm');
 const CloudData = require('../cloud-data.js');
 const { createStorage } = CloudData;
 
+test('concurrent AI news and market refreshes keep the freshest whole snapshot without pausing sync', () => {
+    for (const [key, field] of [['owner_freeNews_bitcoin_btc', 'checkedAt'], ['owner_ai_market_bitcoin', 'observedAt']]) {
+        const old = JSON.stringify({ [field]: '2026-09-29T00:00:00Z', articles: ['old'], price: 1 });
+        const newer = JSON.stringify({ [field]: '2026-09-29T01:00:00Z', articles: ['new'], price: 2 });
+        const merged = CloudData.mergeRecords({}, { [key]: newer }, { [key]: old });
+        assert.deepEqual(merged.conflicts, []);
+        assert.equal(merged.records[key], newer);
+    }
+});
+
+test('AI completion cannot be regressed by a pending record from another device', () => {
+    const key = 'owner_ai_generation_id';
+    const done = JSON.stringify({ id: 'id', status: 'complete', text: 'Saved' });
+    const pending = JSON.stringify({ id: 'id', status: 'pending' });
+    for (const [local, remote] of [[done, pending], [pending, done]]) {
+        const result = CloudData.mergeRecords({}, { [key]: local }, { [key]: remote });
+        assert.deepEqual(result.conflicts, []); assert.equal(result.records[key], done);
+    }
+    assert.deepEqual(CloudData.mergeRecords({}, { owner_holdingsHistory: '[1]' }, { owner_holdingsHistory: '[2]' }).conflicts, ['owner_holdingsHistory']);
+});
+
 test('all settings, histories and API credentials round-trip through the working copy', () => {
     let changes = 0;
     const first = createStorage({}, () => changes++);

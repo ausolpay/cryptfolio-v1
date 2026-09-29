@@ -42,6 +42,20 @@
                 // These are derived observations, never transaction entries or auto-buy rules.
                 else if (/_recordHigh$/.test(key)) value = String(Math.max(Number(local[key]), Number(remote[key])));
                 else if (/_recordLow$/.test(key)) value = String(Math.min(Number(local[key]), Number(remote[key])));
+                // News and market snapshots are replaceable observations. Two
+                // devices fetching them is not a conflicting portfolio edit.
+                else if (/_freeNews_|_ai_market_/.test(key)) {
+                    const timestamp = raw => { try { const item = JSON.parse(raw); return Number(item.checkedAt) || Date.parse(item.checkedAt || item.observedAt) || 0; } catch { return 0; } };
+                    value = timestamp(local[key]) > timestamp(remote[key]) ? local[key] : remote[key];
+                }
+                // Daily reservations are written atomically by the AI endpoint.
+                else if (/_ai_daily_\d{4}-\d{2}-\d{2}$/.test(key)) value = remote[key];
+                else if (/_ai_generation_/.test(key)) {
+                    const l = JSON.parse(local[key]), r = JSON.parse(remote[key]);
+                    if (l.status === 'complete' && r.status === 'pending') value = local[key];
+                    else if (r.status === 'complete' || l.status === 'pending') value = remote[key];
+                    else value = JSON.stringify(mergeValue(JSON.parse(base[key] || 'null'), l, r));
+                }
                 else if (/(?:_display(?:AUD|Value|Holdings)|_easyMiningData|_chartDataStore|_packageStates|_candlestickData|_savedPackageProbabilities|_lastUpdated|_totalHoldings24hAgo)$/.test(key)) value = remote[key];
                 else {
                     const parse = value => value === undefined ? undefined : JSON.parse(value);

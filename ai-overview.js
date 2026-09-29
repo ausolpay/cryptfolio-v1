@@ -1,5 +1,6 @@
 const AIOverview = (() => {
     let busy = false;
+    let activeScope = null;
     const completedResponses = new Map();
     const expandedSections = { portfolio: false, coin: false };
     let renderedCoin;
@@ -33,7 +34,7 @@ const AIOverview = (() => {
             root.hidden = !enabled; if (!enabled) continue;
             const history = records(scopeFor(kind)), latest = history.find(item => item.status === 'complete') || history[0], output = root.querySelector('.ai-output'), link = root.querySelector('.ai-saved');
             link.hidden = !latest; if (latest) link.href = '#ai=' + latest.id;
-            output.textContent = latest ? latest.text || latest.error || (Date.now() - Date.parse(latest.createdAt) < 120000 ? 'Generating your overview…' : 'This overview did not finish. You can generate another.')
+            output.textContent = latest ? latest.text || latest.error || 'No completed overview is available yet.'
                 : kind === 'coin' ? 'Review this crypto, its market data and your holdings.' : 'Review portfolio exposure, market movements and areas to watch.';
             root.querySelector('.ai-date').textContent = latest ? `${new Date(latest.createdAt).toLocaleString()} • ${latest.model}` : '';
             const sources = root.querySelector('.ai-sources');
@@ -47,7 +48,9 @@ const AIOverview = (() => {
                 sources.append(source);
             }
             const status = root.querySelector('.ai-status');
-            status.textContent = history[0]?.status === 'pending' ? (Date.now() - Date.parse(history[0].createdAt) < 120000 ? 'Generating your overview…' : 'The last attempt did not finish. Generate again to retry.') : history[0]?.status === 'error' ? history[0].error : '';
+            // A persisted pending record is not proof that a request is running.
+            // Only this page's active request may show generation progress.
+            if (!busy || activeScope !== scopeFor(kind)) status.textContent = latest?.status === 'complete' ? '' : history[0]?.status === 'error' ? history[0].error : '';
             {
                 if (kind === 'coin' && renderedCoin !== currentCryptoId) { expandedSections.coin = false; renderedCoin = currentCryptoId; }
                 const expanded = expandedSections[kind];
@@ -74,7 +77,7 @@ const AIOverview = (() => {
     async function generate(kind, daily = false) {
         if (busy || !active()) return;
         const owner = loggedInUser, scope = scopeFor(kind), root = document.getElementById(`ai-${kind}`), button = root.querySelector('.ai-generate');
-        busy = true; button.disabled = true; button.textContent = 'Generating…';
+        busy = true; activeScope = scope; button.disabled = true; button.textContent = 'Generating…';
         root.querySelector('.ai-status').textContent = 'Checking recent news and your market data…';
         try {
         const selected = (users[owner]?.cryptos || []).filter(coin => scope === 'portfolio' || coin.id === scope);
@@ -103,11 +106,12 @@ const AIOverview = (() => {
             // The response is already saved on the server. Display it immediately;
             // ongoing market/mining sync must not keep the generation button busy.
             if (result.generation?.status === 'complete') completedResponses.set(`${owner}:${scope}`, result.generation);
+            root.querySelector('.ai-status').textContent = '';
             render();
             CloudAccount.refresh().then(() => { if (owner === loggedInUser) render(); }).catch(() => {});
         } }
         catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = error.message; }
-        finally { busy = false; button.disabled = false; button.textContent = 'Generate overview'; }
+        finally { busy = false; activeScope = null; button.disabled = false; button.textContent = 'Generate overview'; }
     }
     function readJson(key, fallback) { try { return JSON.parse(appStorage.getItem(key)) || fallback; } catch { return fallback; } }
     function historyContext(id) {
