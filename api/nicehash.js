@@ -18,7 +18,6 @@ export default async function handler(req, res) {
         const { endpoint, method, headers, body } = req.body;
 
         console.log(`📡 Proxying ${method} request to NiceHash: ${endpoint}`);
-        console.log(`📋 Headers:`, JSON.stringify(headers, null, 2));
 
         // Build the full NiceHash API URL
         const nicehashUrl = `https://api2.nicehash.com${endpoint}`;

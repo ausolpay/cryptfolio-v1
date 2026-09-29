@@ -7745,17 +7745,9 @@ let currentHoldingsPage = 1;
 let currentHistoryPage = 1;
 let currentHoldingsCryptoId = null; // Track which crypto's modal is open
 
-// Get cards per page based on screen size for holdings tracker
-// Desktop: 6 (3 per row × 2 rows), Tablet: 2, Mobile: 2
+// Keep pagination stable when the viewport changes.
 function getHoldingsCardsPerPage() {
-    const width = window.innerWidth;
-    if (width <= 600) {
-        return 2; // Mobile: 2 stacked cards per page
-    } else if (width <= 900) {
-        return 2; // Tablet: 2 cards per page
-    } else {
-        return 6; // Desktop: 3 per row × 2 rows = 6 per page
-    }
+    return 10;
 }
 
 // Toggle holdings tracking section collapse
@@ -7771,12 +7763,6 @@ function toggleHoldingsTracking() {
         if (currentHoldingsCryptoId) {
             displayHoldingsEntries(currentHoldingsCryptoId);
         }
-        // Smooth scroll to holdings tracker section
-        setTimeout(() => {
-            if (section) {
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 100);
     } else {
         content.style.display = 'none';
         icon.classList.remove('expanded');
@@ -7795,10 +7781,11 @@ function switchHoldingsTab(tab) {
     }
 
     // Update tab UI
-    document.querySelectorAll('.holdings-tab').forEach(btn => {
-        btn.classList.remove('active');
+    document.querySelectorAll('.holdings-tab').forEach((btn, index) => {
+        const active = index === (tab === 'holdings' ? 0 : 1);
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', String(active));
     });
-    event.target.closest('.holdings-tab').classList.add('active');
 
     // Show/hide content
     document.getElementById('holdings-tab-content').style.display = tab === 'holdings' ? 'block' : 'none';
@@ -7825,7 +7812,7 @@ function displayHoldingsEntries(cryptoId) {
 
     // Show ALL buy entries (they're historical records, not modified by sells)
     const entries = getHoldingsEntries(cryptoId);
-    const buyEntries = entries; // All entries are buy records
+    const buyEntries = [...entries].sort((a, b) => b.dateAdded - a.dateAdded);
 
     // Update tab count
     const countEl = document.getElementById('holdings-tab-count');
@@ -7980,9 +7967,8 @@ function updateHoldingsPagination(totalEntries, cardsPerPage, totalPages) {
 // Pagination navigation
 function nextHoldingsPage() {
     const entries = getHoldingsEntries(currentHoldingsCryptoId);
-    const activeEntries = entries.filter(e => e.status === 'active');
     const cardsPerPage = getHoldingsCardsPerPage();
-    const totalPages = Math.ceil(activeEntries.length / cardsPerPage);
+    const totalPages = Math.ceil(entries.length / cardsPerPage);
 
     if (currentHoldingsPage < totalPages) {
         currentHoldingsPage++;
@@ -8245,7 +8231,7 @@ function updateHistoryPagination(totalEntries, cardsPerPage, totalPages) {
 function nextHistoryPage() {
     const history = getHoldingsHistoryByCrypto(currentHoldingsCryptoId);
     const cardsPerPage = getHoldingsCardsPerPage();
-    const totalPages = Math.ceil(history.length / cardsPerPage);
+    const totalPages = Math.ceil(history.filter(entry => entry.action === 'sell').length / cardsPerPage);
 
     if (currentHistoryPage < totalPages) {
         currentHistoryPage++;
