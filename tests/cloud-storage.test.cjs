@@ -38,7 +38,7 @@ test('all settings, histories and API credentials round-trip through the working
     assert.equal(createStorage().getItem('theme'), null, 'fresh browser state has no persistent app data');
 });
 
-async function device(database, owner, beforeSave = async () => {}, startupError = null) {
+async function device(database, owner, beforeSave = async () => {}, startupError = null, hooks = {}) {
     const events = new Map(), requests = [];
     const appended = [], bodyClasses = new Set();
     const noticeText = { textContent: '' };
@@ -58,16 +58,24 @@ async function device(database, owner, beforeSave = async () => {}, startupError
             body: { classList: { remove(name) { bodyClasses.delete(name); }, add(name) { bodyClasses.add(name); } }, appendChild(element) { appended.push(element); if (typeof element.onload === 'function') element.onload(); } }
         },
         supabase: { createClient: () => ({
-            channel: () => ({ on() { return this; }, subscribe() {} }),
+            channel: () => ({ on(event, filter, callback) { hooks.notify = callback; return this; }, subscribe(callback) { hooks.subscribe = callback; } }),
+            from: () => ({ select() { return this; }, eq() { return this; }, async maybeSingle() {
+                await hooks.beforeRevision?.();
+                return { data: { version: database.get(owner)?.version || 0 } };
+            } }),
             auth: {
                 getSession: async () => ({ data: { session: { user: { id: owner, email: owner, user_metadata: {} } } } }),
                 onAuthStateChange() {}
             },
             rpc: async (name, args) => {
-                if (name === 'claim_automation') return { data: true };
+                if (name === 'claim_automation') { await hooks.beforeLease?.(); return { data: true }; }
                 if (name === 'get_account_access') return { data: { isAdmin: false, tier: 'free' } };
                 let saved = database.get(owner) || { version: 0, state: null };
-                if (name === 'load_account_state') return startupError ? { error: startupError } : { data: structuredClone(saved) };
+                if (name === 'load_account_state') {
+                    const data = structuredClone(saved);
+                    await hooks.beforeLoad?.();
+                    return startupError ? { error: startupError } : { data };
+                }
                 requests.push(structuredClone(args));
                 await beforeSave(args);
                 saved = database.get(owner) || { version: 0, state: null };
@@ -219,4 +227,56 @@ test('hydrated app becomes ready while startup save is still pending', async () 
         release(); await first.cloud.flush();
         assert.equal(database.has('startup@example.test'), true);
     } finally { release(); clearTimeout(timer); }
+});
+
+test('concurrent refreshes share one full account download', async () => {
+    const hooks = {}, first = await device(new Map(), 'refresh@example.test', undefined, null, hooks);
+    await first.cloud.flush();
+    let release, loads = 0;
+    hooks.beforeLoad = () => { loads++; return new Promise(resolve => { release = resolve; }); };
+    const requests = [first.cloud.refresh(), first.cloud.refresh(), first.cloud.refresh()];
+    await new Promise(setImmediate);
+    release();
+    await Promise.all(requests);
+    assert.equal(loads, 1);
+});
+
+test('a genuinely newer realtime revision arriving during a load is not missed', async () => {
+    const database = new Map(), hooks = {}, owner = 'revisions@example.test';
+    const first = await device(database, owner, undefined, null, hooks);
+    await first.cloud.flush();
+    let release, loads = 0;
+    hooks.beforeLoad = () => { if (++loads === 1) return new Promise(resolve => { release = resolve; }); };
+    const pending = first.cloud.refresh();
+    await new Promise(setImmediate);
+    const saved = database.get(owner);
+    saved.version++;
+    saved.state.records.theme = 'new remote theme';
+    hooks.notify({ new: { version: saved.version } });
+    release(); await pending;
+    assert.equal(loads, 2);
+    assert.equal(first.storage.getItem('theme'), 'new remote theme');
+});
+
+test('realtime reconnect and repeated online events share a revision check without redownloading unchanged data', async () => {
+    const hooks = {}, first = await device(new Map(), 'poll@example.test', undefined, null, hooks);
+    await first.cloud.flush();
+    let release, checks = 0, loads = 0;
+    hooks.beforeLoad = () => { loads++; };
+    hooks.beforeRevision = () => { checks++; return new Promise(resolve => { release = resolve; }); };
+    hooks.subscribe('SUBSCRIBED');
+    first.events.get('online')(); first.events.get('online')();
+    assert.equal(checks, 1);
+    release(); await new Promise(setImmediate);
+    assert.equal(loads, 0);
+});
+
+test('automation lease checks cannot pile up while Supabase is slow', async () => {
+    const hooks = {}, first = await device(new Map(), 'lease@example.test', undefined, null, hooks);
+    await first.cloud.flush(); await new Promise(setImmediate);
+    let release, checks = 0;
+    hooks.beforeLease = () => { checks++; return new Promise(resolve => { release = resolve; }); };
+    const pending = [first.cloud.ensureAutomation(), first.cloud.ensureAutomation()];
+    assert.equal(checks, 1);
+    release(); await Promise.all(pending);
 });

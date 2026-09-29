@@ -12,17 +12,24 @@ window.CloudAccount = (() => {
             } }
         });
     let session = null, version = 0, baseline = {}, saving = null, paused = false, ready = false;
-    let refreshing = null, saveTimer = null, refreshAgain = false;
+    let refreshing = null, saveTimer = null, requestedVersion = 0;
+    let checkingRevision = null, renewingLease = null, realtimeConnected = false, lastRevisionCheck = 0;
     const deviceId = crypto.randomUUID(); // Deliberately unique per tab, not shared in browser storage.
     let leaseUntil = 0, automationBusy = false, isAdmin = false;
     const receivedActions = new Set();
     async function renewLease() {
         if (!session || paused) { leaseUntil = 0; return false; }
-        const { data, error } = await client.rpc('claim_automation', { p_device: deviceId });
-        leaseUntil = !error && data === true ? Date.now() + 20000 : 0;
-        const badge = document.getElementById('cloud-automation-status');
-        if (badge) badge.textContent = leaseUntil ? 'Automation: this device' : 'Monitoring • automation on another device or awaiting review';
-        return leaseUntil > Date.now();
+        if (renewingLease) return renewingLease;
+        const startedAt = Date.now();
+        renewingLease = (async () => {
+            const { data, error } = await client.rpc('claim_automation', { p_device: deviceId });
+            // Network delays must not extend the local lease past the server's lease.
+            leaseUntil = !error && data === true ? startedAt + 20000 : 0;
+            const badge = document.getElementById('cloud-automation-status');
+            if (badge) badge.textContent = leaseUntil > Date.now() ? 'Automation: this device' : 'Monitoring • automation on another device or awaiting review';
+            return leaseUntil > Date.now();
+        })();
+        try { return await renewingLease; } finally { renewingLease = null; }
     }
     async function ensureAutomation() {
         if (!ready || !session || paused || !navigator.onLine) return false;
@@ -162,18 +169,29 @@ window.CloudAccount = (() => {
         if (keys.length) window.dispatchEvent(new CustomEvent('cloud-data-loaded', { detail: { keys } }));
         synced();
     }
-    async function refresh() {
+    async function refresh(remoteVersion = 0) {
         if (!ready || !session || paused) return;
-        if (refreshing) { refreshAgain = true; return refreshing; }
+        requestedVersion = Math.max(requestedVersion, Number(remoteVersion) || 0);
+        if (refreshing) return refreshing;
         refreshing = (async () => {
             do {
-                refreshAgain = false;
                 if (saving) await saving;
                 reconcile(await load());
                 if (dirty()) await flush();
-            } while (refreshAgain);
+            } while (requestedVersion > version);
         })();
         try { await refreshing; } finally { refreshing = null; }
+    }
+    async function checkRevision() {
+        if (!ready || !session || paused || !navigator.onLine) return;
+        if (checkingRevision) return checkingRevision;
+        lastRevisionCheck = Date.now();
+        checkingRevision = (async () => {
+            const { data, error } = await client.from('account_sync').select('version').eq('user_id', session.user.id).maybeSingle();
+            if (error) throw error;
+            if (Number(data?.version) > version) await refresh(Number(data.version));
+        })();
+        try { await checkingRevision; } finally { checkingRevision = null; }
     }
     function scheduleSave() {
         // Batch only the current synchronous action, with no timed save delay.
@@ -243,9 +261,12 @@ window.CloudAccount = (() => {
                     client.channel('account-sync-' + session.user.id)
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'account_sync',
                             filter: 'user_id=eq.' + session.user.id }, payload => {
-                                if (Number(payload.new?.version) > version) refresh().catch(() => {});
+                                if (Number(payload.new?.version) > version) refresh(Number(payload.new.version)).catch(() => {});
                             })
-                        .subscribe(state => { if (state === 'SUBSCRIBED') refresh().catch(() => {}); });
+                        .subscribe(state => {
+                            realtimeConnected = state === 'SUBSCRIBED';
+                            if (realtimeConnected) checkRevision().catch(() => {});
+                        });
                 }
                 window.dispatchEvent(new CustomEvent('app-ready'));
             };
@@ -261,12 +282,11 @@ window.CloudAccount = (() => {
             setInterval(() => flush().catch(() => {}), 1000);
             setInterval(() => renewLease().catch(() => { leaseUntil = 0; }), 8000);
             setInterval(() => {
-                if (!document.hidden && session && ready && !paused) {
-                    // Poll only the tiny revision row; download the account only when it changed.
-                    client.from('account_sync').select('version').eq('user_id', session.user.id).maybeSingle()
-                        .then(({ data }) => { if (Number(data?.version) > version) refresh().catch(() => {}); });
+                if (!document.hidden && Date.now() - lastRevisionCheck >= (realtimeConnected ? 60000 : 15000)) {
+                    // Realtime delivers changes; bounded polling recovers missed events.
+                    checkRevision().catch(() => {});
                 }
-            }, 1500);
+            }, 15000);
         } catch (error) {
             document.body.classList.add('auth-load-failed');
             document.body.classList.remove('auth-loading');
@@ -339,10 +359,10 @@ window.CloudAccount = (() => {
         if (ready && session && !paused) status('Saving…');
         scheduleSave();
     });
-    window.addEventListener('online', () => refresh().catch(() => {}));
+    window.addEventListener('online', () => checkRevision().catch(() => {}));
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) flush().catch(() => {});
-        else refresh().catch(() => {});
+        else checkRevision().catch(() => {});
     });
     window.addEventListener('pagehide', () => { flush().catch(() => {}); });
     client.auth.onAuthStateChange((event, next) => {
