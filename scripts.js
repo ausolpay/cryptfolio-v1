@@ -5694,7 +5694,7 @@ async function login() {
     form.classList.remove('login-shake');
     form.setAttribute('aria-busy', 'true');
     button.disabled = true;
-    button.innerHTML = '<span class="auth-spinner" aria-hidden="true"></span> Signing in…';
+    button.innerHTML = '<img class="auth-loading-logo small" src="favicon.png" alt=""> Signing in…';
     try {
         await CloudAccount.login(document.getElementById('email-login').value,
             password.value);

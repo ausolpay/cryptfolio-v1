@@ -12935,6 +12935,11 @@ body.auth-loading #auth-loading-screen {
     border: 2px solid #ffffff30; border-top-color: #ff8b32;
     border-radius: 50%; animation: auth-spin .8s linear infinite;
 }
+.auth-loading-logo {
+    display: block; width: 72px; height: auto; aspect-ratio: 1;
+    object-fit: contain; border-radius: 50%; animation: auth-spin 2s linear infinite;
+}
+.auth-loading-logo.small { width: 20px; height: 20px; }
 #login-submit { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
 #login-submit:disabled { cursor: wait; opacity: .75; }
 .login-form .stay-signed-in {
@@ -12957,7 +12962,7 @@ body.auth-loading #auth-loading-screen {
     50% { transform: translateX(6px); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .login-shake, .auth-spinner { animation: none; }
+    .login-shake, .auth-spinner, .auth-loading-logo { animation: none; }
 }
 
 body.mobile-menu-open .top-nav {
