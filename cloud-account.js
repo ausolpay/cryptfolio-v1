@@ -190,14 +190,14 @@ window.CloudAccount = (() => {
             tierSource: 'default', firstLoginComplete: false, createdAt: new Date().toISOString()
         };
     }
-    async function startupStep(task, label) {
+    async function startupStep(task, label, deadlineMs = 20000) {
         const note = document.getElementById('auth-loading-status');
         if (note) { note.textContent = label; note.hidden = true; }
         let timeout, hint;
         try {
             hint = setTimeout(() => { if (note) note.hidden = false; }, 3000);
             return await Promise.race([task, new Promise((_, reject) => {
-                timeout = setTimeout(() => reject(new Error(label + ' is taking too long. Your saved account is unchanged. Please retry the connection.')), 20000);
+                timeout = setTimeout(() => reject(new Error(label + ' is taking too long. Your saved account is unchanged. Please retry the connection.')), deadlineMs);
             })]);
         } finally { clearTimeout(timeout); clearTimeout(hint); }
     }
@@ -214,7 +214,7 @@ window.CloudAccount = (() => {
             if (error) throw error;
             session = data.session;
             if (session) {
-                const [remote, access] = await startupStep(Promise.all([load(), client.rpc('get_account_access')]), 'Loading your saved portfolio');
+                const [remote, access] = await startupStep(Promise.all([load(), client.rpc('get_account_access')]), 'Loading your saved portfolio', 35000);
                 version = remote.version;
                 appStorage.replace(remote.state?.records || {});
                 const email = session.user.email;
