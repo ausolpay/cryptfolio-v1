@@ -1,7 +1,7 @@
 /* Website navigation shares the cloud login; no local portfolio or password store. */
 (() => {
     const client = supabase.createClient('https://mpoaaemubklcrjaolpon.supabase.co',
-        'sb_publishable_RnZO2mzbt8QXwza8pHSllA_CX2PYBux');
+        'sb_publishable_RnZO2mzbt8QXwza8pHSllA_CX2PYBux', { auth: { storage: window.CryptfolioAuthStorage } });
     client.auth.getSession().then(({ data }) => {
         window.websiteSession = data.session;
         if (typeof updateNavAuthState === 'function') updateNavAuthState();

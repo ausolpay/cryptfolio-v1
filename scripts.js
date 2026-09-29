@@ -1893,7 +1893,9 @@ function initializeApp() {
 
         // Initialize the dark mode toggle
         const darkModeToggle = document.getElementById('dark-mode-toggle');
+        darkModeToggle.checked = appStorage.getItem('theme') !== 'light';
         darkModeToggle.addEventListener('change', function () {
+            appStorage.setItem('theme', this.checked ? 'dark' : 'light');
             const logo = document.querySelector('.app-logo');
             if (this.checked) {
                 document.body.classList.add('dark-mode');
@@ -1905,6 +1907,8 @@ function initializeApp() {
                 logo.src = 'ausolpay-logo-light.png'; 
             }
         });
+
+        darkModeToggle.dispatchEvent(new Event('change'));
 
         // Initialize record high and low display
         recordHigh = parseFloat(getStorageItem(`${loggedInUser}_recordHigh`)) || 0;
@@ -2351,6 +2355,7 @@ function loadWithdrawalAddresses() {
         { symbol: 'BTC', name: 'Bitcoin', color: '#F7931A' },
         { symbol: 'BCH', name: 'Bitcoin Cash', color: '#8DC351' },
         { symbol: 'KAS', name: 'Kaspa', color: '#49C39E' },
+        { symbol: 'ZEC', name: 'Zcash', color: '#ECB244' },
         { symbol: 'RVN', name: 'Ravencoin', color: '#384182' },
         { symbol: 'DOGE', name: 'Dogecoin', color: '#C3A634' },
         { symbol: 'LTC', name: 'Litecoin', color: '#345D9D' }
@@ -2388,7 +2393,7 @@ function loadWithdrawalAddresses() {
 
 function saveWithdrawalAddresses() {
 
-    const cryptos = ['BTC', 'BCH', 'KAS', 'RVN', 'DOGE', 'LTC'];
+    const cryptos = ['BTC', 'BCH', 'KAS', 'RVN', 'DOGE', 'LTC', 'ZEC'];
     const addresses = {};
 
     // Collect addresses from input fields
@@ -2465,6 +2470,7 @@ async function loadNiceHashSavedAddresses() {
             'BTC': 'BTC',
             'BCH': 'BCH',
             'KAS': 'KAS',
+            'ZEC': 'ZEC',
             'RVN': 'RVN',
             'DOGE': 'DOGE',
             'LTC': 'LTC'
@@ -5118,7 +5124,7 @@ function saveSoloAlerts() {
         const idParts = input.id.replace('alert-', '').split('-');
 
         // Check if this is a dual-crypto input (last part is a crypto symbol like LTC/DOGE)
-        const cryptoSymbols = ['LTC', 'DOGE', 'BTC', 'BCH', 'KAS', 'RVN'];
+        const cryptoSymbols = ['LTC', 'DOGE', 'BTC', 'BCH', 'KAS', 'RVN', 'ZEC'];
         const lastPart = idParts[idParts.length - 1];
 
         let alertKey;
@@ -8967,7 +8973,7 @@ function updatePercentageChange(currentTotalHoldings) {
         setStorageItem(`${loggedInUser}_lastUpdated`, Date.now().toString());
     }
 
-    const percentageChange = ((currentTotalHoldings - totalHoldings24hAgo) / totalHoldings24hAgo) * 100;
+    const percentageChange = totalHoldings24hAgo > 0 ? ((currentTotalHoldings - totalHoldings24hAgo) / totalHoldings24hAgo) * 100 : 0;
     const valueChange = currentTotalHoldings - totalHoldings24hAgo;
 
     percentageChangeElement.textContent = `${percentageChange.toFixed(2)}%`;
@@ -9908,57 +9914,16 @@ async function deleteAccount() {
 // ==================== End Account Settings ====================
 
 function syncSettingsPageToggles() {
-    // Dark mode
-    const darkModeTogglePage = document.getElementById('dark-mode-toggle-page');
-    if (darkModeTogglePage) {
-        darkModeTogglePage.checked = document.body.classList.contains('dark-mode');
-        darkModeTogglePage.addEventListener('change', function() {
-            toggleDarkMode();
-        });
-    }
-
-    // Holdings audio
-    const holdingsAudioTogglePage = document.getElementById('holdings-audio-toggle-page');
-    const holdingsAudioToggle = document.getElementById('holdings-audio-toggle');
-    if (holdingsAudioTogglePage && holdingsAudioToggle) {
-        holdingsAudioTogglePage.checked = holdingsAudioToggle.checked;
-        holdingsAudioTogglePage.addEventListener('change', function() {
-            holdingsAudioToggle.checked = this.checked;
-            saveAudioSetting('holdings', this.checked);
-        });
-    }
-
-    // Holdings vibrate
-    const holdingsVibrateTogglePage = document.getElementById('holdings-vibrate-toggle-page');
-    const holdingsVibrateToggle = document.getElementById('holdings-vibrate-toggle');
-    if (holdingsVibrateTogglePage && holdingsVibrateToggle) {
-        holdingsVibrateTogglePage.checked = holdingsVibrateToggle.checked;
-        holdingsVibrateTogglePage.addEventListener('change', function() {
-            holdingsVibrateToggle.checked = this.checked;
-            saveVibrateSetting('holdings', this.checked);
-        });
-    }
-
-    // EasyMining audio
-    const easyminingAudioTogglePage = document.getElementById('easymining-audio-toggle-page');
-    const easyminingAudioToggle = document.getElementById('easymining-audio-toggle');
-    if (easyminingAudioTogglePage && easyminingAudioToggle) {
-        easyminingAudioTogglePage.checked = easyminingAudioToggle.checked;
-        easyminingAudioTogglePage.addEventListener('change', function() {
-            easyminingAudioToggle.checked = this.checked;
-            saveAudioSetting('easymining', this.checked);
-        });
-    }
-
-    // EasyMining vibrate
-    const easyminingVibrateTogglePage = document.getElementById('easymining-vibrate-toggle-page');
-    const easyminingVibrateToggle = document.getElementById('easymining-vibrate-toggle');
-    if (easyminingVibrateTogglePage && easyminingVibrateToggle) {
-        easyminingVibrateTogglePage.checked = easyminingVibrateToggle.checked;
-        easyminingVibrateTogglePage.addEventListener('change', function() {
-            easyminingVibrateToggle.checked = this.checked;
-            saveVibrateSetting('easymining', this.checked);
-        });
+    const pairs = ['holdings-audio', 'holdings-vibrate', 'easymining-audio', 'easymining-vibrate', 'dark-mode'];
+    for (const name of pairs) {
+        const source = document.getElementById(name + '-toggle');
+        const target = document.getElementById(name + '-toggle-page');
+        if (!source || !target) continue;
+        target.checked = source.checked;
+        target.onchange = function () {
+            source.checked = this.checked;
+            source.dispatchEvent(new Event('change'));
+        };
     }
 }
 
@@ -15298,10 +15263,10 @@ let currentRewardsTab = 'BTC';
 let currentRewardsPage = 1;
 const REWARDS_PER_PAGE = 10;
 const REWARDS_POLL_INTERVAL = 10000; // 10 seconds
-const REWARDS_CRYPTOS = ['BTC', 'BCH', 'DOGE', 'LTC', 'RVN', 'KAS'];
+const REWARDS_CRYPTOS = ['BTC', 'BCH', 'DOGE', 'LTC', 'RVN', 'KAS', 'ZEC'];
 const REWARDS_STORAGE_KEY = 'recentRewardsCache';
 const REWARDS_COUNTS_KEY = 'rewardsBlockCounts';
-let rewardsBlockCounts = { BTC: 0, BCH: 0, DOGE: 0, LTC: 0, RVN: 0, KAS: 0 };
+let rewardsBlockCounts = { BTC: 0, BCH: 0, DOGE: 0, LTC: 0, RVN: 0, KAS: 0, ZEC: 0 };
 let rewardsPollingInterval = null;
 let isRewardsPollRunning = false;
 let rewardsExpanded = false;
@@ -16575,8 +16540,8 @@ function convertCryptoToAUD(cryptoAmount, cryptoSymbol) {
         'BCH': 'bitcoin-cash',
         'RVN': 'ravencoin',
         'DOGE': 'dogecoin',
-        'LTC': 'litecoin',
-        'KAS': 'kaspa',
+        'USDT': 'tether', 'LTC': 'litecoin',
+        'ZEC': 'zcash', 'KAS': 'kaspa',
         'ETH': 'ethereum',
         'ETC': 'ethereum-classic'
     };
@@ -16739,6 +16704,7 @@ function determinePackageName(order, algoInfo) {
 
         // Check for Team packages first
         if (poolLower.includes('team')) {
+            if (poolLower.includes('bronze')) return 'Team Bronze';
             if (poolLower.includes('gold')) return 'Team Gold';
             if (poolLower.includes('silver')) return 'Team Silver';
             if (poolLower.includes('chromium')) return 'Team Chromium';
@@ -16753,6 +16719,7 @@ function determinePackageName(order, algoInfo) {
         else if (poolLower.includes(' l ') || poolLower.endsWith(' l')) size = ' L';
 
         // Match package types with sizes
+        if (poolLower.includes('bronze')) return 'Bronze' + size;
         if (poolLower.includes('gold')) return 'Gold' + size;
         if (poolLower.includes('silver')) return 'Silver' + size;
         if (poolLower.includes('chromium')) return 'Chromium' + size;
@@ -16771,6 +16738,7 @@ function determinePackageName(order, algoInfo) {
     const market = order.market?.toString().toUpperCase() || '';
 
     // Map based on algorithm and crypto
+    if (algo.includes('EQUIHASH')) return 'Bronze';
     if (algo.includes('SHA256')) {
         // Check if it's BTC or BCH based on market or other indicators
         if (market.includes('BCH') || algoInfo.crypto === 'BCH') {
@@ -17647,8 +17615,8 @@ async function fetchNiceHashOrders() {
                     'BCH': 'bitcoin-cash',
                     'RVN': 'ravencoin',
                     'DOGE': 'dogecoin',
-                    'LTC': 'litecoin',
-                    'KAS': 'kaspa'
+                    'USDT': 'tether', 'LTC': 'litecoin',
+                    'ZEC': 'zcash', 'KAS': 'kaspa'
                 };
 
                 // ✅ COST BASIS FIX: Convert package price from BTC to AUD
@@ -18333,7 +18301,7 @@ function displayActivePackages() {
         // For Team Palladium dual mining, show overlapping icons like buy packages
         const cryptoIdMap = {
             'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-            'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+            'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
         };
         const fallbackIconsSmall = {
             'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
@@ -18341,7 +18309,8 @@ function displayActivePackages() {
             'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
             'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
             'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
-            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+            'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
             'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
         };
 
@@ -18565,7 +18534,7 @@ function displayActivePackages() {
         const staticBgIcon = (() => {
             const cryptoIdMap = {
                 'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-                'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+                'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
             };
             const fallbackIcons = {
                 'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
@@ -18573,6 +18542,7 @@ function displayActivePackages() {
                 'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
                 'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
                 'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
+                'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
                 'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
                 'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
             };
@@ -19804,7 +19774,7 @@ async function executeAutoBuyTeam(recommendations) {
             // Get package ID - use CONSISTENT logic across all locations
             // This ensures auto-bought shares sync with manual purchases
             const packageId = pkg.apiData?.id || pkg.currencyAlgoTicket?.id || pkg.id;
-            const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+            const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
 
             console.log(`📦 Auto-buy package ID:`, {
                 'pkg.id': pkg.id,
@@ -20753,7 +20723,7 @@ async function executeAutoSharesTeam(teamPackages) {
         // Sync time before purchase
         await syncNiceHashTime();
 
-        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
         const isDualCrypto = pkg.isDualCrypto || (pkg.mergeCrypto && pkg.mainCrypto);
 
         // Get withdrawal addresses
@@ -22357,7 +22327,7 @@ function createTeamPackageRecommendationCard(pkg) {
     // Static background icons (matching buy packages page style)
     const cryptoIdMap = {
         'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-        'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+        'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
     };
     const fallbackIcons = {
         'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
@@ -22365,7 +22335,8 @@ function createTeamPackageRecommendationCard(pkg) {
         'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
         'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
         'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
-        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+        'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
         'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
     };
     const floatingFallbackIcons = {
@@ -22374,7 +22345,8 @@ function createTeamPackageRecommendationCard(pkg) {
         'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
         'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
         'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
-        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+        'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
         'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
     };
 
@@ -23131,8 +23103,8 @@ async function autoAddCryptoBoxesForActivePackages() {
         'BCH': 'bitcoin-cash',
         'RVN': 'ravencoin',
         'DOGE': 'dogecoin',
-        'LTC': 'litecoin',
-        'KAS': 'kaspa'
+        'USDT': 'tether', 'LTC': 'litecoin',
+        'ZEC': 'zcash', 'KAS': 'kaspa'
     };
 
     // Track which cryptos we've already checked this run to avoid duplicates
@@ -23594,7 +23566,7 @@ function collectChartDataPoint(pkg) {
     // Map crypto symbols to CoinGecko IDs
     const cryptoIdMap = {
         'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-        'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+        'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
     };
 
     // Determine if this is a dual-crypto package (Palladium)
@@ -26455,7 +26427,7 @@ window.buyPackage = buyPackage;
 // Fetch available solo packages from NiceHash API
 async function fetchAvailableSoloPackages() {
     try {
-        const endpoint = '/main/api/v2/public/solo/package';
+        const endpoint = '/main/api/v2/public/solo/package?limit=100';
 
         console.log('📡 Fetching solo packages from:', endpoint);
 
@@ -27054,7 +27026,7 @@ function createTeamPackageCard(pkg) {
     // Static background icon (same as solo packages)
     const cryptoIdMap = {
         'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-        'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+        'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
     };
     const fallbackIcons = {
         'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
@@ -27062,7 +27034,8 @@ function createTeamPackageCard(pkg) {
         'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
         'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
         'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
-        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+        'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
         'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
     };
     const floatingFallbackIcons = {
@@ -27071,7 +27044,8 @@ function createTeamPackageCard(pkg) {
         'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
         'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
         'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
-        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+        'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
         'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
     };
 
@@ -27590,7 +27564,7 @@ async function buySoloPackage(ticketId, crypto, packagePrice) {
     }
 }
 
-// Buy team package using POST /hashpower/api/v2/hashpower/shared/ticket/{id}
+// Buy team package using POST /main/api/v2/hashpower/shared/ticket/{id}
 // New consolidated team package buy function using updated NiceHash API endpoint
 async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     // 1. Validate API settings
@@ -27738,7 +27712,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
 
         // 7. SINGLE-STEP PROCESS: Send added amount and added shares for increases
 
-        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
 
         let orderData;
         if (isDecrease) {
@@ -28025,9 +27999,10 @@ function convertAUDtoBTC(audAmount) {
 // =============================================================================
 
 function showBuyTabOnPage(tab) {
+    EasyMiningCurrency.selectTab(tab);
     const buttons = document.querySelectorAll('#buy-packages-page .tab-button');
     buttons.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    buttons[tab === 'single' ? 0 : 1]?.classList.add('active');
 
     const singleContainer = document.getElementById('buy-single-packages-page');
     const teamContainer = document.getElementById('buy-team-packages-page');
@@ -28125,7 +28100,7 @@ async function fetchNiceHashSoloPackages() {
     console.log('🔄 Fetching solo packages from NiceHash API...');
 
     try {
-        const endpoint = '/main/api/v2/public/solo/package';
+        const endpoint = '/main/api/v2/public/solo/package?limit=100';
 
 
         let response;
@@ -28174,7 +28149,9 @@ async function fetchNiceHashSoloPackages() {
             throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
 
-        const packages = await response.json();
+        const catalogue = await response.json();
+        EasyMiningCurrency.setCatalogue('single', catalogue);
+        const packages = catalogue.filter(pkg => pkg.currencyMarket === 'BTC');
         console.log(`✅ Fetched ${packages.length} solo packages from API`);
         console.log('📦 Raw API data (first 2):', packages.slice(0, 2));
 
@@ -28310,7 +28287,7 @@ async function fetchNiceHashTeamPackages() {
     console.log('🔄 Fetching team packages from NiceHash API...');
 
     try {
-        const endpoint = '/main/api/v2/public/solo/shared/order?onlyGold=false';
+        const endpoint = '/main/api/v2/public/solo/shared/order?onlyGold=false&limit=100';
 
 
         let response;
@@ -28360,7 +28337,9 @@ async function fetchNiceHashTeamPackages() {
         }
 
         const data = await response.json();
-        const packages = data.list || []; // Team packages are in 'list' array
+        const catalogue = data.list || [];
+        EasyMiningCurrency.setCatalogue('team', catalogue);
+        const packages = catalogue.filter(pkg => pkg.currencyAlgoTicket?.currencyMarket === 'BTC');
         console.log(`✅ Fetched ${packages.length} team packages from API`);
         console.log('📦 Raw team API data (first 2):', packages.slice(0, 2));
 
@@ -28593,7 +28572,7 @@ function getBuyPackagePrice(symbol) {
         doge: 'dogecoin',
         ltc: 'litecoin',
         rvn: 'ravencoin',
-        kas: 'kaspa'
+        zec: 'zcash', usdt: 'tether', kas: 'kaspa'
     };
 
     // Priority 1: Portfolio cache (freshest, from WebSocket)
@@ -28646,16 +28625,16 @@ async function fetchPackageCryptoPrices(packages) {
     const cryptoIdMap = {
         'BTC': 'bitcoin',
         'BCH': 'bitcoin-cash',
-        'KAS': 'kaspa',
+        'ZEC': 'zcash', 'KAS': 'kaspa',
         'RVN': 'ravencoin',
         'DOGE': 'dogecoin',
-        'LTC': 'litecoin'
+        'USDT': 'tether', 'LTC': 'litecoin'
     };
 
     const prices = {};
 
     // Extract all cryptos needed (including both from dual-crypto packages)
-    const cryptosToFetch = new Set(['bitcoin']); // Always include BTC for price calculations
+    const cryptosToFetch = new Set(['BTC', 'USDT']); // Always include BTC for price calculations
 
     packages.forEach(pkg => {
         if (pkg.isDualCrypto) {
@@ -29534,6 +29513,7 @@ async function loadBuyPackagesDataOnPage() {
     // Only update if we got valid data
     if (newPrices && Object.keys(newPrices).length > 0) {
         window.packageCryptoPrices = newPrices;
+        EasyMiningCurrency.render();
     } else if (!window.packageCryptoPrices) {
         // Initialize on first run if API fails
         window.packageCryptoPrices = {};
@@ -30725,7 +30705,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         const staticBgIcon = (() => {
             const cryptoIdMap = {
                 'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-                'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+                'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
             };
             const fallbackIcons = {
                 'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
@@ -30733,6 +30713,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                 'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
                 'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
                 'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
+                'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
                 'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
                 'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
             };
@@ -30887,8 +30868,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             'BCH': 'bitcoin-cash',
                             'RVN': 'ravencoin',
                             'DOGE': 'dogecoin',
-                            'LTC': 'litecoin',
-                            'KAS': 'kaspa',
+                            'USDT': 'tether', 'LTC': 'litecoin',
+                            'ZEC': 'zcash', 'KAS': 'kaspa',
                             'ETC': 'ethereum-classic'
                         };
 
@@ -30904,7 +30885,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                             'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
                             'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
                             'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
-                            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+                            'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
                             'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
                         };
 
@@ -30956,8 +30938,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
                                     'BCH': 'bitcoin-cash',
                                     'RVN': 'ravencoin',
                                     'DOGE': 'dogecoin',
-                                    'LTC': 'litecoin',
-                                    'KAS': 'kaspa',
+                                    'USDT': 'tether', 'LTC': 'litecoin',
+                                    'ZEC': 'zcash', 'KAS': 'kaspa',
                                     'ETC': 'ethereum-classic'
                                 };
 
@@ -31005,7 +30987,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         // Team packages - NEW STYLED LAYOUT (matching solo packages)
         const cryptoIdMap = {
             'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-            'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+            'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
         };
         const fallbackIcons = {
             'bitcoin': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
@@ -31013,7 +30995,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/large/ravencoin.png',
             'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
             'litecoin': 'https://coin-images.coingecko.com/coins/images/2/large/litecoin.png',
-            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
+            'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/large/kaspa-icon-exchanges.png',
             'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/large/ethereum-classic-logo.png'
         };
         const floatingFallbackIcons = {
@@ -31022,7 +31005,8 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
             'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
             'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
-            'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+            'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
             'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
         };
 
@@ -31328,6 +31312,14 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
         window.packageShareValues[pkg.name] = myBoughtShares > 0 ? myBoughtShares : 1;
     }
 
+    const officialIcon = EasyMiningModel.packageIcon(pkg.apiData || {});
+    if (officialIcon) {
+        const icon = document.createElement('img');
+        icon.src = officialIcon;
+        icon.alt = '';
+        icon.className = 'official-package-icon';
+        card.querySelector('.package-header, .buy-package-title')?.prepend(icon);
+    }
     return card;
 }
 
@@ -32042,7 +32034,7 @@ Do you want to continue?
         });
 
         // Build order data - added values for increases, total values for decreases
-        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
         let orderData;
 
         if (isDecrease) {
@@ -32156,7 +32148,7 @@ Do you want to continue?
             throw new Error(`Failed to purchase ${shares} share(s): ${errorMessage}`);
         }
 
-        const result = await response.json();
+        const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
         console.log(`✅ Purchase successful:`, result);
 
         // Save the new total shares - set pending hold and backup to appStorage
@@ -32602,7 +32594,7 @@ async function autoClearTeamShares(packageId, packageName) {
             clear: true
         };
 
-        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
 
         console.log('📦 Auto-clear team package:', {
             endpoint: endpoint,
@@ -32767,7 +32759,7 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
         await syncNiceHashTime();
 
         // 6. Make POST request to buy shares
-        const endpoint = `/hashpower/api/v2/hashpower/shared/ticket/${packageId}`;
+        const endpoint = `/main/api/v2/hashpower/shared/ticket/${packageId}`;
 
         const orderData = {
             amount: totalAmount,
@@ -33293,7 +33285,7 @@ Do you want to continue?
             throw new Error(errorMessage);
         }
 
-        const result = await response.json();
+        const result = EasyMiningModel.assertSuccessfulOrder(await response.json());
         console.log('✅ Solo order created successfully:', result);
 
         const successMessage = `✅ Package "${pkg.name}" purchased successfully!\n\nOrder ID: ${result.id || 'N/A'}\n${isDualCrypto ? `${pkg.mainCrypto} Wallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}\n${pkg.mergeCrypto} Wallet: ${mergeWalletAddress.substring(0, 20)}...${mergeWalletAddress.substring(mergeWalletAddress.length - 10)}` : `Crypto: ${pkg.crypto}\nWallet: ${mainWalletAddress.substring(0, 20)}...${mainWalletAddress.substring(mainWalletAddress.length - 10)}`}${!usingSavedMainAddress || (isDualCrypto && !usingSavedMergeAddress) ? '\n\n💡 Tip: Save these addresses in EasyMining Settings → Manage Withdrawal Addresses for faster purchases!' : ''}`;
@@ -35207,7 +35199,7 @@ function updateAveragesSection(type, packages, allHistory) {
     // Render package list
     const cryptoIdMap = {
         'BTC': 'bitcoin', 'BCH': 'bitcoin-cash', 'RVN': 'ravencoin',
-        'DOGE': 'dogecoin', 'LTC': 'litecoin', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
+        'DOGE': 'dogecoin', 'USDT': 'tether', 'LTC': 'litecoin', 'ZEC': 'zcash', 'KAS': 'kaspa', 'ETC': 'ethereum-classic'
     };
 
     const fallbackIcons = {
@@ -35216,7 +35208,8 @@ function updateAveragesSection(type, packages, allHistory) {
         'ravencoin': 'https://coin-images.coingecko.com/coins/images/3412/small/ravencoin.png',
         'dogecoin': 'https://coin-images.coingecko.com/coins/images/5/small/dogecoin.png',
         'litecoin': 'https://coin-images.coingecko.com/coins/images/2/small/litecoin.png',
-        'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
+        'zcash': 'https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png',
+                'kaspa': 'https://coin-images.coingecko.com/coins/images/25751/small/kaspa-icon-exchanges.png',
         'ethereum-classic': 'https://coin-images.coingecko.com/coins/images/453/small/ethereum-classic-logo.png'
     };
 

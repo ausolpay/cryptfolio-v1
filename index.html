@@ -2022,6 +2022,12 @@
                     <button class="tab-button active" onclick="showBuyTabOnPage('single')">Single Packages</button>
                     <button class="tab-button" onclick="showBuyTabOnPage('team')">Team Packages</button>
                 </div>
+                <label class="mining-payment-picker">Pay with
+                    <select id="mining-payment-currency" onchange="EasyMiningCurrency.selectCurrency(this.value)">
+                        <option value="BTC">Bitcoin (BTC)</option><option value="USDT">Tether (USDT)</option>
+                    </select>
+                </label>
+                <div id="usdt-package-catalogue" hidden aria-live="polite"></div>
                 <div id="buy-single-packages-page" class="buy-packages-container-page"></div>
                 <div id="buy-team-packages-page" class="buy-packages-container-page" style="display: none;"></div>
             </div>
@@ -3181,8 +3187,12 @@
         <button onclick="document.getElementById('cloud-conflict').close()">Decide later</button>
     </dialog>
     <script src="vendor/supabase-2.117.2.js"></script>
+    <script src="auth-storage.js"></script>
     <script src="cloud-data.js"></script>
     <script src="cloud-app-bridge.js"></script>
+    <script src="easymining-model.js"></script>
+    <script src="easymining-currency.js"></script>
+    <link rel="stylesheet" href="easymining-currency.css">
     <script src="cloud-account.js"></script>
 
     <script>

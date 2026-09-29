@@ -2,7 +2,7 @@ window.CloudAccount = (() => {
     'use strict';
     // The SDK persists only its authentication session on this device, never portfolio data.
     const client = window.supabase.createClient('https://mpoaaemubklcrjaolpon.supabase.co',
-        'sb_publishable_RnZO2mzbt8QXwza8pHSllA_CX2PYBux');
+        'sb_publishable_RnZO2mzbt8QXwza8pHSllA_CX2PYBux', { auth: { storage: window.CryptfolioAuthStorage } });
     let session = null, version = 0, baseline = {}, saving = null, paused = false, ready = false;
     let refreshing = null, saveTimer = null;
     const deviceId = crypto.randomUUID(); // Deliberately unique per tab, not shared in browser storage.

@@ -1,0 +1,17 @@
+.currency-hidden { display: none !important; }
+#usdt-package-catalogue[hidden] { display: none; }
+.mining-payment-picker { display:flex; align-items:center; gap:12px; margin:16px 0 24px; font-size:14px; }
+.mining-payment-picker select, .currency-package-card input { color:inherit; background:#202020; border:1px solid #555; border-radius:8px; padding:10px 12px; }
+.currency-package-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:18px; }
+.currency-package-card { padding:22px; border:1px solid #444; border-radius:16px; background:linear-gradient(145deg,#282828,#1b1b1b); display:flex; flex-direction:column; gap:12px; }
+.currency-package-heading { display:flex; align-items:center; gap:12px; }
+.currency-package-heading img, .official-package-icon { width:42px; height:42px; object-fit:contain; }
+.currency-package-heading h3, .currency-package-card p { margin:0; }
+.currency-package-price { color:#ffa500; font-size:26px; }
+.mining-currency-note { color:#bbb; font-size:13px; line-height:1.6; }
+.currency-package-card dl { display:grid; grid-template-columns:1fr auto; gap:12px; font-size:13px; flex:1; }
+.currency-package-card dt { color:#bbb; }
+.currency-package-card dd { margin:0; text-align:right; }
+.currency-package-card label { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.currency-package-card input { width:85px; }
+.official-package-icon { vertical-align:middle; margin-right:8px; }
