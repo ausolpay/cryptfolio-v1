@@ -118,11 +118,13 @@
         </div>
     </div>
 
-    <script src="scripts.js"></script>
+
     <script>
         document.querySelectorAll('.current-year').forEach(el => {
             el.textContent = new Date().getFullYear();
         });
     </script>
+    <script src="vendor/supabase-2.117.2.js"></script>
+    <script src="website-auth.js"></script>
 </body>
 </html>

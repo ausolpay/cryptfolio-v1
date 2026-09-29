@@ -13,3 +13,7 @@ logs/
 
 # Development/test files
 new_fetchNiceHashOrders.js
+node_modules/
+.env
+.env.*
+.vercel/

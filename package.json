@@ -1,0 +1,6 @@
+{
+  "name": "cryptfolio-v1",
+  "private": true,
+  "scripts": { "test": "node --test tests/*.test.cjs" },
+  "dependencies": { "@supabase/supabase-js": "2.117.2" }
+}

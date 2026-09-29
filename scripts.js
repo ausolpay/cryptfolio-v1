@@ -1,3 +1,8 @@
+function onAppReady(callback) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', callback, { once: true });
+    else queueMicrotask(callback);
+}
+
 // CryptFolio v2 - Main Application Script - Stable 20 - Clean Build
 // MEXC BTC prices, close-to-reward persistence, multiple reward support
 // stable build - 2025-12-13 - team alerts share sync, tablet share button styles
@@ -804,7 +809,7 @@ let lastTier = null;
  */
 function getCurrentApiTier() {
     if (!loggedInUser) return 'free';
-    const settings = JSON.parse(localStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`));
+    const settings = JSON.parse(appStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`));
     if (!settings || !settings.keys || settings.keys.length === 0) return 'free';
     const currentKey = settings.keys[settings.currentIndex || 0];
     return currentKey?.isPaid ? 'paid' : 'free';
@@ -1192,17 +1197,17 @@ function switchApiKey() {
     // Switch to next key
     currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
 
-    // Update currentIndex in localStorage
-    const settings = JSON.parse(localStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`));
+    // Update currentIndex in appStorage
+    const settings = JSON.parse(appStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`));
     if (settings) {
         settings.currentIndex = currentApiKeyIndex;
-        localStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(settings));
+        appStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(settings));
     }
 
     // Get new tier after switching
     const newTier = getCurrentApiTier();
 
-    console.log(`🔄 Switched to API key ${currentApiKeyIndex + 1}: ${getApiKey()} (${newTier} tier)`);
+    console.log(`🔄 Switched to API key ${currentApiKeyIndex + 1}: [redacted] (${newTier} tier)`);
 
     // If tier changed, invalidate cache and restart polling with new limits
     if (oldTier !== newTier) {
@@ -1497,7 +1502,7 @@ async function fetchWithFallback(url) {
             }
             return await response.json();
         } catch (error) {
-            console.error(`Error with API key ${apiKey}:`, error);
+            console.error(`Error with API key [redacted]:`, error);
             switchApiKey();
         }
     }
@@ -1514,7 +1519,7 @@ async function fetchWithApiKeyRotation(url) {
 
             if (response.status === 429) {
                 // Rate limit hit, switch API key and retry
-                console.warn(`Rate limit hit with API key: ${apiKey}. Switching to next key.`);
+                console.warn('Rate limit hit. Switching to next configured key.');
                 switchApiKey();
                 continue; // Try the next key
             }
@@ -1527,7 +1532,7 @@ async function fetchWithApiKeyRotation(url) {
             return await response.json(); // Return the fetched data if successful
 
         } catch (error) {
-            console.error(`Error fetching data with API key ${apiKey}:`, error);
+            console.error(`Error fetching data with API key [redacted]:`, error);
             switchApiKey(); // Switch to the next API key on error
         }
     }
@@ -1783,18 +1788,18 @@ function initializeApp() {
         loadUserData();
 
         // Check if user came from about page wanting to see pricing
-        if (localStorage.getItem('showPricing') === 'true') {
-            localStorage.removeItem('showPricing');
+        if (appStorage.getItem('showPricing') === 'true') {
+            appStorage.removeItem('showPricing');
             setTimeout(() => showPricingPage(), 100);
         }
         // Check if user came from about page wanting to see account settings
-        if (localStorage.getItem('showAccountSettings') === 'true') {
-            localStorage.removeItem('showAccountSettings');
+        if (appStorage.getItem('showAccountSettings') === 'true') {
+            appStorage.removeItem('showAccountSettings');
             setTimeout(() => showAccountSettingsPage(), 100);
         }
         // Check if user came from about page wanting to see app settings
-        if (localStorage.getItem('showSettings') === 'true') {
-            localStorage.removeItem('showSettings');
+        if (appStorage.getItem('showSettings') === 'true') {
+            appStorage.removeItem('showSettings');
             setTimeout(() => showSettingsPage(), 100);
         }
 
@@ -1957,12 +1962,12 @@ function initializeApp() {
 
 
 function getNotificationPermission() {
-    return localStorage.getItem('notificationPermission');
+    return appStorage.getItem('notificationPermission');
 }
 
 // Function to check and request notification permission
 function checkAndRequestNotificationPermission() {
-    const notificationPermission = localStorage.getItem('notificationPermission');
+    const notificationPermission = appStorage.getItem('notificationPermission');
 
     if (!notificationPermission) {
         requestNotificationPermission();
@@ -1974,7 +1979,7 @@ function checkAndRequestNotificationPermission() {
 // Function to request notification permission and store it
 function requestNotificationPermission() {
     Notification.requestPermission().then(permission => {
-        localStorage.setItem('notificationPermission', permission);
+        appStorage.setItem('notificationPermission', permission);
         if (permission === 'granted') {
         } else {
         }
@@ -2026,7 +2031,7 @@ function loadUserData() {
                     holdings = getTotalActiveHoldings(crypto.id);
                 } else {
                     // Fallback to legacy storage if function not available
-                    holdings = parseFloat(localStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
+                    holdings = parseFloat(appStorage.getItem(`${loggedInUser}_${crypto.id}Holdings`)) || 0;
                 }
 
                 if (crypto.id === 'bitcoin') {
@@ -2238,7 +2243,7 @@ function showEasyMiningSettingsPage() {
     document.getElementById('easymining-settings-page').style.display = 'block';
 
     // Load saved settings
-    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || easyMiningSettings;
+    const savedSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || easyMiningSettings;
 
     // Load API credentials
     document.getElementById('nicehash-api-key-page').value = savedSettings.apiKey || '';
@@ -2342,8 +2347,8 @@ function showWithdrawalAddressesPage() {
 
 function loadWithdrawalAddresses() {
 
-    // Get saved addresses from localStorage
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+    // Get saved addresses from appStorage
+    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
 
     // List of all cryptos used in EasyMining
     const cryptos = [
@@ -2398,8 +2403,8 @@ function saveWithdrawalAddresses() {
         }
     });
 
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(addresses));
+    // Save to appStorage
+    appStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(addresses));
 
     alert(`✅ Withdrawal addresses saved successfully!\n\n${Object.keys(addresses).length} addresses saved.`);
 
@@ -2518,8 +2523,8 @@ function clearWithdrawalAddresses() {
         return;
     }
 
-    // Clear from localStorage
-    localStorage.removeItem(`${loggedInUser}_withdrawalAddresses`);
+    // Clear from appStorage
+    appStorage.removeItem(`${loggedInUser}_withdrawalAddresses`);
 
     alert('All withdrawal addresses have been cleared.');
 
@@ -2529,15 +2534,15 @@ function clearWithdrawalAddresses() {
 
 function getWithdrawalAddress(crypto) {
     // Get saved addresses
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
     return savedAddresses[crypto] || null;
 }
 
 function saveWithdrawalAddress(crypto, address) {
     // Save individual withdrawal address
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
     savedAddresses[crypto] = address;
-    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+    appStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
 }
 
 // ========================================
@@ -2809,7 +2814,7 @@ function clearTravelDataForm() {
 }
 
 /**
- * Save travel data to localStorage
+ * Save travel data to appStorage
  */
 function saveTravelData() {
     console.log('💾 Saving travel data...');
@@ -2864,13 +2869,13 @@ function saveTravelData() {
     };
 
     // Get existing travel data
-    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const allTravelData = JSON.parse(appStorage.getItem(`${loggedInUser}_travelData`)) || [];
 
     // Add new entry
     allTravelData.push(travelData);
 
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_travelData`, JSON.stringify(allTravelData));
+    // Save to appStorage
+    appStorage.setItem(`${loggedInUser}_travelData`, JSON.stringify(allTravelData));
 
     console.log('✅ Travel data saved:', travelData);
 
@@ -2891,7 +2896,7 @@ function loadTravelDataDropdown() {
     dropdown.innerHTML = '<option value="">Select saved travel data...</option>';
 
     // Get saved travel data
-    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const allTravelData = JSON.parse(appStorage.getItem(`${loggedInUser}_travelData`)) || [];
 
     // Add each saved entry to dropdown
     allTravelData.forEach((data, index) => {
@@ -2921,7 +2926,7 @@ function loadSelectedTravelData() {
     document.getElementById('delete-travel-data-section').style.display = 'block';
 
     // Get saved travel data
-    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const allTravelData = JSON.parse(appStorage.getItem(`${loggedInUser}_travelData`)) || [];
     const data = allTravelData[selectedIndex];
 
     if (!data) {
@@ -2965,7 +2970,7 @@ function deleteTravelData() {
     }
 
     // Get saved travel data
-    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const allTravelData = JSON.parse(appStorage.getItem(`${loggedInUser}_travelData`)) || [];
     const data = allTravelData[selectedIndex];
 
     if (!data) {
@@ -2981,8 +2986,8 @@ function deleteTravelData() {
     // Remove from array
     allTravelData.splice(selectedIndex, 1);
 
-    // Save back to localStorage
-    localStorage.setItem(`${loggedInUser}_travelData`, JSON.stringify(allTravelData));
+    // Save back to appStorage
+    appStorage.setItem(`${loggedInUser}_travelData`, JSON.stringify(allTravelData));
 
     console.log('🗑️ Deleted travel data:', data.savedName);
 
@@ -3305,7 +3310,7 @@ function loadDepositTravelDataDropdown() {
     dropdown.innerHTML = '<option value="">Select travel data...</option>';
 
     // Get saved travel data
-    const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+    const allTravelData = JSON.parse(appStorage.getItem(`${loggedInUser}_travelData`)) || [];
 
     // Add each saved entry
     allTravelData.forEach((data, index) => {
@@ -3422,7 +3427,7 @@ async function generateLightningAddress() {
             }
 
             // Get travel data
-            const allTravelData = JSON.parse(localStorage.getItem(`${loggedInUser}_travelData`)) || [];
+            const allTravelData = JSON.parse(appStorage.getItem(`${loggedInUser}_travelData`)) || [];
             const travelData = allTravelData[travelDataIndex];
 
             if (!travelData) {
@@ -3439,7 +3444,7 @@ async function generateLightningAddress() {
     }
 
     // Get NiceHash API credentials
-    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const easyMiningSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
     const apiKey = easyMiningSettings.apiKey;
     const apiSecret = easyMiningSettings.apiSecret;
     const orgId = easyMiningSettings.orgId;
@@ -4065,7 +4070,7 @@ async function executeWithdrawal() {
     }
 
     // Get NiceHash API credentials
-    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const easyMiningSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
     const apiKey = easyMiningSettings.apiKey;
     const apiSecret = easyMiningSettings.apiSecret;
     const orgId = easyMiningSettings.orgId;
@@ -4267,8 +4272,8 @@ async function loadSoloAlerts() {
     }
 
     // Get saved alerts and auto-buy settings
-    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
-    const savedAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+    const savedAlerts = JSON.parse(appStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+    const savedAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
     const alertsList = document.getElementById('solo-alerts-list');
     alertsList.innerHTML = '';
@@ -4410,7 +4415,7 @@ async function loadSoloAlerts() {
                     console.log(`✅ Auto-Buy enabled for ${packageName} (solo package)`);
 
                     // Check/prompt for withdrawal addresses
-                    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+                    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
 
                     let mainAddress = savedAddresses[crypto];
                     if (!mainAddress) {
@@ -4438,11 +4443,11 @@ async function loadSoloAlerts() {
                     }
 
                     // Save addresses
-                    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+                    appStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
 
                     // Save auto-buy settings
                     const storageKey = `${loggedInUser}_soloAutoBuy`;
-                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+                    const autoBuySettings = JSON.parse(appStorage.getItem(storageKey)) || {};
 
                     autoBuySettings[packageName] = {
                         enabled: true,
@@ -4454,7 +4459,7 @@ async function loadSoloAlerts() {
                         lastBuyTime: null
                     };
 
-                    localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                    appStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
                     console.log(`✅ Auto-buy enabled for ${packageName}`);
 
                     // Update status text
@@ -4468,11 +4473,11 @@ async function loadSoloAlerts() {
                 } else {
                     // Disable auto-buy
                     const storageKey = `${loggedInUser}_soloAutoBuy`;
-                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+                    const autoBuySettings = JSON.parse(appStorage.getItem(storageKey)) || {};
 
                     if (autoBuySettings[packageName]) {
                         autoBuySettings[packageName].enabled = false;
-                        localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                        appStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
 
                         // Update status text
                         const statusSpan = this.nextElementSibling;
@@ -4505,8 +4510,8 @@ async function loadTeamAlerts() {
     const soloPackages = await fetchNiceHashSoloPackages();
 
     // Get saved team alerts
-    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
-    const savedAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const savedAlerts = JSON.parse(appStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+    const savedAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
 
     const alertsList = document.getElementById('team-alerts-list');
     alertsList.innerHTML = '';
@@ -4569,12 +4574,12 @@ async function loadTeamAlerts() {
         const autoBuyShares = autoBuySettings.shares || 1;
 
         // Get auto-shares settings
-        const savedAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+        const savedAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
         const autoSharesSettings = savedAutoShares[pkg.name] || {};
         const autoSharesEnabled = autoSharesSettings.enabled || false;
 
         // Get auto-shares on alert settings
-        const savedAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+        const savedAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
         const autoSharesOnAlertSettings = savedAutoSharesOnAlert[pkg.name] || {};
         const autoSharesOnAlertEnabled = autoSharesOnAlertSettings.enabled || false;
 
@@ -4853,7 +4858,7 @@ async function loadTeamAlerts() {
                     console.log(`✅ Auto-Buy enabled for ${packageName} (team package, ${shares} shares)`);
 
                     // Check/prompt for withdrawal addresses
-                    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+                    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
 
                     let mainAddress = savedAddresses[crypto];
                     if (!mainAddress) {
@@ -4881,11 +4886,11 @@ async function loadTeamAlerts() {
                     }
 
                     // Save addresses
-                    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+                    appStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
 
                     // Save auto-buy settings
                     const storageKey = `${loggedInUser}_teamAutoBuy`;
-                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+                    const autoBuySettings = JSON.parse(appStorage.getItem(storageKey)) || {};
 
                     autoBuySettings[packageName] = {
                         enabled: true,
@@ -4897,7 +4902,7 @@ async function loadTeamAlerts() {
                         lastBuyTime: null
                     };
 
-                    localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                    appStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
                     console.log(`✅ Auto-buy enabled for ${packageName} with ${shares} share(s)`);
 
                     // Update status text
@@ -4911,11 +4916,11 @@ async function loadTeamAlerts() {
                 } else {
                     // Disable auto-buy
                     const storageKey = `${loggedInUser}_teamAutoBuy`;
-                    const autoBuySettings = JSON.parse(localStorage.getItem(storageKey)) || {};
+                    const autoBuySettings = JSON.parse(appStorage.getItem(storageKey)) || {};
 
                     if (autoBuySettings[packageName]) {
                         autoBuySettings[packageName].enabled = false;
-                        localStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
+                        appStorage.setItem(storageKey, JSON.stringify(autoBuySettings));
 
                         // Update status text
                         const statusSpan = this.nextElementSibling;
@@ -4960,7 +4965,7 @@ function handleAutoSharesCheckboxChange(checkbox) {
  */
 function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCrypto, isDualCrypto) {
     // Load existing settings
-    const savedAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const savedAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     const existingSettings = savedAutoShares[packageName] || {};
 
     // Prompt for percentage
@@ -5023,7 +5028,7 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
     }
 
     // Check/prompt for withdrawal addresses
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
 
     let mainAddress = savedAddresses[crypto];
     if (!mainAddress) {
@@ -5051,10 +5056,10 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
     }
 
     // Save addresses
-    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+    appStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
 
     // Save auto-shares settings
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     autoSharesSettings[packageName] = {
         enabled: true,
         crypto: crypto,
@@ -5066,7 +5071,7 @@ function configureAutoSharesWithPrompts(checkbox, packageName, crypto, mergeCryp
         secondaryShares: secondaryShares,
         trackedPackageIds: existingSettings.trackedPackageIds || {}
     };
-    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+    appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 
     // Update status text
     const statusSpanId = `autoshares-status-${packageName.replace(/\s+/g, '-')}`;
@@ -5138,8 +5143,8 @@ function saveSoloAlerts() {
         }
     });
 
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_soloPackageAlerts`, JSON.stringify(alerts));
+    // Save to appStorage
+    appStorage.setItem(`${loggedInUser}_soloPackageAlerts`, JSON.stringify(alerts));
 
     console.log('✅ Saved solo package alerts:', alerts);
     alert(`Saved ${Object.keys(alerts).length} solo package alert(s)`);
@@ -5250,8 +5255,8 @@ function saveTeamAlerts() {
         }
     });
 
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_teamPackageAlerts`, JSON.stringify(alerts));
+    // Save to appStorage
+    appStorage.setItem(`${loggedInUser}_teamPackageAlerts`, JSON.stringify(alerts));
 
     console.log('✅ Saved team package alerts:', alerts);
     alert(`Saved alerts for ${Object.keys(alerts).length} team package(s)`);
@@ -5271,7 +5276,7 @@ function clearSoloAlerts() {
         return;
     }
 
-    localStorage.removeItem(`${loggedInUser}_soloPackageAlerts`);
+    appStorage.removeItem(`${loggedInUser}_soloPackageAlerts`);
     console.log('Cleared all solo package alerts');
     alert('All solo package alerts have been cleared.');
 
@@ -5284,7 +5289,7 @@ function clearTeamAlerts() {
         return;
     }
 
-    localStorage.removeItem(`${loggedInUser}_teamPackageAlerts`);
+    appStorage.removeItem(`${loggedInUser}_teamPackageAlerts`);
     console.log('Cleared all team package alerts');
     alert('All team package alerts have been cleared.');
 
@@ -5296,7 +5301,7 @@ async function checkPackageRecommendations(soloPackages = null) {
     console.log('🔔 Checking solo package recommendations based on probability alerts...');
 
     // Get saved alerts
-    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+    const savedAlerts = JSON.parse(appStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
 
     if (Object.keys(savedAlerts).length === 0) {
         console.log('No package alerts configured');
@@ -5384,7 +5389,7 @@ async function checkTeamRecommendations(teamPackages = null, soloPackagesParam =
     console.log('🔔 Checking team package recommendations based on alert thresholds...');
 
     // Get saved team alerts
-    const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+    const savedAlerts = JSON.parse(appStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
 
     if (Object.keys(savedAlerts).length === 0) {
         console.log('No team package alerts configured');
@@ -5663,52 +5668,21 @@ function showBuyPackagesPage() {
     startBuyPackagesPolling();
 }
 
-function login() {
-    const email = document.getElementById('email-login').value;
-    const password = document.getElementById('password-login').value;
-
-    if (users[email] && users[email].password === password) {
-        loggedInUser = email;
-        setStorageItem('loggedInUser', loggedInUser);
-
-        // Migrate user if missing tier data
-        if (!users[email].tier) {
-            if (ADMIN_EMAILS.includes(email.toLowerCase())) {
-                users[email].tier = 'elite';
-                users[email].tierSource = 'admin';
-            } else {
-                users[email].tier = 'free';
-                users[email].tierSource = 'default';
-            }
-            users[email].stripeCustomerId = null;
-            users[email].stripeSubscriptionId = null;
-            users[email].subscriptionStatus = null;
-            users[email].subscriptionEndDate = null;
-            users[email].createdAt = users[email].createdAt || new Date().toISOString();
-            users[email].firstLoginComplete = true; // Existing users skip first-time flow
-            setStorageItem('users', JSON.stringify(users));
-        }
-
-        // Update nav state
-        updateNavAuthState();
-        updateNavProfileIcon();
-
-        // Handle first-time user flow or proceed to app
-        handlePostLoginFlow();
-    } else {
-        showModal('Invalid email or password. Please try again.');
-    }
+async function login() {
+    try {
+        await CloudAccount.login(document.getElementById('email-login').value,
+            document.getElementById('password-login').value);
+    } catch (error) { showModal(error.message); }
 }
 
-
-function register() {
+async function register() {
     const firstName = document.getElementById('first-name').value.trim();
     const lastName = document.getElementById('last-name').value.trim();
     const email = document.getElementById('email-register').value.trim();
     const phone = formatPhoneNumber(document.getElementById('phone').value.trim());
     const countryInput = document.getElementById('register-country').value.trim();
-    const password = document.getElementById('password-register').value.trim();
-    const confirmPassword = document.getElementById('confirm-password').value.trim();
+    const password = document.getElementById('password-register').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
     const termsAccepted = document.getElementById('terms-conditions').checked;
 
     if (!firstName || !lastName || !email || !phone || !countryInput || !password || !confirmPassword || !termsAccepted) {
@@ -5734,9 +5708,9 @@ function register() {
         return;
     }
 
-    const passwordPattern = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,}$/;
+    const passwordPattern = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
     if (!passwordPattern.test(password)) {
-        showModal('Password must be at least 6 characters long and contain at least one number and one special character.');
+        showModal('Password must be at least 8 characters long and contain at least one number and one special character.');
         return;
     }
 
@@ -5746,12 +5720,11 @@ function register() {
         return;
     }
 
-    users[email] = {
+    const profile = {
         firstName,
         lastName,
         email,
         phone,
-        password,
         country: countryData.name,
         currency: countryData.currency,
         language: countryData.language,
@@ -5767,35 +5740,23 @@ function register() {
         createdAt: new Date().toISOString(),
         firstLoginComplete: false
     };
-    localStorage.setItem('users', JSON.stringify(users));
-
-    showModal('User registered successfully. Please log in.');
-    showLoginPage();
+    try {
+        const signedIn = await CloudAccount.register(profile, password);
+        if (!signedIn) {
+            showModal('Check your email to confirm your new cloud account, then sign in.');
+            showLoginPage();
+        }
+    } catch (error) { showModal(error.message); }
 }
 
 function formatPhoneNumber(phone) {
     return phone.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3');
 }
 
-function logout() {
-    // Stop sentiment refresh interval
-    stopSentimentRefresh();
-
-    // Close WebSocket connection before logging out
-    closeWebSocketIntentionally();
-
-    // Reset EasyMining state for fresh start on next login
-    easyMiningHasBeenOpened = false;
-    stopEasyMiningAlertsPolling();
-
-    loggedInUser = null;
-    removeStorageItem('loggedInUser');
-    setStorageItem('modalMessage', 'Successfully logged out!');
-    showLoginPage();
-    updateAppContent(); // New function call
-    updateNavAuthState(); // Update nav login/logout buttons
+async function logout() {
+    try { await CloudAccount.logout(); }
+    catch (error) { showModal(error.message); }
 }
-
 
 function showTermsConditions() {
     document.getElementById('terms-conditions-modal').style.display = 'block';
@@ -6102,7 +6063,7 @@ async function fetchPrices() {
                         if (dollarSignElement) dollarSignElement.style.color = '#ff4444';
                     }
 
-                    // SAVE Bitcoin value to localStorage when price is valid
+                    // SAVE Bitcoin value to appStorage when price is valid
                     if (crypto.id === 'bitcoin') {
                         setStorageItem(`${loggedInUser}_bitcoin_displayValue`, localValue);
                     }
@@ -6566,12 +6527,12 @@ function updateMilestone(totalHoldings) {
         return;
     }
 
-    let lastMilestone = parseInt(localStorage.getItem(`${loggedInUser}_lastMilestone`)) || 0;
+    let lastMilestone = parseInt(appStorage.getItem(`${loggedInUser}_lastMilestone`)) || 0;
 
     // Check if a new milestone threshold is passed
     if (totalHoldings >= lastMilestone + 1000) {
         lastMilestone = Math.floor(totalHoldings / 1000) * 1000; // Calculate the new milestone
-        localStorage.setItem(`${loggedInUser}_lastMilestone`, lastMilestone);
+        appStorage.setItem(`${loggedInUser}_lastMilestone`, lastMilestone);
         notifyMilestone(lastMilestone); // Notify the user about the milestone
         playSound('milestone-sound'); // Play milestone sound
     }
@@ -6586,7 +6547,7 @@ function confirmResetMilestone() {
 function resetMilestone() {
     const totalHoldings = parseFloat(document.getElementById('total-holdings').textContent.replace(/,/g, '').replace('$', '')) || 0;
     const lastMilestone = Math.floor(totalHoldings / 1000) * 1000;
-    localStorage.setItem(`${loggedInUser}_lastMilestone`, lastMilestone);
+    appStorage.setItem(`${loggedInUser}_lastMilestone`, lastMilestone);
     updateMilestone(totalHoldings);
 }
 
@@ -6594,8 +6555,8 @@ function clearMentionsCache() {
     // Find and remove all mentions cache entries for the current user
     const keysToRemove = [];
 
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+    for (let i = 0; i < appStorage.length; i++) {
+        const key = appStorage.key(i);
         // Match keys like: username_cryptoName_mentionsCache and username_cryptoName_mentionsCacheExpiry
         if (key && key.startsWith(`${loggedInUser}_`) && key.includes('_mentionsCache')) {
             keysToRemove.push(key);
@@ -6604,7 +6565,7 @@ function clearMentionsCache() {
 
     // Remove all matching keys
     keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
+        appStorage.removeItem(key);
         console.log(`Cleared mentions cache: ${key}`);
     });
 
@@ -6690,10 +6651,10 @@ let idleTimeout; // Timer for idle detection
 
 // Generate or retrieve a persistent unique identifier for the user
 const uniqueUserID = (() => {
-    let id = localStorage.getItem('uniqueUserID');
+    let id = appStorage.getItem('uniqueUserID');
     if (!id) {
         id = Math.random().toString(36).substr(2, 9); // Generate a new ID
-        localStorage.setItem('uniqueUserID', id);
+        appStorage.setItem('uniqueUserID', id);
     }
     return id;
 })();
@@ -6706,13 +6667,13 @@ function sendToAnalytics(eventName, data) {
 
 // Function to send a "unique visitor" event (only once per unique user)
 function sendUniqueVisitorEvent() {
-    if (!localStorage.getItem('uniqueVisitorRecorded')) {
+    if (!appStorage.getItem('uniqueVisitorRecorded')) {
         sendToAnalytics('unique_visitor', {
             event_category: 'users',
             event_label: 'unique_visitor',
             user_id: uniqueUserID, // Include unique user ID
         });
-        localStorage.setItem('uniqueVisitorRecorded', 'true'); // Mark as recorded
+        appStorage.setItem('uniqueVisitorRecorded', 'true'); // Mark as recorded
         console.log(`Unique visitor recorded for user ID: ${uniqueUserID}`);
     }
 }
@@ -6756,7 +6717,7 @@ function setupActivityListeners() {
 }
 
 // Initialize the script
-document.addEventListener('DOMContentLoaded', () => {
+onAppReady( () => {
     // Disable browser's automatic scroll restoration and scroll to top
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
@@ -6783,11 +6744,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle URL parameters for page navigation
     const urlParams = new URLSearchParams(window.location.search);
     const pageParam = urlParams.get('page');
-    if (pageParam === 'settings' && typeof showSettingsPage === 'function') {
-        // Small delay to ensure page is fully loaded
-        setTimeout(() => {
-            showSettingsPage();
-        }, 100);
+    const routes = { settings: showSettingsPage, account: showAccountSettingsPage,
+        pricing: showPricingPage, register: showRegisterPage, logout };
+    if (routes[pageParam] && (loggedInUser || ['pricing', 'register'].includes(pageParam))) {
+        setTimeout(routes[pageParam], 100);
     }
 });
 
@@ -6907,7 +6867,7 @@ function processAlertSoundQueue() {
 }
 
 // Ensure the DOM is ready before adding event listeners or running functions
-document.addEventListener('DOMContentLoaded', () => {
+onAppReady( () => {
     console.log("DOM fully loaded. Ready to play animations.");
 });
 
@@ -7054,7 +7014,7 @@ async function updateAppContent() {
 
 
     // Initialize milestone display
-    const lastMilestone = parseInt(localStorage.getItem(`${loggedInUser}_lastMilestone`)) || 0;
+    const lastMilestone = parseInt(appStorage.getItem(`${loggedInUser}_lastMilestone`)) || 0;
     const milestoneElement = document.getElementById('daily-milestone');
     if (milestoneElement) {
         milestoneElement.textContent = `$${formatNumber(lastMilestone.toFixed(2))}`;
@@ -7143,27 +7103,9 @@ function setCaretPosition(input, position) {
     input.setSelectionRange(position, position);
 }
 
-function getStorageItem(key) {
-    let value = localStorage.getItem(key);
-    if (value === null) {
-        value = sessionStorage.getItem(key);
-    }
-    return value;
-}
-
-function setStorageItem(key, value) {
-    try {
-        localStorage.setItem(key, value);
-    } catch (e) {
-        console.warn('Local storage failed, using session storage', e);
-        sessionStorage.setItem(key, value);
-    }
-}
-
-function removeStorageItem(key) {
-    localStorage.removeItem(key);
-    sessionStorage.removeItem(key);
-}
+function getStorageItem(key) { return appStorage.getItem(key); }
+function setStorageItem(key, value) { appStorage.setItem(key, value); }
+function removeStorageItem(key) { appStorage.removeItem(key); }
 
 // =============================================================================
 // HOLDINGS ENTRIES MANAGEMENT (PnL Tracking System)
@@ -7172,14 +7114,14 @@ function removeStorageItem(key) {
 // Get all holdings entries for a crypto
 function getHoldingsEntries(cryptoId) {
     const key = `${loggedInUser}_${cryptoId}_holdingsEntries`;
-    const data = localStorage.getItem(key);
+    const data = appStorage.getItem(key);
     return data ? JSON.parse(data) : [];
 }
 
 // Save all holdings entries for a crypto
 function saveHoldingsEntries(cryptoId, entries) {
     const key = `${loggedInUser}_${cryptoId}_holdingsEntries`;
-    localStorage.setItem(key, JSON.stringify(entries));
+    appStorage.setItem(key, JSON.stringify(entries));
 
     // Also update the legacy total holdings for backward compatibility
     const totalAmount = entries
@@ -7312,7 +7254,7 @@ function calculateTotalPnL(cryptoId) {
 // Get all history entries (across all cryptos)
 function getHoldingsHistory() {
     const key = `${loggedInUser}_holdingsHistory`;
-    const data = localStorage.getItem(key);
+    const data = appStorage.getItem(key);
     return data ? JSON.parse(data) : [];
 }
 
@@ -7338,13 +7280,13 @@ function addToHoldingsHistory(action, entry, details = {}) {
         details: details
     };
     history.push(historyEntry);
-    localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(history));
+    appStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(history));
     console.log(`📜 Added to history (${action}):`, historyEntry);
 }
 
 // Clear all holdings history
 function clearHoldingsHistory() {
-    localStorage.removeItem(`${loggedInUser}_holdingsHistory`);
+    appStorage.removeItem(`${loggedInUser}_holdingsHistory`);
     console.log('🗑️ Cleared all holdings history');
 }
 
@@ -7355,14 +7297,14 @@ function clearHoldingsHistory() {
 // Get all tracked blocks for EasyMining
 function getTrackedBlocks() {
     const key = `${loggedInUser}_easyMiningTrackedBlocks`;
-    const data = localStorage.getItem(key);
+    const data = appStorage.getItem(key);
     return data ? JSON.parse(data) : {};
 }
 
 // Save all tracked blocks
 function saveTrackedBlocks(blocks) {
     const key = `${loggedInUser}_easyMiningTrackedBlocks`;
-    localStorage.setItem(key, JSON.stringify(blocks));
+    appStorage.setItem(key, JSON.stringify(blocks));
 }
 
 // Check if a block has been tracked
@@ -8157,7 +8099,7 @@ function updateSellEntryPrice(cryptoId, entryId) {
     if (entryIndex !== -1) {
         history[entryIndex].soldPrice = newPrice;
         history[entryIndex].audValue = history[entryIndex].amount * newPrice;
-        localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(history));
+        appStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(history));
 
         // Update displays
         displayHistoryEntries(cryptoId);
@@ -8196,7 +8138,7 @@ function deleteSellEntry(cryptoId, entryId) {
 
     // Remove the entry from history
     const filteredHistory = history.filter(h => h.id !== entryId);
-    localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
+    appStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
 
     // Log holdings AFTER delete (should be higher by amountRestored)
     const totalAfter = getTotalActiveHoldings(cryptoId);
@@ -8913,7 +8855,7 @@ async function autoResetEasyMiningDaily() {
                 // Clear rockets
                 clearRockets();
 
-                // Save to localStorage
+                // Save to appStorage
                 saveEasyMiningDataToStorage();
 
                 console.log("✅ EasyMining daily stats and rockets reset successfully at midnight");
@@ -8937,7 +8879,7 @@ async function autoResetEasyMiningDaily() {
                 // Clear rockets
                 clearRockets();
 
-                // Save to localStorage
+                // Save to appStorage
                 saveEasyMiningDataToStorage();
 
                 console.log("✅ Missed EasyMining daily reset completed (after midnight)");
@@ -8951,7 +8893,7 @@ async function autoResetEasyMiningDaily() {
 }
 
 // ✅ FIX: Check for midnight reset during initialization (called from initializeEasyMining)
-// This runs AFTER easyMiningData is loaded from localStorage, ensuring proper reset
+// This runs AFTER easyMiningData is loaded from appStorage, ensuring proper reset
 function checkMidnightResetOnInit() {
     if (!loggedInUser) return;
 
@@ -8978,7 +8920,7 @@ function checkMidnightResetOnInit() {
         // Clear rockets (session blocks)
         easyMiningData.blocksFoundSession = 0;
 
-        // Save to localStorage
+        // Save to appStorage
         saveEasyMiningDataToStorage();
 
         // Clear the UI element
@@ -8994,7 +8936,7 @@ function checkMidnightResetOnInit() {
 }
 
 // Call autoResetPercentage on app load to handle missed resets with a 3-second delay
-document.addEventListener('DOMContentLoaded', () => {
+onAppReady( () => {
     setTimeout(() => {
         autoResetPercentage();
         autoResetEasyMiningDaily(); // Also check EasyMining reset
@@ -9148,8 +9090,8 @@ if (portfolioHeroEl) {
 function resetPercentage() {
     const currentTotalHoldings = parseFloat(document.getElementById('total-holdings').textContent.replace(/,/g, '').replace('$', '').replace('AUD', '').trim());
     totalHoldings24hAgo = currentTotalHoldings;
-    localStorage.setItem(`${loggedInUser}_totalHoldings24hAgo`, totalHoldings24hAgo);
-    localStorage.setItem(`${loggedInUser}_lastUpdated`, Date.now().toString());
+    appStorage.setItem(`${loggedInUser}_totalHoldings24hAgo`, totalHoldings24hAgo);
+    appStorage.setItem(`${loggedInUser}_lastUpdated`, Date.now().toString());
     updatePercentageChange(currentTotalHoldings);
     showModal('Percentage reset successfully.');
     closeModal(1000);
@@ -9158,16 +9100,16 @@ function resetPercentage() {
 function resetPercentageDaily() {
     const currentTotalHoldings = parseFloat(document.getElementById('total-holdings').textContent.replace(/,/g, '').replace('$', '').replace('AUD', '').trim());
     totalHoldings24hAgo = currentTotalHoldings;
-    localStorage.setItem(`${loggedInUser}_totalHoldings24hAgo`, totalHoldings24hAgo);
-    localStorage.setItem(`${loggedInUser}_lastUpdated`, Date.now().toString());
+    appStorage.setItem(`${loggedInUser}_totalHoldings24hAgo`, totalHoldings24hAgo);
+    appStorage.setItem(`${loggedInUser}_lastUpdated`, Date.now().toString());
     updatePercentageChange(currentTotalHoldings);
 }
 
 function resetHighLow() {
     recordHigh = 0;
     recordLow = Infinity;
-    localStorage.setItem(`${loggedInUser}_recordHigh`, recordHigh);
-    localStorage.setItem(`${loggedInUser}_recordLow`, recordLow);
+    appStorage.setItem(`${loggedInUser}_recordHigh`, recordHigh);
+    appStorage.setItem(`${loggedInUser}_recordLow`, recordLow);
     updateRecordDisplay();
     showModal('High/Low records reset successfully.');
     closeModal(1000);
@@ -9175,7 +9117,7 @@ function resetHighLow() {
 
 // Function to send notification
 function sendNotification(title, body, icon) {
-    const notificationPermission = localStorage.getItem('notificationPermission');
+    const notificationPermission = appStorage.getItem('notificationPermission');
     if (notificationPermission === 'granted') {
         Push.create(title, {
             body: body,
@@ -9190,7 +9132,7 @@ function sendNotification(title, body, icon) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+onAppReady( () => {
     const fullscreenBtn = document.getElementById('fullscreenBtn');
 
     // Function to enter fullscreen mode
@@ -9322,7 +9264,7 @@ function showSettingsPage() {
     // Show settings page
     document.getElementById('settings-page').style.display = 'block';
 
-    // Sync toggle states from localStorage
+    // Sync toggle states from appStorage
     syncSettingsPageToggles();
 
     // Initialize fullscreen button
@@ -9382,7 +9324,7 @@ function clearSpecificCrypto() {
 
     console.log(`🗑️ Clearing data for crypto: ${cryptoName} (${cryptoId})`);
 
-    // Clear localStorage data for this crypto (but keep in cryptos array)
+    // Clear appStorage data for this crypto (but keep in cryptos array)
     removeStorageItem(`${loggedInUser}_${cryptoId}Holdings`);
     removeStorageItem(`${loggedInUser}_${cryptoId}History`);
     removeStorageItem(`${loggedInUser}_${cryptoId}TotalCost`);
@@ -9396,7 +9338,7 @@ function clearSpecificCrypto() {
     // This is important because holdings = buys - sells
     const allHistory = getHoldingsHistory();
     const filteredHistory = allHistory.filter(h => h.cryptoId !== cryptoId);
-    localStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
+    appStorage.setItem(`${loggedInUser}_holdingsHistory`, JSON.stringify(filteredHistory));
     const removedCount = allHistory.length - filteredHistory.length;
     console.log(`   ✓ Cleared ${removedCount} history entries for ${cryptoId}`);
 
@@ -9625,8 +9567,8 @@ function saveUserInfo() {
             users[loggedInUser].language = '';
         }
 
-        // Save to localStorage
-        localStorage.setItem('users', JSON.stringify(users));
+        // Save to appStorage
+        appStorage.setItem('users', JSON.stringify(users));
 
         // Show success message
         alert('User information saved successfully!');
@@ -9901,7 +9843,7 @@ function closeProfileIconPicker() {
 
 function selectProfileIcon(icon) {
     users[loggedInUser].profileIcon = icon;
-    localStorage.setItem('users', JSON.stringify(users));
+    appStorage.setItem('users', JSON.stringify(users));
     document.getElementById('current-profile-icon').textContent = icon;
     updateNavProfileIcon();
     closeProfileIconPicker();
@@ -9931,28 +9873,17 @@ function closeChangePasswordModal() {
     document.getElementById('change-password-modal').style.display = 'none';
 }
 
-function updatePassword() {
+async function updatePassword() {
     const current = document.getElementById('current-password').value;
-    const newPass = document.getElementById('new-password').value;
-    const confirm = document.getElementById('confirm-new-password').value;
-
-    if (users[loggedInUser].password !== current) {
-        alert('Current password is incorrect.');
-        return;
+    const next = document.getElementById('new-password').value;
+    if (next.length < 8 || next !== document.getElementById('confirm-new-password').value) {
+        return alert('Use at least 8 characters and make sure the new passwords match.');
     }
-    if (newPass.length < 6) {
-        alert('New password must be at least 6 characters.');
-        return;
-    }
-    if (newPass !== confirm) {
-        alert('New passwords do not match.');
-        return;
-    }
-
-    users[loggedInUser].password = newPass;
-    localStorage.setItem('users', JSON.stringify(users));
-    closeChangePasswordModal();
-    alert('Password updated successfully!');
+    try {
+        await CloudAccount.changePassword(current, next);
+        closeChangePasswordModal();
+        alert('Password updated securely.');
+    } catch (error) { alert(error.message); }
 }
 
 // Delete account
@@ -9965,35 +9896,12 @@ function closeDeleteAccountModal() {
     document.getElementById('delete-account-modal').style.display = 'none';
 }
 
-function deleteAccount() {
-    const confirmText = document.getElementById('delete-confirm-input').value;
-    if (confirmText !== 'DELETE') {
-        alert('Please type DELETE to confirm.');
-        return;
+async function deleteAccount() {
+    if (document.getElementById('delete-confirm-input').value !== 'DELETE') {
+        return alert('Please type DELETE to confirm.');
     }
-
-    // Remove all user-specific data from localStorage
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(loggedInUser)) {
-            keysToRemove.push(key);
-        }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-
-    // Remove user from users object
-    delete users[loggedInUser];
-    localStorage.setItem('users', JSON.stringify(users));
-
-    // Logout
-    loggedInUser = null;
-    removeStorageItem('loggedInUser');
-
-    closeDeleteAccountModal();
-    alert('Your account has been deleted.');
-    showLoginPage();
-    updateNavAuthState();
+    try { await CloudAccount.deleteAccount(); }
+    catch (error) { alert(error.message); }
 }
 
 // ==================== End Account Settings ====================
@@ -10102,12 +10010,12 @@ function confirmAction(action, containerId, cryptoId) {
 function clearData() {
     const user = users[loggedInUser];
     user.cryptos.forEach(crypto => {
-        localStorage.removeItem(`${loggedInUser}_${crypto.id}Holdings`);
+        appStorage.removeItem(`${loggedInUser}_${crypto.id}Holdings`);
     });
 
     user.cryptos = [];
     user.percentageThresholds = {};
-    localStorage.setItem('users', JSON.stringify(users));
+    appStorage.setItem('users', JSON.stringify(users));
 
     document.getElementById('total-holdings').textContent = '$0.00';
     document.getElementById('percentage-change').textContent = '0.00%';
@@ -10124,8 +10032,8 @@ function clearData() {
 
     recordHigh = 0;
     recordLow = Infinity;
-    localStorage.setItem(`${loggedInUser}_recordHigh`, recordHigh);
-    localStorage.setItem(`${loggedInUser}_recordLow`, recordLow);
+    appStorage.setItem(`${loggedInUser}_recordHigh`, recordHigh);
+    appStorage.setItem(`${loggedInUser}_recordLow`, recordLow);
 
     showModal('All data cleared successfully.');
     closeModal(1500);
@@ -10171,14 +10079,14 @@ function confirmClearAllHoldings() {
     const cryptos = users[loggedInUser]?.cryptos || [];
     cryptos.forEach(crypto => {
         // Clear holdings entries array
-        localStorage.removeItem(`${loggedInUser}_${crypto.id}_holdingsEntries`);
+        appStorage.removeItem(`${loggedInUser}_${crypto.id}_holdingsEntries`);
         // Clear legacy holdings value
-        localStorage.removeItem(`${loggedInUser}_${crypto.id}Holdings`);
+        appStorage.removeItem(`${loggedInUser}_${crypto.id}Holdings`);
         console.log(`   ✓ Cleared holdings for ${crypto.id}`);
     });
 
     // Clear all history
-    localStorage.removeItem(`${loggedInUser}_holdingsHistory`);
+    appStorage.removeItem(`${loggedInUser}_holdingsHistory`);
     console.log('   ✓ Cleared holdings history');
 
     // Note: We intentionally do NOT clear easyMiningAddedRewards or easyMiningTrackedBlocks here
@@ -10224,11 +10132,11 @@ function clearTrackedRewards() {
     console.log('🗑️ Clearing tracked EasyMining rewards...');
 
     // Clear block-level tracking (individual blocks with prices)
-    localStorage.removeItem(`${loggedInUser}_easyMiningTrackedBlocks`);
+    appStorage.removeItem(`${loggedInUser}_easyMiningTrackedBlocks`);
     console.log('   ✓ Cleared EasyMining tracked blocks');
 
     // Clear package-level reward tracking
-    localStorage.removeItem(`${loggedInUser}_easyMiningAddedRewards`);
+    appStorage.removeItem(`${loggedInUser}_easyMiningAddedRewards`);
     console.log('   ✓ Cleared EasyMining added rewards');
 
     console.log('✅ Tracked rewards cleared successfully');
@@ -10254,9 +10162,9 @@ function clearChartData() {
     miningChartDataStore = {};
     console.log('   ✓ Cleared in-memory chart data');
 
-    // Clear localStorage chart data
-    localStorage.removeItem(`${loggedInUser}_chartDataStore`);
-    console.log('   ✓ Cleared localStorage chart data');
+    // Clear appStorage chart data
+    appStorage.removeItem(`${loggedInUser}_chartDataStore`);
+    console.log('   ✓ Cleared appStorage chart data');
 
     // Clear hashrate history
     if (typeof hashrateHistory !== 'undefined') {
@@ -10535,7 +10443,7 @@ function updateCryptoValue(cryptoId) {
     } else {
         document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(currentValue.toFixed(2));
 
-        // SAVE Bitcoin AUD to localStorage when price is valid
+        // SAVE Bitcoin AUD to appStorage when price is valid
         if (cryptoId === 'bitcoin') {
             setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, currentValue);
         }
@@ -11959,7 +11867,7 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                     priceElement.textContent = `$${formatAudPrice(priceInAud)}`; // Update price
 
                     // Get current holdings from DOM (reflects real-time value including EasyMining)
-                    // Don't read from localStorage to avoid showing stale NiceHash balance
+                    // Don't read from appStorage to avoid showing stale NiceHash balance
                     const holdingsElement = document.getElementById(`${coingeckoId}-holdings`);
                     let holdings = 0;
                     if (holdingsElement) {
@@ -11978,7 +11886,7 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                     valueElement.style.color = priceColor;
                     if (dollarSignElement) dollarSignElement.style.color = priceColor;
 
-                    // For Bitcoin, save the AUD value to localStorage so it persists
+                    // For Bitcoin, save the AUD value to appStorage so it persists
                     if (coingeckoId === 'bitcoin' && priceInAud > 0) {
                         setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, holdingsValueAud);
                     }
@@ -12310,8 +12218,8 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
 
     // CHECK CACHE FIRST - return cached value if still valid
     try {
-        const cachedData = localStorage.getItem(cacheKey);
-        const cachedExpiry = localStorage.getItem(cacheExpiryKey);
+        const cachedData = appStorage.getItem(cacheKey);
+        const cachedExpiry = appStorage.getItem(cacheExpiryKey);
 
         if (cachedData && cachedExpiry && currentTime < parseInt(cachedExpiry)) {
             // Cache is valid - use it
@@ -12378,8 +12286,8 @@ async function fetchMentions30d(cryptoName, cryptoSymbol) {
 
         // Cache result with source breakdown for 24 hours
         const cacheData = { total: totalMentions, sources };
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-        localStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
+        appStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        appStorage.setItem(cacheExpiryKey, (currentTime + cacheExpiryDuration).toString());
 
         renderMentionsDisplay(mentionsElement, breakdownDiv, totalMentions, sources);
 
@@ -12815,7 +12723,7 @@ async function fetchCryptoInfo(cryptoId) {
                 success = true;
                 break; // Exit loop if successful
             } catch (error) {
-                console.error(`Error with API key ${apiKey}:`, error);
+                console.error(`Error with API key [redacted]:`, error);
                 if (attempt === apiKeys.length - 1) {
                     throw new Error('All API keys failed.');
                 }
@@ -13377,7 +13285,7 @@ function debounceUpdateUI(cryptoId, priceInAud) {
             } else {
                 document.getElementById(`${cryptoId}-value-aud`).textContent = formatNumber(audValue.toFixed(2));
 
-                // SAVE Bitcoin AUD to localStorage when price is valid
+                // SAVE Bitcoin AUD to appStorage when price is valid
                 if (cryptoId === 'bitcoin') {
                     setStorageItem(`${loggedInUser}_bitcoin_displayAUD`, audValue);
                 }
@@ -13590,7 +13498,7 @@ function saveCandlestickData(cryptoId, priceInAud) {
     }
 
     const now = new Date();
-    const candlestickData = JSON.parse(localStorage.getItem(`${cryptoId}_candlestickData`)) || [];
+    const candlestickData = JSON.parse(appStorage.getItem(`${cryptoId}_candlestickData`)) || [];
 
     const lastCandle = candlestickData[candlestickData.length - 1];
     if (lastCandle && now - new Date(lastCandle.x) < 5 * 60 * 1000) {
@@ -13607,7 +13515,7 @@ function saveCandlestickData(cryptoId, priceInAud) {
         });
     }
 
-    localStorage.setItem(`${cryptoId}_candlestickData`, JSON.stringify(candlestickData));
+    appStorage.setItem(`${cryptoId}_candlestickData`, JSON.stringify(candlestickData));
 }
 
 async function fetchHistoricalData(cryptoId) {
@@ -14323,7 +14231,7 @@ let easyMiningData = {
     lastBlockCount: 0
 };
 
-// Helper function to safely save easyMiningData to localStorage
+// Helper function to safely save easyMiningData to appStorage
 // Only saves essential stats, NOT activePackages (fetched fresh from API)
 function saveEasyMiningDataToStorage() {
     try {
@@ -14336,18 +14244,18 @@ function saveEasyMiningDataToStorage() {
             blocksFoundSession: easyMiningData.blocksFoundSession,
             lastBlockCount: easyMiningData.lastBlockCount
         };
-        localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(dataToSave));
+        appStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(dataToSave));
     } catch (e) {
         if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
-            console.warn('⚠️ localStorage quota exceeded for easyMiningData, cleaning up...');
+            console.warn('⚠️ appStorage quota exceeded for easyMiningData, cleaning up...');
             // Try to clear old data and save again
             try {
-                localStorage.removeItem(`${loggedInUser}_easyMiningData`);
+                appStorage.removeItem(`${loggedInUser}_easyMiningData`);
                 const minimalData = {
                     allTimeStats: easyMiningData.allTimeStats,
                     todayStats: easyMiningData.todayStats
                 };
-                localStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(minimalData));
+                appStorage.setItem(`${loggedInUser}_easyMiningData`, JSON.stringify(minimalData));
                 console.log('✅ Saved minimal easyMiningData after cleanup');
             } catch (e2) {
                 console.error('❌ Failed to save even minimal easyMiningData:', e2);
@@ -14528,8 +14436,8 @@ function activateEasyMiningFromPage() {
     easyMiningSettings.multiDeviceEnabled = document.getElementById('multi-device-toggle-page')?.checked || false;
     easyMiningSettings.deviceCount = parseInt(document.getElementById('device-count-display')?.textContent) || 1;
 
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
+    // Save to appStorage
+    appStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
 
     // Clear unsaved changes snapshot (settings are now saved)
     easyMiningSettingsSnapshot = null;
@@ -14569,8 +14477,8 @@ function clearAPICredentials() {
     easyMiningSettings.orgId = '';
     easyMiningSettings.enabled = false;
     
-    // Save to localStorage
-    localStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
+    // Save to appStorage
+    appStorage.setItem(`${loggedInUser}_easyMiningSettings`, JSON.stringify(easyMiningSettings));
 
     // Reset first load flag so loading bar shows if user re-activates
     isFirstEasyMiningLoad = true;
@@ -14675,11 +14583,11 @@ function activateCoinGeckoApi() {
         currentIndex: 0
     };
 
-    // Save to localStorage (new format)
+    // Save to appStorage (new format)
     try {
-        localStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(apiSettings));
+        appStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(apiSettings));
         // Remove old format if it exists
-        localStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
+        appStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
         console.log('✅ Saved CoinGecko API settings:', keySettings.length, 'keys');
 
         // Log tier info
@@ -14714,9 +14622,9 @@ function clearCoinGeckoApiKeys() {
     document.getElementById('fallback-api-key-1-paid').checked = false;
     document.getElementById('fallback-api-key-2-paid').checked = false;
 
-    // Remove from localStorage (both old and new formats)
-    localStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
-    localStorage.removeItem(`${loggedInUser}_coinGeckoApiSettings`);
+    // Remove from appStorage (both old and new formats)
+    appStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
+    appStorage.removeItem(`${loggedInUser}_coinGeckoApiSettings`);
 
     // Clear global apiKeys array (app will not work without keys)
     apiKeys = [];
@@ -14734,7 +14642,7 @@ function clearCoinGeckoApiKeys() {
  * Called automatically on load if old format is detected
  */
 function migrateApiKeyStorage() {
-    const oldKeys = localStorage.getItem(`${loggedInUser}_coinGeckoApiKeys`);
+    const oldKeys = appStorage.getItem(`${loggedInUser}_coinGeckoApiKeys`);
     if (!oldKeys) return false;
 
     try {
@@ -14747,8 +14655,8 @@ function migrateApiKeyStorage() {
                 keys: parsed.map(key => ({ key, isPaid: false })),
                 currentIndex: 0
             };
-            localStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(newSettings));
-            localStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
+            appStorage.setItem(`${loggedInUser}_coinGeckoApiSettings`, JSON.stringify(newSettings));
+            appStorage.removeItem(`${loggedInUser}_coinGeckoApiKeys`);
             console.log('✅ Migrated API key storage to new format with tier support');
             return true;
         }
@@ -14768,7 +14676,7 @@ function loadApiSettings() {
         migrateApiKeyStorage();
 
         // Load new format
-        const savedSettings = localStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`);
+        const savedSettings = appStorage.getItem(`${loggedInUser}_coinGeckoApiSettings`);
 
         if (savedSettings) {
             const settings = JSON.parse(savedSettings);
@@ -14908,10 +14816,10 @@ function activateGoogleApi() {
         return;
     }
 
-    // Save to localStorage
+    // Save to appStorage
     try {
         const settings = { apiKey, cseId, isPaid };
-        localStorage.setItem(`${loggedInUser}_googleApiSettings`, JSON.stringify(settings));
+        appStorage.setItem(`${loggedInUser}_googleApiSettings`, JSON.stringify(settings));
         console.log('Saved Google API settings (isPaid:', isPaid, ')');
 
         // Update status display
@@ -14938,8 +14846,8 @@ function clearGoogleApiKeys() {
     document.getElementById('google-api-key-input').value = '';
     document.getElementById('google-cse-id-input').value = '';
 
-    // Remove from localStorage
-    localStorage.removeItem(`${loggedInUser}_googleApiSettings`);
+    // Remove from appStorage
+    appStorage.removeItem(`${loggedInUser}_googleApiSettings`);
 
     // Hide status
     const statusDiv = document.getElementById('google-api-status');
@@ -14952,7 +14860,7 @@ function clearGoogleApiKeys() {
 function getGoogleApiSettings() {
     if (!loggedInUser) return { apiKey: null, cseId: null };
     try {
-        const saved = localStorage.getItem(`${loggedInUser}_googleApiSettings`);
+        const saved = appStorage.getItem(`${loggedInUser}_googleApiSettings`);
         if (saved) {
             return JSON.parse(saved);
         }
@@ -15025,10 +14933,10 @@ function activateBraveApi() {
         return;
     }
 
-    // Save to localStorage
+    // Save to appStorage
     try {
         const settings = { apiKey, isPaid };
-        localStorage.setItem(`${loggedInUser}_braveApiSettings`, JSON.stringify(settings));
+        appStorage.setItem(`${loggedInUser}_braveApiSettings`, JSON.stringify(settings));
         console.log('Saved Brave API settings (isPaid:', isPaid, ')');
 
         // Update status display
@@ -15055,9 +14963,9 @@ function clearBraveApiKey() {
     document.getElementById('brave-api-key-input').value = '';
     document.getElementById('brave-api-paid').checked = false;
 
-    // Remove from localStorage (both old and new keys for backwards compatibility)
-    localStorage.removeItem(`${loggedInUser}_braveApiSettings`);
-    localStorage.removeItem(`${loggedInUser}_braveApiKey`);
+    // Remove from appStorage (both old and new keys for backwards compatibility)
+    appStorage.removeItem(`${loggedInUser}_braveApiSettings`);
+    appStorage.removeItem(`${loggedInUser}_braveApiKey`);
 
     // Hide status
     const statusDiv = document.getElementById('brave-api-status');
@@ -15071,12 +14979,12 @@ function getBraveApiSettings() {
     if (!loggedInUser) return { apiKey: null, isPaid: false };
     try {
         // Try new format first
-        const saved = localStorage.getItem(`${loggedInUser}_braveApiSettings`);
+        const saved = appStorage.getItem(`${loggedInUser}_braveApiSettings`);
         if (saved) {
             return JSON.parse(saved);
         }
         // Fallback to old format (just the key as a string)
-        const oldKey = localStorage.getItem(`${loggedInUser}_braveApiKey`);
+        const oldKey = appStorage.getItem(`${loggedInUser}_braveApiKey`);
         if (oldKey) {
             return { apiKey: oldKey, isPaid: false };
         }
@@ -15157,7 +15065,7 @@ function activateCryptoCompareApi() {
     // CryptoCompare works without API key, so just save what we have
     try {
         const settings = { apiKey, isPaid };
-        localStorage.setItem(`${loggedInUser}_cryptoCompareApiSettings`, JSON.stringify(settings));
+        appStorage.setItem(`${loggedInUser}_cryptoCompareApiSettings`, JSON.stringify(settings));
         console.log('Saved CryptoCompare API settings (isPaid:', isPaid, ')');
 
         // Update status display
@@ -15191,8 +15099,8 @@ function clearCryptoCompareApiKey() {
     document.getElementById('cryptocompare-api-key-input').value = '';
     document.getElementById('cryptocompare-api-paid').checked = false;
 
-    // Remove from localStorage
-    localStorage.removeItem(`${loggedInUser}_cryptoCompareApiSettings`);
+    // Remove from appStorage
+    appStorage.removeItem(`${loggedInUser}_cryptoCompareApiSettings`);
 
     // Update status
     const statusDiv = document.getElementById('cryptocompare-api-status');
@@ -15208,7 +15116,7 @@ function clearCryptoCompareApiKey() {
 function getCryptoCompareApiSettings() {
     if (!loggedInUser) return { apiKey: null, isPaid: false };
     try {
-        const saved = localStorage.getItem(`${loggedInUser}_cryptoCompareApiSettings`);
+        const saved = appStorage.getItem(`${loggedInUser}_cryptoCompareApiSettings`);
         if (saved) {
             return JSON.parse(saved);
         }
@@ -15268,7 +15176,7 @@ function activateRedditApi() {
     // Save settings (works without credentials for public tier)
     try {
         const settings = { clientId, clientSecret, isPaid };
-        localStorage.setItem(`${loggedInUser}_redditApiSettings`, JSON.stringify(settings));
+        appStorage.setItem(`${loggedInUser}_redditApiSettings`, JSON.stringify(settings));
         console.log('Saved Reddit API settings');
 
         updateRedditApiStatus(settings);
@@ -15291,7 +15199,7 @@ function clearRedditApiSettings() {
     document.getElementById('reddit-client-secret-input').value = '';
     document.getElementById('reddit-api-paid').checked = false;
 
-    localStorage.removeItem(`${loggedInUser}_redditApiSettings`);
+    appStorage.removeItem(`${loggedInUser}_redditApiSettings`);
 
     updateRedditApiStatus({});
     alert('Reddit API settings cleared.\n\nWill use public tier.');
@@ -15300,7 +15208,7 @@ function clearRedditApiSettings() {
 function getRedditApiSettings() {
     if (!loggedInUser) return { clientId: null, clientSecret: null, isPaid: false };
     try {
-        const saved = localStorage.getItem(`${loggedInUser}_redditApiSettings`);
+        const saved = appStorage.getItem(`${loggedInUser}_redditApiSettings`);
         if (saved) return JSON.parse(saved);
     } catch (e) {
         console.error('Error loading Reddit API settings:', e);
@@ -15531,11 +15439,11 @@ async function loadRecentRewards() {
 }
 
 /**
- * Load block counts from localStorage cache (instant tab display)
+ * Load block counts from appStorage cache (instant tab display)
  */
 function loadBlockCountsFromCache() {
     try {
-        const cached = localStorage.getItem(REWARDS_COUNTS_KEY);
+        const cached = appStorage.getItem(REWARDS_COUNTS_KEY);
         if (cached) {
             const parsedCounts = JSON.parse(cached);
             REWARDS_CRYPTOS.forEach(crypto => {
@@ -15551,22 +15459,22 @@ function loadBlockCountsFromCache() {
 }
 
 /**
- * Save block counts to localStorage cache
+ * Save block counts to appStorage cache
  */
 function saveBlockCountsToCache() {
     try {
-        localStorage.setItem(REWARDS_COUNTS_KEY, JSON.stringify(rewardsBlockCounts));
+        appStorage.setItem(REWARDS_COUNTS_KEY, JSON.stringify(rewardsBlockCounts));
     } catch (error) {
         console.warn('⚠️ Could not save block counts to cache:', error.message);
     }
 }
 
 /**
- * Load rewards data from localStorage cache
+ * Load rewards data from appStorage cache
  */
 function loadRewardsFromCache() {
     try {
-        const cached = localStorage.getItem(REWARDS_STORAGE_KEY);
+        const cached = appStorage.getItem(REWARDS_STORAGE_KEY);
         if (cached) {
             const parsedCache = JSON.parse(cached);
             REWARDS_CRYPTOS.forEach(crypto => {
@@ -15582,11 +15490,11 @@ function loadRewardsFromCache() {
 }
 
 /**
- * Save rewards data to localStorage cache
+ * Save rewards data to appStorage cache
  */
 function saveRewardsToCache() {
     try {
-        localStorage.setItem(REWARDS_STORAGE_KEY, JSON.stringify(recentRewardsData));
+        appStorage.setItem(REWARDS_STORAGE_KEY, JSON.stringify(recentRewardsData));
     } catch (error) {
         console.warn('⚠️ Could not save rewards to cache:', error.message);
     }
@@ -15922,7 +15830,7 @@ function clearRockets() {
 }
 
 function restoreRockets() {
-    // Restore rocket display from localStorage
+    // Restore rocket display from appStorage
     if (easyMiningData.blocksFoundSession > 0) {
         // Create individual span elements for each rocket to enable proper flex-wrap
         const rocketsHtml = Array(easyMiningData.blocksFoundSession)
@@ -16168,13 +16076,13 @@ async function fetchEasyMiningData() {
             console.log(`📦 Loaded stored package data (${easyMiningData.activePackages.length} packages). Live balances showing 0 until API connected.`);
         }
 
-        // Save easyMiningData to localStorage to persist balances
+        // Save easyMiningData to appStorage to persist balances
         setStorageItem(`${loggedInUser}_easyMiningData`, JSON.stringify(easyMiningData));
         // Save package probabilities for displaying on completed packages
         if (Object.keys(savedPackageProbabilities).length > 0) {
             setStorageItem(`${loggedInUser}_savedPackageProbabilities`, JSON.stringify(savedPackageProbabilities));
         }
-        console.log(`💾 Saved EasyMining data to localStorage`);
+        console.log(`💾 Saved EasyMining data to appStorage`);
 
         // Fetch public package data from NiceHash
         await fetchPublicPackageData();
@@ -16395,6 +16303,9 @@ async function syncNiceHashTime() {
 
 // Generate authentication headers for NiceHash API
 function generateNiceHashAuthHeaders(method, endpoint, body = null) {
+    if (method !== 'GET' && !CloudAccount.canPurchase) {
+        throw new Error('Wait for your cloud account to reconnect and resolve any sync conflicts before changing NiceHash orders.');
+    }
     // NiceHash requires specific authentication headers:
     // X-Auth, X-Time, X-Nonce, X-Request-Id, X-Organization-Id
 
@@ -16440,31 +16351,9 @@ function generateNiceHashAuthHeaders(method, endpoint, body = null) {
     // Based on official NiceHash Python client: hmac.new(bytearray(self.secret, 'utf-8'), message, sha256)
     const signature = CryptoJS.HmacSHA256(message, easyMiningSettings.apiSecret).toString(CryptoJS.enc.Hex);
 
-    console.log('🔐 Auth Debug:');
-    console.log('API Key:', easyMiningSettings.apiKey.substring(0, 8) + '...');
-    console.log('API Secret (first 8 chars):', easyMiningSettings.apiSecret.substring(0, 8) + '...');
-    console.log('Org ID:', easyMiningSettings.orgId);
-    console.log('Timestamp:', timestamp);
-    console.log('Nonce:', nonce);
-    console.log('Method:', method);
-    console.log('Path:', path);
-    console.log('Query:', queryString || '(empty)');
-    console.log('Body:', bodyString || '(empty)');
-    console.log('📝 Message to sign (with \\0 shown as |):');
-    console.log(message.replace(/\x00/g, '|'));
-    console.log('Signature:', signature.substring(0, 16) + '...');
-    console.log('Signature (full):', signature);
-
     // NiceHash API v2 requires specific header names (case-sensitive)
     // X-Auth header format: "apiKey:signature"
     const authHeader = `${easyMiningSettings.apiKey}:${signature}`;
-
-    console.log('📤 Headers being sent:');
-    console.log('  X-Time:', timestamp);
-    console.log('  X-Nonce:', nonce);
-    console.log('  X-Request-Id:', nonce);
-    console.log('  X-Organization-Id:', easyMiningSettings.orgId);
-    console.log('  X-Auth:', authHeader.substring(0, 50) + '...');
 
     // According to official Python client: Content-Type is ALWAYS application/json
     return {
@@ -17033,13 +16922,13 @@ async function fetchNiceHashOrders() {
     console.log(`📡📡📡 FETCHNICEHASHORDERS - Using Solo Mining Endpoint 📡📡📡`);
     console.log(`${'#'.repeat(80)}\n`);
 
-    // Load saved package probabilities from localStorage (for restoring on completed packages)
+    // Load saved package probabilities from appStorage (for restoring on completed packages)
     if (Object.keys(savedPackageProbabilities).length === 0 && loggedInUser) {
         const storedProbs = getStorageItem(`${loggedInUser}_savedPackageProbabilities`);
         if (storedProbs) {
             try {
                 savedPackageProbabilities = JSON.parse(storedProbs);
-                console.log(`📂 Loaded ${Object.keys(savedPackageProbabilities).length} saved package probabilities from localStorage`);
+                console.log(`📂 Loaded ${Object.keys(savedPackageProbabilities).length} saved package probabilities from appStorage`);
             } catch (e) {
                 console.warn('Failed to parse saved package probabilities:', e);
                 savedPackageProbabilities = {};
@@ -18511,7 +18400,7 @@ function displayActivePackages() {
         }
 
         // Robot icon for auto-bought packages (flashing, same style as rocket)
-        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
 
         // Multi-level fallback matching for auto-bought packages
         let isAutoBought = null;
@@ -18574,10 +18463,10 @@ function displayActivePackages() {
         // Check if auto-buy is active for this specific package
         const isAutoBuyActive = (() => {
             if (pkg.isTeam) {
-                const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+                const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
                 return teamAutoBuy[pkg.name]?.enabled === true;
             } else {
-                const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+                const soloAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
                 return soloAutoBuy[pkg.name]?.enabled === true;
             }
         })();
@@ -18585,7 +18474,7 @@ function displayActivePackages() {
         // Check if auto-shares is active (team packages only)
         const isAutoSharesActiveCard = (() => {
             if (pkg.isTeam) {
-                const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+                const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
                 return teamAutoShares[pkg.name]?.enabled === true;
             }
             return false;
@@ -18594,7 +18483,7 @@ function displayActivePackages() {
         // Check if auto-shares on alert is active (team packages only)
         const isAutoSharesOnAlertActiveCard = (() => {
             if (pkg.isTeam) {
-                const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+                const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
                 return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
             }
             return false;
@@ -19082,10 +18971,10 @@ function validateActivePackageRobotIcons() {
     const container = document.getElementById('active-packages-container');
     if (!container) return;
 
-    const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-    const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
-    const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
-    const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+    const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const soloAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
     // Only validate if we have any bot settings
     if (Object.keys(teamAutoBuy).length === 0 &&
@@ -19534,7 +19423,7 @@ let alertedTeamPackages = new Set();
  */
 function shouldPauseAutoBuyForTgSafeHold(packageName) {
     // Get TG Safe Hold toggle state
-    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const easyMiningSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
     const tgSafeHoldEnabled = easyMiningSettings.autoBuyTgSafeHold || false;
 
     // If toggle is OFF, allow all auto-buys (no pause)
@@ -19548,7 +19437,7 @@ function shouldPauseAutoBuyForTgSafeHold(packageName) {
     }
 
     // Get Team Gold auto-buy settings to calculate hold amount
-    const teamAutoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const teamAutoBuySettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
     const teamGoldSettings = teamAutoBuySettings['Team Gold'];
 
     // If Team Gold auto-buy is not configured, no hold amount to protect
@@ -19585,10 +19474,10 @@ function shouldPauseAutoBuyForTgSafeHold(packageName) {
 async function executeAutoBuySolo(recommendations) {
     console.log('🤖 Checking for solo auto-buy opportunities...');
 
-    const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+    const autoBuySettings = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
 
     // Check if smart cooldowns are enabled (default: true)
-    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const easyMiningSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
     const smartCooldownsEnabled = easyMiningSettings.autoBuyCooldown !== undefined ? easyMiningSettings.autoBuyCooldown : true;
 
     for (const pkg of recommendations) {
@@ -19739,18 +19628,18 @@ async function executeAutoBuySolo(recommendations) {
             // ✅ ONLY save data after confirming purchase was successful
             // Mark this package as auto-bought (use order ID from API response, not ticket ID)
             const packageId = result.id || result.orderId;
-            const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+            const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
             autoBoughtPackages[packageId] = {
                 type: 'solo',
                 timestamp: Date.now(),
                 price: parseFloat(pkg.price) || 0,
                 orderId: result.id || result.orderId
             };
-            localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+            appStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
 
             // Update lastBuyTime and save
             autoBuy.lastBuyTime = Date.now();
-            localStorage.setItem(`${loggedInUser}_soloAutoBuy`, JSON.stringify(autoBuySettings));
+            appStorage.setItem(`${loggedInUser}_soloAutoBuy`, JSON.stringify(autoBuySettings));
 
             console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name}`);
             console.log(`   Order ID: ${result.id || result.orderId || 'N/A'}`);
@@ -19782,10 +19671,10 @@ async function executeAutoBuySolo(recommendations) {
 async function executeAutoBuyTeam(recommendations) {
     console.log('🤖 Checking for team auto-buy opportunities...');
 
-    const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const autoBuySettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
 
     // Check if smart cooldowns are enabled (default: true)
-    const easyMiningSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const easyMiningSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
     const smartCooldownsEnabled = easyMiningSettings.autoBuyCooldown !== undefined ? easyMiningSettings.autoBuyCooldown : true;
 
     for (const pkg of recommendations) {
@@ -19811,7 +19700,7 @@ async function executeAutoBuyTeam(recommendations) {
         if (!smartCooldownsEnabled) {
             // When smart cooldowns are OFF: Track by package ID (one buy per package ID)
             // BUT allow buying if shares were cleared (currentShares === 0)
-            const boughtPackageIds = JSON.parse(localStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
+            const boughtPackageIds = JSON.parse(appStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
 
             if (boughtPackageIds[packageId] && currentSharesInPackage > 0) {
                 console.log(`⏸️ ${pkg.name}: Already bought this package ID (${packageId}) and have ${currentSharesInPackage} shares, skipping (smart cooldowns OFF)`);
@@ -19819,7 +19708,7 @@ async function executeAutoBuyTeam(recommendations) {
             } else if (boughtPackageIds[packageId] && currentSharesInPackage === 0) {
                 // Shares were cleared - remove the bought record so we can buy again
                 delete boughtPackageIds[packageId];
-                localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
+                appStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
                 console.log(`🔄 ${pkg.name}: Shares were cleared, removed bought record - can buy again`);
             }
         } else {
@@ -19831,10 +19720,10 @@ async function executeAutoBuyTeam(recommendations) {
             if (currentSharesInPackage === 0 && autoBuy.lastBuyTime) {
                 console.log(`🔄 ${pkg.name}: Shares were cleared (0 shares), bypassing cooldown - can buy again`);
                 // Clear the lastBuyTime so cooldown is bypassed
-                const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+                const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
                 if (teamAutoBuy[pkg.name]) {
                     delete teamAutoBuy[pkg.name].lastBuyTime;
-                    localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(teamAutoBuy));
+                    appStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(teamAutoBuy));
                 }
             } else if (currentSharesInPackage > 0) {
                 // Only apply cooldown if we currently have shares
@@ -20031,13 +19920,13 @@ async function executeAutoBuyTeam(recommendations) {
 
             console.log(`✅ AUTO-BUY COMPLETED: ${pkg.name} - bought ${actualSharesToBuy} share(s), now has ${newTotalShares} total. Order ID: ${result.id || result.orderId || 'N/A'}`);
 
-            // ✅ API is now source of truth - no need to save to localStorage or sync inputs
+            // ✅ API is now source of truth - no need to save to appStorage or sync inputs
             // Next API poll will update easyMiningData.activePackages with ownedShares
             // getMyTeamShares() will return the API value automatically
 
             // Mark this package as auto-bought (use order ID from API response, not ticket ID)
             const orderIdReturned = result.id || result.orderId;
-            const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+            const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
             autoBoughtPackages[orderIdReturned] = {
                 type: 'team',
                 packageName: pkg.name,  // Store package name for fallback matching when countdown → active
@@ -20049,7 +19938,7 @@ async function executeAutoBuyTeam(recommendations) {
                 orderId: orderIdReturned,
                 ticketId: packageId  // Store ticket ID for reference but use order ID as key
             };
-            localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+            appStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
 
             // Log storage for debugging
             console.log(`🤖 TEAM AUTO-BUY STORED:`, {
@@ -20063,18 +19952,18 @@ async function executeAutoBuyTeam(recommendations) {
 
             // Update lastBuyTime
             autoBuy.lastBuyTime = Date.now();
-            localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
+            appStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
 
             // ✅ If smart cooldowns are OFF, mark this package ID as bought
             if (!smartCooldownsEnabled) {
-                const boughtPackageIds = JSON.parse(localStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
+                const boughtPackageIds = JSON.parse(appStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
                 boughtPackageIds[packageId] = {
                     name: pkg.name,
                     timestamp: Date.now(),
                     sharesBought: actualSharesToBuy,
                     totalShares: newTotalShares
                 };
-                localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
+                appStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
                 console.log(`   ✅ Marked package ID ${packageId} as bought (smart cooldowns OFF - one buy per package ID)`);
             }
 
@@ -20148,7 +20037,7 @@ function showAutoSharesConfigModal(packageName, crypto, mergeCrypto, isDualCrypt
     pendingAutoSharesModal = { packageName, crypto, mergeCrypto, isDualCrypto };
 
     // Load existing settings if any
-    const savedAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const savedAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     const existingSettings = savedAutoShares[packageName] || {};
 
     // Update modal content
@@ -20214,7 +20103,7 @@ function saveAutoSharesConfig() {
     }
 
     // Check/prompt for withdrawal addresses
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
 
     let mainAddress = savedAddresses[crypto];
     if (!mainAddress) {
@@ -20240,10 +20129,10 @@ function saveAutoSharesConfig() {
     }
 
     // Save addresses
-    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+    appStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
 
     // Save auto-shares settings
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     autoSharesSettings[packageName] = {
         enabled: true,
         crypto: crypto,
@@ -20255,7 +20144,7 @@ function saveAutoSharesConfig() {
         secondaryShares: secondaryShares,
         trackedPackageIds: {} // Track which package IDs we've worked on
     };
-    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+    appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 
     // Update checkbox state
     const checkboxId = `team-autoshares-${packageName.replace(/\s+/g, '-')}`;
@@ -20288,10 +20177,10 @@ function disableAutoShares(packageName, skipUIUpdate = false) {
     stopAutoSharesForPackage(packageName);
 
     // Disable in settings
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     if (autoSharesSettings[packageName]) {
         autoSharesSettings[packageName].enabled = false;
-        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+        appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
     }
 
     // Update status text and checkbox
@@ -20337,7 +20226,7 @@ function handleAutoSharesOnAlertCheckboxChange(checkbox) {
  */
 function configureAutoSharesOnAlertWithPrompts(checkbox, packageName, crypto, mergeCrypto, isDualCrypto) {
     // Load existing settings
-    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const savedSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
     const existingSettings = savedSettings[packageName] || {};
 
     // Prompt for percentage
@@ -20400,7 +20289,7 @@ function configureAutoSharesOnAlertWithPrompts(checkbox, packageName, crypto, me
     }
 
     // Check/prompt for withdrawal addresses
-    const savedAddresses = JSON.parse(localStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
+    const savedAddresses = JSON.parse(appStorage.getItem(`${loggedInUser}_withdrawalAddresses`)) || {};
 
     let mainAddress = savedAddresses[crypto];
     if (!mainAddress) {
@@ -20428,10 +20317,10 @@ function configureAutoSharesOnAlertWithPrompts(checkbox, packageName, crypto, me
     }
 
     // Save addresses
-    localStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
+    appStorage.setItem(`${loggedInUser}_withdrawalAddresses`, JSON.stringify(savedAddresses));
 
     // Save auto-shares on alert settings
-    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const autoSharesOnAlertSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
     autoSharesOnAlertSettings[packageName] = {
         enabled: true,
         crypto: crypto,
@@ -20443,7 +20332,7 @@ function configureAutoSharesOnAlertWithPrompts(checkbox, packageName, crypto, me
         secondaryShares: secondaryShares,
         trackedPackageIds: existingSettings.trackedPackageIds || {}
     };
-    localStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
+    appStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
 
     // Update status text
     const statusSpanId = `autoshares-onalert-status-${packageName.replace(/\s+/g, '-')}`;
@@ -20468,10 +20357,10 @@ function configureAutoSharesOnAlertWithPrompts(checkbox, packageName, crypto, me
  */
 function disableAutoSharesOnAlert(packageName, skipUIUpdate = false) {
     // Disable in settings
-    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const autoSharesOnAlertSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
     if (autoSharesOnAlertSettings[packageName]) {
         autoSharesOnAlertSettings[packageName].enabled = false;
-        localStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
+        appStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
     }
 
     // Update status text and checkbox
@@ -20497,18 +20386,18 @@ function disableAutoSharesOnAlert(packageName, skipUIUpdate = false) {
 function cleanupOnAlertAutoShares(packageName, trackedIds) {
 
     // Sync tracking back to on-alert storage
-    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const autoSharesOnAlertSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
     if (autoSharesOnAlertSettings[packageName]) {
         autoSharesOnAlertSettings[packageName].trackedPackageIds = trackedIds;
-        localStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
+        appStorage.setItem(`${loggedInUser}_teamAutoSharesOnAlert`, JSON.stringify(autoSharesOnAlertSettings));
         console.log(`   ✅ Synced tracking to on-alert storage`);
     }
 
     // Remove temporary entry from teamAutoShares (so it doesn't run continuously)
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     if (autoSharesSettings[packageName]?.fromOnAlert) {
         delete autoSharesSettings[packageName];
-        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+        appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
         console.log(`   ✅ Removed temporary entry from continuous auto-shares`);
     }
 }
@@ -20521,8 +20410,8 @@ function cleanupOnAlertAutoShares(packageName, trackedIds) {
 async function executeAutoSharesOnAlertTeam(recommendations) {
     if (!recommendations || recommendations.length === 0) return;
 
-    const autoSharesOnAlertSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesOnAlertSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
 
     // Check each recommended package for auto-shares on alert settings
     for (const pkg of recommendations) {
@@ -20554,7 +20443,7 @@ async function executeAutoSharesOnAlertTeam(recommendations) {
     }
 
     // Save the updated settings (so queue processor can use them)
-    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+    appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 }
 
 /**
@@ -20567,10 +20456,10 @@ function disableOtherAutoOptions(packageName, selectedOption) {
 
     if (selectedOption !== 'autoBuy') {
         // Disable auto-buy
-        const autoBuySettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+        const autoBuySettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
         if (autoBuySettings[packageName]?.enabled) {
             autoBuySettings[packageName].enabled = false;
-            localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
+            appStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(autoBuySettings));
             // Update UI
             const checkbox = document.getElementById(`team-autobuy-${packageName.replace(/\s+/g, '-')}`);
             if (checkbox) {
@@ -20624,7 +20513,7 @@ function stopAutoSharesForPackage(packageName) {
  * Called from updateRecommendations to check and buy shares continuously
  */
 async function executeAutoSharesTeam(teamPackages) {
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
 
     // Debug: Log auto-shares status
     const enabledPackages = Object.entries(autoSharesSettings).filter(([name, s]) => s.enabled).map(([name]) => name);
@@ -20663,7 +20552,7 @@ async function executeAutoSharesTeam(teamPackages) {
                 trackState.expectedShares = 0;
                 trackedIds[packageId] = trackState;
                 settings.trackedPackageIds = trackedIds;
-                localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+                appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
             } else {
                 const timeSinceBuy = Date.now() - (trackState.lastBuyTime || 0);
                 if (timeSinceBuy < 30000) { // Wait up to 30 seconds for verification
@@ -20689,7 +20578,7 @@ async function executeAutoSharesTeam(teamPackages) {
                 // when target is reached again (it will do a final secondary if needed)
                 trackedIds[packageId] = trackState;
                 settings.trackedPackageIds = trackedIds;
-                localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+                appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
             }
         }
 
@@ -20717,7 +20606,7 @@ async function executeAutoSharesTeam(teamPackages) {
     }
 
     // Save any tracking updates
-    localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+    appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 
     // Step 2: If not currently processing, pick next from queue
     if (!autoSharesCurrentPackage && autoSharesQueue.length > 0) {
@@ -20775,7 +20664,7 @@ async function executeAutoSharesTeam(teamPackages) {
             trackState.lastSeenTotalShares = totalSharesBought;
             trackedIds[packageId] = trackState;
             settings.trackedPackageIds = trackedIds;
-            localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+            appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 
             console.log(`✅ ${pkg.name}: Target reached (${myShares}/${targetShares}), ended on secondary, moving to next`);
 
@@ -20804,7 +20693,7 @@ async function executeAutoSharesTeam(teamPackages) {
             lastSeenTotalShares: totalSharesBought
         };
         settings.trackedPackageIds = trackedIds;
-        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+        appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
         console.log(`🆕 ${pkg.name}: Started tracking package ID ${packageId}`);
     }
 
@@ -20832,7 +20721,7 @@ async function executeAutoSharesTeam(teamPackages) {
             trackState.completed = true;
             console.log(`🏁 ${pkg.name}: Over target (${myShares}/${targetShares}) and ended on secondary - complete!`);
             settings.trackedPackageIds = trackedIds;
-            localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+            appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 
             // Clean up if this was from on-alert (sync tracking and remove temp entry)
             if (settings.fromOnAlert) {
@@ -20854,7 +20743,7 @@ async function executeAutoSharesTeam(teamPackages) {
         isAutoSharesInProgress = true;
 
         // Get EasyMining settings
-        const easyMiningSettingsLocal = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+        const easyMiningSettingsLocal = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
         if (!easyMiningSettingsLocal.enabled || !easyMiningSettingsLocal.apiKey) {
             console.error('❌ EasyMining not configured for auto-shares');
             return;
@@ -20976,7 +20865,7 @@ async function executeAutoSharesTeam(teamPackages) {
         // This ensures getMyTeamShares() returns our new value until API confirms
         setPendingShares(packageId, newTotalShares);
 
-        // Save to localStorage as backup and update UI inputs
+        // Save to appStorage as backup and update UI inputs
         saveMyTeamShares(packageId, newTotalShares);
         syncTeamShareInputs(packageId, pkg.name, newTotalShares);
         console.log(`💾 Saved ${newTotalShares} shares for ${pkg.name} (ID: ${packageId}) with 10s pending hold`);
@@ -21015,10 +20904,10 @@ async function executeAutoSharesTeam(teamPackages) {
         // Save updated state
         trackedIds[packageId] = trackState;
         settings.trackedPackageIds = trackedIds;
-        localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
+        appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
 
         // Mark as auto-bought for robot icon
-        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
         const orderIdReturned = result.id || result.orderId || packageId;
         autoBoughtPackages[`autoshares_${orderIdReturned}_${Date.now()}`] = {
             type: 'team-autoshares',
@@ -21027,7 +20916,7 @@ async function executeAutoSharesTeam(teamPackages) {
             sharesBought: actualSharesToBuy,
             totalShares: newTotalShares
         };
-        localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+        appStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
 
     } catch (error) {
         console.error(`❌ Auto-shares failed for ${pkg.name}:`, error.message);
@@ -21046,7 +20935,7 @@ async function executeAutoSharesTeam(teamPackages) {
         if (isTerminalError) {
             // Mark as completed so we move to next in queue
             const packageId = pkg.id || pkg.ticketId || pkg.name;
-            const autoSharesSettingsLocal = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            const autoSharesSettingsLocal = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
             const settingsLocal = autoSharesSettingsLocal[pkg.name] || {};
             const trackedIdsLocal = settingsLocal.trackedPackageIds || {};
             if (trackedIdsLocal[packageId]) {
@@ -21054,7 +20943,7 @@ async function executeAutoSharesTeam(teamPackages) {
                 trackedIdsLocal[packageId].error = error.message;
                 settingsLocal.trackedPackageIds = trackedIdsLocal;
                 autoSharesSettingsLocal[pkg.name] = settingsLocal;
-                localStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettingsLocal));
+                appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettingsLocal));
             }
             autoSharesCurrentPackage = null; // Allow next package to be processed
         }
@@ -21068,7 +20957,7 @@ async function executeAutoSharesTeam(teamPackages) {
  * Check if auto-shares is active for a package
  */
 function isAutoSharesActive(packageName) {
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     return autoSharesSettings[packageName]?.enabled === true;
 }
 
@@ -21076,7 +20965,7 @@ function isAutoSharesActive(packageName) {
  * Check if any auto-shares is enabled across all packages
  */
 function hasAnyAutoSharesEnabled() {
-    const autoSharesSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const autoSharesSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     return Object.values(autoSharesSettings).some(s => s.enabled === true);
 }
 
@@ -21113,7 +21002,7 @@ function startAutoSharesBackgroundPolling() {
  */
 async function runAutoSharesBackgroundCheck() {
     // Skip if EasyMining is not configured
-    const easyMiningSettingsLocal = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
+    const easyMiningSettingsLocal = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`)) || {};
     if (!easyMiningSettingsLocal.enabled || !easyMiningSettingsLocal.apiKey) {
         return;
     }
@@ -21342,7 +21231,7 @@ async function updateRecommendations() {
 
             if (recommendations.length === 0) {
                 // Check if any alerts are configured
-                const savedAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
+                const savedAlerts = JSON.parse(appStorage.getItem(`${loggedInUser}_soloPackageAlerts`)) || {};
                 const hasAlerts = Object.keys(savedAlerts).length > 0;
 
                 if (!hasAlerts) {
@@ -21386,7 +21275,7 @@ async function updateRecommendations() {
 
             if (teamRecommendations.length === 0) {
                 // Check if any team alerts are configured
-                const savedTeamAlerts = JSON.parse(localStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
+                const savedTeamAlerts = JSON.parse(appStorage.getItem(`${loggedInUser}_teamPackageAlerts`)) || {};
                 const hasTeamAlerts = Object.keys(savedTeamAlerts).length > 0;
 
                 if (!hasTeamAlerts) {
@@ -21725,9 +21614,9 @@ function updateTeamAlertCardValues(pkg) {
         }
 
         // Check if any bot feature is active for this package
-        const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-        const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
-        const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+        const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+        const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+        const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
         const isBotActive = teamAutoBuy[pkg.name]?.enabled ||
                            teamAutoShares[pkg.name]?.enabled ||
                            teamAutoSharesOnAlert[pkg.name]?.enabled;
@@ -21795,10 +21684,10 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
     // Check if auto-buy is active for this package
     const isAutoBuyActive = (() => {
         if (pkg.isTeam) {
-            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
             return teamAutoBuy[pkg.name]?.enabled === true;
         } else {
-            const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+            const soloAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
             return soloAutoBuy[pkg.name]?.enabled === true;
         }
     })();
@@ -21806,7 +21695,7 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
     // Check if auto-shares is active for this package (team packages only)
     const isAutoSharesActive = (() => {
         if (pkg.isTeam) {
-            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
             return teamAutoShares[pkg.name]?.enabled === true;
         }
         return false;
@@ -21815,7 +21704,7 @@ function updateAlertCardRobotIcon(pkg, myBoughtShares) {
     // Check if auto-shares on alert is active for this package (team packages only)
     const isAutoSharesOnAlertActive = (() => {
         if (pkg.isTeam) {
-            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
             return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
         }
         return false;
@@ -22347,7 +22236,7 @@ function createTeamPackageRecommendationCard(pkg) {
     `;
 
     // Auto-buy robot icon logic
-    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
     let isAutoBought = null;
     let matchMethod = 'none';
 
@@ -22390,10 +22279,10 @@ function createTeamPackageRecommendationCard(pkg) {
     // Check if auto-buy is active for this specific package
     const isAutoBuyActive = (() => {
         if (pkg.isTeam) {
-            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
             return teamAutoBuy[pkg.name]?.enabled === true;
         } else {
-            const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+            const soloAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
             return soloAutoBuy[pkg.name]?.enabled === true;
         }
     })();
@@ -22401,7 +22290,7 @@ function createTeamPackageRecommendationCard(pkg) {
     // Check if auto-shares is active (team packages only)
     const isAutoSharesActiveLocal = (() => {
         if (pkg.isTeam) {
-            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
             return teamAutoShares[pkg.name]?.enabled === true;
         }
         return false;
@@ -22410,7 +22299,7 @@ function createTeamPackageRecommendationCard(pkg) {
     // Check if auto-shares on alert is active (team packages only)
     const isAutoSharesOnAlertActiveLocal = (() => {
         if (pkg.isTeam) {
-            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
             return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
         }
         return false;
@@ -22940,7 +22829,7 @@ function updateBTCHoldings() {
     const btcHoldingsElement = document.getElementById('bitcoin-holdings');
     if (!btcHoldingsElement) return;
 
-    // Get user's MANUAL holdings (stored in localStorage)
+    // Get user's MANUAL holdings (stored in appStorage)
     let manualHoldings = parseFloat(getStorageItem(`${loggedInUser}_bitcoinHoldings`)) || 0;
 
     // Calculate NiceHash balance to add
@@ -22962,7 +22851,7 @@ function updateBTCHoldings() {
     // Update display (NO COMMAS for BTC - use raw number)
     btcHoldingsElement.textContent = totalToDisplay.toFixed(8);
 
-    // SAVE displayed amount to localStorage so it persists across page loads
+    // SAVE displayed amount to appStorage so it persists across page loads
     setStorageItem(`${loggedInUser}_bitcoin_displayHoldings`, totalToDisplay);
 
     // Update the AUD value for Bitcoin
@@ -23643,7 +23532,7 @@ let packageDetailPollingInterval = null;
 // Collects real data points for all active packages during polling
 // =============================================================================
 
-// Load chart data store from localStorage on init
+// Load chart data store from appStorage on init
 function loadChartDataFromStorage() {
     if (!loggedInUser) return;
     try {
@@ -23658,7 +23547,7 @@ function loadChartDataFromStorage() {
     }
 }
 
-// Save chart data store to localStorage
+// Save chart data store to appStorage
 function saveChartDataToStorage() {
     if (!loggedInUser) return;
     try {
@@ -26884,7 +26773,7 @@ function getMyTeamSharesFromActivePackages(packageId) {
     return null;
 }
 
-// Helper function to get user's bought shares from localStorage (fallback)
+// Helper function to get user's bought shares from appStorage (fallback)
 function getMyTeamSharesFromStorage(packageId) {
     const storageKey = `${loggedInUser}_teamPackageShares`;
     const sharesData = getStorageItem(storageKey);
@@ -26900,7 +26789,7 @@ function getMyTeamSharesFromStorage(packageId) {
 }
 
 // Main function to get user's bought shares for a team package
-// Priority: 1. Pending (recent purchase) 2. Active packages API 3. Authenticated team shares 4. localStorage fallback
+// Priority: 1. Pending (recent purchase) 2. Active packages API 3. Authenticated team shares 4. appStorage fallback
 function getMyTeamShares(packageId) {
     // 1. Check for pending shares (recent purchase, within 10s)
     const pendingShares = getPendingShares(packageId);
@@ -26931,7 +26820,7 @@ function getMyTeamShares(packageId) {
         return authenticatedTeamShares[packageId];
     }
 
-    // 6. Fallback to localStorage for packages not in any API data
+    // 6. Fallback to appStorage for packages not in any API data
     return getMyTeamSharesFromStorage(packageId);
 }
 
@@ -27042,12 +26931,12 @@ function syncTeamShareInputs(packageId, packageName, newShares) {
 
 /**
  * Clean up old auto-bought package entries (older than 30 days)
- * Prevents localStorage from growing indefinitely
+ * Prevents appStorage from growing indefinitely
  */
 function cleanupAutoBoughtPackages() {
     if (!loggedInUser) return;
 
-    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
     const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
     let cleaned = false;
 
@@ -27061,7 +26950,7 @@ function cleanupAutoBoughtPackages() {
     });
 
     if (cleaned) {
-        localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+        appStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
         console.log('🧹 Cleaned up old auto-bought package entries');
     }
 }
@@ -27797,7 +27686,7 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
     const btcPrice = getPriceFromObject(cryptoPrices['bitcoin']) || 140000;
     const totalAUD = (costForNewShares * btcPrice).toFixed(2);
 
-    // 4. Get wallet address from localStorage
+    // 4. Get wallet address from appStorage
     let mainWalletAddress = getWithdrawalAddress(crypto);
 
     if (!mainWalletAddress) {
@@ -27939,9 +27828,9 @@ async function buyTeamPackageUpdated(packageId, crypto, cardId) {
             console.warn('⚠️ Response missing expected fields (id/orderId/success), but HTTP 200 received - treating as success');
         }
 
-        // 8. Update tracking - set pending hold and save to localStorage
+        // 8. Update tracking - set pending hold and save to appStorage
         setPendingShares(packageId, desiredTotalShares); // Hold for up to 10s until API confirms
-        saveMyTeamShares(packageId, desiredTotalShares); // Backup to localStorage
+        saveMyTeamShares(packageId, desiredTotalShares); // Backup to appStorage
         console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${sharesToPurchase})`);
 
         // ✅ SYNC: Update share inputs on both UIs
@@ -29045,9 +28934,9 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             shareInput.max = remainingShares > 0 ? remainingShares : 1;
 
             // Check if any bot feature is active for this package
-            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
-            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
             const isBotActive = teamAutoBuy[pkg.name]?.enabled ||
                                teamAutoShares[pkg.name]?.enabled ||
                                teamAutoSharesOnAlert[pkg.name]?.enabled;
@@ -29161,15 +29050,15 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
  */
 function updateBuyPageRobotIcon(card, pkg, myBoughtShares) {
     // Check if auto-buy is active for this team package
-    const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
     const isAutoBuyActive = teamAutoBuy[pkg.name]?.enabled === true;
 
     // Check if auto-shares (continuous) is active for this team package
-    const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
     const isAutoSharesActive = teamAutoShares[pkg.name]?.enabled === true;
 
     // Check if auto-shares on alert is active for this team package
-    const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
     const isAutoSharesOnAlertActive = teamAutoSharesOnAlert[pkg.name]?.enabled === true;
 
     // Any bot feature being active counts
@@ -29871,11 +29760,11 @@ async function loadBuyPackagesDataOnPage() {
 function validateAndFixAutoBuyRobotIcons() {
     console.log('🤖 Validating auto-buy robot icons...');
 
-    // Read auto-buy and auto-shares settings from localStorage
-    const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
-    const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
-    const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
-    const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+    // Read auto-buy and auto-shares settings from appStorage
+    const soloAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+    const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+    const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+    const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
 
     // Query all package cards on the Buy Packages page
     // Note: Container IDs are buy-single-packages-page and buy-team-packages-page
@@ -30054,7 +29943,7 @@ function updateTeamPackageCountdowns() {
                         // RE-ADD LOGIC: Check if previously cleared package is now back in recommendations
                         if (myShares === 0 && isStillRecommended) {
                             const clearedKey = `${loggedInUser}_autoClearedPackage_${packageId}`;
-                            const clearedDataStr = localStorage.getItem(clearedKey);
+                            const clearedDataStr = appStorage.getItem(clearedKey);
                             if (clearedDataStr) {
                                 try {
                                     const clearedData = JSON.parse(clearedDataStr);
@@ -30063,7 +29952,7 @@ function updateTeamPackageCountdowns() {
                                         // Re-buy the shares
                                         reAddTeamShares(packageId, pkg.name, clearedData.shares, pkg).then(() => {
                                             // Clear the storage on success
-                                            localStorage.removeItem(clearedKey);
+                                            appStorage.removeItem(clearedKey);
                                         }).catch(err => {
                                             console.error('Re-add shares failed:', err);
                                         });
@@ -30078,7 +29967,7 @@ function updateTeamPackageCountdowns() {
                         // Safety check: Only auto-clear countdown packages, NOT active ones
                         if (myShares > 0 && !isStillRecommended && !pkg.active) {
                             // CHECK: Was this package auto-bought? (Only clear auto-bought packages)
-                            const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+                            const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
                             let wasAutoBought = null;
                             let matchMethod = 'none';
 
@@ -30132,7 +30021,7 @@ function updateTeamPackageCountdowns() {
 
                             // Check if we haven't already cleared this package (to avoid duplicate clears)
                             const clearedKey = `${loggedInUser}_autoClearedPackage_${packageId}`;
-                            const alreadyCleared = localStorage.getItem(clearedKey);
+                            const alreadyCleared = appStorage.getItem(clearedKey);
 
                             if (!alreadyCleared) {
                                 console.log(`🤖 Auto-clear triggered for ${pkg.name}:`, {
@@ -30148,13 +30037,13 @@ function updateTeamPackageCountdowns() {
                                     packageName: pkg.name,
                                     timestamp: Date.now()
                                 };
-                                localStorage.setItem(clearedKey, JSON.stringify(clearedData));
+                                appStorage.setItem(clearedKey, JSON.stringify(clearedData));
 
                                 // Call auto-clear function (async, no await to avoid blocking countdown updates)
                                 autoClearTeamShares(packageId, pkg.name).catch(err => {
                                     console.error('Auto-clear failed:', err);
                                     // Remove cleared flag if failed, so it can retry
-                                    localStorage.removeItem(clearedKey);
+                                    appStorage.removeItem(clearedKey);
                                 });
                             }
                         }
@@ -30698,7 +30587,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
     // Auto-buy robot icon logic - for both team and solo packages
     let robotHtml = '';
-    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
     let isAutoBought = null;
     let matchMethod = 'none';
 
@@ -30741,10 +30630,10 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Check if auto-buy is active for this specific package
     const isAutoBuyActive = (() => {
         if (pkg.isTeam) {
-            const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+            const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
             return teamAutoBuy[pkg.name]?.enabled === true;
         } else {
-            const soloAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
+            const soloAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_soloAutoBuy`)) || {};
             return soloAutoBuy[pkg.name]?.enabled === true;
         }
     })();
@@ -30752,7 +30641,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Check if auto-shares is active (team packages only)
     const isAutoSharesActiveBuyPage = (() => {
         if (pkg.isTeam) {
-            const teamAutoShares = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
+            const teamAutoShares = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoShares`)) || {};
             return teamAutoShares[pkg.name]?.enabled === true;
         }
         return false;
@@ -30761,7 +30650,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
     // Check if auto-shares on alert is active (team packages only)
     const isAutoSharesOnAlertActiveBuyPage = (() => {
         if (pkg.isTeam) {
-            const teamAutoSharesOnAlert = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
+            const teamAutoSharesOnAlert = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoSharesOnAlert`)) || {};
             return teamAutoSharesOnAlert[pkg.name]?.enabled === true;
         }
         return false;
@@ -32266,9 +32155,9 @@ Do you want to continue?
         const result = await response.json();
         console.log(`✅ Purchase successful:`, result);
 
-        // Save the new total shares - set pending hold and backup to localStorage
+        // Save the new total shares - set pending hold and backup to appStorage
         setPendingShares(packageId, desiredTotalShares); // Hold for up to 10s until API confirms
-        saveMyTeamShares(packageId, desiredTotalShares); // Backup to localStorage
+        saveMyTeamShares(packageId, desiredTotalShares); // Backup to appStorage
         console.log(`💾 Saved team shares for package ${packageId}: ${desiredTotalShares} shares (was ${currentShares}, purchased ${shares})`);
 
         // ✅ SYNC: Update share inputs on both UIs (Alert cards & Buy Packages page)
@@ -32339,7 +32228,7 @@ Do you want to continue?
 
 // Check if a package was auto-bought (uses same logic as robot icon)
 function isPackageAutoBought(pkg) {
-    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
 
     // Level 1: Direct ID match
     if (autoBoughtPackages[pkg.id]) return true;
@@ -32782,7 +32671,7 @@ async function autoClearTeamShares(packageId, packageName) {
         await fetchEasyMiningData();
 
         // Clear auto-buy tracking to remove robot icon
-        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
         let removedEntries = 0;
 
         // Remove all matching entries for this package
@@ -32808,22 +32697,22 @@ async function autoClearTeamShares(packageId, packageName) {
 
         // Save updated auto-buy tracking
         if (removedEntries > 0) {
-            localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+            appStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
             console.log(`✅ Removed ${removedEntries} auto-buy tracking entries for ${packageName}`);
         }
 
         // ✅ Also clear teamBoughtPackageIds entry so auto-buy can trigger again
-        const boughtPackageIds = JSON.parse(localStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
+        const boughtPackageIds = JSON.parse(appStorage.getItem(`${loggedInUser}_teamBoughtPackageIds`)) || {};
         if (boughtPackageIds[packageId]) {
             delete boughtPackageIds[packageId];
-            localStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
+            appStorage.setItem(`${loggedInUser}_teamBoughtPackageIds`, JSON.stringify(boughtPackageIds));
         }
 
         // ✅ Also clear lastBuyTime from teamAutoBuy so smart cooldown is reset
-        const teamAutoBuy = JSON.parse(localStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
+        const teamAutoBuy = JSON.parse(appStorage.getItem(`${loggedInUser}_teamAutoBuy`)) || {};
         if (teamAutoBuy[packageName] && teamAutoBuy[packageName].lastBuyTime) {
             delete teamAutoBuy[packageName].lastBuyTime;
-            localStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(teamAutoBuy));
+            appStorage.setItem(`${loggedInUser}_teamAutoBuy`, JSON.stringify(teamAutoBuy));
             console.log(`🗑️ Cleared lastBuyTime for ${packageName} - smart cooldown reset`);
         }
 
@@ -32860,7 +32749,7 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
             crypto = 'LTC';
         }
 
-        // 3. Get wallet address from localStorage
+        // 3. Get wallet address from appStorage
         const mainWalletAddress = getWithdrawalAddress(crypto);
         if (!mainWalletAddress) {
             throw new Error(`No ${crypto} withdrawal address configured`);
@@ -32934,7 +32823,7 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
         console.log(`✅ Saved ${shares} shares for package ${packageId}`);
 
         // 8. Track as auto-bought (for future auto-clear)
-        const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+        const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
         autoBoughtPackages[packageId] = {
             type: 'team',
             packageName: packageName,
@@ -32942,7 +32831,7 @@ async function reAddTeamShares(packageId, packageName, shares, pkg) {
             timestamp: Date.now(),
             reAdded: true // Mark as re-added (not original auto-buy)
         };
-        localStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
+        appStorage.setItem(`${loggedInUser}_autoBoughtPackages`, JSON.stringify(autoBoughtPackages));
 
         // 9. Refresh UI
         await fetchEasyMiningData();
@@ -32973,7 +32862,7 @@ function checkAutoClearActiveShares() {
     console.log(`🔍 Checking Team Bail (threshold: ${threshold}%, includeManual: ${includeManual})`);
 
     // Get auto-bought packages tracking
-    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
 
     // Iterate through active packages
     easyMiningData.activePackages.forEach(pkg => {
@@ -33041,7 +32930,7 @@ function checkAutoClearActiveShares() {
 
             // Check if already cleared to prevent duplicates
             const clearedKey = `${loggedInUser}_teamBail_${packageId}`;
-            const alreadyCleared = localStorage.getItem(clearedKey);
+            const alreadyCleared = appStorage.getItem(clearedKey);
 
             if (!alreadyCleared) {
                 console.log(`🤖 Team Bail triggered for ${pkg.name}:`, {
@@ -33052,13 +32941,13 @@ function checkAutoClearActiveShares() {
                 });
 
                 // Mark as cleared to prevent duplicate clears
-                localStorage.setItem(clearedKey, 'true');
+                appStorage.setItem(clearedKey, 'true');
 
                 // Call auto-clear function
                 autoClearTeamShares(packageId, pkg.name).catch(err => {
                     console.error('Team Bail failed:', err);
                     // Remove cleared flag if failed, so it can retry
-                    localStorage.removeItem(clearedKey);
+                    appStorage.removeItem(clearedKey);
                 });
             }
         }
@@ -33079,7 +32968,7 @@ function checkRewardAndBail() {
     console.log(`🔍 Checking Reward & Bail (includeManual: ${includeManual})`);
 
     // Get auto-bought packages tracking
-    const autoBoughtPackages = JSON.parse(localStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
+    const autoBoughtPackages = JSON.parse(appStorage.getItem(`${loggedInUser}_autoBoughtPackages`)) || {};
 
     // Iterate through active packages
     easyMiningData.activePackages.forEach(pkg => {
@@ -33158,7 +33047,7 @@ function checkRewardAndBail() {
 
                 // Check if already cleared to prevent duplicates
                 const clearedKey = `${loggedInUser}_rewardAndBail_${packageId}`;
-                const alreadyCleared = localStorage.getItem(clearedKey);
+                const alreadyCleared = appStorage.getItem(clearedKey);
 
                 if (!alreadyCleared) {
                     console.log(`🤖 Reward & Bail triggered for ${pkg.name}:`, {
@@ -33168,13 +33057,13 @@ function checkRewardAndBail() {
                     });
 
                     // Mark as cleared to prevent duplicate clears
-                    localStorage.setItem(clearedKey, 'true');
+                    appStorage.setItem(clearedKey, 'true');
 
                     // Call auto-clear function
                     autoClearTeamShares(packageId, pkg.name).catch(err => {
                         console.error('Reward & Bail failed:', err);
                         // Remove cleared flag if failed, so it can retry
-                        localStorage.removeItem(clearedKey);
+                        appStorage.removeItem(clearedKey);
                     });
 
                     // Clean up the block time tracking
@@ -33828,7 +33717,7 @@ const DEFAULT_TEAM_INTERVAL_MINS = 5;    // 5 minutes for team packages
 const DEFAULT_MAX_SNAPSHOTS = 1000;      // Circular buffer size (overwrites oldest when full)
 const SNAPSHOT_QUEUE_DELAY_MS = 500;     // 500ms delay between each package snapshot
 
-// User-configurable settings (loaded from localStorage)
+// User-configurable settings (loaded from appStorage)
 let metricsSettings = {
     singleIntervalMins: DEFAULT_SINGLE_INTERVAL_MINS,
     teamIntervalMins: DEFAULT_TEAM_INTERVAL_MINS,
@@ -33844,10 +33733,10 @@ let isProcessingSnapshotQueue = false;
 // Interval for updating averages (5 seconds)
 let packageMetricsAverageInterval = null;
 
-// Load metrics settings from localStorage
+// Load metrics settings from appStorage
 function loadMetricsSettings() {
     try {
-        const stored = localStorage.getItem(METRICS_SETTINGS_STORAGE_KEY);
+        const stored = appStorage.getItem(METRICS_SETTINGS_STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
             metricsSettings = {
@@ -33862,10 +33751,10 @@ function loadMetricsSettings() {
     }
 }
 
-// Save metrics settings to localStorage
+// Save metrics settings to appStorage
 function saveMetricsSettings() {
     try {
-        localStorage.setItem(METRICS_SETTINGS_STORAGE_KEY, JSON.stringify(metricsSettings));
+        appStorage.setItem(METRICS_SETTINGS_STORAGE_KEY, JSON.stringify(metricsSettings));
         console.log('📊 Saved metrics settings:', metricsSettings);
     } catch (e) {
         console.error('Error saving metrics settings:', e);
@@ -34310,7 +34199,7 @@ function stopFloatingIconSpeedUpdates() {
 }
 
 /**
- * Get the package metrics history from localStorage
+ * Get the package metrics history from appStorage
  * Structure: {
  *   [packageName]: {
  *     snapshots: [{ timestamp, hashrate, hashrateRaw, probability, probabilityRaw, priceBTC, priceAUD }],
@@ -34320,7 +34209,7 @@ function stopFloatingIconSpeedUpdates() {
  */
 function getPackageMetricsHistory() {
     try {
-        const data = localStorage.getItem(PACKAGE_METRICS_STORAGE_KEY);
+        const data = appStorage.getItem(PACKAGE_METRICS_STORAGE_KEY);
         return data ? JSON.parse(data) : {};
     } catch (error) {
         console.error('❌ Error reading package metrics history:', error);
@@ -34329,24 +34218,24 @@ function getPackageMetricsHistory() {
 }
 
 /**
- * Save package metrics history to localStorage
+ * Save package metrics history to appStorage
  * Handles quota exceeded by trimming old snapshots
  */
 function savePackageMetricsHistory(history) {
     try {
-        localStorage.setItem(PACKAGE_METRICS_STORAGE_KEY, JSON.stringify(history));
+        appStorage.setItem(PACKAGE_METRICS_STORAGE_KEY, JSON.stringify(history));
     } catch (error) {
         if (error.name === 'QuotaExceededError') {
             console.warn('⚠️ Storage quota exceeded, trimming old snapshots...');
             // Trim snapshots to free up space
             const trimmedHistory = trimPackageMetricsHistory(history);
             try {
-                localStorage.setItem(PACKAGE_METRICS_STORAGE_KEY, JSON.stringify(trimmedHistory));
+                appStorage.setItem(PACKAGE_METRICS_STORAGE_KEY, JSON.stringify(trimmedHistory));
                 console.log('✅ Successfully saved after trimming');
             } catch (retryError) {
                 console.error('❌ Still exceeding quota after trim, clearing old data...');
                 // Last resort: clear and start fresh
-                localStorage.removeItem(PACKAGE_METRICS_STORAGE_KEY);
+                appStorage.removeItem(PACKAGE_METRICS_STORAGE_KEY);
             }
         } else {
             console.error('❌ Error saving package metrics history:', error);
@@ -34878,7 +34767,7 @@ function getAllPackageMetricsSummary() {
  * Clear all package metrics history (for testing/reset)
  */
 function clearPackageMetricsHistory() {
-    localStorage.removeItem(PACKAGE_METRICS_STORAGE_KEY);
+    appStorage.removeItem(PACKAGE_METRICS_STORAGE_KEY);
     console.log('🗑️ Cleared package metrics history');
 }
 
@@ -35054,7 +34943,7 @@ function updateMetricsSetting(setting, value) {
         metricsSettings.maxSnapshots = Math.max(100, Math.min(10000, numValue || DEFAULT_MAX_SNAPSHOTS));
     }
 
-    // Save to localStorage
+    // Save to appStorage
     saveMetricsSettings();
 
     // Update the input to show validated value
@@ -35162,8 +35051,7 @@ function updateAveragesDisplay() {
 
         if (packageCount === 0) {
             console.log('📊 No packages in history - storage may be empty');
-            console.log('📊 localStorage key:', PACKAGE_METRICS_STORAGE_KEY);
-            console.log('📊 Raw storage value:', localStorage.getItem(PACKAGE_METRICS_STORAGE_KEY)?.substring(0, 200) || 'null');
+            console.log('📊 appStorage key:', PACKAGE_METRICS_STORAGE_KEY);
         }
 
         // Separate team and single packages
@@ -35837,15 +35725,15 @@ if (!visibilityChangeListenerAdded) {
 
 function initializeEasyMining() {
     // Load saved settings
-    const savedSettings = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningSettings`));
+    const savedSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`));
     if (savedSettings) {
         easyMiningSettings = savedSettings;
     }
 
     // Load saved data
-    const savedData = JSON.parse(localStorage.getItem(`${loggedInUser}_easyMiningData`));
+    const savedData = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningData`));
     if (savedData) {
-        // ✅ FIX: Don't load availableBTC and pendingBTC from localStorage
+        // ✅ FIX: Don't load availableBTC and pendingBTC from appStorage
         // These should only come from fresh API data to prevent showing incorrect amounts on page load
         // Old stored balance values would be added to manual holdings before fresh data loads
         const { availableBTC, pendingBTC, ...dataToLoad } = savedData;

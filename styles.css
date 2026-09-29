@@ -12916,6 +12916,13 @@ body.light-mode .ad-container {
 }
 
 /* Transaction lists share the chart modal's scrolling surface. */
+.cloud-sync-status { border: 0; background: transparent; color: #aaa; font: inherit; font-size: 11px; max-width: 220px; cursor: pointer; }
+.cloud-sync-status.sync-error { color: #ffb74d; }
+.cloud-conflict { max-width: 480px; padding: 28px; border: 1px solid #555; border-radius: 16px; background: #202020; color: #eee; }
+.cloud-conflict::backdrop { background: #000b; }
+.cloud-conflict button { display: block; width: 100%; margin-top: 12px; padding: 12px; cursor: pointer; }
+@media (max-width: 600px) { .cloud-sync-status { max-width: 110px; font-size: 10px; } }
+
 #holdings-tracking-section .holdings-entries-container,
 #holdings-tracking-section .history-entries-container {
     display: flex;

@@ -76,6 +76,7 @@
 
             <!-- Right: Profile, Donate, Logo -->
             <div class="nav-right">
+                <button id="cloud-sync-status" class="cloud-sync-status" onclick="CloudAccount.retry().catch(error => alert(error.message))" aria-live="polite">Connecting…</button>
                 <!-- Login/Register Buttons (shown when logged out) -->
                 <div class="auth-buttons desktop-only" id="nav-auth-buttons" style="display: none;">
                     <a href="#" class="nav-login-link" onclick="navLogin(); return false;">Login</a>
@@ -3165,18 +3166,28 @@
     <!-- Protocol Buffers library for MEXC WebSocket -->
     <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.5/dist/protobuf.min.js"></script>
 
-    <script src="scripts.js"></script>
+    <section id="cloud-load-error" hidden role="alert" style="padding: 100px 24px; text-align: center;">
+        <h2>Your cloud account could not be loaded</h2>
+        <p></p>
+        <button onclick="location.reload()">Retry connection</button>
+    </section>
+    <dialog id="cloud-conflict" class="cloud-conflict">
+        <h2>Changes on two devices</h2>
+        <p>Automatic saving paused to protect both copies. Choose which complete account copy to keep. The other device should refresh afterwards.</p>
+        <button onclick="CloudAccount.resolveConflict(true).catch(error => alert(error.message))">Keep this device’s changes</button>
+        <button onclick="CloudAccount.resolveConflict(false).catch(error => alert(error.message))">Load cloud copy (discard unsaved changes)</button>
+        <button onclick="document.getElementById('cloud-conflict').close()">Decide later</button>
+    </dialog>
+    <script src="vendor/supabase-2.117.2.js"></script>
+    <script src="cloud-data.js"></script>
+    <script src="cloud-account.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', initializeApp);
-
         document.addEventListener('DOMContentLoaded', () => {
             let fadeTimeout;
-            let cursorTimeout;
 
             const showScrollbarAndCursor = () => {
                 clearTimeout(fadeTimeout);
-                clearTimeout(cursorTimeout);
                 document.body.classList.add('show-scrollbar');
                 document.documentElement.classList.add('show-scrollbar');
                 document.body.style.cursor = 'auto'; // Show cursor
@@ -3186,9 +3197,6 @@
                     document.documentElement.classList.remove('show-scrollbar');
                 }, 3000); // Hide scrollbar after 2 seconds
 
-                cursorTimeout = setTimeout(() => {
-                    document.body.style.cursor = 'none'; // Hide cursor after 2 seconds
-                }, 3000);
             };
 
             document.addEventListener('mousemove', showScrollbarAndCursor);
