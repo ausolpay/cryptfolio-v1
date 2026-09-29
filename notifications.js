@@ -11,13 +11,14 @@ const AppNotifications = (() => {
                 catch { return []; }
             }).sort((a, b) => b.day.localeCompare(a.day) || a.title.localeCompare(b.title));
     }
-    async function add(title, body, category = 'app') {
+    async function add(title, body, category = 'app', eventKey = null) {
         const start = prefix();
         if (!start) return;
         const day = new Date().toISOString().slice(0, 10);
         const item = { title: String(title).slice(0, 160), body: String(body).slice(0, 2000), category, day };
         // Identical events from two monitoring devices produce the same cloud record.
-        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(item)));
+        const identity = eventKey ? { day, category, eventKey } : item;
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(identity)));
         const id = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
         if (start !== prefix()) return;
         appStorage.setItem(start + 'item_' + id, JSON.stringify(item));

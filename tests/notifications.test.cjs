@@ -26,3 +26,9 @@ test('read status persists independently of the alert, without deleting history'
     assert.equal(Object.keys(storage.snapshot()).length, 2);
     assert.ok(Object.entries(storage.snapshot()).some(([key,value]) => key.includes('_read_') && value === 'true'));
 });
+test('the same market event deduplicates across devices with slightly different price snapshots', async () => {
+    const storage = createStorage();
+    await client(storage).add('BTC rally', '7 days: 20.1%', 'market', 'bitcoin:rally:20');
+    await client(storage).add('BTC rally', '7 days: 20.2%', 'market', 'bitcoin:rally:20');
+    assert.equal(Object.keys(storage.snapshot()).length, 1);
+});

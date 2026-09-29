@@ -2754,7 +2754,7 @@
 
     <div id="candlestick-modal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeCandlestickModal()">&times;</span>
+            <button type="button" class="close" aria-label="Close crypto details" onclick="closeCandlestickModal()">&times;</button>
             <div id="crypto-info" class="crypto-info">
                 <img id="crypto-icon" src="" alt="Crypto Icon" class="crypto-icon">
                 <span id="crypto-name" class="crypto-name"></span>
@@ -3207,6 +3207,9 @@
     <script src="mining-telemetry.js"></script>
     <link rel="stylesheet" href="mining-telemetry.css">
     <script src="team-probability.js"></script>
+    <script src="market-alerts.js"></script>
+    <link rel="stylesheet" href="market-alerts.css">
+    <link rel="stylesheet" href="crypto-modal.css">
     <script src="easymining-currency.js"></script>
     <link rel="stylesheet" href="easymining-currency.css">
     <dialog id="notification-dialog" aria-labelledby="notification-heading">

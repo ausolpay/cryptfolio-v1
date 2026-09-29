@@ -1,0 +1,11 @@
+.market-alert-dialog { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:85dvh; overflow:auto; padding:26px; border:1px solid #666; border-radius:18px; background:#252525; color:#eee; box-shadow:0 24px 80px #0008; }
+.market-alert-dialog::backdrop { background:#0009; backdrop-filter:blur(4px); }
+.market-alert-dialog h2 { font-size:21px; line-height:1.4; margin:12px 0 18px; }
+.market-alert-dialog p { line-height:1.7; }
+.market-alert-dialog small { opacity:.7; line-height:1.5; }
+.market-alert-metrics,.market-alert-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.market-alert-metrics span { padding:8px 10px; border-radius:8px; background:#ffffff0b; font-size:13px; }
+.market-alert-actions { margin-top:22px; }
+.market-alert-actions button { padding:10px 14px; border-radius:9px; border:1px solid #666; color:inherit; background:transparent; cursor:pointer; }
+.market-alert-actions button:first-child { background:#ffa500; color:#151515; border-color:#ffa500; }
+body:not(.dark-mode) .market-alert-dialog { background:white; color:#222; }

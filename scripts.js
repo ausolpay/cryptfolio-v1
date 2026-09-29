@@ -1234,7 +1234,7 @@ function storeCryptoRSI(cryptoId, rsi) {
 
 // Get stored RSI value for a crypto (returns null if not calculated yet)
 function getStoredRSI(cryptoId) {
-    return storedRSIValues[cryptoId] || null;
+    return storedRSIValues[cryptoId] ?? null;
 }
 
 /**
@@ -1773,11 +1773,8 @@ function initializeApp() {
         removeStorageItem('modalMessage');
     }
 
-    const tradeMessage = getStorageItem('tradeModalMessage');
-    if (tradeMessage) {
-        showTradeModal(tradeMessage);
-        removeStorageItem('tradeModalMessage');
-    }
+    // Old threshold-only advice is superseded by current contextual market alerts.
+    removeStorageItem('tradeModalMessage');
 
     if (loggedInUser) {
         // Load user's CoinGecko API keys
@@ -6973,7 +6970,7 @@ async function fetchPercentageChanges(cryptoId) {
         updateHoldingsBoxSentiment(cryptoId, sentimentScore);
 
            // Check for threshold cross and update storage if necessary
-           const thresholdCrossed = checkThresholdCross(cryptoId, percentageChange7d);
+           const thresholdCrossed = checkThresholdCross(cryptoId, percentageChange7d, percentageChange24h, percentageChange30d);
            if (thresholdCrossed) {
                setStorageItem('users', JSON.stringify(users));
                updateAppContent(); // New function call
@@ -6983,39 +6980,10 @@ async function fetchPercentageChanges(cryptoId) {
        }
 }
 
-function checkThresholdCross(cryptoId, percentageChange7d) {
-       if (!users[loggedInUser].percentageThresholds) {
-           users[loggedInUser].percentageThresholds = {};
-       }
-
-       if (!users[loggedInUser].percentageThresholds[cryptoId]) {
-           users[loggedInUser].percentageThresholds[cryptoId] = {
-               lastLevelUpThreshold: null,
-               lastWarningThreshold: null,
-           };
-       }
-
-       const { lastLevelUpThreshold, lastWarningThreshold } = users[loggedInUser].percentageThresholds[cryptoId];
-       const container = document.getElementById(`${cryptoId}-container`);
-       let thresholdCrossed = false;
-
-       if (percentageChange7d >= 20 && (lastLevelUpThreshold === null || percentageChange7d >= lastLevelUpThreshold + 10)) {
-           setStorageItem('tradeModalMessage', `Good time to sell your ${cryptoId}!`);
-           playSound('level-up-sound');
-           flashBorder(container, '#00ff00', '#00ff00');
-           users[loggedInUser].percentageThresholds[cryptoId].lastLevelUpThreshold = Math.floor(percentageChange7d / 10) * 10;
-           thresholdCrossed = true;
-       }
-
-       if (percentageChange7d <= -20 && (lastWarningThreshold === null || percentageChange7d <= lastWarningThreshold - 10)) {
-           setStorageItem('tradeModalMessage', `Good time to buy more ${cryptoId}!`);
-           playSound('warning-sound');
-           flashBorder(container, '#ff0000', '#ff0000');
-           users[loggedInUser].percentageThresholds[cryptoId].lastWarningThreshold = Math.floor(percentageChange7d / 10) * 10;
-           thresholdCrossed = true;
-       }
-
-       return thresholdCrossed;
+function checkThresholdCross(cryptoId, percentageChange7d, percentageChange24h, percentageChange30d) {
+    MarketAlerts.observe(cryptoId, { change7d: percentageChange7d, change24h: percentageChange24h,
+        change30d: percentageChange30d }).catch(console.error);
+    return false; // Market alerts must not rebuild the portfolio or interrupt an edit.
 }
 
 async function updateAppContent() {
@@ -16612,6 +16580,8 @@ function convertCryptoToAUD(cryptoAmount, cryptoSymbol) {
 
 // Get block reward for a cryptocurrency
 function getBlockReward(crypto) {
+    const liveReward = EasyMiningCurrency.blockReward(crypto);
+    if (liveReward !== null) return liveReward;
     const blockRewards = {
         'BTC': 3.125,      // Bitcoin (after April 2024 halving)
         'BCH': 3.125,      // Bitcoin Cash (same halving schedule as BTC)
@@ -17416,8 +17386,9 @@ async function fetchNiceHashOrders() {
                 console.log(`   💎 POTENTIAL REWARD CALCULATION:`);
 
                 // Extract blockReward from API structure
-                let primaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.currencyAlgo?.blockReward || 0;
-                let secondaryBlockReward = order.sharedTicket?.currencyAlgoTicket?.mergeCurrencyAlgo?.blockReward || 0;
+                const rewardTicket = order.sharedTicket?.currencyAlgoTicket || order.currencyAlgoTicket || order.soloTicket;
+                let primaryBlockReward = Number(rewardTicket?.currencyAlgo?.blockReward) || 0;
+                let secondaryBlockReward = Number(rewardTicket?.mergeCurrencyAlgo?.blockReward) || 0;
 
                 // Fallback: Use getBlockReward() if API doesn't provide blockReward (for solo packages)
                 if (primaryBlockReward === 0 && order.soloMiningCoin) {
@@ -20477,8 +20448,9 @@ async function executeAutoSharesTeam(teamPackages) {
         const participants = pkg.numberOfParticipants || 0;
         // Calculate total shares from addedAmount (same as rest of codebase)
         const totalSharesBought = Math.round((pkg.addedAmount || 0) * 10000);
-        const myShares = getMyTeamShares(packageId) || 0;
-        const targetShares = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
+        const myShares = authenticatedTeamShares[packageId];
+        const targetShares = EasyMiningModel.targetShares(totalSharesBought, myShares, settings.percentage || 10);
+        if (!Number.isFinite(myShares) || targetShares === null || pkg.apiData?.state !== 'OPEN') continue;
 
         console.log(`🔍 ${pkg.name}: participants=${participants}, totalShares=${totalSharesBought}, myShares=${myShares}, target=${targetShares} (${settings.percentage}%), addedAmount=${pkg.addedAmount}`);
 
@@ -20493,6 +20465,7 @@ async function executeAutoSharesTeam(teamPackages) {
                 console.log(`✅ ${pkg.name}: Purchase verified! (${myShares} >= ${expectedShares})`);
                 trackState.pendingVerification = false;
                 trackState.expectedShares = 0;
+                trackState.verificationNoticeSent = false;
                 trackedIds[packageId] = trackState;
                 settings.trackedPackageIds = trackedIds;
                 appStorage.setItem(`${loggedInUser}_teamAutoShares`, JSON.stringify(autoSharesSettings));
@@ -20502,9 +20475,13 @@ async function executeAutoSharesTeam(teamPackages) {
                     console.log(`⏳ ${pkg.name}: Waiting for purchase verification (${myShares}/${expectedShares}, ${Math.ceil((30000 - timeSinceBuy) / 1000)}s remaining)`);
                     continue; // Keep waiting
                 } else {
-                    console.log(`⚠️ ${pkg.name}: Purchase verification timeout, retrying...`);
-                    trackState.pendingVerification = false;
-                    trackState.lastBuyTime = 0; // Reset cooldown to retry
+                    if (!trackState.verificationNoticeSent) {
+                        AppNotifications.add('Mining purchase awaiting verification', `${pkg.name}: NiceHash has not reported the expected shares. Further auto-shares purchases are paused until it confirms them.`, 'mining').catch(console.error);
+                        trackState.verificationNoticeSent = true;
+                        trackedIds[packageId] = trackState;
+                        settings.trackedPackageIds = trackedIds;
+                    }
+                    continue;
                 }
             }
         }
@@ -20513,7 +20490,7 @@ async function executeAutoSharesTeam(teamPackages) {
         const lastSeenTotal = trackState.lastSeenTotalShares || 0;
         if (totalSharesBought > lastSeenTotal && trackState.completed) {
             // More shares bought, need to buy more to maintain percentage
-            const newTarget = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
+            const newTarget = EasyMiningModel.targetShares(totalSharesBought, myShares, settings.percentage || 10);
             if (myShares < newTarget) {
                 console.log(`📈 ${pkg.name}: Total shares increased (${lastSeenTotal} → ${totalSharesBought}), re-queuing (new target: ${newTarget})`);
                 trackState.completed = false;
@@ -20586,8 +20563,9 @@ async function executeAutoSharesTeam(teamPackages) {
     const participants = pkg.numberOfParticipants || 0;
     // Calculate total shares from addedAmount (same as rest of codebase)
     const totalSharesBought = Math.round((pkg.addedAmount || 0) * 10000);
-    const myShares = getMyTeamShares(packageId) || 0;
-    const targetShares = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
+    const myShares = authenticatedTeamShares[packageId];
+    const targetShares = EasyMiningModel.targetShares(totalSharesBought, myShares, settings.percentage || 10);
+    if (!Number.isFinite(myShares) || targetShares === null || pkg.apiData?.state !== 'OPEN') return;
 
     // Check preconditions: participants >= 5 AND total shares >= 15
     if (participants < 5 || totalSharesBought < 15) {
@@ -20641,6 +20619,9 @@ async function executeAutoSharesTeam(teamPackages) {
     }
 
     const trackState = trackedIds[packageId];
+
+    // Never verify a purchase using a local optimistic share count or retry it on timeout.
+    if (trackState.pendingVerification) return;
 
     // Check 10-second cooldown between buys
     const timeSinceLastBuy = Date.now() - (trackState.lastBuyTime || 0);
@@ -20722,7 +20703,12 @@ async function executeAutoSharesTeam(teamPackages) {
             }
         }
 
-        const sharePrice = 0.0001;
+        const sharePrice = Number(pkg.apiData?.minShareAmount ?? pkg.apiData?.currencyAlgoTicket?.minShareAmount);
+        if (!(sharePrice > 0) || pkg.apiData?.currencyAlgoTicket?.currencyMarket !== 'BTC') return;
+        const availableShares = Math.max(0, Math.floor(Number(pkg.fullAmount) / sharePrice) - totalSharesBought);
+        actualSharesToBuy = Math.min(actualSharesToBuy, availableShares);
+        if (!Number.isSafeInteger(actualSharesToBuy) || actualSharesToBuy <= 0) { autoSharesCurrentPackage = null; return; }
+        if (shouldPauseAutoBuyForTgSafeHold(pkg.name)) return;
         const newTotalShares = myShares + actualSharesToBuy;
         const costForNewShares = actualSharesToBuy * sharePrice;  // Cost we need to pay
         // Use Number().toFixed(8) to avoid floating point precision issues (e.g., 3 * 0.0001 = 0.00030000000000000003)
@@ -20827,7 +20813,7 @@ async function executeAutoSharesTeam(teamPackages) {
 
         // CRITICAL: Can ONLY complete if lastBuyType is 'secondary'
         // If we just bought primary, we MUST do secondary next regardless of target
-        const updatedTarget = Math.floor(totalSharesBought * ((settings.percentage || 10) / 100));
+        const updatedTarget = EasyMiningModel.targetShares(totalSharesBought, myShares, settings.percentage || 10);
         if (newTotalShares >= updatedTarget && trackState.lastBuyType === 'secondary') {
             // We just bought secondary and reached target - safe to complete
             trackState.completed = true;
@@ -28451,6 +28437,7 @@ async function fetchNiceHashTeamPackages() {
 // Fetch user's team package shares from authenticated API endpoint
 // This populates authenticatedTeamShares with user's shares from members array
 async function fetchAuthenticatedTeamShares() {
+    authenticatedTeamShares = {}; // A failed refresh must not authorize purchases from stale membership.
     console.log('🔄 Fetching authenticated team package shares...');
 
     // Check if we have API credentials
@@ -28498,11 +28485,14 @@ async function fetchAuthenticatedTeamShares() {
             // Find user in members array
             const userMember = pkg.members?.find(m => m.organizationId === userOrgId);
 
+            // A verified member list with no matching member means zero owned shares.
+            if (packageId && Array.isArray(pkg.members)) authenticatedTeamShares[packageId] = 0;
+
             if (userMember) {
                 // Extract shares.small (primary share count)
-                const smallShares = userMember.shares?.small || 0;
-                const mediumShares = userMember.shares?.medium || 0;
-                const largeShares = userMember.shares?.large || 0;
+                const smallShares = Number(userMember.shares?.small) || 0;
+                const mediumShares = Number(userMember.shares?.medium) || 0;
+                const largeShares = Number(userMember.shares?.large) || 0;
 
                 // Total shares = small + (medium * 10) + (large * 100)
                 const totalShares = smallShares + (mediumShares * 10) + (largeShares * 100);

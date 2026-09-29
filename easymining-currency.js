@@ -145,5 +145,14 @@ const EasyMiningCurrency = (() => {
         }
     }
     window.addEventListener('cloud-data-loaded', render);
-    return { setCatalogue, selectTab, selectCurrency, render };
+    function blockReward(currency) {
+        for (const raw of [...catalogue.single, ...catalogue.team]) {
+            const t = ticket(raw);
+            for (const algo of [t.currencyAlgo, t.mergeCurrencyAlgo]) {
+                if (algo?.currency === currency && Number(algo.blockReward) > 0) return Number(algo.blockReward);
+            }
+        }
+        return null;
+    }
+    return { setCatalogue, selectTab, selectCurrency, render, blockReward };
 })();

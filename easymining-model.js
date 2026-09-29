@@ -77,6 +77,13 @@
         const probability = -Math.expm1(Math.log1p(-1 / d) * projected / live);
         return { probability, denominator: 1 / probability, projectedShares: projected, liveProbability: 1 / d };
     }
+    function targetShares(total, owned, percentage, capacity = Infinity) {
+        total = Number(total); owned = Number(owned); percentage = Number(percentage);
+        if (![total, owned, percentage].every(Number.isFinite) || total < owned || owned < 0 || percentage <= 0 || percentage >= 100) return null;
+        const others = total - owned;
+        const desired = Math.ceil((others * percentage / (100 - percentage)) - 1e-10);
+        return Math.max(owned, Math.min(desired, Math.max(owned, capacity - others)));
+    }
     function packageIcon(raw) {
         try {
             const ticket = raw.currencyAlgoTicket || raw;
@@ -97,7 +104,7 @@
         }
         return result;
     }
-    const api = { coinIds, payment, shareCount, orderPayment, teamPreview, purchasePlan, probabilityPreview, packageIcon, assertSuccessfulOrder, bestSharePercent };
+    const api = { coinIds, payment, shareCount, orderPayment, teamPreview, purchasePlan, probabilityPreview, targetShares, packageIcon, assertSuccessfulOrder, bestSharePercent };
     if (typeof module !== 'undefined') module.exports = api;
     else root.EasyMiningModel = api;
 })(typeof window === 'undefined' ? globalThis : window);
