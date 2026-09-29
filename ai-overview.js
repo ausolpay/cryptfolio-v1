@@ -83,7 +83,7 @@ const AIOverview = (() => {
         // Connection settings are already hydrated in this authenticated app.
         // Send them only to our own endpoint, never in financial context/history.
         if (body.action !== 'history') body = { ...body, settings: settings() };
-        const response = await CloudAccount.authorizedFetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(75000) });
+        const response = await CloudAccount.authorizedFetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(85000) });
         let data;
         try { data = await response.json(); } catch { throw new Error(response.status === 504 ? 'The AI service took too long. Try a faster model in AI settings, then generate again.' : 'The AI service could not respond. Please try again shortly.'); }
         if (loggedInUser !== owner) throw new Error('Your account changed. Please generate again.');
