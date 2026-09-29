@@ -1,0 +1,20 @@
+#package-detail-page-blocks.telemetry-chart { display:block; height:auto; min-height:220px; padding:10px 0; }
+.telemetry-chart svg { display:block; width:100%; max-height:290px; overflow:visible; }
+.telemetry-threshold { stroke:#ffa500; stroke-width:1.4; stroke-dasharray:7 5; }
+.telemetry-line { fill:none; stroke:#6cdbbd; stroke-width:3; stroke-linejoin:round; }
+.telemetry-dot { fill:#6cdbbd; }
+.telemetry-axis { fill:#aaa; font-size:12px; }
+.telemetry-rocket { font-size:25px; }
+.telemetry-rocket.live { animation:telemetry-glow 2s ease-in-out infinite alternate; }
+.telemetry-note, .telemetry-dice-caption { color:#bbb; font-size:12px; line-height:1.6; text-align:center; padding:0 12px; }
+.telemetry-dice-container { display:flex !important; align-items:center; justify-content:center; gap:110px; perspective:700px; min-height:180px; }
+.telemetry-die { position:relative; width:72px; height:72px; transform-style:preserve-3d; transform:rotateX(-18deg) rotateY(24deg); }
+.telemetry-die.running { animation:telemetry-spin 12s linear infinite; }
+.telemetry-face { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#252525f2; border:2px solid #777; border-radius:12px; color:#eee; font-weight:bold; font-size:14px; backface-visibility:hidden; }
+.telemetry-die.rewarded .telemetry-face { border-color:#ffa500; box-shadow:0 0 14px #ffa50030; }
+.face-0 { transform:translateZ(36px); } .face-1 { transform:rotateY(90deg) translateZ(36px); }
+.face-2 { transform:rotateY(180deg) translateZ(36px); } .face-3 { transform:rotateY(-90deg) translateZ(36px); }
+.face-4 { transform:rotateX(90deg) translateZ(36px); } .face-5 { transform:rotateX(-90deg) translateZ(36px); }
+@keyframes telemetry-spin { from { transform:rotateX(-18deg) rotateY(24deg); } to { transform:rotateX(342deg) rotateY(384deg); } }
+@keyframes telemetry-glow { from { opacity:.7; } to { opacity:1; filter:drop-shadow(0 0 5px #ffa500); } }
+@media(prefers-reduced-motion:reduce) { .telemetry-die.running, .telemetry-rocket.live { animation:none; } }

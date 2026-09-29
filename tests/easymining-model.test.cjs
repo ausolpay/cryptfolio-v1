@@ -1,6 +1,13 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const model = require('../easymining-model.js');
+test('reward proximity uses only the reported share, preserving zero and values above threshold', () => {
+    assert.equal(model.bestSharePercent({ progress: 98, fullOrderData: { soloMiningSharesMaxPercent: 74 } }), 74);
+    assert.equal(model.bestSharePercent({ fullOrderData: { soloMiningSharesMaxPercent: 0 } }), 0);
+    assert.equal(model.bestSharePercent({ fullOrderData: { soloMiningSharesMaxPercent: 106 } }), 106);
+    assert.equal(model.bestSharePercent({ progress: 99, blockFound: true }), null);
+    assert.equal(model.bestSharePercent({ fullOrderData: { soloMiningSharesMaxPercent: 'invalid' } }), null);
+});
 test('USDT uses its actual live quote, never the BTC price or a fixed dollar peg', () => {
     const price = model.payment({ currencyMarket: 'USDT', price: 20 }, { BTC: 120000, USDT: 1.43 });
     assert.equal(price.localAmount, 28.599999999999998);

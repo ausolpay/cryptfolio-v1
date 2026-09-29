@@ -18273,9 +18273,9 @@ function displayActivePackages() {
         // Get closest-to-reward percentage from chart data store (populated when viewing package detail page)
         // Falls back to time-based progress if chart data not available yet
         const chartData = miningChartDataStore[pkg.id];
-        const closestToRewardPercent = chartData?.highestBar?.percentage || 0;
+        const closestToRewardPercent = EasyMiningModel.bestSharePercent(pkg);
         // Use chart data if available and > 0, otherwise fall back to time-based progress
-        const rewardBarPercent = closestToRewardPercent > 0 ? closestToRewardPercent : pkg.progress;
+        const rewardBarPercent = closestToRewardPercent ?? 0;
 
         const card = document.createElement('div');
         // Add 'block-confirmed' class to packages that found blocks (for orange glow)
@@ -18695,7 +18695,7 @@ function displayActivePackages() {
                             <span class="closest-reward-indicator"></span>
                         </div>
                     </div>
-                    <div class="closest-reward-label">${rewardBarPercent.toFixed(1)}% to reward</div>
+                    <div class="closest-reward-label">${closestToRewardPercent === null ? 'Share quality not reported' : rewardBarPercent.toFixed(1) + '% best share'}</div>
                 </div>
                 ` : ''}
 
@@ -18885,7 +18885,8 @@ function smartUpdateActivePackageCards() {
 
         // Update closest-to-reward progress bar
         const chartData = miningChartDataStore[pkg.id];
-        const closestToRewardPercent = chartData?.highestBar?.percentage || pkg.progress || 0;
+        const reportedSharePercent = EasyMiningModel.bestSharePercent(pkg);
+        const closestToRewardPercent = reportedSharePercent ?? 0;
         const progressFill = card.querySelector('.closest-reward-fill');
         const progressLabel = card.querySelector('.closest-reward-label');
         if (progressFill) {
@@ -18893,7 +18894,7 @@ function smartUpdateActivePackageCards() {
             updatedCount++;
         }
         if (progressLabel) {
-            progressLabel.textContent = `${closestToRewardPercent.toFixed(1)}% to reward`;
+            progressLabel.textContent = reportedSharePercent === null ? 'Share quality not reported' : closestToRewardPercent.toFixed(1) + '% best share';
         }
 
         // Update probability (with IDs)
@@ -23597,6 +23598,7 @@ function collectChartDataPoint(pkg) {
 
     // Create data point
     const dataPoint = {
+        bestSharePercent: EasyMiningModel.bestSharePercent(pkg),
         timestamp: now,
         hashrate: hashrate,
         speedLimit: speedLimit,

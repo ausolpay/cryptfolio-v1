@@ -1,5 +1,6 @@
 /* Connect cloud changes to existing app views without resetting the current page. */
 function installCloudAppBridge() {
+    installMiningTelemetry();
     const automatic = ['executeAutoBuySolo', 'executeAutoBuyTeam', 'executeAutoSharesTeam',
         'executeAutoSharesOnAlertTeam', 'autoUpdateCryptoHoldings', 'autoAddCryptoBoxesForActivePackages',
         'autoClearTeamShares'];

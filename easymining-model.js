@@ -20,6 +20,12 @@
         if (!Number.isFinite(Number(amount)) || !(Number(shareAmount) > 0)) return null;
         return Math.round(Number(amount) / Number(shareAmount));
     }
+    function bestSharePercent(pkg) {
+        const value = pkg.fullOrderData?.soloMiningSharesMaxPercent ?? pkg.soloMiningSharesMaxPercent;
+        if (value === null || value === undefined || value === '') return null;
+        const number = Number(value);
+        return Number.isFinite(number) && number >= 0 ? number : null;
+    }
     function packageIcon(raw) {
         try {
             const ticket = raw.currencyAlgoTicket || raw;
@@ -36,7 +42,7 @@
         }
         return result;
     }
-    const api = { coinIds, payment, shareCount, packageIcon, assertSuccessfulOrder };
+    const api = { coinIds, payment, shareCount, packageIcon, assertSuccessfulOrder, bestSharePercent };
     if (typeof module !== 'undefined') module.exports = api;
     else root.EasyMiningModel = api;
 })(typeof window === 'undefined' ? globalThis : window);
