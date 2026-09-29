@@ -1,4 +1,9 @@
 .ai-overview[hidden] { display: none !important; }
+.ai-body[hidden] { display: none !important; }
+#ai-portfolio { padding: 0; border: 0; background: transparent; margin: 10px 0; }
+#ai-portfolio .ai-toggle { width: 100%; border: 0; font-family: inherit; box-sizing: border-box; }
+#ai-portfolio .ai-body { padding: 16px 20px; }
+.ai-status { font-size: 13px; line-height: 1.5; color: #ffb36b; }
 .ai-overview { box-sizing: border-box; width: 100%; margin: 18px 0; padding: 20px; border: 1px solid #ffffff20; border-radius: 16px; background: #ffffff06; text-align: left; }
 .ai-overview h3 { margin: 0 0 8px; font-size: 17px; }
 .ai-output { white-space: pre-wrap; line-height: 1.65; font-size: 14px; overflow-wrap: anywhere; }

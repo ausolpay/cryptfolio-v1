@@ -1,5 +1,7 @@
 const AIOverview = (() => {
     let busy = false;
+    const dailyAttempts = new Set();
+    const summaryDay = () => new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const key = () => `${loggedInUser}_aiSettings`;
     const settings = () => { try { return JSON.parse(appStorage.getItem(key()) || '{}'); } catch { return {}; } };
     const active = () => settings().enabled === true && Boolean(settings().apiKey) && ['gemini', 'openai'].includes(settings().provider);
@@ -17,35 +19,59 @@ const AIOverview = (() => {
         for (const kind of ['portfolio', 'coin']) {
             const root = document.getElementById(`ai-${kind}`); if (!root) continue;
             root.hidden = !enabled; if (!enabled) continue;
-            const latest = records(scopeFor(kind))[0], output = root.querySelector('.ai-output'), link = root.querySelector('.ai-saved');
+            const history = records(scopeFor(kind)), latest = history.find(item => item.status === 'complete') || history[0], output = root.querySelector('.ai-output'), link = root.querySelector('.ai-saved');
             link.hidden = !latest; if (latest) link.href = '#ai=' + latest.id;
             output.textContent = latest ? latest.text || latest.error || (Date.now() - Date.parse(latest.createdAt) < 120000 ? 'Generating your overview…' : 'This overview did not finish. You can generate another.')
                 : kind === 'coin' ? 'Review this crypto, its market data and your holdings.' : 'Review portfolio exposure, market movements and areas to watch.';
             root.querySelector('.ai-date').textContent = latest ? `${new Date(latest.createdAt).toLocaleString()} • ${latest.model}` : '';
+            const status = root.querySelector('.ai-status');
+            status.textContent = history[0]?.status === 'pending' ? (Date.now() - Date.parse(history[0].createdAt) < 120000 ? 'Generating your overview…' : 'The last attempt did not finish. Generate again to retry.') : history[0]?.status === 'error' ? history[0].error : '';
+            if (kind === 'portfolio') {
+                const expanded = appStorage.getItem(`${loggedInUser}_aiPortfolioExpanded`) === 'true';
+                root.querySelector('.ai-body').hidden = !expanded;
+                root.querySelector('.ai-toggle').setAttribute('aria-expanded', String(expanded));
+                root.querySelector('.arrow').classList.toggle('rotated', expanded);
+            }
         }
         if (!enabled) document.getElementById('ai-saved-dialog')?.close();
     }
     async function api(body) {
+        const owner = loggedInUser;
         const response = await CloudAccount.authorizedFetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        const data = await response.json();
-        if (data.generation) { appStorage.setItem(`${loggedInUser}_ai_generation_${data.generation.id}`, JSON.stringify(data.generation)); await CloudAccount.flush(); }
+        let data;
+        try { data = await response.json(); } catch { throw new Error(response.status === 504 ? 'The AI service took too long. Try a faster model in AI settings, then generate again.' : 'The AI service could not respond. Please try again shortly.'); }
+        if (loggedInUser !== owner) throw new Error('Your account changed. Please generate again.');
+        // Normally the server already saved the record. Only recover a completed result if its save failed.
+        if (!response.ok && data.generation?.status === 'complete' && !data.reused) { appStorage.setItem(`${owner}_ai_generation_${data.generation.id}`, JSON.stringify(data.generation)); await CloudAccount.flush(); }
         if (!response.ok) throw new Error(data.error || 'AI is unavailable');
         return data;
     }
-    async function generate(kind) {
+    async function generate(kind, daily = false) {
         if (busy || !active()) return;
-        const scope = scopeFor(kind), root = document.getElementById(`ai-${kind}`), button = root.querySelector('.ai-generate');
+        const owner = loggedInUser, scope = scopeFor(kind), root = document.getElementById(`ai-${kind}`), button = root.querySelector('.ai-generate');
         const coins = (users[loggedInUser]?.cryptos || []).filter(coin => scope === 'portfolio' || coin.id === scope).map(coin => {
             const price = getPriceFromObject(cryptoPrices[coin.id]) || null, holdings = getTotalActiveHoldings(coin.id);
             let news; try { news = JSON.parse(appStorage.getItem(`${loggedInUser}_freeNews_${coin.id.replace(/-/g, ' ').toLowerCase()}_${coin.symbol.toLowerCase()}`)); } catch {}
             return { name: coin.name || coin.id, symbol: coin.symbol, holdings, price, value: price === null ? null : holdings * price,
-                change24h: cryptoPriceChanges[coin.id] ?? null, rsi: getStoredRSI(coin.id), headlines: (news?.articles || []).slice(0, 3).map(article => ({
+                change24h: cryptoPriceChanges[coin.id] ?? null, rsi: getStoredRSI(coin.id),
+                chart: kind === 'coin' ? { candles: (storedOHLCDataPerCrypto[coin.id] || []).slice(-60) } : undefined,
+                headlines: (news?.articles || []).filter(article => Number.isFinite(article.published_on) && Number.isFinite(new Date(article.published_on * 1000).getTime())).slice(0, 3).map(article => ({
                     title: article.title, source: article.source, publishedAt: new Date(article.published_on * 1000).toISOString() })) };
         });
-        busy = true; button.disabled = true; button.textContent = 'Generating…'; root.querySelector('.ai-output').textContent = 'Reviewing your selected data…';
-        try { await CloudAccount.flush(); await api({ action: 'generate', context: { scope, currency: getCoinGeckoCurrency(), observedAt: new Date().toISOString(), coins } }); await CloudAccount.refresh(); render(); }
-        catch (error) { root.querySelector('.ai-output').textContent = error.message; }
+        busy = true; button.disabled = true; button.textContent = 'Generating…'; root.querySelector('.ai-status').textContent = 'Reviewing your selected data…';
+        try { await CloudAccount.flush(); await api({ action: daily && kind === 'portfolio' ? 'daily' : 'generate', context: { scope, currency: getCoinGeckoCurrency(), observedAt: new Date().toISOString(), coins } }); if (owner === loggedInUser) { await CloudAccount.refresh(); render(); } }
+        catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = error.message; }
         finally { busy = false; button.disabled = false; button.textContent = 'Generate overview'; }
+    }
+    function checkDaily() {
+        if (busy || !loggedInUser || !active() || document.hidden || !navigator.onLine) return;
+        const coins = users[loggedInUser]?.cryptos || [];
+        if (!coins.length || !coins.some(coin => getPriceFromObject(cryptoPrices[coin.id]) > 0)) return;
+        const attempt = `${loggedInUser}:${summaryDay()}`;
+        if (dailyAttempts.has(attempt)) return;
+        dailyAttempts.add(attempt);
+        // The server atomically reserves the day in Supabase before any provider call.
+        generate('portfolio', true);
     }
     function configure() {
         let dialog = document.getElementById('ai-settings');
@@ -62,7 +88,7 @@ const AIOverview = (() => {
             };
             provider.onchange = () => { input.value = settings().provider === provider.value ? settings().apiKey || '' : ''; resetModels(); };
             const loadModels = node('button', 'Load available models'); dialog.append(loadModels);
-            dialog.append(node('p', 'Activation reveals the summaries. Generation runs only when you request it and sends coin balances, prices, indicators and cached headlines to your selected provider. Login details, wallet addresses and other API keys are excluded. Provider API usage may incur charges; a ChatGPT subscription is separate from API access.'));
+            dialog.append(node('p', 'Activation enables one automatic portfolio overview each day while the app is open, with a new day starting at 6am Brisbane time. Crypto overviews generate only when you click Generate. Summaries send balances, prices, indicators, available price candles and cached headlines to your provider. Login details, wallet addresses and other API keys are excluded. API usage may incur charges; a ChatGPT subscription is separate from API access.'));
             const status = node('p'); status.setAttribute('role', 'status'); dialog.append(status);
             loadModels.onclick = async () => {
                 if (!input.value.trim()) { status.textContent = 'Enter an API key first.'; return; }
@@ -88,7 +114,7 @@ const AIOverview = (() => {
                     const next = { provider: provider.value, apiKey: input.value.trim(), model: model.value, enabled: false };
                     appStorage.setItem(key(), JSON.stringify(next)); render(); await CloudAccount.flush();
                     await api({ action: 'validate' }); appStorage.setItem(key(), JSON.stringify({ ...next, enabled: true }));
-                    await CloudAccount.flush(); render(); dialog.close();
+                    await CloudAccount.flush(); render(); dialog.close(); checkDaily();
                 } catch (error) { status.textContent = error.message; } finally { activate.disabled = false; }
             };
             const disable = node('button', 'Disable AI'); disable.onclick = async () => {
@@ -111,22 +137,34 @@ const AIOverview = (() => {
         const close = node('button', 'Close'); close.onclick = () => dialog.close(); dialog.append(close); if (!dialog.open) dialog.showModal();
     }
     function install() {
+        if (document.getElementById('ai-portfolio')) return;
         const section = node('section', null, 'settings-section'); section.append(node('h3', 'AI (Optional)', 'settings-section-title'));
         const card = node('div', null, 'settings-card'), row = node('div', null, 'settings-row'), state = node('span'); state.id = 'ai-settings-state';
         const configureButton = node('button', 'Configure AI', 'settings-save-btn'); configureButton.onclick = configure;
         row.append(state, configureButton); card.append(row); section.append(card); document.querySelector('#api-keys-page .settings-page-footer')?.before(section);
         for (const kind of ['portfolio', 'coin']) {
             const root = node('section', null, 'ai-overview'); root.id = `ai-${kind}`; root.hidden = true;
-            root.append(node('h3', kind === 'portfolio' ? 'Portfolio AI overview' : 'Crypto AI overview'), node('p', null, 'ai-date'), node('div', null, 'ai-output'));
+            const content = node('div', null, 'ai-body'); content.id = `ai-${kind}-body`;
+            if (kind === 'portfolio') {
+                const toggle = node('button', null, 'easymining-header ai-toggle'); toggle.type = 'button'; toggle.setAttribute('aria-controls', content.id);
+                toggle.append(node('span', '▶', 'arrow'), node('span', 'Portfolio AI overview', 'toggle-text'));
+                toggle.onclick = () => { appStorage.setItem(`${loggedInUser}_aiPortfolioExpanded`, String(content.hidden)); render(); };
+                root.append(toggle);
+            } else content.append(node('h3', 'Crypto AI overview'));
+            content.append(node('p', null, 'ai-date'), node('div', null, 'ai-output'));
+            const status = node('p', null, 'ai-status'); status.setAttribute('role', 'status'); content.append(status);
+            root.append(content);
             const actions = node('div', null, 'ai-actions'), generateButton = node('button', 'Generate overview', 'ai-generate'); generateButton.onclick = () => generate(kind);
-            const permalink = node('a', 'Saved overview', 'ai-saved'); permalink.hidden = true; actions.append(generateButton, permalink); root.append(actions);
-            root.append(node('p', 'Educational analysis of supplied data, not a prediction. API usage is billed by your selected provider.', 'ai-disclosure'));
+            const permalink = node('a', 'Saved overview', 'ai-saved'); permalink.hidden = true; actions.append(generateButton, permalink); content.append(actions);
+            content.append(node('p', (kind === 'portfolio' ? 'Daily refresh from 6am Brisbane time when the app is open. ' : 'Generated only on request. Uses available CoinGecko price candles, not TradingView drawings or the selected chart timeframe. ') + 'Educational analysis, not a prediction. API usage is billed by your provider.', 'ai-disclosure'));
             const target = document.getElementById(kind === 'portfolio' ? 'crypto-containers' : 'tradingview-chart-container');
             if (kind === 'portfolio') target?.before(root); else target?.after(root);
         }
-        window.addEventListener('cloud-data-loaded', render); window.addEventListener('hashchange', openSaved);
+        window.addEventListener('cloud-data-loaded', () => { render(); checkDaily(); }); window.addEventListener('hashchange', openSaved);
+        document.addEventListener('visibilitychange', checkDaily);
+        setInterval(checkDaily, 30000);
         const name = document.getElementById('crypto-name'); if (name) new MutationObserver(render).observe(name, { childList: true, subtree: true });
-        render(); openSaved();
+        render(); openSaved(); checkDaily();
     }
     return { install, configure };
 })();

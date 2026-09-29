@@ -13176,6 +13176,7 @@ async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
 
                 // Store OHLC data globally for real-time RSI updates
                 storedOHLCData = ohlcData;
+                storedOHLCDataPerCrypto[cryptoId] = ohlcData;
             }
         } catch (ohlcError) {
             console.warn('Could not fetch OHLC data for RSI, using default:', ohlcError);
