@@ -12,7 +12,7 @@ function setup(response) {
         getPriceFromObject: value => value, getTotalActiveHoldings: () => 2, getStoredRSI: () => 50, getCoinGeckoCurrency: () => 'aud',
         document: { hidden: false, getElementById: id => id === 'ai-portfolio' || id === 'ai-coin' ? root : null },
         appStorage: { getItem: key => key.endsWith('aiSettings') ? JSON.stringify({ enabled: true, provider: 'openai', apiKey: 'test' }) : null, snapshot: () => ({}), setItem: (...args) => writes.push(args) },
-        CloudAccount: { flush: async () => {}, refresh: async () => {}, authorizedFetch: async (url, options) => { requests.push(JSON.parse(options.body)); return response; } }
+        CloudAccount: { isReady: true, flush: async () => {}, refresh: async () => {}, authorizedFetch: async (url, options) => { requests.push(JSON.parse(options.body)); return response; } }
     };
     vm.createContext(context); vm.runInContext(source + '\nglobalThis.ai = AIOverview;', context);
     return { context, requests, writes, elements };
@@ -41,4 +41,15 @@ test('automatic summary waits for market data and does not run with AI disabled'
     await new Promise(resolve => setImmediate(resolve)); assert.equal(requests.length, 0);
     context.cryptoPrices = { bitcoin: 12 }; context.appStorage.getItem = () => '{}'; context.ai.checkDaily();
     await new Promise(resolve => setImmediate(resolve)); assert.equal(requests.length, 0);
+});
+test('daily work cannot run during login and skips days already loaded from Supabase', async () => {
+    const { context, requests } = setup({ ok: true, json: async () => ({}) });
+    context.CloudAccount.isReady = false;
+    context.ai.checkDaily(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests.length, 0);
+    context.CloudAccount.isReady = true;
+    const getItem = context.appStorage.getItem;
+    context.appStorage.getItem = key => key.includes('_ai_daily_') ? '{"status":"complete"}' : getItem(key);
+    context.ai.checkDaily(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests.length, 0);
 });

@@ -23,7 +23,7 @@ async function device(database, owner, beforeSave = async () => {}) {
     const status = { textContent: '', classList: { toggle() {} } };
     const context = {
         console, CloudData, queueMicrotask, crypto: require('node:crypto').webcrypto, appStorage: storage, setInterval() {}, setTimeout() {},
-        dispatchEvent() {}, CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
+        dispatchEvent() {}, CustomEvent: class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } },
         navigator: { onLine: true }, location: { reload() {}, origin: 'https://test.invalid' },
         addEventListener(name, handler) { events.set(name, handler); }, alert() {},
         document: {
@@ -168,4 +168,21 @@ test('settings merge separately, while conflicting financial arrays require reso
     const merged = CloudData.mergeRecords(base, { settings: '{"btc":false,"usdt":false}' }, { settings: '{"btc":true,"usdt":true}' });
     assert.deepEqual(JSON.parse(merged.records.settings), { btc: false, usdt: true });
     assert.equal(CloudData.mergeRecords({ holdings: '[]' }, { holdings: '[1]' }, { holdings: '[2]' }).conflicts.length, 1);
+});
+test('hydrated app becomes ready while startup save is still pending', async () => {
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const database = new Map();
+    let timer;
+    try {
+        const first = await Promise.race([
+            device(database, 'startup@example.test', () => gate),
+            new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Login waited for background save')), 250); })
+        ]);
+        assert.equal(first.cloud.isReady, true);
+        assert.equal(first.storage.getItem('loggedInUser'), 'startup@example.test');
+        assert.equal(database.has('startup@example.test'), false);
+        release(); await first.cloud.flush();
+        assert.equal(database.has('startup@example.test'), true);
+    } finally { release(); clearTimeout(timer); }
 });

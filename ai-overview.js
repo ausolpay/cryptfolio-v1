@@ -1,6 +1,12 @@
 const AIOverview = (() => {
     let busy = false;
     const dailyAttempts = new Set();
+    let backgroundTimer;
+    function scheduleDaily() {
+        if (backgroundTimer || !CloudAccount.isReady) return;
+        // Let login finish and the portfolio paint before collecting AI context.
+        backgroundTimer = setTimeout(() => { backgroundTimer = null; checkDaily(); }, 1500);
+    }
     const summaryDay = () => new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const key = () => `${loggedInUser}_aiSettings`;
     const settings = () => { try { return JSON.parse(appStorage.getItem(key()) || '{}'); } catch { return {}; } };
@@ -28,7 +34,9 @@ const AIOverview = (() => {
             status.textContent = history[0]?.status === 'pending' ? (Date.now() - Date.parse(history[0].createdAt) < 120000 ? 'Generating your overview…' : 'The last attempt did not finish. Generate again to retry.') : history[0]?.status === 'error' ? history[0].error : '';
             if (kind === 'portfolio') {
                 const expanded = appStorage.getItem(`${loggedInUser}_aiPortfolioExpanded`) === 'true';
-                root.querySelector('.ai-body').hidden = !expanded;
+                const collapse = root.querySelector('.ai-collapse');
+                collapse.classList.toggle('collapsed', !expanded);
+                collapse.inert = !expanded;
                 root.querySelector('.ai-toggle').setAttribute('aria-expanded', String(expanded));
                 root.querySelector('.arrow').classList.toggle('rotated', expanded);
             }
@@ -64,7 +72,9 @@ const AIOverview = (() => {
         finally { busy = false; button.disabled = false; button.textContent = 'Generate overview'; }
     }
     function checkDaily() {
-        if (busy || !loggedInUser || !active() || document.hidden || !navigator.onLine) return;
+        if (!CloudAccount.isReady || busy || !loggedInUser || !active() || document.hidden || !navigator.onLine) return;
+        // Hydration already loaded today's shared marker; no provider/server request is needed.
+        if (appStorage.getItem(`${loggedInUser}_ai_daily_${summaryDay()}`)) return;
         const coins = users[loggedInUser]?.cryptos || [];
         if (!coins.length || !coins.some(coin => getPriceFromObject(cryptoPrices[coin.id]) > 0)) return;
         const attempt = `${loggedInUser}:${summaryDay()}`;
@@ -114,7 +124,7 @@ const AIOverview = (() => {
                     const next = { provider: provider.value, apiKey: input.value.trim(), model: model.value, enabled: false };
                     appStorage.setItem(key(), JSON.stringify(next)); render(); await CloudAccount.flush();
                     await api({ action: 'validate' }); appStorage.setItem(key(), JSON.stringify({ ...next, enabled: true }));
-                    await CloudAccount.flush(); render(); dialog.close(); checkDaily();
+                    await CloudAccount.flush(); render(); dialog.close(); scheduleDaily();
                 } catch (error) { status.textContent = error.message; } finally { activate.disabled = false; }
             };
             const disable = node('button', 'Disable AI'); disable.onclick = async () => {
@@ -144,27 +154,32 @@ const AIOverview = (() => {
         row.append(state, configureButton); card.append(row); section.append(card); document.querySelector('#api-keys-page .settings-page-footer')?.before(section);
         for (const kind of ['portfolio', 'coin']) {
             const root = node('section', null, 'ai-overview'); root.id = `ai-${kind}`; root.hidden = true;
-            const content = node('div', null, 'ai-body'); content.id = `ai-${kind}-body`;
+            const body = node('div', null, 'ai-body'), content = node('div', null, 'ai-inner'); body.append(content);
+            const collapse = node('div', null, 'ai-collapse collapsed'); collapse.id = `ai-${kind}-body`;
             if (kind === 'portfolio') {
-                const toggle = node('button', null, 'easymining-header ai-toggle'); toggle.type = 'button'; toggle.setAttribute('aria-controls', content.id);
+                const toggle = node('button', null, 'portfolio-stats-toggle ai-toggle'); toggle.type = 'button'; toggle.setAttribute('aria-controls', collapse.id);
                 toggle.append(node('span', '▶', 'arrow'), node('span', 'Portfolio AI overview', 'toggle-text'));
-                toggle.onclick = () => { appStorage.setItem(`${loggedInUser}_aiPortfolioExpanded`, String(content.hidden)); render(); };
+                toggle.onclick = () => { appStorage.setItem(`${loggedInUser}_aiPortfolioExpanded`, String(toggle.getAttribute('aria-expanded') !== 'true')); render(); };
                 root.append(toggle);
             } else content.append(node('h3', 'Crypto AI overview'));
             content.append(node('p', null, 'ai-date'), node('div', null, 'ai-output'));
             const status = node('p', null, 'ai-status'); status.setAttribute('role', 'status'); content.append(status);
-            root.append(content);
+            if (kind === 'portfolio') { collapse.append(body); root.append(collapse); } else root.append(body);
             const actions = node('div', null, 'ai-actions'), generateButton = node('button', 'Generate overview', 'ai-generate'); generateButton.onclick = () => generate(kind);
             const permalink = node('a', 'Saved overview', 'ai-saved'); permalink.hidden = true; actions.append(generateButton, permalink); content.append(actions);
             content.append(node('p', (kind === 'portfolio' ? 'Daily refresh from 6am Brisbane time when the app is open. ' : 'Generated only on request. Uses available CoinGecko price candles, not TradingView drawings or the selected chart timeframe. ') + 'Educational analysis, not a prediction. API usage is billed by your provider.', 'ai-disclosure'));
             const target = document.getElementById(kind === 'portfolio' ? 'crypto-containers' : 'tradingview-chart-container');
             if (kind === 'portfolio') target?.before(root); else target?.after(root);
         }
-        window.addEventListener('cloud-data-loaded', () => { render(); checkDaily(); }); window.addEventListener('hashchange', openSaved);
-        document.addEventListener('visibilitychange', checkDaily);
-        setInterval(checkDaily, 30000);
+        window.addEventListener('cloud-data-loaded', event => {
+            if (event.detail?.keys?.some(key => key.startsWith(`${loggedInUser}_ai`))) render();
+            scheduleDaily();
+        }); window.addEventListener('hashchange', openSaved);
+        window.addEventListener('app-ready', scheduleDaily);
+        document.addEventListener('visibilitychange', scheduleDaily);
+        setInterval(scheduleDaily, 30000);
         const name = document.getElementById('crypto-name'); if (name) new MutationObserver(render).observe(name, { childList: true, subtree: true });
-        render(); openSaved(); checkDaily();
+        render(); openSaved(); scheduleDaily();
     }
     return { install, configure };
 })();

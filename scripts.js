@@ -6782,6 +6782,11 @@ onAppReady( () => {
     const pageParam = urlParams.get('page');
     const routes = { settings: showSettingsPage, account: showAccountSettingsPage,
         pricing: showPricingPage, register: showRegisterPage, logout };
+    // A bookmarked logout URL must not sign a remembered account out on every reload.
+    if (pageParam === 'logout') {
+        urlParams.delete('page');
+        history.replaceState(null, '', location.pathname + (urlParams.size ? '?' + urlParams : '') + location.hash);
+    }
     if (routes[pageParam] && (loggedInUser || ['pricing', 'register'].includes(pageParam))) {
         setTimeout(routes[pageParam], 100);
     }

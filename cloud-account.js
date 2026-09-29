@@ -200,13 +200,12 @@ window.CloudAccount = (() => {
             if (error) throw error;
             session = data.session;
             if (session) {
-                const remote = await load();
+                const [remote, access] = await Promise.all([load(), client.rpc('get_account_access')]);
                 version = remote.version;
                 appStorage.replace(remote.state?.records || {});
                 const email = session.user.email;
                 const profiles = JSON.parse(appStorage.getItem('users') || '{}');
                 const profile = profiles[email] || defaultProfile();
-                const access = await client.rpc('get_account_access');
                 if (access.error) throw access.error;
                 profile.isAdmin = access.data.isAdmin;
                 isAdmin = access.data.isAdmin === true;
@@ -216,9 +215,6 @@ window.CloudAccount = (() => {
                 appStorage.setItem('users', JSON.stringify({ [email]: profile }));
                 appStorage.setItem('loggedInUser', email);
                 baseline = remote.state?.records || {};
-                ready = true;
-                await flush();
-                await renewLease();
             }
             const script = document.createElement('script');
             script.src = 'scripts.js';
@@ -227,6 +223,9 @@ window.CloudAccount = (() => {
                 document.body.classList.remove('auth-loading');
                 if (session) synced(); else status('Sign in to sync');
                 if (session) {
+                    // Display the hydrated app before optional saves, automation or AI work.
+                    flush().catch(() => {});
+                    renewLease().catch(() => { leaseUntil = 0; });
                     client.channel('account-sync-' + session.user.id)
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'account_sync',
                             filter: 'user_id=eq.' + session.user.id }, payload => {
@@ -234,6 +233,7 @@ window.CloudAccount = (() => {
                             })
                         .subscribe(state => { if (state === 'SUBSCRIBED') refresh().catch(() => {}); });
                 }
+                window.dispatchEvent(new CustomEvent('app-ready'));
             };
             script.onerror = () => {
                 document.body.classList.remove('auth-loading');
@@ -345,6 +345,7 @@ window.CloudAccount = (() => {
     });
     return { start, login, register, logout, changePassword, deleteAccount, flush, refresh, retry, resolveConflict,
         runAutomation, ensureAutomation, proxyFetch, authorizedFetch, confirmActions,
+        get isReady() { return ready && !!session; },
         get isAdmin() { return isAdmin; },
         get message() { return message; }, get canPurchase() { return ready && !!session && !paused && navigator.onLine && leaseUntil > Date.now(); } };
 })();

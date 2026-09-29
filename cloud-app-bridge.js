@@ -24,6 +24,9 @@ function installCloudAppBridge() {
     }
     window.addEventListener('cloud-data-loaded', ({ detail: { keys } }) => {
         if (!loggedInUser) return;
+        // AI has its own subscriber; its progress must not rebuild holdings or settings.
+        if (keys.length && keys.every(key => key.startsWith(`${loggedInUser}_ai_`) ||
+            key === `${loggedInUser}_aiSettings` || key === `${loggedInUser}_aiPortfolioExpanded`)) return;
         users = JSON.parse(appStorage.getItem('users') || '{}');
         if (keys.includes(`${loggedInUser}_easyMiningSettings`)) {
             easyMiningSettings = JSON.parse(appStorage.getItem(`${loggedInUser}_easyMiningSettings`) || '{}');

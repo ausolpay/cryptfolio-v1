@@ -22,6 +22,7 @@
     let pending = [], dialog, dialogUser;
     function el(tag, text, cls) { const node = document.createElement(tag); node.textContent = text || ''; if (cls) node.className = cls; return node; }
     function showNext() {
+        if (typeof loggedInUser === 'undefined' || !root.CloudAccount?.isReady) return;
         if (dialog?.open && dialogUser !== loggedInUser) dialog.close();
         pending = pending.filter(item => item.user === loggedInUser);
         if (!loggedInUser) return;
