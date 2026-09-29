@@ -49,3 +49,36 @@ test('AI headlines request skips slow 30-day mention counting and asks for the p
     assert.match(new URL(urls[0]).searchParams.get('q'), /when:7d/);
     assert.match(res.data.coverage, /last 7 days/);
 });
+
+test('RSS thumbnails, image enclosures and embedded images retain safe image URLs', () => {
+    const rss = body => `<rss><channel><item><title>Bitcoin</title><link>https://example.test/news</link>${body}</item></channel></rss>`;
+    assert.equal(context.parseRss(rss('<media:thumbnail url="https://example.test/photo.jpg?a=1&amp;b=2"/>'))[0].imageurl, 'https://example.test/photo.jpg?a=1&b=2');
+    assert.equal(context.parseRss(rss('<enclosure url="https://example.test/photo.jpg" type="image/jpeg"/>'))[0].imageurl, 'https://example.test/photo.jpg');
+    assert.equal(context.parseRss(rss('<description><![CDATA[<img src="https://example.test/embedded.jpg">]]></description>'))[0].imageurl, 'https://example.test/embedded.jpg');
+    assert.equal(context.parseRss(rss('<media:thumbnail url="javascript:alert(1)"/>'))[0].imageurl, null);
+});
+
+test('duplicate headlines inherit available thumbnails without inflating mention counts', () => {
+    const published_on = Date.now() / 1000;
+    const articles = context.normaliseArticles([
+        { title: 'Bitcoin climbs - Publisher', url: 'https://news.google.com/rss/articles/one', published_on },
+        { title: 'Bitcoin climbs', url: 'https://example.test/news', socialimage: 'https://example.test/photo.jpg', published_on },
+        { title: 'Another story', url: 'https://example.test/other', imageurl: 'data:text/html,unsafe', published_on }
+    ]);
+    assert.equal(articles.length, 2);
+    assert.equal(articles[0].imageurl, 'https://example.test/photo.jpg');
+    assert.equal(articles[1].imageurl, null);
+});
+
+test('news API keeps GDELT and publisher article images and filters unrelated coins', async () => {
+    const published_on = Math.floor(Date.now() / 1000);
+    context.fetch = async url => ({ ok: true, text: async () => url.includes('gdelt')
+        ? JSON.stringify({ articles: [{ title: 'Bitcoin update', url: 'https://example.test/gdelt', socialimage: 'https://example.test/gdelt.jpg', domain: 'Example', seendate: new Date().toISOString() }] })
+        : url.includes('cointelegraph') ? `<rss><channel><item><title>BTC market news</title><link>https://example.test/btc</link><pubDate>${new Date(published_on * 1000).toUTCString()}</pubDate><media:content url="https://example.test/btc.jpg"/></item><item><title>Other coin</title><link>https://example.test/other</link><pubDate>${new Date(published_on * 1000).toUTCString()}</pubDate></item></channel></rss>` : '<rss><channel></channel></rss>' });
+    const res = { setHeader() {}, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
+    await context.handler({ method: 'GET', query: { name: 'Bitcoin', symbol: 'BTC' } }, res);
+    assert.equal(res.code, 200);
+    assert.equal(res.data.articles.length, 2);
+    assert.equal(res.data.articles.find(a => a.index === 'GDELT').imageurl, 'https://example.test/gdelt.jpg');
+    assert.equal(res.data.articles.find(a => a.index === 'Cointelegraph').imageurl, 'https://example.test/btc.jpg');
+});

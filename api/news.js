@@ -9,24 +9,32 @@ const decode = value => String(value || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/
 function httpUrl(value) {
     try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : null; } catch { return null; }
 }
-function parseRss(xml) {
+function parseRss(xml, sourceName = 'Google News') {
     if (!/<rss\b/i.test(xml)) throw new Error('Invalid RSS response');
     const field = (item, name) => decode(item.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${name}>`, 'i'))?.[1]);
     return [...xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)].map(([, item]) => ({
-        title: field(item, 'title'), url: field(item, 'link'), source: field(item, 'source'),
-        published_on: Date.parse(field(item, 'pubDate')) / 1000, index: 'Google News'
+        title: field(item, 'title'), url: field(item, 'link'), source: field(item, 'source') || sourceName,
+        published_on: Date.parse(field(item, 'pubDate')) / 1000, index: sourceName,
+        imageurl: httpUrl(decode(item.match(/<media:(?:thumbnail|content)\b[^>]*\burl=["']([^"']+)["']/i)?.[1]
+            || item.match(/<enclosure\b(?=[^>]*\btype=["']image\/)[^>]*\burl=["']([^"']+)["']/i)?.[1]
+            || (field(item, 'description') + field(item, 'content:encoded')).match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i)?.[1]))
     }));
 }
 function normaliseArticles(items, now = Date.now()) {
-    const seen = new Set();
+    const seen = new Map();
     return items.filter(item => {
         item.url = httpUrl(item.url);
+        item.imageurl = httpUrl(item.imageurl || item.socialimage);
         const published = item.published_on * 1000;
         if (!item.url || !item.title || !Number.isFinite(published) || published < now - 30 * DAY || published > now + 3600000) return false;
         // Syndicated copies and the same result from two indexes count once.
         const titleKey = item.title.toLowerCase().replace(/\s+-\s+[^-]+$/, '').replace(/[^\p{L}\p{N}]/gu, '');
-        if (seen.has(item.url) || seen.has(titleKey)) return false;
-        seen.add(item.url); seen.add(titleKey);
+        const duplicate = seen.get(item.url) || seen.get(titleKey);
+        if (duplicate) {
+            if (!duplicate.imageurl && item.imageurl) duplicate.imageurl = item.imageurl;
+            return false;
+        }
+        seen.set(item.url, item); seen.set(titleKey, item);
         return true;
     }).sort((a, b) => b.published_on - a.published_on);
 }
@@ -43,7 +51,10 @@ export default async function handler(req, res) {
         if (text.length > 2000000) throw new Error('Source response too large');
         return text;
     };
-    const sources = headlinesOnly ? ['Google News'] : ['Google News', 'GDELT'];
+    const sources = headlinesOnly ? ['Google News'] : ['Google News', 'GDELT', 'Cointelegraph', 'CoinDesk'];
+    const publisherFeed = (url, source) => fetchText(url).then(xml => parseRss(xml, source))
+        .then(articles => articles.filter(article => article.title.toLowerCase().includes(name.toLowerCase())
+            || new RegExp(`\\b${symbol}\\b`, 'i').test(article.title)));
     const results = await Promise.allSettled([
         fetchText('https://news.google.com/rss/search?' + new URLSearchParams({ q: query + (headlinesOnly ? ' when:7d' : ' when:30d'), hl: 'en-AU', gl: 'AU', ceid: 'AU:en' })).then(parseRss),
         ...(!headlinesOnly ? [
@@ -51,10 +62,12 @@ export default async function handler(req, res) {
             .then(text => {
                 const result = JSON.parse(text);
                 if (!Array.isArray(result.articles)) throw new Error('Invalid news response');
-                return result.articles.map(article => ({ title: article.title, url: article.url, source: article.domain,
+                return result.articles.map(article => ({ title: article.title, url: article.url, source: article.domain, imageurl: article.socialimage,
                     published_on: Date.parse(String(article.seendate).replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z')) / 1000,
                     index: 'GDELT', dateType: 'indexed' }));
-            })] : [])
+            }),
+        publisherFeed('https://cointelegraph.com/rss', 'Cointelegraph'),
+        publisherFeed('https://www.coindesk.com/arc/outboundfeeds/rss/', 'CoinDesk')] : [])
     ]);
     const available = sources.filter((_, i) => results[i].status === 'fulfilled');
     if (!available.length) { res.setHeader('Cache-Control', 'no-store'); return res.status(503).json({ error: 'News sources are temporarily unavailable' }); }

@@ -203,6 +203,9 @@ window.CloudAccount = (() => {
     }
     async function start() {
         try {
+            // Startup failures must remain visible while the unhydrated app is hidden.
+            const loadNotice = document.getElementById('cloud-load-error');
+            if (loadNotice) document.body.appendChild(loadNotice);
             const conflictDialog = document.getElementById('cloud-conflict');
             if (conflictDialog) document.body.appendChild(conflictDialog);
             const remember = document.getElementById('stay-signed-in');

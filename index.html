@@ -2787,25 +2787,28 @@
             <!-- Price Info Panel -->
             <div class="price-info-panel">
               <div class="price-info-main">
+                <span class="price-metric-label">Current price <span id="modal-price-currency" class="price-currency-badge">AUD</span></span>
                 <h1 id="live-price" class="live-price"></h1>
               </div>
               <div class="price-info-divider"></div>
               <div class="price-info-conversion">
+                <span class="price-metric-label">Your holdings</span>
                 <p id="holdings-info" class="holdings-info"></p>
               </div>
               <div class="price-info-divider"></div>
               <div class="price-info-changes">
+                <span class="price-metric-label">Price performance</span>
                 <p id="modal-percentage-changes" class="modal-percentage-changes"></p>
               </div>
               <div class="price-info-divider"></div>
               <div class="price-info-pnl">
-                <span id="modal-unrealized-pnl" class="modal-pnl-value">Unrealized: $0.00</span>
-                <span class="pnl-separator">|</span>
-                <span id="modal-realized-pnl" class="modal-pnl-value">Realized: $0.00</span>
+                <div class="price-return"><span class="price-metric-label" title="Profit or loss on your active holdings">Unrealized P&amp;L</span><span id="modal-unrealized-pnl" class="modal-pnl-value">—</span></div>
+                <div class="price-return"><span class="price-metric-label" title="Profit or loss from completed sales">Realized P&amp;L</span><span id="modal-realized-pnl" class="modal-pnl-value">—</span></div>
               </div>
               <div class="price-info-divider"></div>
               <div class="price-info-dca">
-                <span id="modal-dca" class="modal-dca-value">DCA: $0.00</span>
+                <span class="price-metric-label" title="Weighted average price across all recorded buys">Average buy price · DCA</span>
+                <span id="modal-dca" class="modal-dca-value">—</span>
               </div>
             </div>
 

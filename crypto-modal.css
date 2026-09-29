@@ -5,11 +5,44 @@
 #candlestick-modal #crypto-icon { width:40px; height:40px; object-fit:contain; flex-shrink:0; }
 #candlestick-modal > .modal-content > .close { position:absolute; top:16px; right:16px; display:flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:50%; line-height:1; }
 #candlestick-modal .tradingview-chart { width:100%; height:clamp(380px,62vh,720px); margin:0; border-radius:12px; overflow:hidden; }
-#candlestick-modal .price-info-panel { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:20px 0; padding:18px; border:1px solid #7775; border-radius:14px; box-sizing:border-box; }
+#candlestick-modal .price-info-panel { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:12px; margin:20px 0; padding:16px; border:1px solid #7775; border-radius:16px; box-sizing:border-box; align-items:stretch; background:#181c24; box-shadow:none; }
 #candlestick-modal .price-info-panel > div { min-width:0; overflow-wrap:anywhere; }
 #candlestick-modal .price-info-divider { display:none; }
-#candlestick-modal .price-info-main { grid-column:span 2; }
-#candlestick-modal .live-price { font-size:clamp(24px,3vw,38px); margin:0; }
+#candlestick-modal .price-info-main { grid-column:1; background:linear-gradient(135deg,#637cf01a,#637cf005); }
+#candlestick-modal .price-info-main, #candlestick-modal .price-info-conversion, #candlestick-modal .price-info-changes, #candlestick-modal .price-info-pnl, #candlestick-modal .price-info-dca { padding:16px; border:1px solid #ffffff0d; border-radius:12px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:10px; }
+#candlestick-modal .price-info-changes { grid-column:1 / -1; grid-row:2; }
+#candlestick-modal .price-info-pnl { grid-column:1 / -1; flex-direction:row; justify-content:flex-start; gap:32px; }
+#candlestick-modal .price-return { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+#candlestick-modal .price-info-dca { grid-column:3; grid-row:1; }
+#candlestick-modal .price-metric-label { font-size:12px; font-weight:500; color:#abb5c8; display:flex; align-items:center; gap:8px; }
+#candlestick-modal .price-currency-badge { font-size:10px; font-weight:600; letter-spacing:.05em; padding:3px 6px; border-radius:5px; background:#8293be1a; color:inherit; }
+#candlestick-modal .live-price { font-size:clamp(24px,3vw,36px); margin:0; text-align:left; white-space:normal; font-variant-numeric:tabular-nums; line-height:1.2; letter-spacing:-.03em; }
+#candlestick-modal .holdings-info { display:flex; flex-direction:column; gap:6px; white-space:normal; width:100%; text-align:left; }
+#candlestick-modal .holdings-market-value, #candlestick-modal .modal-pnl-value, #candlestick-modal .modal-dca-value { font-size:clamp(18px,2vw,24px); font-weight:600; font-variant-numeric:tabular-nums; color:inherit; }
+#candlestick-modal .holdings-quantity { font-size:12px; color:#abb5c8; overflow-wrap:anywhere; }
+#candlestick-modal .modal-percentage-changes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100%; text-align:left; }
+#candlestick-modal .price-change { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:8px; background:#8293be0c; font-variant-numeric:tabular-nums; }
+#candlestick-modal .price-change-period { color:#abb5c8; font-size:12px; }
+#candlestick-modal .pnl-positive { color:#4adea0; }
+#candlestick-modal .pnl-negative { color:#ff8b97; }
+body:not(.dark-mode) #candlestick-modal .price-info-panel { background:#f8fafc; border-color:#dce2eb; box-shadow:none; }
+body:not(.dark-mode) #candlestick-modal .price-info-panel > div { border-color:#e3e8f0; }
+body:not(.dark-mode) #candlestick-modal .price-metric-label, body:not(.dark-mode) #candlestick-modal .holdings-quantity, body:not(.dark-mode) #candlestick-modal .price-change-period { color:#586579; }
+body:not(.dark-mode) #candlestick-modal .pnl-positive { color:#087c4d; }
+body:not(.dark-mode) #candlestick-modal .pnl-negative { color:#c52d43; }
+#candlestick-modal .news-card { width:240px; height:244px; text-decoration:none; border-radius:12px; }
+#candlestick-modal .news-card:focus-visible { outline:2px solid #8196ff; outline-offset:3px; }
+#candlestick-modal .news-card-media { position:relative; height:126px; flex-shrink:0; background:linear-gradient(135deg,#303b58,#202633); overflow:hidden; }
+#candlestick-modal .news-card-image { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+#candlestick-modal .news-image-placeholder { display:flex; align-items:center; justify-content:center; height:100%; padding:16px; box-sizing:border-box; font-size:16px; color:#c3cde4; text-align:center; }
+#candlestick-modal .has-image .news-image-placeholder { visibility:hidden; }
+#candlestick-modal .news-card-content { padding:12px; min-height:0; }
+#candlestick-modal .news-card-title { font-size:13px; line-height:1.45; }
+#candlestick-modal .news-card-source { font-size:10px; }
+#candlestick-modal .holdings-tracking-header { border-radius:10px; padding:16px; }
+#candlestick-modal .holdings-action-buttons { gap:12px; }
+#candlestick-modal .holdings-action-buttons button { min-height:44px; border-radius:10px; }
+#candlestick-modal .holdings-tab { min-height:44px; }
 #candlestick-modal .crypto-info-table { width:100%; border-collapse:collapse; }
 #candlestick-modal .crypto-info-table td { padding:12px 10px; border-bottom:1px solid #7773; overflow-wrap:anywhere; }
 @media(max-width:700px) {
@@ -18,6 +51,12 @@
     #candlestick-modal .tradingview-chart { height:420px; }
     #candlestick-modal .price-info-panel { grid-template-columns:repeat(2,minmax(0,1fr)); padding:12px; gap:14px; }
     #candlestick-modal .price-info-main { grid-column:1 / -1; }
+    #candlestick-modal .price-info-conversion { grid-column:1; }
+    #candlestick-modal .price-info-dca { grid-column:2; grid-row:2; }
+    #candlestick-modal .price-info-changes { grid-row:3; }
     #candlestick-modal .price-info-pnl { grid-column:1 / -1; }
+    #candlestick-modal .price-info-panel > div { padding:12px; }
+    #candlestick-modal .price-change { flex-direction:column; align-items:flex-start; padding:10px 8px; }
+    #candlestick-modal .modal-percentage-changes { gap:6px; }
     #candlestick-modal .crypto-info-table td { padding:10px 5px; font-size:13px; }
 }

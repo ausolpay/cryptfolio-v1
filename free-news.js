@@ -5,7 +5,7 @@ function installFreeNews() {
     async function coverage(name, symbol, { headlinesOnly = false } = {}) {
         const owner = loggedInUser;
         const normalized = String(name).replace(/-/g, ' ').toLowerCase();
-        const key = `${loggedInUser}_freeNews_${normalized}_${symbol.toLowerCase()}`;
+        const key = `${loggedInUser}_freeNews_v2_${normalized}_${symbol.toLowerCase()}`;
         let cached;
         try { cached = JSON.parse(appStorage.getItem(key)); } catch {}
         if (headlinesOnly) cached = headlineCache.get(key) || cached;

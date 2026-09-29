@@ -38,8 +38,11 @@ test('all settings, histories and API credentials round-trip through the working
     assert.equal(createStorage().getItem('theme'), null, 'fresh browser state has no persistent app data');
 });
 
-async function device(database, owner, beforeSave = async () => {}) {
+async function device(database, owner, beforeSave = async () => {}, startupError = null) {
     const events = new Map(), requests = [];
+    const appended = [], bodyClasses = new Set();
+    const noticeText = { textContent: '' };
+    const loadNotice = { hidden: true, querySelector: () => noticeText };
     const storage = createStorage({}, () => events.get('app-data-changed')?.());
     const status = { textContent: '', classList: { toggle() {} } };
     const context = {
@@ -50,9 +53,9 @@ async function device(database, owner, beforeSave = async () => {}) {
         document: {
             hidden: false,
             addEventListener() {},
-            getElementById: () => status,
+            getElementById: id => id === 'cloud-load-error' ? loadNotice : status,
             createElement: () => ({}),
-            body: { classList: { remove() {} }, appendChild(element) { if (typeof element.onload === 'function') element.onload(); } }
+            body: { classList: { remove(name) { bodyClasses.delete(name); }, add(name) { bodyClasses.add(name); } }, appendChild(element) { appended.push(element); if (typeof element.onload === 'function') element.onload(); } }
         },
         supabase: { createClient: () => ({
             channel: () => ({ on() { return this; }, subscribe() {} }),
@@ -64,7 +67,7 @@ async function device(database, owner, beforeSave = async () => {}) {
                 if (name === 'claim_automation') return { data: true };
                 if (name === 'get_account_access') return { data: { isAdmin: false, tier: 'free' } };
                 let saved = database.get(owner) || { version: 0, state: null };
-                if (name === 'load_account_state') return { data: structuredClone(saved) };
+                if (name === 'load_account_state') return startupError ? { error: startupError } : { data: structuredClone(saved) };
                 requests.push(structuredClone(args));
                 await beforeSave(args);
                 saved = database.get(owner) || { version: 0, state: null };
@@ -82,8 +85,18 @@ async function device(database, owner, beforeSave = async () => {}) {
     const source = fs.readFileSync(require('node:path').join(__dirname, '../cloud-account.js'), 'utf8');
     vm.runInContext(source.replace('CloudAccount.start();', 'window.started = CloudAccount.start();'), context);
     await context.started;
-    return { cloud: context.CloudAccount, storage, status, events, requests };
+    return { cloud: context.CloudAccount, storage, status, events, requests, appended, bodyClasses, loadNotice, noticeText };
 }
+
+test('startup failure places its retry notice outside the hidden unhydrated app', async () => {
+    const first = await device(new Map(), 'load@example.test', undefined, { message: 'Database connection unavailable' });
+    assert.ok(first.appended.includes(first.loadNotice));
+    assert.equal(first.loadNotice.hidden, false);
+    assert.equal(first.noticeText.textContent, 'Database connection unavailable');
+    assert.ok(first.bodyClasses.has('auth-load-failed'));
+    assert.equal(first.appended.some(element => element.src === 'scripts.js'), false);
+    assert.deepEqual(first.storage.snapshot(), {}, 'failed hydration must not create an empty replacement account');
+});
 
 test('edits auto-save without a timer and only changed records are uploaded', async () => {
     const database = new Map();

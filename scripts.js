@@ -8741,7 +8741,7 @@ function updateModalPnL(cryptoId) {
     const modalUnrealizedEl = document.getElementById('modal-unrealized-pnl');
     if (modalUnrealizedEl) {
         const sign = totalUnrealized >= 0 ? '+' : '-';
-        modalUnrealizedEl.textContent = `Unrealized: ${sign}$${formatNumber(Math.abs(totalUnrealized).toFixed(2))}`;
+        modalUnrealizedEl.textContent = `${sign}${getUserCurrencySymbol()}${formatNumber(Math.abs(totalUnrealized).toFixed(2))}`;
         modalUnrealizedEl.className = `modal-pnl-value ${totalUnrealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
 
@@ -8749,13 +8749,13 @@ function updateModalPnL(cryptoId) {
     const modalRealizedEl = document.getElementById('modal-realized-pnl');
     if (modalRealizedEl) {
         const sign = totalRealized >= 0 ? '+' : '-';
-        modalRealizedEl.textContent = `Realized: ${sign}$${formatNumber(Math.abs(totalRealized).toFixed(2))}`;
+        modalRealizedEl.textContent = `${sign}${getUserCurrencySymbol()}${formatNumber(Math.abs(totalRealized).toFixed(2))}`;
         modalRealizedEl.className = `modal-pnl-value ${totalRealized >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
     }
 
     const modalDcaEl = document.getElementById('modal-dca');
     if (modalDcaEl) {
-        modalDcaEl.textContent = `DCA: $${formatPrice(dca)}`;
+        modalDcaEl.textContent = getHoldingsEntries(cryptoId).length ? `${getUserCurrencySymbol()}${formatPrice(dca)}` : '—';
     }
 
     // Also update modal holdings display
@@ -8784,7 +8784,8 @@ function updateModalHoldings(cryptoId) {
     });
 
     holdingsElement.innerHTML = `
-        <span><strong>${formattedHoldings}</strong> ${symbol} = <strong>$${formattedAudValue}</strong></span>
+        <strong class="holdings-market-value">${getUserCurrencySymbol()}${formattedAudValue}</strong>
+        <span class="holdings-quantity">${formattedHoldings} ${escapeNewsHtml(symbol)}</span>
     `;
 }
 
@@ -11895,7 +11896,8 @@ async function updatePriceFromWebSocket(symbol, priceInUsd, source = 'Binance') 
                             maximumFractionDigits: 2
                         });
                         holdingsElement.innerHTML = `
-                            <span><strong>${formattedHoldingsWs}</strong> ${crypto.symbol.toUpperCase()} = <strong id="holdings-value">$${formattedAudWs}</strong></span>
+                            <strong id="holdings-value" class="holdings-market-value">${getUserCurrencySymbol()}${formattedAudWs}</strong>
+                            <span class="holdings-quantity">${formattedHoldingsWs} ${escapeNewsHtml(crypto.symbol.toUpperCase())}</span>
                         `;
 
                         // ✅ FIX: Live price is now updated by syncModalLivePrice() interval only
@@ -12398,9 +12400,15 @@ function renderNewsSlider(articles) {
     }
 
     articles.forEach(article => {
-        const card = document.createElement('div');
+        const card = document.createElement('a');
         card.className = 'news-card';
-        card.onclick = () => window.open(article.url, '_blank', 'noopener,noreferrer');
+        try {
+            const url = new URL(article.url);
+            if (!['https:', 'http:'].includes(url.protocol)) return;
+            card.href = url.href;
+        } catch { return; }
+        card.target = '_blank';
+        card.rel = 'noopener noreferrer';
 
         // Format the date
         const publishDate = new Date(article.published_on * 1000);
@@ -12410,14 +12418,28 @@ function renderNewsSlider(articles) {
         const safeTitle = escapeNewsHtml(article.title);
 
         card.innerHTML = `
-            <img class="news-card-image" src="${article.imageurl || ''}"
-                 alt="" onerror="this.style.display='none'">
+            <div class="news-card-media"><span class="news-image-placeholder" aria-hidden="true">${escapeNewsHtml(article.source || 'News')}</span></div>
             <div class="news-card-content">
                 <p class="news-card-title">${safeTitle}</p>
                 <span class="news-card-source">${escapeNewsHtml(article.source || 'Unknown')} • ${article.dateType === 'indexed' ? 'Indexed ' : ''}${timeAgo}</span>
             </div>
         `;
 
+        try {
+            const imageUrl = new URL(article.imageurl || article.socialimage || article.urlToImage);
+            if (['https:', 'http:'].includes(imageUrl.protocol)) {
+                const image = document.createElement('img');
+                image.className = 'news-card-image';
+                image.alt = '';
+                image.loading = 'lazy';
+                image.decoding = 'async';
+                image.referrerPolicy = 'no-referrer';
+                image.addEventListener('load', () => image.parentElement?.classList.add('has-image'));
+                image.addEventListener('error', () => image.remove(), { once: true });
+                image.src = imageUrl.href;
+                card.querySelector('.news-card-media').appendChild(image);
+            }
+        } catch { /* Keep the publisher placeholder when no valid thumbnail exists. */ }
         container.appendChild(card);
     });
 
@@ -12631,7 +12653,9 @@ function syncModalLivePrice() {
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
             });
-            livePriceElement.innerHTML = `<b>$${formattedPrice}</b>`;
+            livePriceElement.textContent = `${getUserCurrencySymbol()}${formattedPrice}`;
+            const currencyBadge = document.getElementById('modal-price-currency');
+            if (currencyBadge) currencyBadge.textContent = getUserCurrency();
 
             // Flash green/red on price change
             if (previousModalPrice > 0 && displayPriceAud !== previousModalPrice) {
@@ -12677,16 +12701,16 @@ function updateModalPercentageChanges(percentageChange24h, percentageChange7d, p
 
     // Helper function to format percentage with color
     const formatPercentage = (value, label) => {
+        if (!Number.isFinite(value)) return `<span class="price-change"><span class="price-change-period">${label}</span><strong>—</strong></span>`;
         const isPositive = value >= 0;
-        const color = isPositive ? '#00FF00' : '#FF0000';
         const sign = isPositive ? '+' : '';
-        return `<span style="color: ${color}; font-weight: bold;">${label}: ${sign}${value.toFixed(2)}%</span>`;
+        return `<span class="price-change ${isPositive ? 'pnl-positive' : 'pnl-negative'}"><span class="price-change-period">${label}</span><strong>${sign}${value.toFixed(2)}%</strong></span>`;
     };
 
     // Create the HTML content
     const html = `
-        ${formatPercentage(percentageChange24h, '24h')} |
-        ${formatPercentage(percentageChange7d, '7d')} |
+        ${formatPercentage(percentageChange24h, '24h')}
+        ${formatPercentage(percentageChange7d, '7d')}
         ${formatPercentage(percentageChange30d, '30d')}
     `;
 
