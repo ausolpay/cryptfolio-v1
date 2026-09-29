@@ -2,6 +2,7 @@
 function installFreeNews() {
     const pending = new Map();
     async function coverage(name, symbol) {
+        const owner = loggedInUser;
         const normalized = String(name).replace(/-/g, ' ').toLowerCase();
         const key = `${loggedInUser}_freeNews_${normalized}_${symbol.toLowerCase()}`;
         let cached;
@@ -9,15 +10,16 @@ function installFreeNews() {
         if (cached && Date.now() - Date.parse(cached.checkedAt) < 600000) return cached;
         if (pending.has(key)) return pending.get(key);
         const request = (async () => {
-            const response = await fetch('/api/news?' + new URLSearchParams({ name: normalized, symbol }));
+            const response = await fetch('/api/news?' + new URLSearchParams({ name: normalized, symbol }), { signal: AbortSignal.timeout(12000) });
             if (!response.ok) throw new Error('News sources are temporarily unavailable.');
             const data = await response.json();
-            appStorage.setItem(key, JSON.stringify(data));
+            if (owner === loggedInUser) appStorage.setItem(key, JSON.stringify(data));
             return data;
         })();
         pending.set(key, request);
         try { return await request; } finally { pending.delete(key); }
     }
+    window.fetchAICoverage = coverage;
     window.fetchMentions30d = async function (name, symbol) {
         const coin = currentCryptoId;
         const label = document.getElementById('mentions30d');

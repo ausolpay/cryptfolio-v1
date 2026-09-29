@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overview.js'), 'utf8').replace('return { install, configure };', 'return { install, configure, api, checkDaily, generate };');
+const source = fs.readFileSync(require('node:path').join(__dirname, '../ai-overview.js'), 'utf8').replace('return { install, configure, observeMarket };', 'return { install, configure, api, checkDaily, generate };');
 function setup(response) {
     const requests = [], writes = [], elements = new Map();
     const root = { querySelector(selector) { if (!elements.has(selector)) elements.set(selector, {}); return elements.get(selector); } };
@@ -52,4 +52,18 @@ test('daily work cannot run during login and skips days already loaded from Supa
     context.appStorage.getItem = key => key.includes('_ai_daily_') ? '{"status":"complete"}' : getItem(key);
     context.ai.checkDaily(); await new Promise(resolve => setImmediate(resolve));
     assert.equal(requests.length, 0);
+});
+test('manual analysis includes only this coin history and still works when online news is unavailable', async () => {
+    const { context, requests } = setup({ ok: false, json: async () => ({ error: 'test' }) });
+    context.window = { fetchAICoverage: async () => { throw new Error('News offline'); } };
+    const read = context.appStorage.getItem;
+    context.appStorage.getItem = key => key.endsWith('_holdingsHistory') ? JSON.stringify([
+        { cryptoId: 'bitcoin', action: 'sell', amount: 1, soldPrice: 10, wallet: 'private' },
+        { cryptoId: 'ethereum', action: 'sell', amount: 99 }
+    ]) : key.endsWith('_holdingsEntries') ? JSON.stringify([{ amount: 2, boughtPrice: 8, source: 'manual' }]) : read(key);
+    await context.ai.generate('coin');
+    const history = requests[0].context.coins[0].history;
+    assert.equal(history.eventCount, 1); assert.equal(history.purchaseEntryCount, 1);
+    assert.equal(history.recent[0].amount, 1); assert.equal(history.recent[0].currency, null);
+    assert.equal(history.recent[0].wallet, undefined);
 });

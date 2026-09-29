@@ -1,5 +1,7 @@
 const AIOverview = (() => {
     let busy = false;
+    const expandedSections = { portfolio: false, coin: false };
+    let renderedCoin;
     const dailyAttempts = new Set();
     let backgroundTimer;
     function scheduleDaily() {
@@ -30,10 +32,21 @@ const AIOverview = (() => {
             output.textContent = latest ? latest.text || latest.error || (Date.now() - Date.parse(latest.createdAt) < 120000 ? 'Generating your overview…' : 'This overview did not finish. You can generate another.')
                 : kind === 'coin' ? 'Review this crypto, its market data and your holdings.' : 'Review portfolio exposure, market movements and areas to watch.';
             root.querySelector('.ai-date').textContent = latest ? `${new Date(latest.createdAt).toLocaleString()} • ${latest.model}` : '';
+            const sources = root.querySelector('.ai-sources');
+            sources.replaceChildren();
+            const seen = new Set();
+            for (const article of (latest?.context?.coins || []).flatMap(coin => coin.headlines || [])) {
+                let url; try { url = new URL(article.url); } catch { continue; }
+                if (url.protocol !== 'https:' || seen.has(url.href)) continue;
+                seen.add(url.href);
+                const source = node('a', article.source || url.hostname); source.href = url.href; source.target = '_blank'; source.rel = 'noopener noreferrer'; source.title = article.title;
+                sources.append(source);
+            }
             const status = root.querySelector('.ai-status');
             status.textContent = history[0]?.status === 'pending' ? (Date.now() - Date.parse(history[0].createdAt) < 120000 ? 'Generating your overview…' : 'The last attempt did not finish. Generate again to retry.') : history[0]?.status === 'error' ? history[0].error : '';
-            if (kind === 'portfolio') {
-                const expanded = appStorage.getItem(`${loggedInUser}_aiPortfolioExpanded`) === 'true';
+            {
+                if (kind === 'coin' && renderedCoin !== currentCryptoId) { expandedSections.coin = false; renderedCoin = currentCryptoId; }
+                const expanded = expandedSections[kind];
                 const collapse = root.querySelector('.ai-collapse');
                 collapse.classList.toggle('collapsed', !expanded);
                 collapse.inert = !expanded;
@@ -57,19 +70,51 @@ const AIOverview = (() => {
     async function generate(kind, daily = false) {
         if (busy || !active()) return;
         const owner = loggedInUser, scope = scopeFor(kind), root = document.getElementById(`ai-${kind}`), button = root.querySelector('.ai-generate');
+        busy = true; button.disabled = true; button.textContent = 'Generating…';
+        root.querySelector('.ai-status').textContent = 'Checking recent news and your market data…';
+        try {
+        const selected = (users[owner]?.cryptos || []).filter(coin => scope === 'portfolio' || coin.id === scope);
+        if (typeof window !== 'undefined' && window.fetchAICoverage) {
+            // Public coin identifiers only; balances and transaction history never go to news indexes.
+            const priority = [...selected].sort((a, b) => (getTotalActiveHoldings(b.id) * (getPriceFromObject(cryptoPrices[b.id]) || 0)) - (getTotalActiveHoldings(a.id) * (getPriceFromObject(cryptoPrices[a.id]) || 0))).slice(0, 8);
+            await Promise.allSettled(priority.map(coin => window.fetchAICoverage(coin.id, coin.symbol)));
+        }
+        if (owner !== loggedInUser) return;
         const coins = (users[loggedInUser]?.cryptos || []).filter(coin => scope === 'portfolio' || coin.id === scope).map(coin => {
             const price = getPriceFromObject(cryptoPrices[coin.id]) || null, holdings = getTotalActiveHoldings(coin.id);
             let news; try { news = JSON.parse(appStorage.getItem(`${loggedInUser}_freeNews_${coin.id.replace(/-/g, ' ').toLowerCase()}_${coin.symbol.toLowerCase()}`)); } catch {}
             return { name: coin.name || coin.id, symbol: coin.symbol, holdings, price, value: price === null ? null : holdings * price,
                 change24h: cryptoPriceChanges[coin.id] ?? null, rsi: getStoredRSI(coin.id),
-                chart: kind === 'coin' ? { candles: (storedOHLCDataPerCrypto[coin.id] || []).slice(-60) } : undefined,
+                history: historyContext(coin.id),
+                market: readJson(`${owner}_ai_market_${coin.id}`, {}),
+                chart: { candles: (storedOHLCDataPerCrypto[coin.id] || []).slice(-60) },
+                newsCheckedAt: news?.checkedAt || null,
                 headlines: (news?.articles || []).filter(article => Number.isFinite(article.published_on) && Number.isFinite(new Date(article.published_on * 1000).getTime())).slice(0, 3).map(article => ({
-                    title: article.title, source: article.source, publishedAt: new Date(article.published_on * 1000).toISOString() })) };
+                    title: article.title, source: article.source, url: article.url, publishedAt: new Date(article.published_on * 1000).toISOString() })) };
         });
-        busy = true; button.disabled = true; button.textContent = 'Generating…'; root.querySelector('.ai-status').textContent = 'Reviewing your selected data…';
-        try { await CloudAccount.flush(); await api({ action: daily && kind === 'portfolio' ? 'daily' : 'generate', context: { scope, currency: getCoinGeckoCurrency(), observedAt: new Date().toISOString(), coins } }); if (owner === loggedInUser) { await CloudAccount.refresh(); render(); } }
+        root.querySelector('.ai-status').textContent = 'Reviewing your selected data…';
+        await CloudAccount.flush(); await api({ action: daily && kind === 'portfolio' ? 'daily' : 'generate', context: { scope, currency: getCoinGeckoCurrency(), observedAt: new Date().toISOString(), coins } }); if (owner === loggedInUser) { await CloudAccount.refresh(); render(); } }
         catch (error) { if (owner === loggedInUser) root.querySelector('.ai-status').textContent = error.message; }
         finally { busy = false; button.disabled = false; button.textContent = 'Generate overview'; }
+    }
+    function readJson(key, fallback) { try { return JSON.parse(appStorage.getItem(key)) || fallback; } catch { return fallback; } }
+    function historyContext(id) {
+        const buys = readJson(`${loggedInUser}_${id}_holdingsEntries`, []);
+        const events = readJson(`${loggedInUser}_holdingsHistory`, []).filter(entry => entry.cryptoId === id);
+        return { purchaseEntryCount: buys.length, eventCount: events.length,
+            recordedAcquiredUnits: buys.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0),
+            recent: events.slice(-30).map(entry => ({ action: entry.action, amount: entry.amount,
+                boughtPrice: entry.boughtPrice, soldPrice: entry.soldPrice, currency: entry.currency || null, timestamp: entry.timestamp })),
+            purchases: buys.slice(-30).map(entry => ({ amount: entry.amount, boughtPrice: entry.boughtPrice,
+                currency: entry.currency || null, timestamp: entry.dateAdded, source: entry.source })) };
+    }
+    function observeMarket(id, market) {
+        if (!loggedInUser || !market) return;
+        appStorage.setItem(`${loggedInUser}_ai_market_${id}`, JSON.stringify({
+            change7d: market.price_change_percentage_7d, change30d: market.price_change_percentage_30d,
+            change1y: market.price_change_percentage_1y, marketCapUSD: market.market_cap?.usd,
+            volume24hUSD: market.total_volume?.usd, high24hUSD: market.high_24h?.usd, low24hUSD: market.low_24h?.usd,
+            observedAt: market.last_updated || new Date().toISOString() }));
     }
     function checkDaily() {
         if (!CloudAccount.isReady || busy || !loggedInUser || !active() || document.hidden || !navigator.onLine) return;
@@ -98,7 +143,7 @@ const AIOverview = (() => {
             };
             provider.onchange = () => { input.value = settings().provider === provider.value ? settings().apiKey || '' : ''; resetModels(); };
             const loadModels = node('button', 'Load available models'); dialog.append(loadModels);
-            dialog.append(node('p', 'Activation enables one automatic portfolio overview each day while the app is open, with a new day starting at 6am Brisbane time. Crypto overviews generate only when you click Generate. Summaries send balances, prices, indicators, available price candles and cached headlines to your provider. Login details, wallet addresses and other API keys are excluded. API usage may incur charges; a ChatGPT subscription is separate from API access.'));
+            dialog.append(node('p', 'Activation enables one automatic portfolio overview each day while the app is open, with a new day starting at 6am Brisbane time. Crypto overviews generate only when you click Generate. Summaries send balances, recorded buy/sell history, prices, indicators, available price candles and sourced headlines to your provider. News refreshes for up to eight coins, prioritising your larger positions; other coins use available cached coverage. Login details, wallet addresses and other API keys are excluded. API usage may incur charges; a ChatGPT subscription is separate from API access.'));
             const status = node('p'); status.setAttribute('role', 'status'); dialog.append(status);
             loadModels.onclick = async () => {
                 if (!input.value.trim()) { status.textContent = 'Enter an API key first.'; return; }
@@ -156,15 +201,15 @@ const AIOverview = (() => {
             const root = node('section', null, kind === 'portfolio' ? 'ai-overview easymining-section' : 'ai-overview'); root.id = `ai-${kind}`; root.hidden = true;
             const body = node('div', null, 'ai-body'), content = node('div', null, 'ai-inner'); body.append(content);
             const collapse = node('div', null, 'ai-collapse collapsed'); collapse.id = `ai-${kind}-body`;
-            if (kind === 'portfolio') {
+            {
                 const toggle = node('button', null, 'portfolio-stats-toggle ai-toggle'); toggle.type = 'button'; toggle.setAttribute('aria-controls', collapse.id);
-                toggle.append(node('span', '▶', 'arrow'), node('span', 'Portfolio AI overview', 'toggle-text'));
-                toggle.onclick = () => { appStorage.setItem(`${loggedInUser}_aiPortfolioExpanded`, String(toggle.getAttribute('aria-expanded') !== 'true')); render(); };
+                toggle.append(node('span', '▶', 'arrow'), node('span', kind === 'portfolio' ? 'Portfolio AI overview' : 'Crypto AI overview', 'toggle-text'));
+                toggle.onclick = () => { expandedSections[kind] = !expandedSections[kind]; render(); };
                 root.append(toggle);
-            } else content.append(node('h3', 'Crypto AI overview'));
-            content.append(node('p', null, 'ai-date'), node('div', null, 'ai-output'));
+            }
+            content.append(node('p', null, 'ai-date'), node('div', null, 'ai-output'), node('div', null, 'ai-sources'));
             const status = node('p', null, 'ai-status'); status.setAttribute('role', 'status'); content.append(status);
-            if (kind === 'portfolio') { collapse.append(body); root.append(collapse); } else root.append(body);
+            collapse.append(body); root.append(collapse);
             const actions = node('div', null, 'ai-actions'), generateButton = node('button', 'Generate overview', 'ai-generate'); generateButton.onclick = () => generate(kind);
             const permalink = node('a', 'Saved overview', 'ai-saved'); permalink.hidden = true; actions.append(generateButton, permalink); content.append(actions);
             content.append(node('p', (kind === 'portfolio' ? 'Daily refresh from 6am Brisbane time when the app is open. ' : 'Generated only on request. Uses available CoinGecko price candles, not TradingView drawings or the selected chart timeframe. ') + 'Educational analysis, not a prediction. API usage is billed by your provider.', 'ai-disclosure'));
@@ -176,10 +221,11 @@ const AIOverview = (() => {
             scheduleDaily();
         }); window.addEventListener('hashchange', openSaved);
         window.addEventListener('app-ready', scheduleDaily);
+        window.addEventListener('crypto-modal-opened', () => { expandedSections.coin = false; render(); });
         document.addEventListener('visibilitychange', scheduleDaily);
         setInterval(scheduleDaily, 30000);
         const name = document.getElementById('crypto-name'); if (name) new MutationObserver(render).observe(name, { childList: true, subtree: true });
         render(); openSaved(); scheduleDaily();
     }
-    return { install, configure };
+    return { install, configure, observeMarket };
 })();

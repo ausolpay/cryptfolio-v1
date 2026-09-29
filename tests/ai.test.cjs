@@ -3,14 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../api/ai.js'), 'utf8').replace(/^import .*\r?\n/gm, '').replace('export default async function handler', 'async function handler');
-async function run({ authorized = true, enabled = false, action = 'generate', provider = 'openai', model = 'gpt-5-mini', existing = {}, shared, scope = 'bitcoin', providerFailure = false, id = '11111111-1111-4111-8111-111111111111' } = {}) {
+async function run({ authorized = true, enabled = false, action = 'generate', provider = 'openai', model = 'gpt-5-mini', existing = {}, coinExtras = {}, shared, scope = 'bitcoin', providerFailure = false, id = '11111111-1111-4111-8111-111111111111' } = {}) {
     const calls = [];
     let state = shared || { version: 1, state: { schema: 1, records: {
         'owner@test_aiSettings': JSON.stringify({ provider, apiKey: 'test-provider-key', enabled, model }),
         'owner@test_niceHash': 'must-not-be-sent', ...existing
     } } };
     const context = {
-        AbortSignal, randomUUID: () => id,
+        AbortSignal, URL, randomUUID: () => id,
         createClient: () => ({ auth: { getUser: async () => ({ data: { user: { email: 'owner@test' } } }) },
             rpc: async (name, args) => {
                 if (name === 'load_account_state') return { data: structuredClone(state) };
@@ -30,7 +30,7 @@ async function run({ authorized = true, enabled = false, action = 'generate', pr
     vm.createContext(context); vm.runInContext(source, context);
     const res = { setHeader() {}, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
     await context.handler({ method: 'POST', headers: authorized ? { authorization: 'Bearer test' } : {}, body: { action,
-        context: { scope, apiKey: 'never-send', wallet: 'never-send', coins: [{ name: 'Bitcoin', symbol: 'BTC', price: 12, holdings: 2, wallet: 'never-send', chart: { candles: [[1790600000000, 10, 14, 9, 12], ['bad', 1, 2, 3, 4]], secret: 'never-send' } }] } } }, res);
+        context: { scope, apiKey: 'never-send', wallet: 'never-send', coins: [{ name: 'Bitcoin', symbol: 'BTC', price: 12, holdings: 2, wallet: 'never-send', ...coinExtras, chart: { candles: [[1790600000000, 10, 14, 9, 12], ['bad', 1, 2, 3, 4]], secret: 'never-send' } }] } } }, res);
     return { res, calls, state };
 }
 test('AI requires login and activation before sending financial context to a provider', async () => {
@@ -106,5 +106,22 @@ test('chart analysis includes only valid USD candles and requests a concise resp
     const body = JSON.parse(result.calls[0].options.body), input = JSON.parse(body.input);
     assert.deepEqual(input.coins[0].chart.candles, [[1790600000000, 10, 14, 9, 12]]);
     assert.equal(input.coins[0].chart.currency, 'USD');
-    assert.match(body.instructions, /under 220 words/);
+    assert.match(body.instructions, /up to 400 words/);
+});
+test('analysis receives bounded trade history, comparisons and safe source links without private fields', async () => {
+    const result = await run({ enabled: true, coinExtras: {
+        history: { purchaseEntryCount: 1, eventCount: 1, recordedAcquiredUnits: 2,
+            purchases: [{ amount: 2, boughtPrice: 5, currency: 'AUD', wallet: 'secret-address' }],
+            recent: [{ action: 'sell', amount: 1, soldPrice: 6, currency: 'AUD', timestamp: 123, apiKey: 'secret-key' }] },
+        market: { change7d: 4, change30d: 8, volume24hUSD: 120000, observedAt: '2026-09-29T00:00:00Z' },
+        headlines: [{ title: 'Report', source: 'Publisher', url: 'https://example.com/report' }, { title: 'Unsafe', url: 'javascript:alert(1)' }]
+    } });
+    const body = JSON.parse(result.calls[0].options.body), input = JSON.parse(body.input);
+    assert.equal(input.coins[0].history.recent[0].soldPrice, 6);
+    assert.equal(input.coins[0].market.change7d, 4);
+    assert.equal(input.coins[0].headlines[0].url, 'https://example.com/report');
+    assert.equal(input.coins[0].headlines[1].url, null);
+    assert.doesNotMatch(body.input, /secret-address|secret-key/);
+    assert.match(body.instructions, /buy\/add, hold\/wait, trim\/sell and reinvest/);
+    assert.match(body.instructions, /Do not treat sale proceeds as available cash/);
 });

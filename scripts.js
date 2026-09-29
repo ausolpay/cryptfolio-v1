@@ -1377,7 +1377,9 @@ async function fetchCoinDataForSentiment(cryptoId) {
     const url = `${getApiBaseUrl()}/coins/${cryptoId}?${getApiKeyParam()}`;
     try {
         const response = await fetch(url);
-        return response.ok ? await response.json() : null;
+        const data = response.ok ? await response.json() : null;
+        if (data?.market_data) AIOverview.observeMarket(cryptoId, data.market_data);
+        return data;
     } catch (error) {
         console.warn(`Failed to fetch coin data for ${cryptoId}:`, error);
         return null;
@@ -13176,6 +13178,7 @@ function updateRSIDisplay(rsi) {
  * @param {Object} coinData - Already fetched coin data (optional)
  */
 async function fetchAndCalculateAdvancedSentiment(cryptoId, coinData = null) {
+    if (coinData?.market_data) AIOverview.observeMarket(cryptoId, coinData.market_data);
     try {
         // Fetch OHLC data for RSI calculation (14+ candles needed)
         const ohlcUrl = `${getApiBaseUrl()}/coins/${cryptoId}/ohlc?vs_currency=usd&days=1&${getApiKeyParam()}`;
@@ -13776,6 +13779,7 @@ let isModalOpen = false; // Track if modal is open
 
 // Function to open the candlestick modal and load data for the specific crypto
 async function openCandlestickModal(cryptoId) {
+    window.dispatchEvent(new Event('crypto-modal-opened'));
     currentCryptoId = cryptoId;
     isModalOpen = true;
 

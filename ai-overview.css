@@ -1,10 +1,10 @@
 .ai-overview[hidden] { display: none !important; }
-#ai-portfolio .ai-toggle { width: 100%; border: 0; font-family: inherit; box-sizing: border-box; margin: 10px 0 0; min-height: 0; min-width: 0; line-height: normal; }
-#ai-portfolio .ai-collapse { display: grid; grid-template-rows: 1fr; opacity: 1; margin-top: 8px; transition: grid-template-rows .3s ease, opacity .3s ease, margin .3s ease; }
-#ai-portfolio .ai-collapse.collapsed { grid-template-rows: 0fr; opacity: 0; margin-top: 0; }
-#ai-portfolio .ai-body { min-height: 0; overflow: hidden; }
-#ai-portfolio .ai-inner { padding: 16px 0; text-align: left; }
-@media (prefers-reduced-motion: reduce) { #ai-portfolio .ai-collapse, #ai-portfolio .arrow { transition: none; } }
+.ai-overview .ai-toggle { width: 100%; border: 0; font-family: inherit; box-sizing: border-box; margin: 10px 0 0; min-height: 0; min-width: 0; line-height: normal; }
+.ai-overview .ai-collapse { display: grid; grid-template-rows: 1fr; opacity: 1; margin-top: 8px; transition: grid-template-rows .3s ease, opacity .3s ease, margin .3s ease; }
+.ai-overview .ai-collapse.collapsed { grid-template-rows: 0fr; opacity: 0; margin-top: 0; }
+.ai-overview .ai-body { min-height: 0; overflow: hidden; }
+.ai-overview .ai-inner { padding: 16px 0; text-align: left; }
+@media (prefers-reduced-motion: reduce) { .ai-overview .ai-collapse, .ai-overview .arrow { transition: none; } }
 .ai-status { font-size: 13px; line-height: 1.5; color: #ffb36b; }
 .ai-overview:not(#ai-portfolio) { box-sizing: border-box; width: 100%; margin: 18px 0; padding: 20px; border: 1px solid #ffffff20; border-radius: 16px; background: #ffffff06; text-align: left; }
 .ai-overview h3 { margin: 0 0 8px; font-size: 17px; }
@@ -13,6 +13,8 @@
 .ai-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
 .ai-actions button { margin: 0; }
 .ai-saved { color: #ffb36b; font-size: 13px; }
+.ai-sources { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+.ai-sources a { color: #ffb36b; font-size: 12px; }
 .ai-settings { background: #202020; color: #eee; border: 1px solid #555; border-radius: 16px; padding: 24px; width: min(480px, calc(100vw - 64px)); max-height: 80dvh; overflow-y: auto; }
 .ai-settings::backdrop { background: #000b; }
 .ai-settings p { font-size: 14px; line-height: 1.6; }
