@@ -78,6 +78,11 @@ window.CloudAccount = (() => {
         return response;
     }
     let message = 'Connecting…';
+    async function authorizedFetch(url, options) {
+        const { data, error } = await client.auth.getSession();
+        if (error || !data.session) throw new Error('Sign in to continue.');
+        return fetch(url, { ...options, headers: { ...options.headers, Authorization: 'Bearer ' + data.session.access_token } });
+    }
     function synced() {
         status('Last synced ' + new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'medium' }));
     }
@@ -339,7 +344,7 @@ window.CloudAccount = (() => {
         }
     });
     return { start, login, register, logout, changePassword, deleteAccount, flush, refresh, retry, resolveConflict,
-        runAutomation, ensureAutomation, proxyFetch, confirmActions,
+        runAutomation, ensureAutomation, proxyFetch, authorizedFetch, confirmActions,
         get isAdmin() { return isAdmin; },
         get message() { return message; }, get canPurchase() { return ready && !!session && !paused && navigator.onLine && leaseUntil > Date.now(); } };
 })();

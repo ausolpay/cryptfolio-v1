@@ -21398,7 +21398,7 @@ function updateTeamAlertCardValues(pkg) {
     // Formula must match adjustShares: blockReward / (othersBought + myShares) * myShares
     // This correctly projects the reward AFTER purchase when previewing more shares
     // totalBoughtShares from API includes my already bought shares, so subtract them first
-    const othersBought = totalBoughtShares - myBoughtShares;
+    const othersBought = Math.max(0, totalBoughtShares - myBoughtShares);
     const effectiveTotalShares = othersBought + myShares;
 
     console.log(`📊 Live reward update for ${pkg.name}:`, {
@@ -28746,13 +28746,13 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
         // Formula must match adjustShares: blockReward / (othersBought + myShares) * myShares
         // This correctly projects the reward AFTER purchase when previewing more shares
         // totalBoughtShares from API includes my already bought shares, so subtract them first
-        const othersBoughtForReward = totalBoughtShares - myBoughtShares;
+        const othersBoughtForReward = Math.max(0, totalBoughtShares - myBoughtShares);
         const effectiveTotalSharesForReward = othersBoughtForReward + mySharesForReward;
 
-        const rewardValueEl = card.querySelector(`#reward-value-${packageIdForElements}`);
+        const rewardValueEl = card.querySelector(`#team-reward-value-${packageIdForElements}`) || card.querySelector(`#reward-value-${packageIdForElements}`);
         if (rewardValueEl && rewardAUD > 0 && effectiveTotalSharesForReward > 0) {
             const myRewardAUD = (rewardAUD / effectiveTotalSharesForReward) * mySharesForReward;
-            rewardValueEl.textContent = `$${formatNumber(myRewardAUD.toFixed(2))}`;
+            rewardValueEl.textContent = `≈ $${formatNumber(myRewardAUD.toFixed(2))}`;
         }
 
         // Update main crypto reward amount
@@ -28874,7 +28874,7 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
 
             // If bot is active, sync input to current shares owned (shows progress)
             // If no bot, preserve user's manual input value
-            if (isBotActive && myBoughtShares > 0) {
+            if (isBotActive && myBoughtShares > 0 && !shareInput.dataset.userSelected) {
                 shareInput.value = myBoughtShares;
             }
         }
@@ -28895,6 +28895,7 @@ function updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames) {
             mergeCrypto: pkg.mergeCrypto || null,
             isDualCrypto: pkg.isDualCrypto || false
         };
+        card.teamRewardBase = window.packageBaseValues[pkg.name];
 
         // ✅ Update + button state (disabled ONLY when input >= max available shares)
         const plusButton = card.querySelector(`#plus-${packageIdForElements}`) ||
@@ -31022,7 +31023,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
 
         if (pkg.addedAmount !== undefined) {
             const mySharesForReward = myBoughtShares || 1; // Show for owned shares, or 1 if none
-            const othersBoughtForReward = totalBoughtShares - myBoughtShares;
+            const othersBoughtForReward = Math.max(0, totalBoughtShares - myBoughtShares);
             const totalSharesForReward = othersBoughtForReward + mySharesForReward;
 
             if (totalSharesForReward > 0) {
@@ -31251,6 +31252,7 @@ function createBuyPackageCardForPage(pkg, isRecommended) {
             mergeCrypto: pkg.mergeCrypto,
             isDualCrypto: pkg.isDualCrypto
         };
+        card.teamRewardBase = window.packageBaseValues[pkg.name];
 
         // Initialize share value from API data (myBoughtShares), default to 1 if no shares owned
         if (!window.packageShareValues) {
@@ -31349,6 +31351,7 @@ function adjustShares(packageName, delta, buttonElement) {
 
     // Set value using BOTH methods to force visual update
     input.value = newValue;
+    input.dataset.userSelected = 'true';
     input.setAttribute('value', newValue); // Force attribute update for visual rendering
 
     console.log(`📝 Verifying: input.value is now ${input.value}`);
@@ -31399,8 +31402,7 @@ function adjustShares(packageName, delta, buttonElement) {
         }
     }
 
-    // Pause polling for 10 seconds when adjusting shares
-    pauseBuyPackagesPolling();
+    // In-place polling preserves the selection and keeps the pool denominator current.
 
     // CRITICAL: Detect if we're on the buy packages page vs EasyMining alerts
     // MUST check for .buy-package-card FIRST to get the correct container with recommended class
@@ -31474,8 +31476,8 @@ function adjustShares(packageName, delta, buttonElement) {
         packageData: window.packageBaseValues?.[packageName]
     });
 
-    if (window.packageBaseValues && window.packageBaseValues[packageName]) {
-        const baseValues = window.packageBaseValues[packageName];
+    if (container.teamRewardBase || window.packageBaseValues?.[packageName]) {
+        const baseValues = container.teamRewardBase || window.packageBaseValues[packageName];
 
         console.log(`💰 Price calculation for ${packageName}:`, {
             pricePerShareAUD: baseValues.priceAUD,
@@ -31492,7 +31494,7 @@ function adjustShares(packageName, delta, buttonElement) {
         const totalBoughtShares = baseValues.totalBoughtShares || 0;
         const myBoughtShares = baseValues.myBoughtShares || 0;
         const myShares = newValue;  // Current input value
-        const othersBought = totalBoughtShares - myBoughtShares;  // Others' shares
+        const othersBought = Math.max(0, totalBoughtShares - myBoughtShares);  // Others' shares
         const totalShares = othersBought + myShares;  // Total pool after my purchase
 
         const totalRewardAUD = baseValues.totalRewardAUD || 0;

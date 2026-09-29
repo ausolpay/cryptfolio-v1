@@ -1,0 +1,16 @@
+.ai-overview[hidden] { display: none !important; }
+.ai-overview { box-sizing: border-box; width: 100%; margin: 18px 0; padding: 20px; border: 1px solid #ffffff20; border-radius: 16px; background: #ffffff06; text-align: left; }
+.ai-overview h3 { margin: 0 0 8px; font-size: 17px; }
+.ai-output { white-space: pre-wrap; line-height: 1.65; font-size: 14px; overflow-wrap: anywhere; }
+.ai-date, .ai-disclosure { color: #999; font-size: 12px; line-height: 1.5; }
+.ai-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+.ai-actions button { margin: 0; }
+.ai-saved { color: #ffb36b; font-size: 13px; }
+.ai-settings { background: #202020; color: #eee; border: 1px solid #555; border-radius: 16px; padding: 24px; width: min(480px, calc(100vw - 64px)); max-height: 80dvh; overflow-y: auto; }
+.ai-settings::backdrop { background: #000b; }
+.ai-settings p { font-size: 14px; line-height: 1.6; }
+.ai-settings label { display: block; margin: 12px 0; }
+.ai-settings input, .ai-settings select { display: block; box-sizing: border-box; width: 100%; padding: 12px; margin-top: 8px; background: #121212; color: #fff; border: 1px solid #666; border-radius: 6px; }
+body.light-mode .ai-overview { border-color: #0002; background: #fff; }
+body.light-mode .ai-date, body.light-mode .ai-disclosure { color: #666; }
+@media(max-width: 600px) { .ai-overview { padding: 14px; } }
