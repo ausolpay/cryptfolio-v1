@@ -28155,7 +28155,8 @@ async function fetchNiceHashSoloPackages(currency = 'BTC') {
                     },
                     body: null
                 }),
-                cache: 'no-store'
+                cache: 'no-store',
+                signal: AbortSignal.timeout(20000)
             });
         } else {
             // Direct call to NiceHash API in development
@@ -28168,7 +28169,8 @@ async function fetchNiceHashSoloPackages(currency = 'BTC') {
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache'
                 },
-                cache: 'no-store'
+                cache: 'no-store',
+                signal: AbortSignal.timeout(20000)
             });
         }
 
@@ -28180,6 +28182,7 @@ async function fetchNiceHashSoloPackages(currency = 'BTC') {
         }
 
         const catalogue = await response.json();
+        if (!Array.isArray(catalogue)) throw new Error('Invalid solo catalogue response');
         EasyMiningCurrency.setCatalogue('single', catalogue);
         const packages = catalogue.filter(pkg => pkg.currencyMarket === 'BTC');
         console.log(`✅ Fetched ${packages.length} solo packages from API`);
@@ -28312,7 +28315,7 @@ async function fetchNiceHashTeamPackages(currency = 'BTC') {
     // Skip fetch if auto-buy is in progress to avoid rate limiting
     if (isAutoBuyInProgress) {
         console.log('⏸️ Team packages fetch paused - auto-buy in progress');
-        return [];
+        return null;
     }
 
     console.log('🔄 Fetching team packages from NiceHash API...');
@@ -28343,7 +28346,8 @@ async function fetchNiceHashTeamPackages(currency = 'BTC') {
                     },
                     body: null
                 }),
-                cache: 'no-store'
+                cache: 'no-store',
+                signal: AbortSignal.timeout(20000)
             });
         } else {
             // Direct call to NiceHash API in development
@@ -28356,7 +28360,8 @@ async function fetchNiceHashTeamPackages(currency = 'BTC') {
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache'
                 },
-                cache: 'no-store'
+                cache: 'no-store',
+                signal: AbortSignal.timeout(20000)
             });
         }
 
@@ -28368,7 +28373,8 @@ async function fetchNiceHashTeamPackages(currency = 'BTC') {
         }
 
         const data = await response.json();
-        const catalogue = data.list || [];
+        const catalogue = data.list;
+        if (!Array.isArray(catalogue)) throw new Error('Invalid team catalogue response');
         EasyMiningCurrency.setCatalogue('team', catalogue);
         const packages = catalogue.filter(pkg => pkg.currencyAlgoTicket?.currencyMarket === 'BTC');
         console.log(`✅ Fetched ${packages.length} team packages from API`);
@@ -28495,7 +28501,7 @@ async function fetchNiceHashTeamPackages(currency = 'BTC') {
     } catch (error) {
         console.error('❌ Error fetching team packages from API:', error);
         console.error('❌ Error details:', error.message);
-        return [];
+        return null;
     }
 }
 
@@ -29443,160 +29449,104 @@ function updateAllBuyButtonStates() {
     console.log(`✅ Buy button states updated for ${alertCards.length} alert cards`);
 }
 
-async function loadBuyPackagesDataOnPage() {
-    console.log('📦 Loading packages on buy packages page...');
+let buyPackagesLoadPromise = null;
 
-    // Initialize share values storage if not exists
-    if (!window.packageShareValues) {
-        window.packageShareValues = {};
+function setBuyPackageLoadState(kind, state) {
+    const container = document.getElementById(`buy-${kind}-packages-page`);
+    if (!container) return;
+    container.querySelector('[data-catalogue-status]')?.remove();
+    container.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
+    if (state === 'ready') return;
+    const message = document.createElement('p');
+    message.dataset.catalogueStatus = state;
+    message.setAttribute('role', 'status');
+    message.textContent = state === 'loading' ? 'Loading packages…' : state === 'empty'
+        ? 'No packages are available right now.'
+        : 'Packages could not be refreshed. Retrying automatically. ';
+    if (state === 'error') {
+        const retry = document.createElement('button');
+        retry.textContent = 'Retry';
+        retry.onclick = () => loadBuyPackagesDataOnPage();
+        message.appendChild(retry);
     }
+    container.appendChild(message);
+}
 
-    // Fetch balance from NiceHash API
-    try {
-        console.log('💰 Fetching balance from NiceHash API...');
-        const balanceData = await fetchNiceHashBalances();
-        window.niceHashBalance = {
-            available: balanceData.available || 0,
-            pending: balanceData.pending || 0
-        };
-        console.log('✅ Balance fetched:', window.niceHashBalance);
-
-        // Update buy button states across the app on balance change
-        updateAllBuyButtonStates();
-    } catch (error) {
-        console.warn('⚠️ Failed to fetch balance, using fallback:', error);
-        // Fallback to easyMiningData or zero
-        window.niceHashBalance = {
-            available: easyMiningData?.balanceBTC || 0,
-            pending: easyMiningData?.pendingBTC || 0
-        };
-        updateAllBuyButtonStates(); // Still update buttons with fallback balance
+function loadBuyPackagesDataOnPage() {
+    // Cold preload, navigation and polling share one refresh.
+    if (!buyPackagesLoadPromise) {
+        buyPackagesLoadPromise = refreshBuyPackagesDataOnPage()
+            .catch(error => console.warn('Buy Packages refresh failed:', error))
+            .finally(() => { buyPackagesLoadPromise = null; });
     }
+    return buyPackagesLoadPromise;
+}
 
-    // Try to fetch from API, use cache if unavailable
-    let singlePackages = await fetchNiceHashSoloPackages();
-    const soloApiSuccess = singlePackages !== null;
-
-    // If API fails, use cached data silently (no unavailable banner)
-    // If API succeeds but fewer packages, mark missing ones as unavailable
-    if (!soloApiSuccess || singlePackages.length === 0) {
-        if (lastValidSoloPackages && lastValidSoloPackages.length > 0) {
-            console.log('📦 Using cached solo packages (API unavailable)');
-            singlePackages = lastValidSoloPackages;
-        } else {
-            console.log('📦 No cached solo data available, skipping update');
-            return; // Don't update UI if we have no valid data
+async function refreshBuyPackagesDataOnPage() {
+    if (!window.packageShareValues) window.packageShareValues = {};
+    if (!window.packageCryptoPrices) window.packageCryptoPrices = {};
+    const states = {};
+    async function catalogue(kind, fetchPackages) {
+        setBuyPackageLoadState(kind, 'loading');
+        let result;
+        try { result = await fetchPackages(); } catch { result = null; }
+        const success = Array.isArray(result);
+        // A successful empty response is authoritative. Never sell stale cached offers.
+        const packages = success ? result : [];
+        if (success) {
+            if (kind === 'single') lastValidSoloPackages = result;
+            else lastValidTeamPackages = result;
         }
-    } else {
-        // API succeeded - check for packages that were in cache but not in new response
-        if (lastValidSoloPackages && lastValidSoloPackages.length > 0) {
-            const newPackageIds = new Set(singlePackages.map(p => p.id));
-            const unavailablePackages = lastValidSoloPackages
-                .filter(cached => !newPackageIds.has(cached.id))
-                .map(cached => ({ ...cached, unavailable: true }));
-
-            if (unavailablePackages.length > 0) {
-                console.log(`⚠️ ${unavailablePackages.length} solo package(s) unavailable on NiceHash:`,
-                    unavailablePackages.map(p => p.name));
-                singlePackages = [...singlePackages, ...unavailablePackages];
-            }
-        }
-        // Cache valid response for future use
-        lastValidSoloPackages = singlePackages.filter(p => !p.unavailable);
+        states[kind] = success ? (packages.length ? 'ready' : 'empty') : 'error';
+        renderBuyPackageList(kind, packages);
+        setBuyPackageLoadState(kind, states[kind]);
+        return packages;
     }
-
-    // Fetch team packages from API, use cache if unavailable
-    let teamPackages = await fetchNiceHashTeamPackages();
-    const teamApiSuccess = teamPackages !== null && teamPackages.length >= 0;
-
-    // If API fails, use cached data silently (no unavailable banner)
-    // If API succeeds but fewer packages, mark missing ones as unavailable
-    if (!teamApiSuccess || teamPackages.length === 0) {
-        if (lastValidTeamPackages && lastValidTeamPackages.length > 0) {
-            console.log('👥 Using cached team packages (API unavailable)');
-            teamPackages = lastValidTeamPackages;
-        } else {
-            console.log('👥 No cached team data available');
-            teamPackages = []; // Continue with empty to avoid breaking rest of function
-        }
-    } else {
-        // API succeeded - check for packages that were in cache but not in new response
-        if (lastValidTeamPackages && lastValidTeamPackages.length > 0) {
-            const newPackageIds = new Set(teamPackages.map(p => p.id));
-            const unavailablePackages = lastValidTeamPackages
-                .filter(cached => !newPackageIds.has(cached.id))
-                .map(cached => ({ ...cached, unavailable: true }));
-
-            if (unavailablePackages.length > 0) {
-                console.log(`⚠️ ${unavailablePackages.length} team package(s) unavailable on NiceHash:`,
-                    unavailablePackages.map(p => p.name));
-                teamPackages = [...teamPackages, ...unavailablePackages];
-            }
-        }
-        // Cache valid response for future use (exclude unavailable)
-        lastValidTeamPackages = teamPackages.filter(p => !p.unavailable);
-    }
-    console.log(`✅ Using ${teamPackages.length} team packages`);
-
-    // Fetch authenticated team shares (user's shares from members array)
-    // This populates authenticatedTeamShares for share distribution display
-    await fetchAuthenticatedTeamShares();
-
-    // Fetch prices for all package cryptocurrencies before displaying
+    // Start each public list immediately, independently of account and price services.
+    const soloRead = catalogue('single', fetchNiceHashSoloPackages);
+    const teamRead = catalogue('team', fetchNiceHashTeamPackages);
+    const accountRead = Promise.allSettled([
+        Promise.resolve().then(fetchNiceHashBalances).then(balance => {
+            window.niceHashBalance = { available: balance.available || 0, pending: balance.pending || 0 };
+            renderBuyPackagesBalance();
+            updateAllBuyButtonStates();
+        }).catch(error => {
+            console.warn('Buy Packages balance unavailable:', error);
+            window.niceHashBalance = { available: 0, pending: 0 };
+            renderBuyPackagesBalance();
+            updateAllBuyButtonStates();
+        }),
+        Promise.resolve().then(fetchAuthenticatedTeamShares)
+    ]);
+    const [singlePackages, teamPackages] = await Promise.all([soloRead, teamRead]);
     const allPackages = [...singlePackages, ...teamPackages];
-
-    // Fetch new prices without overwriting existing data (prevents brief $0.00 flash during polling)
-    const newPrices = await fetchPackageCryptoPrices(allPackages);
-
-    // Only update if we got valid data
-    if (newPrices && Object.keys(newPrices).length > 0) {
-        window.packageCryptoPrices = newPrices;
+    try {
+        const newPrices = await fetchPackageCryptoPrices(allPackages);
+        if (newPrices && Object.keys(newPrices).length) window.packageCryptoPrices = newPrices;
         EasyMiningCurrency.render();
-    } else if (!window.packageCryptoPrices) {
-        // Initialize on first run if API fails
-        window.packageCryptoPrices = {};
-    }
-
-    // Capture package metrics for historical tracking and averaging
-    // This stores hashrate, probability, and price data with timestamps
+    } catch (error) { console.warn('Package conversion prices unavailable:', error); }
+    await accountRead;
     try {
         capturePackageMetrics([...allPackages, ...EasyMiningCurrency.metricPackages('single'), ...EasyMiningCurrency.metricPackages('team')]);
-    } catch (error) {
-        console.error('❌ Error capturing package metrics:', error);
-    }
-
-    // Immediately update averages so currentPosition is fresh for card rendering
-    try {
         updatePackageMetricsAverages();
-    } catch (error) {
-        console.error('❌ Error updating package metrics averages:', error);
+    } catch (error) { console.warn('Package metrics unavailable:', error); }
+    const recommendations = await Promise.allSettled([
+        checkPackageRecommendations(singlePackages.filter(pkg => !pkg.unavailable)),
+        checkTeamRecommendations(teamPackages.filter(pkg => !pkg.unavailable), singlePackages.filter(pkg => !pkg.unavailable))
+    ]);
+    for (const [index, kind, packages] of [[0, 'single', singlePackages], [1, 'team', teamPackages]]) {
+        const names = recommendations[index].status === 'fulfilled' ? recommendations[index].value.map(pkg => pkg.name) : [];
+        renderBuyPackageList(kind, packages, names);
+        setBuyPackageLoadState(kind, states[kind]);
     }
+    renderBuyPackagesBalance();
+    setTimeout(() => initMiniHashrateGraphs(), 100);
+    startCountdownUpdates();
+    initializeDragScrolling();
+    validateAndFixAutoBuyRobotIcons();
+}
 
-    // Load solo recommendations to highlight packages (pass pre-fetched data to avoid redundant API calls)
-    let soloRecommendedNames = [];
-    try {
-        console.log('🔔 Loading solo recommendations for package highlighting...');
-        const soloRecommendations = await checkPackageRecommendations(singlePackages);
-        soloRecommendedNames = soloRecommendations.map(pkg => pkg.name);
-        console.log(`✅ Found ${soloRecommendedNames.length} recommended solo package(s) for highlighting`);
-    } catch (error) {
-        console.error('❌ Error loading solo recommendations:', error);
-    }
-
-    // Load team recommendations to highlight packages (pass pre-fetched data to avoid redundant API calls)
-    let teamRecommendedNames = [];
-    try {
-        console.log('🔔 Loading team recommendations for package highlighting...');
-        const teamRecommendations = await checkTeamRecommendations(teamPackages, singlePackages);
-        teamRecommendedNames = teamRecommendations.map(pkg => pkg.name);
-        console.log(`✅ Found ${teamRecommendedNames.length} recommended team package(s) for highlighting`);
-    } catch (error) {
-        console.error('❌ Error loading team recommendations:', error);
-    }
-
-    // Recommendations section container is hidden in HTML - we only use recommendedNames for highlighting
-    // Recommendations display only shows in EasyMining section
-
+function renderBuyPackagesBalance() {
     // Populate balance section at the top
     const balanceSection = document.getElementById('buy-packages-balance-section');
     if (!balanceSection) {
@@ -29661,123 +29611,32 @@ async function loadBuyPackagesDataOnPage() {
     MiningWallet.renderBalance();
     console.log('✅ Balance section populated');
 
-    // Populate single packages
-    const singleContainer = document.getElementById('buy-single-packages-page');
-    if (!singleContainer) {
-        console.error('❌ Could not find buy-single-packages-page container!');
-        return;
-    }
-
-    console.log(`📦 Populating ${singlePackages.length} single packages...`);
-
-    // Smart re-rendering: Check if we can update in place (preserves floating icon animations)
-    const existingSoloIds = Array.from(singleContainer.querySelectorAll('[data-package-id]'))
-        .map(el => el.dataset.packageId);
-    const newSoloIds = singlePackages.map(pkg => pkg.id);
-    const newSoloIdSet = new Set(newSoloIds);
-
-    // Check if same packages exist (same IDs in same order)
-    const sameSoloPackages = existingSoloIds.length === newSoloIds.length &&
-        existingSoloIds.every((id, index) => id === newSoloIds[index]);
-
-    // Check if any package was removed or added
-    const soloPackageRemoved = existingSoloIds.some(id => !newSoloIdSet.has(id));
-    const existingSoloIdSet = new Set(existingSoloIds);
-    const soloPackageAdded = newSoloIds.some(id => !existingSoloIdSet.has(id));
-
-    if (sameSoloPackages && singleContainer.children.length > 0 && !soloPackageRemoved && !soloPackageAdded) {
-        // Smart update: update data fields without destroying floating icon animations
-        console.log('🔄 Same solo packages detected - using smart update (preserving animations)');
-        updateSoloPackageCardsInPlace(singlePackages, soloRecommendedNames);
-    } else {
-        // Full re-render needed (packages changed or first load)
-        console.log('🔄 Solo packages changed or first load - doing full re-render');
-        singleContainer.innerHTML = '';
-
-        singlePackages.forEach(pkg => {
-            try {
-                const isRecommended = soloRecommendedNames.includes(pkg.name);
-                const card = createBuyPackageCardForPage(pkg, isRecommended);
-                singleContainer.appendChild(card);
-            } catch (error) {
-                console.error('❌ Error creating card for package:', pkg.name, error);
-            }
-        });
-    }
-    console.log('✅ Single packages populated');
-
-    // Populate team packages
-    const teamContainer = document.getElementById('buy-team-packages-page');
-    if (!teamContainer) {
-        console.error('❌ Could not find buy-team-packages-page container!');
-        return;
-    }
-
-    console.log(`👥 Populating ${teamPackages.length} team packages...`);
-
-    // Smart re-rendering: Check if we can update in place (preserves countdown elements)
-    const existingTeamIds = Array.from(teamContainer.querySelectorAll('[data-package-id]'))
-        .map(el => el.dataset.packageId);
-    const newTeamIds = teamPackages.map(pkg => pkg.id);
-    const newTeamIdSet = new Set(newTeamIds);
-
-    // Check if same packages exist (same IDs in same order)
-    const samePackages = existingTeamIds.length === newTeamIds.length &&
-        existingTeamIds.every((id, index) => id === newTeamIds[index]);
-
-    // Check if any existing package was removed (not in new set)
-    const packageRemoved = existingTeamIds.some(id => !newTeamIdSet.has(id));
-
-    // Check if any new package was added (not in existing set)
-    const existingTeamIdSet = new Set(existingTeamIds);
-    const packageAdded = newTeamIds.some(id => !existingTeamIdSet.has(id));
-
-    if (packageRemoved || packageAdded) {
-        console.log(`🔄 Package change detected - removed: ${packageRemoved}, added: ${packageAdded}`);
-        console.log('   existing:', existingTeamIds, 'new:', newTeamIds);
-    }
-
-    if (samePackages && teamContainer.children.length > 0 && !packageRemoved && !packageAdded) {
-        // Smart update: update data fields without destroying countdown elements
-        console.log('🔄 Same packages detected - using smart update (preserving countdowns)');
-        updateTeamPackageCardsInPlace(teamPackages, teamRecommendedNames);
-    } else {
-        // Full re-render needed (packages changed or first load)
-        console.log('🔄 Packages changed or first load - doing full re-render');
-        teamContainer.innerHTML = '';
-
-        teamPackages.forEach(pkg => {
-            try {
-                const isRecommended = teamRecommendedNames.includes(pkg.name);
-                const card = createBuyPackageCardForPage(pkg, isRecommended);
-                teamContainer.appendChild(card);
-            } catch (error) {
-                console.error('❌ Error creating card for package:', pkg.name, error);
-            }
-        });
-
-        // Store team packages for countdown updates
-        window.currentTeamPackages = teamPackages;
-    }
-    console.log('✅ Team packages populated');
-
-    // Initialize mini hashrate graphs for team packages
-    setTimeout(() => initMiniHashrateGraphs(), 100);
-
-    // Start countdown updates for team packages
-    startCountdownUpdates();
-
-    // Initialize drag scrolling for horizontal sliders on tablet/mobile
-    initializeDragScrolling();
-
-    // NOTE: Share input values are now synced directly from API data via updateTeamPackageCardsInPlace()
-    // No need to restore cached values - always use fresh myBoughtShares from API
-
-    // Validate and fix auto-buy robot icons after page load
-    // The function handles missing containers gracefully
-    console.log('🤖 Running robot icon validation...');
-    validateAndFixAutoBuyRobotIcons();
 }
+
+function renderBuyPackageList(kind, packages, recommendedNames = []) {
+    const container = document.getElementById(`buy-${kind}-packages-page`);
+    if (!container) return;
+    const existingIds = Array.from(container.querySelectorAll('[data-package-id]'))
+        .map(node => node.dataset.packageId);
+    const samePackages = packages.length > 0 && existingIds.length === packages.length &&
+        existingIds.every((id, index) => id === String(packages[index].id));
+    if (samePackages) {
+        // Keep existing nodes so polling preserves input focus and animations.
+        if (kind === 'single') updateSoloPackageCardsInPlace(packages, recommendedNames);
+        else updateTeamPackageCardsInPlace(packages, recommendedNames);
+    } else {
+        container.replaceChildren();
+        for (const pkg of packages) {
+            try {
+                container.appendChild(createBuyPackageCardForPage(pkg, recommendedNames.includes(pkg.name)));
+            } catch (error) {
+                console.error('Error creating package card:', pkg.name, error);
+            }
+        }
+    }
+    if (kind === 'team') window.currentTeamPackages = packages;
+}
+
 
 // Validate and fix auto-buy robot icons on Buy Packages page
 function validateAndFixAutoBuyRobotIcons() {
