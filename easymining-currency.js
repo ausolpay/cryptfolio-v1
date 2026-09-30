@@ -3,7 +3,11 @@ const EasyMiningCurrency = (() => {
     const catalogue = { single: [], team: [] };
     const fetchedAt = { single: 0, team: 0 };
     const loadStates = { single: 'loading', team: 'loading' };
-    function setLoadState(kind, state) { loadStates[kind] = state; render(); }
+    function setLoadState(kind, state) {
+        // Once data arrived, polling must not insert banners or rebuild controls at dispatch.
+        if (state === 'loading' && fetchedAt[kind]) return;
+        loadStates[kind] = state; render();
+    }
     const selections = new Map();
     let buying = false;
     let tab = 'single';
@@ -164,7 +168,9 @@ const EasyMiningCurrency = (() => {
             price.append(priceRow); if (cost) price.append(element('p', localPrice(cost), 'mining-currency-note currency-local-price'));
             const status = element('p', '', 'mining-currency-note currency-action-status'); status.setAttribute('role', 'status');
             let selected = selections.get(raw.id) ?? Math.max(1, getMyTeamShares(raw.id) || 0);
-            const button = element('button', team ? 'Update shares' : 'Buy package', 'buy-now-btn');
+            const button = element('button', team ? 'Buy' : 'Buy package', 'buy-now-btn');
+            const actionAmount = team ? element('p', '', 'total-cost') : null;
+            if (actionAmount) price.append(actionAmount);
             if (team) {
                 const controls = element('div', null, 'share-adjuster'), minus = element('button', '-', 'share-adjuster-btn'), plus = element('button', '+', 'share-adjuster-btn');
                 minus.setAttribute('aria-label', `Decrease ${t.name} shares`); plus.setAttribute('aria-label', `Increase ${t.name} shares`);
@@ -177,16 +183,23 @@ const EasyMiningCurrency = (() => {
                         rewardNote.textContent = `${(value.fraction * 100).toFixed(2)}% of ${value.total} projected shares • Block reward: ${t.currencyAlgo.blockReward} ${t.currencyAlgo.currency}`;
                         minus.disabled = selected <= 1; plus.disabled = selected >= value.max;
                         button.disabled = selected > value.max || value.change === 0;
-                        button.textContent = value.change < 0 ? `Remove ${Math.abs(value.change)} USDT of shares` : `Add ${value.change} USDT of shares`;
+                        actionAmount.textContent = value.change < 0 ? `Remove ${Math.abs(value.change)} USDT of shares` : `Add ${value.change} USDT of shares`;
+                        button.textContent = value.change < 0 ? 'Remove' : 'Buy';
+                        button.title = actionAmount.textContent;
+                        button.setAttribute('aria-label', actionAmount.textContent);
                     } catch (error) { rewardNote.textContent = error.message; button.disabled = true; }
                 };
                 for (const [control, delta] of [[minus, -1], [plus, 1]]) control.onclick = () => {
                     selected = Math.max(1, selected + delta); selections.set(raw.id, selected); input.value = selected;
                     preview(); TeamProbability.changed(input);
                 };
-                controls.append(minus, input, plus); price.append(controls); preview();
+                button.classList.add('currency-team-buy');
+                controls.append(minus, input, plus, button); price.append(controls); preview();
             }
-            const actions = element('div', null, 'buy-button-row'); actions.append(button); price.append(actions); body.append(price, status);
+            if (!team) {
+                const actions = element('div', null, 'buy-button-row'); actions.append(button); price.append(actions);
+            }
+            body.append(price, status);
             if (team) TeamProbability.bind(card, { id: raw.id, apiData: raw });
             button.onclick = () => buy(raw, selected, status);
             grid.append(card);

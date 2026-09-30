@@ -49,3 +49,20 @@ test('public retrieval distinguishes a failed team catalogue from a valid empty 
  ctx.CloudAccount.proxyFetch=async()=>({ok:true,json:async()=>({unexpected:true})});assert.equal(await ctx.fetchNiceHashTeamPackages(),null);
 });
 
+
+test('background polls keep existing BTC cards and authoritative empty results quiet',()=>{
+ let cards=false,message=null,appends=0;
+ const container={dataset:{},setAttribute(){},querySelector:selector=>selector==='[data-package-id]'?(cards?{}:null):message,
+  appendChild:node=>{message=node;appends++}};
+ const ctx=vm.createContext({EasyMiningCurrency:{setLoadState(){}},loadBuyPackagesDataOnPage(){},document:{getElementById:()=>container,
+  createElement:()=>({dataset:{},setAttribute(){},appendChild(){},remove(){message=null}})}});
+ load('setBuyPackageLoadState',ctx);
+ ctx.setBuyPackageLoadState('single','loading');assert.equal(message.dataset.catalogueStatus,'loading');
+ ctx.setBuyPackageLoadState('single','ready');cards=true;
+ const before=appends;for(let n=0;n<5;n++)ctx.setBuyPackageLoadState('single','loading');
+ assert.equal(appends,before);assert.equal(message,null);
+ cards=false;ctx.setBuyPackageLoadState('single','empty');const empty=message;
+ ctx.setBuyPackageLoadState('single','loading');assert.equal(message,empty);
+ ctx.setBuyPackageLoadState('single','error');assert.equal(message.dataset.catalogueStatus,'error');
+ ctx.setBuyPackageLoadState('single','loading');assert.equal(message.dataset.catalogueStatus,'loading');
+});

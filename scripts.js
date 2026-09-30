@@ -29455,6 +29455,9 @@ function setBuyPackageLoadState(kind, state) {
     EasyMiningCurrency.setLoadState?.(kind, state);
     const container = document.getElementById(`buy-${kind}-packages-page`);
     if (!container) return;
+    // Poll silently while a usable catalogue (including an empty result) is displayed.
+    if (state === 'loading' && (container.querySelector('[data-package-id]') || container.dataset.catalogueState === 'empty')) return;
+    container.dataset.catalogueState = state;
     container.querySelector('[data-catalogue-status]')?.remove();
     container.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
     if (state === 'ready') return;

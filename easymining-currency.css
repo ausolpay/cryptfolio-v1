@@ -37,3 +37,6 @@ body.light-mode .currency-package-card .mining-currency-note { color:#666; }
 .package-catalogue-status[data-catalogue-status="error"] { border-color:#ad5555; }
 .package-catalogue-status button { margin-left:10px; padding:8px 16px; }
 body.light-mode .package-catalogue-status { background:#f5f5f5; color:#555; border-color:#ccc; }
+
+/* Match BTC team controls: decrement, count, increment and action on one row. */
+.currency-package-card .currency-team-buy { margin-left:10px; }
