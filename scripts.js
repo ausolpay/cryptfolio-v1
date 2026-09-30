@@ -29452,6 +29452,7 @@ function updateAllBuyButtonStates() {
 let buyPackagesLoadPromise = null;
 
 function setBuyPackageLoadState(kind, state) {
+    EasyMiningCurrency.setLoadState?.(kind, state);
     const container = document.getElementById(`buy-${kind}-packages-page`);
     if (!container) return;
     container.querySelector('[data-catalogue-status]')?.remove();
@@ -29459,6 +29460,7 @@ function setBuyPackageLoadState(kind, state) {
     if (state === 'ready') return;
     const message = document.createElement('p');
     message.dataset.catalogueStatus = state;
+    message.className = 'package-catalogue-status';
     message.setAttribute('role', 'status');
     message.textContent = state === 'loading' ? 'Loading packages…' : state === 'empty'
         ? 'No packages are available right now.'

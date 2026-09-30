@@ -1,9 +1,9 @@
 .currency-hidden { display: none !important; }
 #usdt-package-catalogue[hidden] { display: none; }
 .mining-payment-picker { display:flex; align-items:center; gap:12px; margin:16px 0 24px; font-size:14px; }
-.mining-payment-picker select, .currency-package-card input { color:inherit; background:#202020; border:1px solid #555; border-radius:8px; padding:10px 12px; }
-.currency-package-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:18px; }
-.currency-package-card { padding:22px; border:1px solid #444; border-radius:16px; background:linear-gradient(145deg,#282828,#1b1b1b); display:flex; flex-direction:column; gap:12px; }
+.mining-payment-picker select, .currency-package-card:not(.buy-package-card) input { color:inherit; background:#202020; border:1px solid #555; border-radius:8px; padding:10px 12px; }
+.currency-package-grid:not(.buy-packages-container-page) { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:18px; }
+.currency-package-card:not(.buy-package-card) { padding:22px; border:1px solid #444; border-radius:16px; background:linear-gradient(145deg,#282828,#1b1b1b); display:flex; flex-direction:column; gap:12px; }
 .currency-package-heading { display:flex; align-items:center; gap:12px; }
 .currency-package-heading img, .official-package-icon { width:42px; height:42px; object-fit:contain; }
 .currency-package-heading h3, .currency-package-card p { margin:0; }
@@ -13,7 +13,27 @@
 .currency-package-card dt { color:#bbb; }
 .currency-package-card dd { margin:0; text-align:right; }
 .currency-package-card label { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-.currency-package-card input { width:85px; }
+.currency-package-card:not(.buy-package-card) input { width:85px; }
 .official-package-icon { vertical-align:middle; margin-right:8px; }
 .team-probability-preview { padding:12px 16px; margin:8px 12px 12px; border:1px solid #ffa50055; border-radius:10px; font-size:13px; line-height:1.6; }
 .team-probability-preview small { display:block; opacity:.7; font-size:11px; margin-top:4px; }
+
+/* USDT catalogue shares BTC's card and responsive container rules. */
+.currency-catalogue-note { text-align:center; margin:0 12px; }
+.currency-package-card.buy-package-card { gap:0; }
+.currency-package-card .rewards-info { text-align:center; }
+.currency-package-card .reward-amount { overflow-wrap:anywhere; }
+.currency-package-card .stat-value-medium { display:inline-flex; align-items:center; gap:4px; }
+.currency-package-card .currency-pool-info { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-size:.9em; }
+.currency-package-card .currency-local-price { text-align:center; margin:-4px 0 10px; }
+.currency-package-card .share-adjuster { margin:0 0 10px; }
+.currency-package-card .buy-button-row .buy-now-btn { white-space:normal; }
+.currency-action-status:empty { display:none; }
+.currency-action-status { padding:8px 0; overflow-wrap:anywhere; }
+.currency-action-status[data-state="error"] { color:#ff8c8c; }
+body.light-mode .currency-action-status[data-state="error"] { color:#a51c30; }
+body.light-mode .currency-package-card .mining-currency-note { color:#666; }
+.package-catalogue-status { box-sizing:border-box; padding:16px; margin:12px auto; border:1px solid #444; border-radius:8px; background:rgba(50,50,50,.4); color:#bbb; font-size:14px; line-height:1.6; text-align:center; }
+.package-catalogue-status[data-catalogue-status="error"] { border-color:#ad5555; }
+.package-catalogue-status button { margin-left:10px; padding:8px 16px; }
+body.light-mode .package-catalogue-status { background:#f5f5f5; color:#555; border-color:#ccc; }
